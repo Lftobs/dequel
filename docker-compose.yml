@@ -12,7 +12,7 @@ services:
         volumes:
             - buildkit-data:/var/lib/buildkit
         networks:
-            brim:
+            dequel:
                 aliases:
                     - buildkit
         healthcheck:
@@ -34,11 +34,11 @@ services:
             context: ./apps/api
         environment:
             PORT: 3001
-            DATABASE_PATH: /app/data/brim.db
+            DATABASE_PATH: /app/data/dequel.db
             WORKSPACE_ROOT: /app/workspace
             CADDY_ROUTES_DIR: /caddy/routes
             CADDY_INGRESS_BASE: http://localhost
-            DOCKER_NETWORK: brim_net
+            DOCKER_NETWORK: dequel_net
             APP_INTERNAL_PORT: 3000
             BUILDKIT_HOST: tcp://buildkit:1234
             DOCKER_BIN: /usr/bin/docker
@@ -65,7 +65,7 @@ services:
             retries: 100
             start_period: 10s
         networks:
-            brim:
+            dequel:
                 aliases:
                     - api
 
@@ -85,7 +85,7 @@ services:
             retries: 10
             start_period: 30s
         networks:
-            brim:
+            dequel:
                 aliases:
                     - web
 
@@ -112,11 +112,136 @@ services:
             web:
                 condition: service_healthy
         networks:
-            brim:
+            dequel:
+
+    redis:
+        image: redis:7-alpine
+        command: redis-server --appendonly yes
+        volumes:
+            - redis-data:/data
+        networks:
+            dequel:
+                aliases:
+                    - redis
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+
+    cadvisor:
+        image: gcr.io/cadvisor/cadvisor:latest
+        volumes:
+            - /:/rootfs:ro
+            - /var/run:/var/run:ro
+            - /sys:/sys:ro
+            - /var/lib/docker/:/var/lib/docker:ro
+            - /dev/disk/:/dev/disk:ro
+        privileged: true
+        devices:
+            - /dev/kmsg
+        networks:
+            dequel:
+                aliases:
+                    - cadvisor
+        healthcheck:
+            test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/metrics"]
+            interval: 10s
+            timeout: 3s
+            retries: 3
+            start_period: 5s
+
+    prometheus:
+        image: prom/prometheus:latest
+        command:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --web.console.libraries=/usr/share/prometheus/console_libraries
+            - --web.console.templates=/usr/share/prometheus/consoles
+            - --storage.tsdb.retention.time=30d
+        volumes:
+            - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - prometheus-data:/prometheus
+        depends_on:
+            cadvisor:
+                condition: service_started
+        networks:
+            dequel:
+                aliases:
+                    - prometheus
+        healthcheck:
+            test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/ready"]
+            interval: 10s
+            timeout: 3s
+            retries: 3
+            start_period: 5s
+
+    loki:
+        image: grafana/loki:3.0.0
+        command:
+            - -config.file=/etc/loki/loki-config.yml
+        volumes:
+            - ./infra/monitoring/loki-config.yml:/etc/loki/loki-config.yml:ro
+            - loki-data:/loki
+        networks:
+            dequel:
+                aliases:
+                    - loki
+        healthcheck:
+            test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
+            interval: 10s
+            timeout: 3s
+            retries: 3
+            start_period: 10s
+
+    promtail:
+        image: grafana/promtail:3.0.0
+        command:
+            - -config.file=/etc/promtail/promtail-config.yml
+        volumes:
+            - ./infra/monitoring/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+            - /var/run/docker.sock:/var/run/docker.sock
+            - /var/lib/docker/containers:/var/lib/docker/containers:ro
+        depends_on:
+            loki:
+                condition: service_started
+        networks:
+            dequel:
+
+    grafana:
+        image: grafana/grafana:latest
+        environment:
+            GF_SECURITY_ADMIN_USER: admin
+            GF_SECURITY_ADMIN_PASSWORD: admin
+            GF_SERVER_ROOT_URL: http://localhost/grafana
+            GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+            GF_INSTALL_PLUGINS: ""
+        volumes:
+            - ./infra/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+            - grafana-data:/var/lib/grafana
+        depends_on:
+            prometheus:
+                condition: service_started
+            loki:
+                condition: service_started
+        networks:
+            dequel:
+                aliases:
+                    - grafana
+        healthcheck:
+            test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+            interval: 10s
+            timeout: 3s
+            retries: 5
+            start_period: 15s
 
 networks:
-    brim:
-        name: brim_net
+    dequel:
+        name: dequel_net
 
 volumes:
     buildkit-data:
+    redis-data:
+    prometheus-data:
+    loki-data:
+    grafana-data:

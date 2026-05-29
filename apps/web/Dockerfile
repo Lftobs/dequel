@@ -9,6 +9,8 @@ COPY index.html ./
 COPY vite.config.ts ./
 COPY tsconfig.json ./
 COPY tsconfig.node.json ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
 RUN bun run build
 
 FROM oven/bun:1

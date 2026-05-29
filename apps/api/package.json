@@ -1,14 +1,16 @@
 {
-  "name": "brim-api",
+  "name": "dequel-api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "start": "bun src/index.ts"
+    "start": "bun src/index.ts",
+    "test": "bun test"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.1.1",
-    "elysia": "^1.1.26"
+    "elysia": "^1.1.26",
+    "ioredis": "^5.4.1"
   }
 }

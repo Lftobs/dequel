@@ -5,3 +5,4 @@ dist
 data
 workspace
 .specs
+routes/

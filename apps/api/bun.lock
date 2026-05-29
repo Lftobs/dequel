@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "brim-api",
+      "name": "dequel-api",
       "dependencies": {
         "@elysiajs/cors": "^1.1.1",
         "elysia": "^1.1.26",

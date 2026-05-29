@@ -34,11 +34,14 @@ const run = (cmd: string, args: string[], cwd?: string) =>
     });
   });
 
-export const prepareSourceWorkspace = async (deploymentId: string, gitUrl: string) => {
+export const prepareSourceWorkspace = async (deploymentId: string, gitUrl: string, branch?: string) => {
   const root = join(config.workspaceRoot, deploymentId);
   await rm(root, { recursive: true, force: true });
   await mkdir(root, { recursive: true });
-  await run('git', ['clone', '--depth', '1', gitUrl, root]);
+  const args = ['clone', '--depth', '1'];
+  if (branch) args.push('--branch', branch);
+  args.push(gitUrl, root);
+  await run('git', args);
   return root;
 };
 
@@ -62,6 +65,28 @@ export const prepareUploadWorkspace = async (deploymentId: string, archivePath: 
   }
 
   throw new Error('Unsupported archive format. Use .zip, .tar, .tar.gz, or .tgz');
+};
+
+export const getHeadSha = async (repoPath: string): Promise<string | null> => {
+  try {
+    let output = '';
+    const child = spawn('git', ['rev-parse', 'HEAD'], { cwd: repoPath });
+    for await (const chunk of child.stdout) output += String(chunk);
+    await new Promise<void>((resolve, reject) => child.on('close', code => code === 0 ? resolve() : reject()));
+    return output.trim() || null;
+  } catch { return null; }
+};
+
+export const getRemoteSha = async (gitUrl: string, branch?: string): Promise<string | null> => {
+  try {
+    let output = '';
+    const ref = branch ? `refs/heads/${branch}` : 'HEAD';
+    const child = spawn('git', ['ls-remote', gitUrl, ref]);
+    for await (const chunk of child.stdout) output += String(chunk);
+    await new Promise<void>((resolve, reject) => child.on('close', code => code === 0 ? resolve() : reject()));
+    const match = output.trim().split(/\s+/)[0];
+    return match || null;
+  } catch { return null; }
 };
 
 export const cleanupWorkspace = async (workspacePath: string) => {

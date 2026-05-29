@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 80%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 50%;
+    --accent: 24 50% 15%;
+    --accent-foreground: 24 80% 80%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 24 95% 53%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+}
+
+.log-box {
+  background: #000;
+  color: #e4e4e7;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+  font-size: 13px;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  max-height: 400px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+.log-line { display: flex; gap: 8px; }
+.log-line.dim { opacity: 0.4; }
+.log-stage { color: hsl(24 95% 53%); flex-shrink: 0; }
+.log-time { color: #94a3b8; flex-shrink: 0; }
+.log-msg { word-break: break-all; }

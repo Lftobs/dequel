@@ -192,7 +192,7 @@ export const buildWithRailpack = async (
 			.replace(/[^a-zA-Z0-9_-]/g, "-")
 			.split("-")
 			.slice(0, 2)
-			.join("-"); // Fallback to 'brim-default' or similar if imageTag starts with 'brim-'
+			.join("-"); // Fallback to 'dequel-default' or similar if imageTag starts with 'dequel-'
 
 	const build = await spawnAsync(
 		"railpack",
