@@ -75,6 +75,25 @@ export class PipelineOrchestrator {
     }
   }
 
+  private slugify(s: string) {
+    return s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
+  }
+
+  private async resolveProjectSlug(deploymentId: string): Promise<string> {
+    const dep = await getDeploymentById(deploymentId);
+    if (!dep?.projectId) return dep?.id ?? deploymentId;
+    const proj = await getProjectById(dep.projectId);
+    return proj ? this.slugify(proj.name) : dep.id;
+  }
+
+  private async resolveImageTag(deployment: Deployment): Promise<string> {
+    if (deployment.sourceType === 'image') return deployment.sourceRef;
+    const slug = deployment.projectId
+      ? this.slugify((await getProjectById(deployment.projectId))?.name ?? deployment.id)
+      : deployment.id;
+    return `${slug}-${deployment.id.slice(0, 8)}:latest`;
+  }
+
   private async runDeployment(deploymentId: string): Promise<boolean> {
     const deployment = await getDeploymentById(deploymentId);
     if (!deployment) return true;
@@ -85,9 +104,7 @@ export class PipelineOrchestrator {
     try {
       await emitLog(deploymentId, 'system', 'Deployment enqueued');
 
-      const imageTag = deployment.sourceType === 'image'
-        ? deployment.sourceRef
-        : `dequel-${deploymentId}:latest`;
+      const imageTag = await this.resolveImageTag(deployment);
 
       if (deployment.sourceType !== 'image') {
         await updateDeploymentStatus(deploymentId, 'building', { failureReason: null });

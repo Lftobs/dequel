@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { config } from './config';
 import { validateDomain, resolveServerIp } from './dns';
 import { getDb } from '../db/client';
-import { getProjectById, listDomains, updateDomainValidation } from '../db/repo';
+import { getProjectById, listDomains, updateDomainValidation, listEnvironmentVariablesForDeploy } from '../db/repo';
 import { reloadCaddy } from '../orchestrator/runtime';
 
 const POLL_INTERVAL = 30_000;
@@ -118,6 +118,7 @@ export const buildCaddySnippet = async (
   listDomainsFn: typeof listDomains = listDomains,
 ): Promise<string> => {
   let domains = [`${slug}.localhost:80`];
+  let port = config.appInternalPort;
 
   if (projectId) {
     const projectDomains = await listDomainsFn(projectId);
@@ -126,7 +127,20 @@ export const buildCaddySnippet = async (
       const withPort = `${d.domain}:80`;
       if (!domains.includes(withPort)) domains.push(withPort);
     }
+
+    try {
+      const envVars = await listEnvironmentVariablesForDeploy(projectId);
+      const portVar = envVars.find(v => v.key === 'PORT');
+      if (portVar && portVar.value) {
+        const parsedPort = Number(portVar.value);
+        if (!isNaN(parsedPort) && parsedPort > 0) {
+          port = parsedPort;
+        }
+      }
+    } catch (e) {
+      console.warn(`Could not read environment variables for Caddy snippet for project ${projectId}:`, e);
+    }
   }
 
-  return `${domains.join(', ')} {\n  reverse_proxy ${containerName}:${config.appInternalPort}\n}\n`;
+  return `${domains.join(', ')} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${containerName}:${port}\n}\n`;
 };

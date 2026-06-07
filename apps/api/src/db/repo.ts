@@ -7,7 +7,7 @@ import type {
   CreateDeploymentInput, CreateDomainInput, CreateEnvironmentVariableInput,
   CreateProjectInput, CreateScalingPolicyInput, CreateServerInput, CreateVolumeInput,
   Database, DatabaseStatus, Deployment, DeploymentLog, DeploymentStatus,
-  Domain, DomainValidationStatus, EnvironmentVariable, LogEvent, Project,
+  Domain, DomainValidationStatus, EnvironmentVariable, LogEvent, PaginatedResult, Project,
   ScalingPolicy, Server, ServerStatus, SslStatus, Volume,
 } from '../types';
 
@@ -165,12 +165,20 @@ export const createDeployment = async (input: CreateDeploymentInput): Promise<De
   return mapDeployment(db.query('SELECT * FROM deployments WHERE id = ?').get(id));
 };
 
-export const listDeployments = async (projectId?: string): Promise<Deployment[]> => {
+export const listDeployments = async (projectId?: string, offset = 0, limit = 50): Promise<Deployment[]> => {
   const db = await getDb();
   const rows = projectId
-    ? db.query('SELECT * FROM deployments WHERE project_id = ? ORDER BY created_at DESC').all(projectId)
-    : db.query('SELECT * FROM deployments ORDER BY created_at DESC').all();
+    ? db.query('SELECT * FROM deployments WHERE project_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?').all(projectId, limit, offset)
+    : db.query('SELECT * FROM deployments ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
   return rows.map(mapDeployment);
+};
+
+export const countDeployments = async (projectId?: string): Promise<number> => {
+  const db = await getDb();
+  const row = projectId
+    ? db.query('SELECT COUNT(*) as count FROM deployments WHERE project_id = ?').get(projectId) as any
+    : db.query('SELECT COUNT(*) as count FROM deployments').get() as any;
+  return row.count;
 };
 
 export const getDeploymentById = async (id: string): Promise<Deployment | null> => {
@@ -304,6 +312,79 @@ export const deleteProject = async (id: string): Promise<boolean> => {
   return result.changes > 0;
 };
 
+// ─── Cascade Delete ────────────────────────────────────
+
+export interface ProjectCleanupInfo {
+  deploymentContainerNames: string[];
+  deploymentImageTags: string[];
+  databaseContainerNames: string[];
+  databaseVolumeNames: string[];
+  volumeDockerNames: string[];
+  domains: { domain: string; projectName: string }[];
+  slug: string;
+  projectName: string;
+}
+
+export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupInfo | null> => {
+  const db = await getDb();
+  const project = await getProjectById(id);
+  if (!project) return null;
+
+  const slug = project.name
+    ? project.name.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63)
+    : id;
+
+  // Collect deployments
+  const deployments = db.query('SELECT id, container_name, image_tag FROM deployments WHERE project_id = ?').all(id) as any[];
+  const deploymentContainerNames = deployments.filter(d => d.container_name).map(d => d.container_name);
+  const deploymentImageTags = deployments.filter(d => d.image_tag).map(d => d.image_tag);
+
+  // Delete deployment_logs then deployments
+  for (const dep of deployments) {
+    db.query('DELETE FROM deployment_logs WHERE deployment_id = ?').run(dep.id);
+  }
+  db.query('DELETE FROM deployments WHERE project_id = ?').run(id);
+
+  // Delete environment_variables
+  db.query('DELETE FROM environment_variables WHERE project_id = ?').run(id);
+
+  // Collect volumes
+  const volumeRows = db.query('SELECT docker_volume_name FROM volumes WHERE project_id = ?').all(id) as any[];
+  const volumeDockerNames = volumeRows.filter(v => v.docker_volume_name).map(v => v.docker_volume_name);
+  db.query('DELETE FROM volumes WHERE project_id = ?').run(id);
+
+  // Collect databases
+  const dbRows = db.query('SELECT container_name, internal_host, id FROM databases WHERE project_id = ?').all(id) as any[];
+  const databaseContainerNames = dbRows.filter(d => d.container_name).map(d => d.container_name);
+  const databaseVolumeNames = dbRows.map(d => `db-${d.id.slice(0, 12)}`);
+  db.query('DELETE FROM databases WHERE project_id = ?').run(id);
+
+  // Collect domains
+  const domainRows = db.query('SELECT domain FROM domains WHERE project_id = ?').all(id) as any[];
+  const domains = domainRows.map(d => ({ domain: d.domain, projectName: project.name ?? id }));
+  db.query('DELETE FROM domains WHERE project_id = ?').run(id);
+
+  // Delete scaling policies
+  db.query('DELETE FROM scaling_policies WHERE project_id = ?').run(id);
+
+  // Delete alerts
+  db.query('DELETE FROM alerts WHERE project_id = ?').run(id);
+
+  // Delete the project itself
+  db.query('DELETE FROM projects WHERE id = ?').run(id);
+
+  return {
+    deploymentContainerNames,
+    deploymentImageTags,
+    databaseContainerNames,
+    databaseVolumeNames,
+    volumeDockerNames,
+    domains,
+    slug,
+    projectName: project.name ?? id,
+  };
+};
+
 // ─── Environment Variables ──────────────────────────────
 
 export const createEnvironmentVariable = async (input: CreateEnvironmentVariableInput): Promise<EnvironmentVariable> => {
@@ -314,7 +395,7 @@ export const createEnvironmentVariable = async (input: CreateEnvironmentVariable
   const encrypted = encryptValue(input.value, config.envEncryptionKey);
   db.query(
     'INSERT INTO environment_variables (id, project_id, key, value, value_encrypted, value_iv, value_tag, environment, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, input.projectId, input.key, null, encrypted.encrypted, encrypted.iv, encrypted.tag, env, timestamp, timestamp);
+  ).run(id, input.projectId, input.key, '', encrypted.encrypted, encrypted.iv, encrypted.tag, env, timestamp, timestamp);
   return mapEnvVar(db.query('SELECT * FROM environment_variables WHERE id = ?').get(id));
 };
 
@@ -348,7 +429,7 @@ export const updateEnvironmentVariable = async (id: string, value: string): Prom
   if (!existing) return null;
   const encrypted = encryptValue(value, config.envEncryptionKey);
   db.query('UPDATE environment_variables SET value = ?, value_encrypted = ?, value_iv = ?, value_tag = ?, updated_at = ? WHERE id = ?',
-  ).run(null, encrypted.encrypted, encrypted.iv, encrypted.tag, now(), id);
+  ).run('', encrypted.encrypted, encrypted.iv, encrypted.tag, now(), id);
   return getEnvironmentVariableById(id);
 };
 

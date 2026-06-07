@@ -41,7 +41,7 @@ const getCaddyContainer = async (): Promise<string> => {
   return containerId;
 };
 
-const tryRun = async (cmd: string, args: string[]) => {
+export const tryRun = async (cmd: string, args: string[]) => {
   try { await run(cmd, args); } catch { return; }
 };
 
@@ -99,8 +99,9 @@ export const deployContainer = async (
   onLog: (line: string) => Promise<void>,
   opts: RuntimeOpts = {},
 ) => {
-  const containerName = `deploy-${deploymentId}`;
   const slug = slugify(opts.projectName || opts.projectId || deploymentId);
+  const shortId = deploymentId.slice(0, 8);
+  const containerName = `${slug}-${shortId}`;
   const liveUrl = `http://${slug}.localhost`;
 
   await onLog(`Starting container ${containerName} from image ${imageTag}`);

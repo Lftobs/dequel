@@ -85,18 +85,28 @@ export function useRuntimeLogs(deploymentId: string | null, isLive: boolean = tr
   return { logs, isLoading, refetch };
 }
 
-export function useRequestLogs(projectId: string | null, isLive: boolean = true) {
+export function useRequestLogs(
+  projectId: string | null,
+  isLive: boolean = true,
+  start: number | null = null,
+  end: number | null = null
+) {
   const [liveLogs, setLiveLogs] = useState<Log[]>([]);
 
+  // If a date range is in use, start or end will be non-null.
+  // In that case, we should disable live streaming (i.e. isStreamingActive = false).
+  const isDateRangeInUse = start !== null || end !== null;
+  const isStreamingActive = isLive && !isDateRangeInUse;
+
   const { data: history = [], isLoading, refetch } = useQuery({
-    queryKey: ['request-logs', projectId],
-    queryFn: () => getRequestLogs(projectId!),
+    queryKey: ['request-logs', projectId, start, end],
+    queryFn: () => getRequestLogs(projectId!, start, end),
     enabled: !!projectId,
     refetchInterval: false,
   });
 
   useEffect(() => {
-    if (!projectId || !isLive) {
+    if (!projectId || !isStreamingActive) {
       setLiveLogs([]);
       return;
     }
@@ -112,21 +122,25 @@ export function useRequestLogs(projectId: string | null, isLive: boolean = true)
     source.addEventListener('ready', () => {});
     source.onerror = () => {};
     return () => source.close();
-  }, [projectId, isLive]);
+  }, [projectId, isStreamingActive]);
 
   const merged = new Map<string, Log>();
   for (const log of history) {
     const key = `${log.sequence}-${log.message}`;
     merged.set(key, log);
   }
-  for (const log of liveLogs) {
-    const key = `${log.sequence}-${log.message}`;
-    merged.set(key, log);
+  // Only merge live logs if streaming is active (i.e. we are NOT filtering by date range)
+  if (isStreamingActive) {
+    for (const log of liveLogs) {
+      const key = `${log.sequence}-${log.message}`;
+      merged.set(key, log);
+    }
   }
+
   const logs = Array.from(merged.values()).sort((a, b) => {
     const timeA = new Date((a as any).timestamp || a.createdAt).getTime();
     const timeB = new Date((b as any).timestamp || b.createdAt).getTime();
-    return timeA - timeB || a.sequence - b.sequence;
+    return timeB - timeA || b.sequence - a.sequence;
   });
   return { logs, isLoading, refetch };
 }

@@ -1,9 +1,10 @@
 import { spawn } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import Redis from 'ioredis';
 import { config } from '../utils/config';
 import { dockerBin } from '../utils/docker-bin';
-import { getScalingPolicy, listDeployments, updateDeploymentStatus } from '../db/repo';
+import { getScalingPolicy, listDeployments, updateDeploymentStatus, listEnvironmentVariablesForDeploy } from '../db/repo';
 
 const run = (cmd: string, args: string[]) =>
   new Promise<string>((resolve, reject) => {
@@ -35,17 +36,23 @@ interface CooldownState {
 }
 
 class ScalingEngine {
-  private cooldowns = new Map<string, CooldownState>();
+  private redis: Redis;
   private interval: ReturnType<typeof setInterval> | null = null;
+
+  constructor() {
+    this.redis = new Redis(config.redisUrl, { maxRetriesPerRequest: null, enableOfflineQueue: false });
+  }
 
   start() {
     if (this.interval) return;
     console.log('[Scaling] Engine started');
+    this.tick();
     this.interval = setInterval(() => this.tick(), 30_000);
   }
 
   stop() {
     if (this.interval) { clearInterval(this.interval); this.interval = null; }
+    this.redis.quit().catch(() => {});
   }
 
   private async tick() {
@@ -68,7 +75,7 @@ class ScalingEngine {
     const stats = await this.getContainerStats(dep.containerName);
     if (!stats) return;
 
-    const state = this.getCooldownState(dep.id);
+    const state = await this.getCooldownState(dep.id);
     const now = Date.now();
 
     // Scale up
@@ -101,6 +108,8 @@ class ScalingEngine {
     } else {
       state.lowCpuSince = null;
     }
+
+    await this.saveCooldownState(dep.id, state);
   }
 
   private async getContainerStats(containerName: string): Promise<ContainerStats | null> {
@@ -128,14 +137,27 @@ class ScalingEngine {
     }
   }
 
-  private getCooldownState(deploymentId: string): CooldownState {
-    if (!this.cooldowns.has(deploymentId)) {
-      this.cooldowns.set(deploymentId, {
-        lastScaleUp: 0, lastScaleDown: 0,
-        highCpuSince: null, lowCpuSince: null,
-      });
-    }
-    return this.cooldowns.get(deploymentId)!;
+  private cooldownKey(deploymentId: string) { return `dequel:scaling:cooldown:${deploymentId}`; }
+
+  private async getCooldownState(deploymentId: string): Promise<CooldownState> {
+    const key = this.cooldownKey(deploymentId);
+    const raw = await this.redis.hgetall(key).catch(() => ({} as Record<string, string>));
+    return {
+      lastScaleUp: Number(raw.lastScaleUp) || 0,
+      lastScaleDown: Number(raw.lastScaleDown) || 0,
+      highCpuSince: raw.highCpuSince ? Number(raw.highCpuSince) || null : null,
+      lowCpuSince: raw.lowCpuSince ? Number(raw.lowCpuSince) || null : null,
+    };
+  }
+
+  private async saveCooldownState(deploymentId: string, state: CooldownState) {
+    const key = this.cooldownKey(deploymentId);
+    await this.redis.hset(key, {
+      lastScaleUp: String(state.lastScaleUp),
+      lastScaleDown: String(state.lastScaleDown),
+      highCpuSince: state.highCpuSince ? String(state.highCpuSince) : '',
+      lowCpuSince: state.lowCpuSince ? String(state.lowCpuSince) : '',
+    }).catch(() => {});
   }
 
   private async getCurrentReplicas(slug: string): Promise<number> {
@@ -229,15 +251,31 @@ class ScalingEngine {
 
   private async updateCaddyRoute(
     slug: string,
-    dep: { id: string; containerName: string | null },
+    dep: { id: string; projectId: string | null; containerName: string | null },
     replicaCount: number,
   ) {
     const routeFile = join(config.caddyRoutesDir, `${slug}.caddy`);
+    let port = config.appInternalPort;
+
+    if (dep.projectId) {
+      try {
+        const envVars = await listEnvironmentVariablesForDeploy(dep.projectId);
+        const portVar = envVars.find(v => v.key === 'PORT');
+        if (portVar && portVar.value) {
+          const parsedPort = Number(portVar.value);
+          if (!isNaN(parsedPort) && parsedPort > 0) {
+            port = parsedPort;
+          }
+        }
+      } catch (err) {
+        console.warn(`[Scaling] Could not read env vars for project ${dep.projectId}:`, err);
+      }
+    }
 
     // Build proxy targets: primary + all replicas
-    const targets = [`deploy-${dep.id}:${config.appInternalPort}`];
+    const targets = [`deploy-${dep.id}:${port}`];
     for (let i = 2; i <= replicaCount; i++) {
-      targets.push(`deploy-${dep.id}-replica-${i}:${config.appInternalPort}`);
+      targets.push(`deploy-${dep.id}-replica-${i}:${port}`);
     }
 
     const caddySnippet = `${slug}.localhost:80 {\n  reverse_proxy ${targets.join(' ')}\n}\n`;

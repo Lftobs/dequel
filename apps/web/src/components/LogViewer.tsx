@@ -31,8 +31,7 @@ export function LogViewer({ logs }: { logs: Log[] }) {
       ) : (
         logs.map(log => (
           <div key={log.sequence} className="log-line">
-            <span className="log-stage">[{log.stage}]</span>
-            <span className="log-time">[{formatTimestamp(log)}]</span>
+            <span className="log-stage">[{log.stage}]-[{formatTimestamp(log)}]</span>
             <span className="log-msg">{log.message}</span>
           </div>
         ))

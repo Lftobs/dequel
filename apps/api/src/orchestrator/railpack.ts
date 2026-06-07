@@ -14,6 +14,19 @@ const cleanBuildkitLine = (raw: string): string => {
 	const line = raw.trim();
 	if (!line) return "";
 
+	// Drop Docker layer download/upload/extract progress lines (sha256 digests with byte counts)
+	if (/^(sha256:)?[0-9a-f]{40,}\s+[\d.]+\s*(B|KB|MB|GB)\s*\/\s*[\d.]+\s*(B|KB|MB|GB)/i.test(line)) return "";
+
+	// Drop resolver/registry metadata lines
+	if (/^(resolve|resolving)\s+(docker|image)/i.test(line)) return "";
+	if (/^(sha256:)?[0-9a-f]{40,}\s*(done|already exists|pulling|download|extract|waiting|verifying|comparing|preparing)?$/i.test(line)) return "";
+
+	// Drop generic transfer/extract progress lines (e.g. "extracting sha256:...")
+	if (/^(extracting|downloading|pushing|waiting|pulling fs layer|verifying checksum|download complete|pull complete|already exists)/i.test(line)) return "";
+
+	// Drop lines that are purely byte progress like "14.68MB / 48.50MB"
+	if (/^[\d.]+\s*(B|KB|MB|GB)\s*\/\s*[\d.]+\s*(B|KB|MB|GB)\s*$/i.test(line)) return "";
+
 	// Strip trailing timestamps like "5.4s done" from DONE lines
 	const noTime = line.replace(/\s+[\d.]+s?\s*(done|error|failed|canceled|DONE|ERROR|FAILED|CANCELED)?\s*$/i, "");
 	if (!noTime) return "";
@@ -28,6 +41,9 @@ const cleanBuildkitLine = (raw: string): string => {
 
 	// Drop pure step-header lines like "#N" alone
 	if (/^#\d+$/i.test(clean)) return "";
+
+	// Drop sha256 lines that survived earlier filters (after #N stripping)
+	if (/^(sha256:)?[0-9a-f]{40,}/i.test(clean)) return "";
 
 	return clean;
 };

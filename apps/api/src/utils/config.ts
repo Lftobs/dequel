@@ -20,4 +20,10 @@ export const config = {
   queueConcurrency: Number(get('QUEUE_CONCURRENCY', '1')),
   queueRetryMax: Number(get('QUEUE_RETRY_MAX', '5')),
   queueRetryBaseMs: Number(get('QUEUE_RETRY_BASE_MS', '5000')),
+  smtpHost: process.env.SMTP_HOST || '',
+  smtpPort: Number(process.env.SMTP_PORT || '587'),
+  smtpUser: process.env.SMTP_USER || '',
+  smtpPass: process.env.SMTP_PASS || '',
+  smtpFrom: process.env.SMTP_FROM || 'dequel@localhost',
+  alertEvalIntervalMs: Number(get('ALERT_EVAL_INTERVAL_MS', '60000')),
 };

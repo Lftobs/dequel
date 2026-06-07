@@ -3,6 +3,7 @@ import { basename, join } from "node:path";
 import { Elysia } from "elysia";
 import {
 	createDeployment,
+	countDeployments,
 	getDeploymentById,
 	getLogs,
 	listDeployments,
@@ -14,8 +15,16 @@ import { config } from "../../utils/config";
 export const deploymentsRoutes = new Elysia()
 	.get(
 		"/deployments",
-		async ({ query }: any) =>
-			listDeployments(query.projectId),
+		async ({ query }: any) => {
+			const offset = Number(query.offset) || 0;
+			const limit = Math.min(Number(query.limit) || 50, 100);
+			const projectId = query.projectId;
+			const [items, total] = await Promise.all([
+				listDeployments(projectId, offset, limit),
+				countDeployments(projectId),
+			]);
+			return { items, total, offset, limit };
+		},
 	)
 	.get(
 		"/deployments/:id",
@@ -128,10 +137,45 @@ export const deploymentsRoutes = new Elysia()
 					error: "Deployment has no built image to rollback to",
 				};
 			}
+			if (original.projectId) {
+				const newer = await listDeployments(original.projectId, 0, 1);
+				const isLatest = newer.length > 0 && newer[0].id === id;
+				if (isLatest) {
+					set.status = 400;
+					return {
+						error: "Cannot rollback to the latest deployment — deploy a newer version first",
+					};
+				}
+			}
 			const deployment = await createDeployment({
 				projectId: original.projectId || undefined,
 				sourceType: "image",
 				sourceRef: original.imageTag,
+			});
+			orchestrator.enqueue(deployment.id);
+			return deployment;
+		},
+	)
+	.post(
+		"/deployments/:id/redeploy",
+		async ({ params: { id }, set }) => {
+			const original = await getDeploymentById(id);
+			if (!original) {
+				set.status = 404;
+				return { error: "Deployment not found" };
+			}
+			if (original.sourceType === "image") {
+				set.status = 400;
+				return {
+					error: "Cannot redeploy an image-based (rollback) deployment — rollback to an earlier source deployment instead",
+				};
+			}
+			const deployment = await createDeployment({
+				projectId: original.projectId || undefined,
+				sourceType: original.sourceType,
+				sourceRef: original.sourceRef,
+				branch: original.branch || undefined,
+				environment: original.environment || undefined,
 			});
 			orchestrator.enqueue(deployment.id);
 			return deployment;

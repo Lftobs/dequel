@@ -207,6 +207,13 @@ export interface Deployment {
   updatedAt: string;
 }
 
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
 export interface CreateDeploymentInput {
   projectId?: string;
   sourceType: SourceType;

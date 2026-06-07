@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import * as api from '../api/client';
 import { parseMetrics } from '../lib/metrics';
 import { cn } from '../lib/utils';
+import { DequelLogo } from './DequelLogo';
 import {
   Box,
   Settings,
@@ -59,17 +60,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <aside className="w-64 border-r border-[#1a1a1f] bg-[#0c0c0e] shrink-0 flex flex-col justify-between select-none">
         <div className="flex flex-col flex-1 min-h-0">
           
+          {/* Brand Header */}
+          <div className="px-6 pt-5 pb-3 flex items-center gap-2.5 border-b border-[#1a1a1f]">
+            <DequelLogo className="h-6 w-6" />
+            <span className="font-display font-black text-base tracking-wider bg-gradient-to-r from-zinc-100 via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
+              dequel
+            </span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 font-mono font-bold scale-90">
+              v0.1
+            </span>
+          </div>
+
           {/* Workspace / Project Context Dropdown Selector */}
           <div className="p-4 border-b border-[#1a1a1f] relative">
             <button
               onClick={() => setProjectSelectorOpen(!projectSelectorOpen)}
               className="w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg bg-[#141417] border border-[#222227] hover:bg-[#1c1c21] hover:border-[#33333b] transition-all duration-200"
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-[10px] font-black text-white shadow-sm shrink-0">
-                  {currentProject ? currentProject.name.slice(0, 2).toUpperCase() : 'DQ'}
-                </div>
-                <span className="font-medium text-xs truncate text-zinc-200">
+              <div className="flex items-center gap-2.5 min-w-0">
+                {currentProject ? (
+                  <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-[10px] font-display font-black text-white shadow-sm shrink-0">
+                    {currentProject.name.slice(0, 2).toUpperCase()}
+                  </div>
+                ) : (
+                  <DequelLogo className="w-6 h-6 shrink-0" />
+                )}
+                <span className="font-display font-semibold text-xs truncate text-zinc-200">
                   {currentProject ? currentProject.name : 'All Projects'}
                 </span>
               </div>
@@ -86,7 +102,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     onClick={() => setProjectSelectorOpen(false)}
                     className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-[#1a1a1e] transition-colors"
                   >
-                    <Box className="h-3.5 w-3.5 text-zinc-500" />
+                    <DequelLogo className="h-3.5 w-3.5" />
                     <span>All Projects</span>
                   </Link>
                   <div className="h-[1px] bg-[#1d1d21] my-1" />
@@ -105,10 +121,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       )}
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-4 h-4 rounded bg-zinc-800 flex items-center justify-center text-[8px] font-bold text-zinc-300">
+                        <div className="w-4 h-4 rounded bg-zinc-800 flex items-center justify-center text-[8px] font-display font-black text-zinc-300">
                           {p.name.charAt(0).toUpperCase()}
                         </div>
-                        <span className="truncate">{p.name}</span>
+                        <span className="truncate font-display">{p.name}</span>
                       </div>
                     </Link>
                   ))}

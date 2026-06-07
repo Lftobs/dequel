@@ -105,10 +105,20 @@ export const deleteProject = (id: string) =>
 // Deployments
 export const listDeployments = (
 	projectId?: string,
-) =>
-	apiFetch<Deployment[]>(
-		`/deployments${projectId ? `?projectId=${projectId}` : ""}`,
-	);
+	offset = 0,
+	limit = 50,
+) => {
+	const params = new URLSearchParams();
+	if (projectId) params.set("projectId", projectId);
+	params.set("offset", String(offset));
+	params.set("limit", String(limit));
+	return apiFetch<{
+		items: Deployment[];
+		total: number;
+		offset: number;
+		limit: number;
+	}>(`/deployments?${params.toString()}`);
+};
 export const getDeployment = (id: string) =>
 	apiFetch<Deployment>(`/deployments/${id}`);
 export const createDeployment = (
@@ -123,6 +133,11 @@ export const rollbackDeployment = (id: string) =>
 		`/deployments/${id}/rollback`,
 		{ method: "POST" },
 	);
+export const redeployDeployment = (id: string) =>
+	apiFetch<Deployment>(
+		`/deployments/${id}/redeploy`,
+		{ method: "POST" },
+	);
 export const getLogs = (id: string) =>
 	apiFetch<Log[]>(`/deployments/${id}/logs`);
 export const streamLogsUrl = (id: string) =>
@@ -135,10 +150,28 @@ export const streamRuntimeLogsUrl = (
 	id: string,
 ) =>
 	`${BASE}/deployments/${id}/runtime-logs/stream`;
-export const getRequestLogs = (projectId: string) =>
-	apiFetch<Log[]>(`/projects/${projectId}/request-logs`);
+export const getRequestLogs = (projectId: string, start?: number | null, end?: number | null) => {
+	let url = `/projects/${projectId}/request-logs`;
+	const params = new URLSearchParams();
+	if (start != null) params.append("start", String(start));
+	if (end != null) params.append("end", String(end));
+	const qs = params.toString();
+	if (qs) url += `?${qs}`;
+	return apiFetch<Log[]>(url);
+};
 export const streamRequestLogsUrl = (projectId: string) =>
 	`${BASE}/projects/${projectId}/request-logs/stream`;
+export const getProjectRequestMetrics = (projectId: string) =>
+	apiFetch<{
+		status: string;
+		data: {
+			resultType: string;
+			result: Array<{
+				metric: Record<string, string>;
+				values: Array<[number, string]>;
+			}>;
+		};
+	}>(`/projects/${projectId}/metrics/requests`);
 
 // Env Vars
 export const listEnvVars = (

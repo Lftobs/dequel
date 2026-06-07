@@ -11,6 +11,7 @@ import { scalingEngine } from './scaling/engine';
 import { serverManager } from './servers/manager';
 import { startGitWatcher } from './git/watcher';
 import { startDomainPolling } from './utils/domain-verifier';
+import { alertEvaluator } from './monitoring/evaluator';
 
 const bootstrap = async () => {
   await mkdir(dirname(config.databasePath), { recursive: true });
@@ -24,6 +25,7 @@ const bootstrap = async () => {
   serverManager.start();
   startGitWatcher();
   startDomainPolling();
+  alertEvaluator.start();
 
   const metrics = {
     requestsTotal: 0,

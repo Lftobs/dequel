@@ -151,13 +151,13 @@ describe('buildCaddySnippet', () => {
 
   it('creates snippet with just localhost domain when no verified domains', async () => {
     const snippet = await module.buildCaddySnippet('elysia', 'deploy-abc', 'proj-1', noDomains);
-    expect(snippet).toBe('elysia.localhost:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
+    expect(snippet).toBe('elysia.localhost:80 {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy deploy-abc:3000\n}\n');
   });
 
   it('creates snippet with verified domains when projectId is provided', async () => {
     const listFn = mockDomains(['app.example.com']);
     const snippet = await module.buildCaddySnippet('elysia', 'deploy-abc', 'proj-1', listFn);
-    expect(snippet).toBe('elysia.localhost:80, app.example.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
+    expect(snippet).toBe('elysia.localhost:80, app.example.com:80 {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy deploy-abc:3000\n}\n');
   });
 
   it('only includes verified (not pending) domains', async () => {
