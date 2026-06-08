@@ -7,3 +7,4 @@ workspace
 .specs
 routes/
 bugs
+apps/api/index
