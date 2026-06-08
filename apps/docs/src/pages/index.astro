@@ -1,0 +1,436 @@
+---
+import "../styles/global.css";
+import Hero from "../components/Hero.astro";
+import Stats from "../components/Stats.astro";
+import Features from "../components/Features.astro";
+import TerminalDemo from "../components/TerminalDemo.astro";
+import TechStack from "../components/TechStack.astro";
+import CTA from "../components/CTA.astro";
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="description"
+			content="Dequel — The self-hosted container platform. Deploy, scale, and observe containerized workloads on your own infrastructure."
+		/>
+		<meta
+			name="viewport"
+			content="width=device-width"
+		/>
+		<link
+			rel="preconnect"
+			href="https://fonts.googleapis.com"
+		/>
+		<link
+			rel="preconnect"
+			href="https://fonts.gstatic.com"
+			crossorigin
+		/>
+		<link
+			href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&family=Instrument+Serif:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link
+			rel="icon"
+			type="image/svg+xml"
+			href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'%3E%3ClinearGradient id='g' x1='0' y1='0' x2='32' y2='32' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0%25' stop-color='%23f59e0b'/%3E%3Cstop offset='50%25' stop-color='%23ea580c'/%3E%3Cstop offset='100%25' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3Cpath d='M12 8H20C24.4183 8 28 11.5817 28 16C28 20.4183 24.4183 24 20 24H12' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M20 24H12C7.58172 24 4 20.4183 4 16C4 11.5817 7.58172 8 12 8H16' stroke='url(%23g)' stroke-width='3' stroke-linecap='round' stroke-dasharray='40 10'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='url(%23g)'/%3E%3C/svg%3E"
+		/>
+		<title>
+			Dequel — Self-Hosted Container
+			Platform
+		</title>
+	</head>
+	<body class="dq-noise">
+		<nav class="dq-nav">
+			<div class="dq-nav-inner">
+				<a href="/" class="dq-nav-brand">
+					<svg
+						viewBox="0 0 32 32"
+						fill="none"
+						xmlns="http://www.w3.org/2000/svg"
+						width="26"
+						height="26"
+					>
+						<defs>
+							<linearGradient
+								id="nav-logo-g"
+								x1="0"
+								y1="0"
+								x2="32"
+								y2="32"
+								gradientUnits="userSpaceOnUse"
+							>
+								<stop
+									offset="0%"
+									stop-color="#f59e0b"
+								></stop>
+								<stop
+									offset="50%"
+									stop-color="#ea580c"
+								></stop>
+								<stop
+									offset="100%"
+									stop-color="#ec4899"
+								></stop>
+							</linearGradient>
+						</defs>
+						<path
+							d="M12 8H20C24.4183 8 28 11.5817 28 16C28 20.4183 24.4183 24 20 24H12"
+							stroke="url(#nav-logo-g)"
+							stroke-width="3.5"
+							stroke-linecap="round"
+						></path>
+						<path
+							d="M20 24H12C7.58172 24 4 20.4183 4 16C4 11.5817 7.58172 8 12 8H16"
+							stroke="url(#nav-logo-g)"
+							stroke-width="3.5"
+							stroke-linecap="round"
+							stroke-dasharray="40 10"
+						></path>
+						<circle
+							cx="16"
+							cy="16"
+							r="3.5"
+							fill="url(#nav-logo-g)"
+						></circle>
+					</svg>
+					<span class="dq-nav-wordmark"
+						>dequel</span
+					>
+				</a>
+				<div class="dq-nav-links">
+					<a
+						href="#features"
+						class="dq-nav-link"
+						>Features</a
+					>
+					<a
+						href="#demo"
+						class="dq-nav-link"
+						>Demo</a
+					>
+					<a
+						href="/docs"
+						class="dq-nav-link"
+						>Docs</a
+					>
+					<a
+						href="http://localhost:5173"
+						class="dq-btn dq-btn--ghost"
+						target="_blank"
+						rel="noreferrer"
+					>
+						Console <span
+							class="dq-btn-arrow"
+							>→</span
+						>
+					</a>
+				</div>
+			</div>
+		</nav>
+
+		<Hero />
+
+		<Stats />
+
+		<Features />
+
+		<hr
+			class="dq-rule-thin"
+			style="max-width:1100px;margin:0 auto;"
+		/>
+
+		<TerminalDemo />
+
+		<CTA />
+
+		<footer class="dq-footer">
+			<div class="dq-footer-inner">
+				<div class="dq-footer-brand">
+					<svg
+						viewBox="0 0 32 32"
+						fill="none"
+						xmlns="http://www.w3.org/2000/svg"
+						width="20"
+						height="20"
+					>
+						<defs>
+							<linearGradient
+								id="foot-logo-g"
+								x1="0"
+								y1="0"
+								x2="32"
+								y2="32"
+								gradientUnits="userSpaceOnUse"
+							>
+								<stop
+									offset="0%"
+									stop-color="#f59e0b"
+								></stop>
+								<stop
+									offset="50%"
+									stop-color="#ea580c"
+								></stop>
+								<stop
+									offset="100%"
+									stop-color="#ec4899"
+								></stop>
+							</linearGradient>
+						</defs>
+						<path
+							d="M12 8H20C24.4183 8 28 11.5817 28 16C28 20.4183 24.4183 24 20 24H12"
+							stroke="url(#foot-logo-g)"
+							stroke-width="3.5"
+							stroke-linecap="round"
+						></path>
+						<path
+							d="M20 24H12C7.58172 24 4 20.4183 4 16C4 11.5817 7.58172 8 12 8H16"
+							stroke="url(#foot-logo-g)"
+							stroke-width="3.5"
+							stroke-linecap="round"
+							stroke-dasharray="40 10"
+						></path>
+						<circle
+							cx="16"
+							cy="16"
+							r="3.5"
+							fill="url(#foot-logo-g)"
+						></circle>
+					</svg>
+					<span
+						style="font-weight:700;font-size:0.8rem;letter-spacing:0.04em;color:var(--dq-text-muted);"
+						>dequel</span
+					>
+				</div>
+				<div class="dq-footer-links">
+					<a
+						href="/docs"
+						class="dq-footer-link"
+						>Documentation</a
+					>
+					<a
+						href="http://localhost:5173"
+						class="dq-footer-link"
+						target="_blank"
+						rel="noreferrer"
+						>Console</a
+					>
+				</div>
+				<p class="dq-footer-copy">
+					© {new Date().getFullYear()} Dequel.
+					Self-hosted container platform.
+				</p>
+			</div>
+		</footer>
+
+		<!-- ─── Scripts ─── -->
+		<script>
+			// ── Scroll reveal ──
+			const revealEls =
+				document.querySelectorAll(
+					".dq-reveal",
+				);
+			const revealObs =
+				new IntersectionObserver(
+					(entries) => {
+						entries.forEach(
+							(entry) => {
+								if (
+									entry.isIntersecting
+								) {
+									entry.target.classList.add(
+										"dq-visible",
+									);
+								}
+							},
+						);
+					},
+					{ threshold: 0.15 },
+				);
+			revealEls.forEach((el) =>
+				revealObs.observe(el),
+			);
+
+			// ── Terminal typing animation ──
+			const lines = [
+				{
+					type: "cmd",
+					text: "dequel deploy --project my-api",
+				},
+				{
+					type: "info",
+					text: "  ⠋ Building container image...",
+				},
+				{
+					type: "info",
+					text: "  ✓ Image built (2.3s)",
+				},
+				{
+					type: "info",
+					text: "  ⠋ Pushing to registry...",
+				},
+				{
+					type: "success",
+					text: "  ✓ Deployed to production",
+				},
+				{
+					type: "url",
+					text: "  → https://my-api.dequel.dev",
+				},
+			];
+
+			const termBody =
+				document.getElementById(
+					"terminal-output",
+				);
+			let cursor =
+				document.getElementById(
+					"t-cursor",
+				);
+			let cmdSpan =
+				document.getElementById(
+					"t-line-0",
+				);
+			let lineIdx = 0;
+			let charIdx = 0;
+			let phase = "typing";
+
+			function typeChar() {
+				if (
+					lineIdx === 0 &&
+					phase === "typing"
+				) {
+					if (
+						charIdx <
+						lines[0].text.length
+					) {
+						cmdSpan.textContent +=
+							lines[0].text[
+								charIdx
+							];
+						charIdx++;
+						setTimeout(
+							typeChar,
+							30 +
+								Math.random() *
+									40,
+						);
+					} else {
+						cursor.style.display =
+							"none";
+						lineIdx = 1;
+						setTimeout(showLine, 600);
+					}
+				}
+			}
+
+			function showLine() {
+				if (lineIdx >= lines.length) {
+					setTimeout(
+						resetTerminal,
+						3000,
+					);
+					return;
+				}
+				const line = lines[lineIdx];
+				const div =
+					document.createElement("div");
+				div.innerHTML = `<span class="dq-t-${line.type}">${line.text}</span>`;
+				div.style.opacity = "0";
+				div.style.transform =
+					"translateY(4px)";
+				termBody.appendChild(div);
+
+				requestAnimationFrame(() => {
+					div.style.transition =
+						"opacity 150ms, transform 150ms";
+					div.style.opacity = "1";
+					div.style.transform =
+						"translateY(0)";
+				});
+
+				lineIdx++;
+				const delay =
+					line.type === "cmd"
+						? 200
+						: line.type ===
+									"success" ||
+							  line.type === "url"
+							? 800
+							: 1000;
+				setTimeout(showLine, delay);
+			}
+
+			function resetTerminal() {
+				termBody.innerHTML =
+					'<div><span class="dq-t-prompt">$ </span><span class="dq-t-cmd" id="t-line-0"></span><span class="dq-t-cursor" id="t-cursor"></span></div>';
+				cmdSpan =
+					document.getElementById(
+						"t-line-0",
+					);
+				cursor =
+					document.getElementById(
+						"t-cursor",
+					);
+				lineIdx = 0;
+				charIdx = 0;
+				phase = "typing";
+				setTimeout(typeChar, 500);
+			}
+
+			const termSection =
+				document.getElementById("demo");
+			const termObs =
+				new IntersectionObserver(
+					(entries) => {
+						entries.forEach(
+							(entry) => {
+								if (
+									entry.isIntersecting
+								) {
+									setTimeout(
+										typeChar,
+										800,
+									);
+									termObs.unobserve(
+										entry.target,
+									);
+								}
+							},
+						);
+					},
+					{ threshold: 0.3 },
+				);
+			termObs.observe(termSection);
+
+			document
+				.querySelectorAll('a[href^="#"]')
+				.forEach((anchor) => {
+					anchor.addEventListener(
+						"click",
+						(e) => {
+							e.preventDefault();
+							const target =
+								document.querySelector(
+									anchor.getAttribute(
+										"href",
+									),
+								);
+							if (target) {
+								target.scrollIntoView(
+									{
+										behavior:
+											"smooth",
+										block: "start",
+									},
+								);
+							}
+						},
+					);
+				});
+		</script>
+	</body>
+</html>

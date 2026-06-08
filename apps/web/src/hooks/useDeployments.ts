@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { listDeployments, createDeployment, rollbackDeployment, redeployDeployment } from '../api/client';
+import { listDeployments, createDeployment, rollbackDeployment, redeployDeployment, cancelDeployment, deleteDeployment } from '../api/client';
 
 export function useDeployments(projectId?: string, page = 0, pageSize = 10) {
   return useQuery({
@@ -29,6 +29,22 @@ export function useRedeployDeployment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => redeployDeployment(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['deployments'] }),
+  });
+}
+
+export function useCancelDeployment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => cancelDeployment(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['deployments'] }),
+  });
+}
+
+export function useDeleteDeployment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteDeployment(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['deployments'] }),
   });
 }

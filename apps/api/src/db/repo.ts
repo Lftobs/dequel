@@ -220,6 +220,13 @@ export const updateDeploymentStatus = async (
   );
 };
 
+export const deleteDeploymentAndLogs = async (id: string): Promise<boolean> => {
+  const db = await getDb();
+  db.query('DELETE FROM deployment_logs WHERE deployment_id = ?').run(id);
+  const result = db.query('DELETE FROM deployments WHERE id = ?').run(id);
+  return result.changes > 0;
+};
+
 export const appendLog = async (
   deploymentId: string,
   stage: LogEvent['stage'],

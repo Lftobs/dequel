@@ -5,7 +5,17 @@ import {
 	useCreateDeployment,
 	useRollbackDeployment,
 	useRedeployDeployment,
+	useCancelDeployment,
+	useDeleteDeployment,
 } from "../../hooks/useDeployments";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription,
+	DialogFooter,
+} from "../ui/dialog";
 import { useDeploymentLogs } from "../../hooks/useDeploymentLogs";
 import { StatusBadge } from "../StatusBadge";
 import { Button } from "../ui/button";
@@ -53,6 +63,11 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 		useCreateDeployment();
 	const rollback = useRollbackDeployment();
 	const redeploy = useRedeployDeployment();
+	const cancel = useCancelDeployment();
+	const deleteDep = useDeleteDeployment();
+	const [deleteConfirmId, setDeleteConfirmId] = useState<
+		string | null
+	>(null);
 	const [selectedId, setSelectedId] = useState<
 		string | null
 	>(null);
@@ -96,6 +111,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 	useEffect(() => {
 		if (
 			autoDeployedRef.current ||
+			isLoading ||
 			totalDeployments > 0 ||
 			!project?.repoUrl
 		)
@@ -200,7 +216,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
-					{totalDeployments > 0 && (
+					{totalDeployments > 0 && sourceType !== "git" && (
 						<div className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground mb-3">
 							<span>
 								New deployments
@@ -516,7 +532,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 										</TableCell>
 										<TableCell className="text-right">
 											<div className="flex items-center justify-end gap-1">
-												{dep.imageTag && dep.sourceType !== "image" && (
+												{dep.status === "running" && dep.imageTag && dep.sourceType !== "image" && (
 													<Button
 														variant="ghost"
 														size="icon"
@@ -534,7 +550,25 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 														<RefreshCw className="h-3.5 w-3.5" />
 													</Button>
 												)}
-												{dep.imageTag && (
+												{(dep.status === "pending" || dep.status === "building") && (
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-7 w-7 text-red-500 hover:text-red-400"
+														onClick={(
+															e,
+														) => {
+															e.stopPropagation();
+															cancel.mutate(
+																dep.id,
+															);
+														}}
+														title="Cancel deployment"
+													>
+														<svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+													</Button>
+												)}
+												{dep.imageTag && dep.status !== "running" && dep.status !== "pending" && dep.status !== "building" && dep.status !== "deploying" && (
 													<Button
 														variant="ghost"
 														size="icon"
@@ -550,6 +584,24 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 														title="Rollback to this version"
 													>
 														<History className="h-3.5 w-3.5" />
+													</Button>
+												)}
+												{dep.status !== "running" && (
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-7 w-7 text-muted-foreground hover:text-red-500"
+														onClick={(
+															e,
+														) => {
+															e.stopPropagation();
+															setDeleteConfirmId(
+																dep.id,
+															);
+														}}
+														title="Delete deployment"
+													>
+														<svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
 													</Button>
 												)}
 											</div>
@@ -599,6 +651,31 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 					}
 				/>
 			)}
+
+			<Dialog open={deleteConfirmId !== null} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Delete deployment?</DialogTitle>
+						<DialogDescription>
+							This will remove the deployment record, its build logs, and stop its container. The Docker image is kept for potential rollback. This action cannot be undone.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+							Cancel
+						</Button>
+						<Button
+							variant="destructive"
+							onClick={() => {
+								if (deleteConfirmId) deleteDep.mutate(deleteConfirmId);
+								setDeleteConfirmId(null);
+							}}
+						>
+							Delete
+					</Button>
+				</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

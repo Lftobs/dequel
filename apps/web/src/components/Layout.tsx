@@ -59,7 +59,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className="w-64 border-r border-[#1a1a1f] bg-[#0c0c0e] shrink-0 flex flex-col justify-between select-none">
         <div className="flex flex-col flex-1 min-h-0">
-          
+
           {/* Brand Header */}
           <div className="px-6 pt-5 pb-3 flex items-center gap-2.5 border-b border-[#1a1a1f]">
             <DequelLogo className="h-6 w-6" />
@@ -135,7 +135,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Navigation Links */}
           <div className="flex-1 overflow-y-auto p-3 space-y-6">
-            
+
             {/* Global Dashboards Group */}
             <div>
               <h4 className="px-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Dashboards</h4>
@@ -307,7 +307,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Sidebar Footer Widget - Usage stats */}
         <div className="p-4 border-t border-[#1a1a1f] space-y-4">
-          
+
           {/* Premium Node Usage Card */}
           <div className="rounded-lg bg-[#141417] border border-[#222227] p-3 space-y-2 text-[11px]">
             <div className="flex items-center justify-between text-zinc-400">
@@ -317,7 +317,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 Live
               </span>
             </div>
-            
+
             <div className="space-y-1">
               <div className="flex justify-between text-zinc-500 scale-95 origin-left">
                 <span>Active Services</span>

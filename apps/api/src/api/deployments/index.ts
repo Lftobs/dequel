@@ -126,34 +126,37 @@ export const deploymentsRoutes = new Elysia()
 	.post(
 		"/deployments/:id/rollback",
 		async ({ params: { id }, set }) => {
-			const original = await getDeploymentById(id);
-			if (!original) {
+			const target = await getDeploymentById(id);
+			if (!target) {
 				set.status = 404;
 				return { error: "Deployment not found" };
 			}
-			if (!original.imageTag) {
+			if (!target.imageTag) {
 				set.status = 400;
 				return {
 					error: "Deployment has no built image to rollback to",
 				};
 			}
-			if (original.projectId) {
-				const newer = await listDeployments(original.projectId, 0, 1);
-				const isLatest = newer.length > 0 && newer[0].id === id;
-				if (isLatest) {
-					set.status = 400;
-					return {
-						error: "Cannot rollback to the latest deployment — deploy a newer version first",
-					};
-				}
+			if (target.status === "running") {
+				set.status = 400;
+				return {
+					error: "Cannot rollback to the currently running deployment",
+				};
 			}
-			const deployment = await createDeployment({
-				projectId: original.projectId || undefined,
-				sourceType: "image",
-				sourceRef: original.imageTag,
-			});
-			orchestrator.enqueue(deployment.id);
-			return deployment;
+			if (target.status === "pending" || target.status === "building" || target.status === "deploying") {
+				set.status = 400;
+				return {
+					error: "Cannot rollback to a deployment that is still in progress",
+				};
+			}
+			try {
+				await orchestrator.rollbackTo(id);
+				const updated = await getDeploymentById(id);
+				return updated;
+			} catch (err: any) {
+				set.status = 500;
+				return { error: err.message || "Rollback failed" };
+			}
 		},
 	)
 	.post(
@@ -163,6 +166,12 @@ export const deploymentsRoutes = new Elysia()
 			if (!original) {
 				set.status = 404;
 				return { error: "Deployment not found" };
+			}
+			if (original.status !== "running") {
+				set.status = 400;
+				return {
+					error: "Can only redeploy the currently running deployment",
+				};
 			}
 			if (original.sourceType === "image") {
 				set.status = 400;
@@ -179,6 +188,42 @@ export const deploymentsRoutes = new Elysia()
 			});
 			orchestrator.enqueue(deployment.id);
 			return deployment;
+		},
+	)
+	.post(
+		"/deployments/:id/cancel",
+		async ({ params: { id }, set }) => {
+			const deployment = await getDeploymentById(id);
+			if (!deployment) {
+				set.status = 404;
+				return { error: "Deployment not found" };
+			}
+			if (deployment.status !== "pending" && deployment.status !== "building") {
+				set.status = 400;
+				return {
+					error: "Only pending or building deployments can be cancelled",
+				};
+			}
+			await orchestrator.cancelDeployment(id);
+			return { ok: true };
+		},
+	)
+	.delete(
+		"/deployments/:id",
+		async ({ params: { id }, set }) => {
+			const deployment = await getDeploymentById(id);
+			if (!deployment) {
+				set.status = 404;
+				return { error: "Deployment not found" };
+			}
+			if (deployment.status === "running") {
+				set.status = 400;
+				return {
+					error: "Cannot delete a running deployment — stop it first",
+				};
+			}
+			await orchestrator.deleteDeployment(id);
+			return { ok: true };
 		},
 	)
 	.get(

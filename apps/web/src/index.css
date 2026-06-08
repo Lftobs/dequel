@@ -28,10 +28,31 @@
 }
 
 @layer base {
-  * { @apply border-border; }
-  body { @apply bg-background text-foreground; }
-  h1, h2, h3, h4, h5, h6 {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-display;
+  }
+
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type=number] {
+    -moz-appearance: textfield;
   }
 }
 
@@ -47,8 +68,26 @@
   overflow-y: auto;
   line-height: 1.6;
 }
-.log-line { display: flex; gap: 8px; }
-.log-line.dim { opacity: 0.4; }
-.log-stage { color: hsl(24 95% 53%); flex-shrink: 0; }
-.log-time { color: #94a3b8; flex-shrink: 0; }
-.log-msg { word-break: break-all; }
+
+.log-line {
+  display: flex;
+  gap: 8px;
+}
+
+.log-line.dim {
+  opacity: 0.4;
+}
+
+.log-stage {
+  color: hsl(24 95% 53%);
+  flex-shrink: 0;
+}
+
+.log-time {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.log-msg {
+  word-break: break-all;
+}

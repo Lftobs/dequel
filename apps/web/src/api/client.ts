@@ -138,6 +138,16 @@ export const redeployDeployment = (id: string) =>
 		`/deployments/${id}/redeploy`,
 		{ method: "POST" },
 	);
+export const cancelDeployment = (id: string) =>
+	apiFetch<{ ok: boolean }>(
+		`/deployments/${id}/cancel`,
+		{ method: "POST" },
+	);
+export const deleteDeployment = (id: string) =>
+	apiFetch<{ ok: boolean }>(
+		`/deployments/${id}`,
+		{ method: "DELETE" },
+	);
 export const getLogs = (id: string) =>
 	apiFetch<Log[]>(`/deployments/${id}/logs`);
 export const streamLogsUrl = (id: string) =>

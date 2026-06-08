@@ -1,0 +1,24 @@
+---
+import { getCollection, render } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+
+export async function getStaticPaths() {
+  const docs = await getCollection('docs');
+  return docs.map((entry) => ({
+    params: { slug: entry.data.slug === 'docs' ? undefined : entry.data.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<Layout
+  title={entry.data.title}
+  category={entry.data.category}
+  description={entry.data.description}
+  currentSlug={entry.data.slug}
+>
+  <Content />
+</Layout>

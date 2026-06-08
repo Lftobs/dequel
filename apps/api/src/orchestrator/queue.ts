@@ -34,6 +34,16 @@ export class DeploymentQueue {
     await this.redis.rpush(QUEUE_KEY, encodeJob({ id: deploymentId, attempt: 0 }));
   }
 
+  async remove(deploymentId: string) {
+    await this.redis.lrem(QUEUE_KEY, 0, encodeJob({ id: deploymentId, attempt: 0 }));
+    await this.redis.zrem(RETRY_KEY, encodeJob({ id: deploymentId, attempt: 0 }));
+    const allAttempts = Array.from({ length: 10 }, (_, i) =>
+      encodeJob({ id: deploymentId, attempt: i }),
+    );
+    await this.redis.zrem(RETRY_KEY, ...allAttempts);
+    await this.redis.lrem(DLQ_KEY, 0, encodeJob({ id: deploymentId, attempt: 0 }));
+  }
+
   async start(handler: (deploymentId: string) => Promise<boolean>) {
     const workers = Array.from({ length: config.queueConcurrency }, (_, i) => this.runWorker(i, handler));
     await Promise.all(workers);

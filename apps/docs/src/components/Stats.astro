@@ -1,0 +1,27 @@
+---
+const stats = [
+	{ value: "15.2s", label: "Avg Deploy Time" },
+	{ value: "99.9%", label: "Uptime SLA" },
+	{ value: "0", label: "Vendor Lock-in" },
+	{ value: "∞", label: "Your Infrastructure" },
+];
+---
+
+<hr class="dq-rule" />
+<section class="dq-stats dq-reveal">
+	<div class="dq-stats-inner">
+		{
+			stats.map((stat) => (
+				<div class="dq-stat">
+					<div class="dq-stat-value">
+						{stat.value}
+					</div>
+					<div class="dq-stat-label">
+						{stat.label}
+					</div>
+				</div>
+			))
+		}
+	</div>
+</section>
+<hr class="dq-rule" />

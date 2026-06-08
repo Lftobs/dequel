@@ -1,0 +1,46 @@
+---
+interface Props {
+  tag?: string;
+  titleNormal?: string;
+  titleItalic?: string;
+  subText?: string;
+}
+
+const {
+  tag = "Private Beta",
+  titleNormal = "Deploy anything.",
+  titleItalic = "Scale everything.",
+  subText = "The self-hosted cloud platform for developers who want Railway-grade deployment workflows on their own infrastructure. Container orchestration, observability, and scaling — all from one dashboard."
+} = Astro.props;
+---
+
+<section class="dq-hero dq-grid-texture dq-reveal" id="hero">
+  <div class="dq-hero-tag">
+    <span class="dq-hero-tag-dot"></span>
+    {tag}
+  </div>
+
+  <h1 class="dq-hero-title">
+    {titleNormal}<br/>
+    <em>{titleItalic}</em>
+  </h1>
+
+  <p class="dq-hero-sub">
+    {subText}
+  </p>
+
+  <div class="dq-hero-actions">
+    <a href="/docs" class="dq-btn dq-btn--primary">
+      Read the docs <span class="dq-btn-arrow">→</span>
+    </a>
+    <a href="#demo" class="dq-btn dq-btn--outline">
+      See it in action
+    </a>
+  </div>
+
+  <!-- Decorative thick rule with square punctuation -->
+  <div class="dq-hero-deco">
+    <div class="dq-hero-deco-line"></div>
+    <div class="dq-hero-deco-box"></div>
+  </div>
+</section>
