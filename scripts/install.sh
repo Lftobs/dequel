@@ -85,7 +85,9 @@ download_configs() {
 		download_if_missing "$BASE_URL/infra/monitoring/$f" "$INSTALL_DIR/infra/monitoring/$f"
 	done
 
-	download_if_missing "$BASE_URL/infra/monitoring/grafana/datasources/datasources.yml" "$INSTALL_DIR/infra/monitoring/grafana/datasources/datasources.yml"
+	for f in loki.yml prometheus.yml; do
+		download_if_missing "$BASE_URL/infra/monitoring/grafana/datasources/$f" "$INSTALL_DIR/infra/monitoring/grafana/datasources/$f"
+	done
 }
 
 prompt_config() {

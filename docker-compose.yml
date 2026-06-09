@@ -50,6 +50,7 @@ services:
             - ./workspace:/app/workspace
             - ./infra/caddy/routes:/caddy/routes
             - /var/run/docker.sock:/var/run/docker.sock
+            - railpack-cache:/tmp/railpack
         depends_on:
             buildkit:
                 condition: service_started
@@ -247,3 +248,4 @@ volumes:
     prometheus-data:
     loki-data:
     grafana-data:
+    railpack-cache:
