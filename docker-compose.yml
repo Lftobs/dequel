@@ -30,6 +30,7 @@ services:
             start_period: 5s
 
     api:
+        image: ghcr.io/lftobs/dequel/api:latest
         build:
             context: ./apps/api
         environment:
@@ -70,6 +71,7 @@ services:
                     - api
 
     web:
+        image: ghcr.io/lftobs/dequel/web:latest
         build:
             context: ./apps/web
         healthcheck:

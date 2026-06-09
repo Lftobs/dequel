@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEQUEL_HOME="${DEQUEL_HOME:-$HOME/.dequel}"
+COMPOSE_FILE="$DEQUEL_HOME/docker-compose.yml"
+VERSION="0.1.0"
+
+BOLD='\033[1m'
+DIM='\033[2m'
+GREEN='\033[0;32m'
+AMBER='\033[0;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+header()  { printf "\n${BOLD}${AMBER}==>${NC}${BOLD} %s${NC}\n" "$*"; }
+info()    { printf "  ${DIM}%s${NC}\n" "$*"; }
+success() { printf "  ${GREEN}✓${NC} %s\n" "$*"; }
+fail()    { printf "  ${RED}✗${NC} %s\n" "$*"; exit 1; }
+
+cmd() {
+  if [ ! -f "$COMPOSE_FILE" ]; then
+    fail "Dequel not found at $DEQUEL_HOME. Run install.sh first or set \$DEQUEL_HOME."
+  fi
+  docker compose -f "$COMPOSE_FILE" "$@"
+}
+
+case "${1:-}" in
+  start)
+    header "Starting Dequel"
+    cmd up -d
+    success "Dequel is running at http://localhost"
+    ;;
+  stop)
+    header "Stopping Dequel"
+    cmd down
+    success "Dequel stopped."
+    ;;
+  restart)
+    header "Restarting Dequel"
+    cmd restart
+    success "Dequel restarted."
+    ;;
+  status)
+    cmd ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+    ;;
+  logs)
+    shift
+    cmd logs -f "$@"
+    ;;
+  update)
+    header "Updating Dequel"
+    cmd pull
+    cmd up -d
+    success "Dequel updated."
+    ;;
+  --version|-v)
+    echo "dequel v$VERSION"
+    ;;
+  --help|-h|"")
+    echo "Dequel - Self-hosted deployment platform"
+    echo ""
+    echo "Usage: dequel <command>"
+    echo ""
+    echo "Commands:"
+    echo "  start      Start all Dequel services"
+    echo "  stop       Stop all Dequel services"
+    echo "  restart    Restart all Dequel services"
+    echo "  status     Show service status"
+    echo "  logs       Follow service logs"
+    echo "  update     Pull latest images and recreate services"
+    echo "  --version  Show version"
+    echo "  --help     Show this help"
+    echo ""
+    echo "Environment:"
+    echo "  DEQUEL_HOME  Config directory (default: \$HOME/.dequel)"
+    ;;
+  *)
+    fail "Unknown command: $1. Run 'dequel --help' for usage."
+    ;;
+esac

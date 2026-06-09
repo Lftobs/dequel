@@ -100,11 +100,21 @@
     line-height: 1.7;
     margin-bottom: 1.25rem;
   }
-  .prose ul, .prose ol {
+  .prose ul {
     color: var(--dq-text-muted);
     font-size: 0.82rem;
     line-height: 1.7;
     margin-bottom: 1.25rem;
+    list-style-type: disc;
+    padding-left: 1.5em;
+  }
+  .prose ol {
+    color: var(--dq-text-muted);
+    font-size: 0.82rem;
+    line-height: 1.7;
+    margin-bottom: 1.25rem;
+    list-style-type: decimal;
+    padding-left: 1.5em;
   }
   .prose li strong {
     color: var(--dq-text);
