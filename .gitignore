@@ -6,6 +6,6 @@ dist
 data
 workspace
 .specs
-routes/
+infra/caddy/routes/
 bugs
 apps/api/index
