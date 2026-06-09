@@ -53,18 +53,41 @@ Services run in Docker Compose:
 5. **Redis**: Job queue for async operations.
 6. **cAdvisor / Prometheus / Loki / Grafana**: Monitoring and observability.
 
-## Prerequisites
+## Documentation
 
-- Docker and Docker Compose installed on your system
-- Optional: Bun installed globally for local development
+Documentation is available at the [docs site](https://dequel-docs.vercel.app)
+and in the `apps/docs/` directory of this repository.
 
 ## Quick Start
 
 ```bash
-docker compose up -d --build
+curl -fsSL https://raw.githubusercontent.com/Lftobs/dequel/main/scripts/install.sh | sh
+```
+
+Once installed, manage Dequel with the `dequel` CLI:
+
+```bash
+dequel start     # Start all services
+dequel status    # Show service status
+dequel logs      # Follow logs
+dequel stop      # Stop all services
+dequel update    # Pull latest images and restart
 ```
 
 Open `http://localhost` to see the dashboard.
+
+## Prerequisites
+
+- Docker and Docker Compose v2 installed on your system
+- Optional: Bun installed globally for local development
+
+## Installing from a Release
+
+1. Download the latest release from the [Releases page](https://github.com/Lftobs/dequel/releases).
+2. Run the install script above, or download and run `scripts/install.sh` directly.
+3. The script will download `docker-compose.yml`, monitoring configs, and start all services.
+
+Pre-built Docker images are published to `ghcr.io` for each release. The `docker-compose.yml` references these images; pass `--build` to build from source instead.
 
 ## Development
 
@@ -88,6 +111,13 @@ bun apps/web/src/main.tsx
 - `apps/api/` -- Backend orchestrator (ElysiaJS/Bun). Routes, workers,
   database provisioning, scaling engine, server manager.
 - `apps/web/` -- Frontend dashboard (React/Vite/TanStack).
+- `apps/docs/` -- Documentation site (Astro), deployed to Vercel.
+- `scripts/` -- Utility scripts:
+  - `install.sh` -- One-command install script.
+  - `dequel` -- CLI script for managing the Dequel stack (start/stop/status/logs/update).
+- `VERSION` -- Single source of truth for the project version.
+- `CHANGELOG.md` -- Release history.
+- `.github/workflows/release.yml` -- Automated release pipeline.
 - `infra/caddy/` -- Caddyfile config and deployment-specific route files.
 - `infra/monitoring/` -- Prometheus, Loki, Promtail, Grafana configs.
 - `data/` -- SQLite database, persisted across restarts.
