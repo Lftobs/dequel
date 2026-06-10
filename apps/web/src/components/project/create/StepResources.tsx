@@ -1,5 +1,5 @@
-import { Input } from '../ui/input';
-import { cn } from '../../lib/utils';
+import { Input } from '../../ui/input';
+import { cn } from '../../../lib/utils';
 import { Sliders, Database } from 'lucide-react';
 
 interface StepResourcesProps {

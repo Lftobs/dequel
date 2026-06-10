@@ -1,8 +1,8 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useDeployments } from "../../hooks/useDeployments";
-import * as api from "../../api/client";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { useDeployments } from "../../../hooks/useDeployments";
+import * as api from "../../../api/client";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 
 function promValue(
 	data:

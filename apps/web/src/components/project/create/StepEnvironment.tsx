@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { cn } from '../../lib/utils';
+import { Button } from '../../ui/button';
+import { Input } from '../../ui/input';
+import { cn } from '../../../lib/utils';
 import { Server, Upload, Trash2 } from 'lucide-react';
 
 interface StagedEnv {

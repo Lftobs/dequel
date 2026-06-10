@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useProject } from "../../hooks/useProjects";
+import { useProject } from "../../../hooks/useProjects";
 import {
 	useDeployments,
 	useCreateDeployment,
@@ -7,7 +7,7 @@ import {
 	useRedeployDeployment,
 	useCancelDeployment,
 	useDeleteDeployment,
-} from "../../hooks/useDeployments";
+} from "../../../hooks/useDeployments";
 import {
 	Dialog,
 	DialogContent,
@@ -15,16 +15,16 @@ import {
 	DialogTitle,
 	DialogDescription,
 	DialogFooter,
-} from "../ui/dialog";
-import { useDeploymentLogs } from "../../hooks/useDeploymentLogs";
-import { StatusBadge } from "../StatusBadge";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Badge } from "../ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+} from "../../ui/dialog";
+import { useDeploymentLogs } from "../../../hooks/useDeploymentLogs";
+import { StatusBadge } from "../../StatusBadge";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Badge } from "../../ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
 import { Rocket, Play, RefreshCw, RotateCcw, Terminal, ChevronLeft, ChevronRight, History } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn } from "../../../lib/utils";
 
 function formatTimeAgo(dateStr: string) {
 	const diff =

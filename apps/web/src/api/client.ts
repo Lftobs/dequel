@@ -10,6 +10,8 @@ import type {
 	ApiKey,
 	Alert,
 	Log,
+	GithubRepo,
+	GithubIntegrationStatus,
 } from "../types";
 
 const BASE = "/api";
@@ -440,4 +442,32 @@ export const toggleAlert = (
 export const deleteAlert = (id: string) =>
 	apiFetch<{ ok: boolean }>(`/alerts/${id}`, {
 		method: "DELETE",
+	});
+
+// ─── GitHub OAuth ───────────────────────────────────────
+
+export const getGithubAuthUrl = () =>
+	apiFetch<{ url: string }>("/github/auth-url");
+
+export const getGithubUser = () =>
+	apiFetch<{ login: string; avatar_url: string }>("/github/user");
+
+export const getGithubRepos = () =>
+	apiFetch<GithubRepo[]>("/github/repos");
+
+export const disconnectGithub = () =>
+	apiFetch<{ ok: boolean }>("/github/disconnect", { method: "POST" });
+
+export const getGithubIntegration = () =>
+	apiFetch<GithubIntegrationStatus>("/github/integration");
+
+export const setGithubIntegration = (data: {
+	clientId: string;
+	clientSecret: string;
+	appName?: string;
+	webhookSecret?: string;
+}) =>
+	apiFetch<{ ok: boolean }>("/github/integration", {
+		method: "PUT",
+		body: JSON.stringify(data),
 	});

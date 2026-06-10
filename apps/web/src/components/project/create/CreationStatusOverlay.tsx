@@ -1,4 +1,4 @@
-import { Button } from '../ui/button';
+import { Button } from '../../ui/button';
 import { Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 
 interface CreationStatusOverlayProps {

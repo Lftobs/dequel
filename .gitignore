@@ -9,3 +9,4 @@ workspace
 infra/caddy/routes/
 bugs
 apps/api/index
+docker-compose.yml

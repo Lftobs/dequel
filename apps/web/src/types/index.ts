@@ -151,3 +151,23 @@ export interface Log {
   message: string;
   createdAt: string;
 }
+
+export interface GithubRepo {
+  id: number;
+  name: string;
+  fullName: string;
+  cloneUrl: string;
+  sshUrl: string;
+  description: string | null;
+  language: string | null;
+  private: boolean;
+  defaultBranch: string;
+  owner: { login: string; avatarUrl: string };
+}
+
+export interface GithubIntegrationStatus {
+  configured: boolean;
+  clientId?: string;
+  appName?: string;
+  hasWebhookSecret?: boolean;
+}

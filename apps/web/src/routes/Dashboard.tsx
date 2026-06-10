@@ -8,7 +8,7 @@ import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
 import { formatUptime, parseMetrics } from '../lib/metrics';
 import { cn } from '../lib/utils';
-import { CreateProjectDialog } from '../components/project/CreateProjectDialog';
+import { CreateProjectDialog } from '../components/project/create/CreateProjectDialog';
 import {
   Dialog,
   DialogContent,
@@ -191,7 +191,7 @@ export function Dashboard() {
             ) : (
               <div className="space-y-3.5">
                 {allDeployments
-                  .filter(dep => dep.projectId && projects.some(p => p.id === dep.projectId))
+                  .filter(dep => dep.status === 'running' && dep.projectId && projects.some(p => p.id === dep.projectId))
                   .slice(0, 5)
                   .map(dep => {
                     const project = projects.find(p => p.id === dep.projectId);

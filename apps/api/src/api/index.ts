@@ -5,6 +5,7 @@ import { databasesRoutes } from "./databases";
 import { deploymentsRoutes } from "./deployments";
 import { domainsRoutes } from "./domains";
 import { envVarsRoutes } from "./env-vars";
+import { githubRoutes } from "./github";
 import { healthRoutes } from "./health";
 import { projectsRoutes } from "./projects";
 import { prometheusRoutes } from "./prometheus";
@@ -47,4 +48,5 @@ export const apiRoutes = new Elysia({
 	.use(serverInfoRoutes)
 	.use(apiKeysRoutes)
 	.use(prometheusRoutes)
-	.use(alertsRoutes);
+	.use(alertsRoutes)
+	.use(githubRoutes);

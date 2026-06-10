@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { StatusBadge } from '../components/StatusBadge';
 import { Trash2, Server, Key } from 'lucide-react';
 import * as api from '../api/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 
 export function Settings() {
   return (
@@ -28,6 +29,15 @@ function ServersSection() {
   const [host, setHost] = useState('');
   const [port, setPort] = useState('2376');
   const [authToken, setAuthToken] = useState('');
+
+  const [deletingServerId, setDeletingServerId] = useState<string | null>(null);
+
+  const handleDeleteServer = async () => {
+    if (!deletingServerId) return;
+    await api.deleteServer(deletingServerId);
+    setDeletingServerId(null);
+    refetch();
+  };
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +81,7 @@ function ServersSection() {
                     <TableCell><StatusBadge status={s.status || 'active'} /></TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => api.deleteServer(s.id).then(() => refetch())}>
+                        onClick={() => setDeletingServerId(s.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </TableCell>
@@ -82,6 +92,23 @@ function ServersSection() {
           </div>
         )}
       </CardContent>
+
+      <Dialog open={deletingServerId !== null} onOpenChange={(open) => { if (!open) setDeletingServerId(null); }}>
+        <DialogContent className="sm:max-w-[400px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">Remove Server</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-2">
+              Are you sure you want to remove this server from the cluster? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex justify-end gap-2 pt-4 border-t border-border/40">
+            <Button variant="ghost" onClick={() => setDeletingServerId(null)}
+              className="h-10 text-xs px-4 rounded-xl hover:bg-[#1a1a21]">Cancel</Button>
+            <Button onClick={handleDeleteServer}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold h-10 text-xs px-5 rounded-xl shadow-lg transition-all">Remove Server</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -92,6 +119,15 @@ function ApiKeysSection() {
   });
   const [name, setName] = useState('');
   const [newKey, setNewKey] = useState('');
+
+  const [deletingKeyId, setDeletingKeyId] = useState<string | null>(null);
+
+  const handleDeleteKey = async () => {
+    if (!deletingKeyId) return;
+    await api.deleteApiKey(deletingKeyId);
+    setDeletingKeyId(null);
+    refetch();
+  };
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,7 +170,7 @@ function ApiKeysSection() {
                     <TableCell className="text-muted-foreground text-xs">{new Date(k.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => api.deleteApiKey(k.id).then(() => refetch())}>
+                        onClick={() => setDeletingKeyId(k.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </TableCell>
@@ -145,6 +181,23 @@ function ApiKeysSection() {
           </div>
         )}
       </CardContent>
+
+      <Dialog open={deletingKeyId !== null} onOpenChange={(open) => { if (!open) setDeletingKeyId(null); }}>
+        <DialogContent className="sm:max-w-[400px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">Delete API Key</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-2">
+              Are you sure you want to delete this API key? Any services using it will lose access immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex justify-end gap-2 pt-4 border-t border-border/40">
+            <Button variant="ghost" onClick={() => setDeletingKeyId(null)}
+              className="h-10 text-xs px-4 rounded-xl hover:bg-[#1a1a21]">Cancel</Button>
+            <Button onClick={handleDeleteKey}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold h-10 text-xs px-5 rounded-xl shadow-lg transition-all">Delete Key</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

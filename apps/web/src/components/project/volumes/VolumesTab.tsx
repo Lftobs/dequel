@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import * as api from "../../api/client";
+import * as api from "../../../api/client";
 import {
 	useDeployments,
 	useRedeployDeployment,
-} from "../../hooks/useDeployments";
-import { Card, CardContent } from "../ui/card";
+} from "../../../hooks/useDeployments";
+import { Card, CardContent } from "../../ui/card";
 import {
 	Table,
 	TableBody,
@@ -13,10 +13,10 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from "../ui/table";
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
+} from "../../ui/table";
+import { Input } from "../../ui/input";
+import { Button } from "../../ui/button";
+import { Badge } from "../../ui/badge";
 import {
 	HardDrive,
 	Trash2,
@@ -30,7 +30,7 @@ import {
 	DialogTitle,
 	DialogDescription,
 	DialogFooter,
-} from "../ui/dialog";
+} from "../../ui/dialog";
 
 interface VolumesTabProps {
 	projectId: string;
