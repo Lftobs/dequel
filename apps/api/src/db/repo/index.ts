@@ -39,3 +39,6 @@ export { createApiKey, listApiKeys, deleteApiKey, validateApiKey } from "./api-k
 export { createAlert, listAlerts, getAlertById, updateAlertEnabled, deleteAlert } from "./alerts";
 
 export { getGithubIntegration, setGithubIntegration } from "./github";
+
+export { getSmtpSettings, upsertSmtpSettings } from "./settings";
+export type { SmtpSettingsData } from "./settings";

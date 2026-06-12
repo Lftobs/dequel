@@ -35,6 +35,7 @@ import {
   Laptop
 } from 'lucide-react';
 import * as api from '../api/client';
+import { ConfigWarnings } from '../components/ConfigWarnings';
 
 function formatTimeAgo(dateString?: string) {
   if (!dateString) return '—';
@@ -91,7 +92,9 @@ export function Dashboard() {
 
   return (
     <div className="space-y-8 max-w-[1400px] mx-auto">
-      
+
+      <ConfigWarnings />
+
       {/* Header section with page title & New Project button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[#1c1c21]">
         <div>

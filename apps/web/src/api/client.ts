@@ -12,6 +12,7 @@ import type {
 	Log,
 	GithubRepo,
 	GithubIntegrationStatus,
+	SmtpSettingsStatus,
 } from "../types";
 
 const BASE = "/api";
@@ -470,4 +471,24 @@ export const setGithubIntegration = (data: {
 	apiFetch<{ ok: boolean }>("/github/integration", {
 		method: "PUT",
 		body: JSON.stringify(data),
+	});
+
+export const getSmtpSettings = () =>
+	apiFetch<SmtpSettingsStatus>("/settings/smtp");
+
+export const setSmtpSettings = (data: {
+	host: string;
+	port: number;
+	user?: string;
+	pass?: string;
+	fromAddress?: string;
+}) =>
+	apiFetch<{ ok: boolean }>("/settings/smtp", {
+		method: "PUT",
+		body: JSON.stringify(data),
+	});
+
+export const testSmtpSettings = () =>
+	apiFetch<{ ok: boolean } | { error: string }>("/settings/smtp/test", {
+		method: "POST",
 	});

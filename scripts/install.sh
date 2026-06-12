@@ -23,7 +23,10 @@ download_if_missing() {
 	if [ -f "$dst" ]; then
 		info "  Skipping (exists): $dst"
 	else
-		curl -fsSL "$src" -o "$dst" || warn "Could not download $src"
+		http_code=$(curl -fsSL -w "%{http_code}" "$src" -o "$dst" 2>/dev/null) || {
+			warn "Failed to download $src (HTTP $http_code)"
+			return 1
+		}
 		success "Downloaded: $dst"
 	fi
 }
@@ -57,39 +60,69 @@ setup_directories() {
 
 resolve_base_url() {
 	header "Downloading configuration"
+	TAG=""
 
 	if [ "$VERSION" = "latest" ]; then
 		local release_url="https://api.github.com/repos/$REPO/releases/latest"
 		info "Fetching latest release..."
-		local tag
-		tag=$(curl -fsSL "$release_url" | grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
-		if [ -z "$tag" ]; then
+		TAG=$(curl -fsSL "$release_url" | grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/') || true
+		if [ -z "$TAG" ]; then
 			warn "Could not determine latest release. Falling back to 'main' branch."
 			BASE_URL="https://raw.githubusercontent.com/$REPO/main"
 		else
-			BASE_URL="https://raw.githubusercontent.com/$REPO/$tag"
-			success "Latest release: $tag"
+			BASE_URL="https://raw.githubusercontent.com/$REPO/$TAG"
+			success "Latest release: $TAG"
 		fi
 	else
-		BASE_URL="https://raw.githubusercontent.com/$REPO/v$VERSION"
+		TAG="v$VERSION"
+		BASE_URL="https://raw.githubusercontent.com/$REPO/$TAG"
 	fi
 }
 
 download_configs() {
 	resolve_base_url
 
+	if [ -n "$TAG" ]; then
+		local version="${TAG#v}"
+		local tarball_url="https://github.com/$REPO/releases/download/$TAG/dequel-config-$version.tar.gz"
+		local tarball_path=$(mktemp)
+		info "Downloading config bundle..."
+		set +e
+		http_code=$(curl -fsSL -w "%{http_code}" "$tarball_url" -o "$tarball_path" 2>/dev/null)
+		curl_ok=$?
+		set -e
+		if [ "$curl_ok" -eq 0 ] && [ "$http_code" = "200" ]; then
+			tar -xzf "$tarball_path" -C "$INSTALL_DIR"
+			rm -f "$tarball_path"
+			chmod +x "$INSTALL_DIR/dequel" 2>/dev/null || true
+			success "Downloaded and extracted config bundle"
+			return
+		fi
+		rm -f "$tarball_path"
+		warn "Could not download config bundle (HTTP $http_code), falling back to individual files"
+	fi
+
 	download_if_missing "$BASE_URL/docker-compose.yml" "$INSTALL_DIR/docker-compose.yml"
 	download_if_missing "$BASE_URL/infra/caddy/Caddyfile" "$INSTALL_DIR/infra/caddy/Caddyfile"
+	download_if_missing "$BASE_URL/scripts/dequel" "$INSTALL_DIR/dequel"
 
 	for f in prometheus.yml loki-config.yml promtail-config.yml; do
 		download_if_missing "$BASE_URL/infra/monitoring/$f" "$INSTALL_DIR/infra/monitoring/$f"
 	done
 
-	download_if_missing "$BASE_URL/infra/monitoring/grafana/datasources/datasources.yml" "$INSTALL_DIR/infra/monitoring/grafana/datasources/datasources.yml"
+	for f in loki.yml prometheus.yml; do
+		download_if_missing "$BASE_URL/infra/monitoring/grafana/datasources/$f" "$INSTALL_DIR/infra/monitoring/grafana/datasources/$f"
+	done
 }
 
 prompt_config() {
 	header "Configuration"
+
+	if [ ! -t 0 ]; then
+		warn "Non-interactive mode: skipping configuration prompt"
+		warn "Set CADDY_EMAIL and CADDY_BASE_DOMAIN manually in $INSTALL_DIR/.env"
+		return
+	fi
 
 	read -r -p "  Admin email (for SSL notifications, optional): " ADMIN_EMAIL
 	read -r -p "  Hostname (e.g. dequel.example.com, optional): " HOSTNAME
@@ -112,9 +145,7 @@ pull_images() {
 install_cli() {
 	header "Installing dequel CLI"
 	local cli_src="$INSTALL_DIR/dequel"
-	if [ -f "$cli_src" ]; then
-		info "CLI already downloaded."
-	else
+	if [ ! -f "$cli_src" ]; then
 		download_if_missing "$BASE_URL/scripts/dequel" "$cli_src"
 	fi
 	chmod +x "$cli_src"

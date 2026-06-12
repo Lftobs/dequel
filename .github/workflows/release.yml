@@ -63,6 +63,21 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build config tarball
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          TAR_DIR=_tar
+          mkdir -p "$TAR_DIR/infra/caddy" "$TAR_DIR/infra/monitoring/grafana/datasources"
+          cp docker-compose.yml "$TAR_DIR/"
+          cp scripts/dequel "$TAR_DIR/dequel"
+          cp infra/caddy/Caddyfile "$TAR_DIR/infra/caddy/"
+          cp infra/monitoring/prometheus.yml "$TAR_DIR/infra/monitoring/"
+          cp infra/monitoring/loki-config.yml "$TAR_DIR/infra/monitoring/"
+          cp infra/monitoring/promtail-config.yml "$TAR_DIR/infra/monitoring/"
+          cp infra/monitoring/grafana/datasources/loki.yml "$TAR_DIR/infra/monitoring/grafana/datasources/"
+          cp infra/monitoring/grafana/datasources/prometheus.yml "$TAR_DIR/infra/monitoring/grafana/datasources/"
+          cd "$TAR_DIR" && tar -czf "../dequel-config-${VERSION}.tar.gz" .
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -70,6 +85,5 @@ jobs:
           body_path: CHANGELOG.md
           generate_release_notes: true
           files: |
-            docker-compose.yml
             scripts/install.sh
-            scripts/dequel
+            dequel-config-${{ steps.version.outputs.VERSION }}.tar.gz

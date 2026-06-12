@@ -152,6 +152,19 @@ CREATE TABLE IF NOT EXISTS `api_keys` (
 	`last_used_at` text
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS `smtp_settings` (
+	`id` text PRIMARY KEY NOT NULL,
+	`host` text NOT NULL,
+	`port` integer NOT NULL DEFAULT 587,
+	`user` text NOT NULL DEFAULT '',
+	`pass_encrypted` text,
+	`pass_iv` text,
+	`pass_tag` text,
+	`from_address` text NOT NULL DEFAULT 'dequel@localhost',
+	`created_at` text NOT NULL,
+	`updated_at` text NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS `alerts` (
 	`id` text PRIMARY KEY NOT NULL,
 	`project_id` text NOT NULL,

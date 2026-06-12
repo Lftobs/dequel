@@ -165,6 +165,14 @@ export interface GithubRepo {
   owner: { login: string; avatarUrl: string };
 }
 
+export interface SmtpSettingsStatus {
+  configured: boolean;
+  host?: string;
+  port?: number;
+  user?: string;
+  fromAddress?: string;
+}
+
 export interface GithubIntegrationStatus {
   configured: boolean;
   clientId?: string;

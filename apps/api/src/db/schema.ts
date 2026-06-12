@@ -171,3 +171,16 @@ export const alerts = sqliteTable("alerts", {
 }, (table) => [
   foreignKey({ columns: [table.projectId], foreignColumns: [projects.id], onDelete: "cascade" }),
 ]);
+
+export const smtpSettings = sqliteTable("smtp_settings", {
+  id: text().primaryKey(),
+  host: text().notNull(),
+  port: integer().notNull().default(587),
+  user: text().notNull().default(""),
+  passEncrypted: text("pass_encrypted"),
+  passIv: text("pass_iv"),
+  passTag: text("pass_tag"),
+  fromAddress: text("from_address").notNull().default("dequel@localhost"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
