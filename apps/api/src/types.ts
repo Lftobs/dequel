@@ -19,6 +19,9 @@ export interface Project {
   baseDomain: string | null;
   cpuLimit: number | null;
   memoryLimitMb: number | null;
+  port: number | null;
+  sourceDir: string | null;
+  sourceType: string;
   githubTokenEncrypted: string | null;
   githubTokenIv: string | null;
   githubTokenTag: string | null;
@@ -43,6 +46,9 @@ export interface CreateProjectInput {
   baseDomain?: string;
   cpuLimit?: number | null;
   memoryLimitMb?: number | null;
+  port?: number | null;
+  sourceDir?: string | null;
+  sourceType?: string;
 }
 
 export interface EnvironmentVariable {

@@ -84,6 +84,9 @@ export const createProject = (data: {
 	repoBranch?: string;
 	cpuLimit?: number;
 	memoryLimitMb?: number;
+	port?: number;
+	sourceDir?: string;
+	sourceType?: string;
 }) =>
 	apiFetch<Project>("/projects", {
 		method: "POST",
@@ -94,6 +97,9 @@ export const updateProject = (
 	data: Partial<Project> & {
 		repoUrl?: string | null;
 		repoBranch?: string | null;
+		baseDomain?: string | null;
+		sourceDir?: string | null;
+		port?: number | null;
 	},
 ) =>
 	apiFetch<Project>(`/projects/${id}`, {

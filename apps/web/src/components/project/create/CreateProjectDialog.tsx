@@ -45,6 +45,10 @@ export function CreateProjectDialog({
 		useState<GithubRepo | null>(null);
 	const [githubConnected, setGithubConnected] =
 		useState(false);
+	const [
+		githubConfigured,
+		setGithubConfigured,
+	] = useState(false);
 
 	const [stagedEnvs, setStagedEnvs] = useState<
 		Array<{
@@ -54,8 +58,13 @@ export function CreateProjectDialog({
 		}>
 	>([]);
 
+	const [sourceType, setSourceType] =
+		useState("git");
 	const [cpuLimit, setCpuLimit] = useState("");
 	const [memoryLimitMb, setMemoryLimitMb] =
+		useState("");
+	const [port, setPort] = useState("");
+	const [sourceDir, setSourceDir] =
 		useState("");
 	const [provisionDb, setProvisionDb] =
 		useState(false);
@@ -85,33 +94,25 @@ export function CreateProjectDialog({
 		getGithubIntegration()
 			.then((status) => {
 				if ((status as any).configured) {
+					setGithubConfigured(true);
 					api.getGithubUser()
 						.then(() =>
 							setGithubConnected(
 								true,
 							),
 						)
-						.catch(() => {});
+						.catch(() => { });
+				} else {
+					setGithubConfigured(false);
+					setSourceType((prev) =>
+						prev === "git"
+							? "upload"
+							: prev,
+					);
 				}
 			})
-			.catch(() => {});
+			.catch(() => { });
 	}, [open]);
-
-	useEffect(() => {
-		const params = new URLSearchParams(
-			window.location.search,
-		);
-		if (
-			params.get("github") === "connected"
-		) {
-			setGithubConnected(true);
-			window.history.replaceState(
-				{},
-				"",
-				window.location.pathname,
-			);
-		}
-	}, []);
 
 	const handleOpenChange = (
 		isOpen: boolean,
@@ -124,7 +125,10 @@ export function CreateProjectDialog({
 			setBaseDomain("");
 			setRepoUrl("");
 			setRepoBranch("");
+			setSourceDir("");
 			setSelectedRepo(null);
+			setSourceType("git");
+			setPort("");
 		}
 	};
 
@@ -137,8 +141,10 @@ export function CreateProjectDialog({
 		setSubmittingStatus("creating_project");
 		setErrorMessage("");
 
+		let project: any = null;
+
 		try {
-			const project =
+			project =
 				await createProject.mutateAsync({
 					name: name.trim(),
 					description:
@@ -153,6 +159,13 @@ export function CreateProjectDialog({
 					repoBranch:
 						repoBranch.trim() ||
 						undefined,
+					port: port.trim()
+						? Number(port)
+						: undefined,
+					sourceDir:
+						sourceDir.trim() ||
+						undefined,
+					sourceType,
 				});
 
 			if (stagedEnvs.length > 0) {
@@ -203,10 +216,21 @@ export function CreateProjectDialog({
 				handleOpenChange(false);
 			}, 1000);
 		} catch (err: any) {
+			if (project) {
+				api.deleteProject(project.id).catch(() => { });
+			} else {
+				// switch to a better approach 
+				api.listProjects()
+					.then((all) => {
+						const orphan = all.find((p) => p.name === name.trim());
+						if (orphan) api.deleteProject(orphan.id).catch(() => { });
+					})
+					.catch(() => { });
+			}
 			console.error(err);
 			setErrorMessage(
 				err.message ||
-					"An unexpected error occurred during creation.",
+				"An unexpected error occurred during creation.",
 			);
 			setSubmittingStatus("error");
 		}
@@ -223,7 +247,7 @@ export function CreateProjectDialog({
 					New Project
 				</Button>
 			</DialogTrigger>
-			<DialogContent className="bg-[#0f0f12] border-[#222227] text-zinc-200 sm:max-w-3xl">
+			<DialogContent className="bg-[#0f0f12] border-[#222227] text-zinc-200 max-w-3xl">
 				{submittingStatus !== "idle" ? (
 					<CreationStatusOverlay
 						submittingStatus={
@@ -277,7 +301,7 @@ export function CreateProjectDialog({
 								</span>
 								<span
 									className={cn(
-										"text-xs font-medium",
+										"text-xs font-medium hidden sm:inline",
 										step === 1
 											? "text-zinc-200"
 											: "text-zinc-500",
@@ -300,7 +324,7 @@ export function CreateProjectDialog({
 								</span>
 								<span
 									className={cn(
-										"text-xs font-medium",
+										"text-xs font-medium hidden sm:inline",
 										step === 2
 											? "text-zinc-200"
 											: "text-zinc-500",
@@ -323,7 +347,7 @@ export function CreateProjectDialog({
 								</span>
 								<span
 									className={cn(
-										"text-xs font-medium",
+										"text-xs font-medium hidden sm:inline",
 										step === 3
 											? "text-zinc-200"
 											: "text-zinc-500",
@@ -360,6 +384,12 @@ export function CreateProjectDialog({
 								setRepoBranch={
 									setRepoBranch
 								}
+								sourceDir={
+									sourceDir
+								}
+								setSourceDir={
+									setSourceDir
+								}
 								selectedRepo={
 									selectedRepo
 								}
@@ -369,6 +399,17 @@ export function CreateProjectDialog({
 								onGithubConnected={() =>
 									githubConnected
 								}
+								githubConfigured={
+									githubConfigured
+								}
+								sourceType={
+									sourceType
+								}
+								setSourceType={
+									setSourceType
+								}
+								port={port}
+								setPort={setPort}
 							/>
 						)}
 
@@ -433,7 +474,7 @@ export function CreateProjectDialog({
 								{step === 2 &&
 									"Step 2 of 3: Staging env variables"}
 								{step === 3 &&
-									"Step 3 of 3: Allocation limits & Databases"}
+									"Step 3 of 3: Port, resource limits & Databases"}
 							</div>
 							<div className="flex gap-2">
 								{step > 1 && (
@@ -444,7 +485,7 @@ export function CreateProjectDialog({
 										onClick={() =>
 											setStep(
 												step -
-													1,
+												1,
 											)
 										}
 									>
@@ -472,13 +513,13 @@ export function CreateProjectDialog({
 										onClick={() =>
 											setStep(
 												step +
-													1,
+												1,
 											)
 										}
 										className="bg-amber-500 hover:bg-amber-600 text-white font-medium h-9"
 										disabled={
 											step ===
-												1 &&
+											1 &&
 											!name.trim()
 										}
 									>

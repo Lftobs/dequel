@@ -119,7 +119,7 @@ export function StepEnvironment({ stagedEnvs, setStagedEnvs }: StepEnvironmentPr
   };
 
   return (
-    <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+    <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
       <div className="space-y-3.5 bg-[#0c0c0e]/60 p-4 rounded-xl border border-[#222227]">
         <div className="flex items-center justify-between">
           <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">

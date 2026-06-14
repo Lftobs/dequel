@@ -25,6 +25,10 @@ RUN docker --version && docker buildx version
 # Install railpack
 RUN curl -sSL https://railpack.com/install.sh | sh -s -- --bin-dir /usr/local/bin
 
+
+RUN curl -sSL https://mise.jdx.dev/install.sh | sh \
+    && ln -sf /root/.local/bin/mise /usr/local/bin/mise
+
 WORKDIR /app
 
 COPY package.json ./

@@ -19,6 +19,9 @@ export interface Project {
   baseDomain: string | null;
   cpuLimit: number | null;
   memoryLimitMb: number | null;
+  port: number | null;
+  sourceDir: string | null;
+  sourceType: string;
   createdAt: string;
   updatedAt: string;
 }

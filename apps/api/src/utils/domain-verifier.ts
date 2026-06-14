@@ -116,9 +116,10 @@ export const buildCaddySnippet = async (
   containerName: string,
   projectId?: string,
   listDomainsFn: typeof listDomains = listDomains,
+  appPort?: number,
 ): Promise<string> => {
   let domains = [`${slug}.localhost:80`];
-  let port = config.appInternalPort;
+  let port = appPort ?? config.appInternalPort;
 
   if (projectId) {
     const projectDomains = await listDomainsFn(projectId);

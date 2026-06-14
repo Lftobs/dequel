@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
-import { getGithubIntegration, setGithubIntegration } from "../../db/repo";
+import { getGithubIntegration, setGithubIntegration, createDeployment, listProjects } from "../../db/repo";
+import { orchestrator } from "../../orchestrator";
 import { config } from "../../utils/config";
 
 const SESSIONS = new Map<string, { token: string; expiresAt: number }>();
@@ -76,7 +77,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		return { url: `https://github.com/login/oauth/authorize?${params}` };
 	})
 
-	.get("/callback", async ({ query, set }) => {
+	.get("/callback", async ({ request, query, set }) => {
 		const { code, state } = query as Record<string, string>;
 		if (!code) {
 			set.status = 400;
@@ -87,8 +88,8 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			set.status = 400;
 			return { error: "GitHub integration not configured" };
 		}
-		const url = new URL(config.caddyIngressBase);
-		const redirectUri = `${url.protocol}//${url.host}/api/github/callback`;
+		const origin = new URL(request.url).origin;
+		const redirectUri = `${origin}/api/github/callback`;
 
 		const res = await fetch("https://github.com/login/oauth/access_token", {
 			method: "POST",
@@ -105,12 +106,15 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		});
 		const data = await res.json() as Record<string, string>;
 		if (data.error) {
-			set.status = 400;
-			return { error: data.error_description ?? data.error };
+			const msg = encodeURIComponent(data.error_description ?? data.error);
+			set.status = 302;
+			set.headers["Location"] = `${origin}/?github=error=${msg}`;
+			return;
 		}
 		const sessionId = createSession(data.access_token);
+		set.status = 302;
 		set.headers["Set-Cookie"] = `github_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_MS / 1000}`;
-		set.redirect = `${config.caddyIngressBase}/?github=connected`;
+		set.headers["Location"] = `${origin}/?github=connected`;
 	})
 
 	.get("/user", async ({ request, set }) => {
@@ -165,4 +169,92 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		if (match) SESSIONS.delete(match[1]);
 		set.headers["Set-Cookie"] = "github_session=; Path=/; Max-Age=0";
 		return { ok: true };
+	})
+
+	.post("/webhook", async ({ request, set }) => {
+		const integration = await getGithubIntegration();
+		if (!integration?.webhookSecret) {
+			set.status = 400;
+			return { error: "GitHub webhook not configured" };
+		}
+
+		const signature = request.headers.get("x-hub-signature-256") || "";
+		const event = request.headers.get("x-github-event") || "";
+		const delivery = request.headers.get("x-github-delivery") || "";
+		const rawBody = await request.text();
+
+		const encoder = new TextEncoder();
+		const key = await crypto.subtle.importKey(
+			"raw",
+			encoder.encode(integration.webhookSecret),
+			{ name: "HMAC", hash: "SHA-256" },
+			false,
+			["sign"],
+		);
+		const expectedSigRaw = await crypto.subtle.sign("HMAC", key, encoder.encode(rawBody));
+		const expectedSig = "sha256=" + Array.from(new Uint8Array(expectedSigRaw)).map(b => b.toString(16).padStart(2, "0")).join("");
+
+		if (signature.length !== expectedSig.length) {
+			set.status = 401;
+			return { error: "Invalid signature" };
+		}
+		if (!crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signature))) {
+			set.status = 401;
+			return { error: "Invalid signature" };
+		}
+
+		if (event !== "push") {
+			return { ok: true, ignored: `unsupported event: ${event}` };
+		}
+
+		let payload: any;
+		try {
+			payload = JSON.parse(rawBody);
+		} catch {
+			set.status = 400;
+			return { error: "Invalid JSON payload" };
+		}
+
+		const repoUrl = payload?.repository?.clone_url;
+		if (!repoUrl) {
+			set.status = 400;
+			return { error: "Missing repository.clone_url in payload" };
+		}
+
+		const branch = payload?.ref?.replace("refs/heads/", "") || "main";
+		const commitSha = payload?.after || "";
+
+		const projects = await listProjects();
+		const project = projects.find(p =>
+			p.repoUrl && (
+				p.repoUrl === repoUrl ||
+				p.repoUrl.replace(/\.git$/, "") === repoUrl.replace(/\.git$/, "")
+			)
+		);
+
+		if (!project) {
+			return { ok: true, ignored: `no project found for repo: ${repoUrl}` };
+		}
+
+		if (project.repoBranch && project.repoBranch !== branch) {
+			return { ok: true, ignored: `branch "${branch}" does not match project branch "${project.repoBranch}"` };
+		}
+
+		if (!commitSha || commitSha === "0000000000000000000000000000000000000000") {
+			return { ok: true, ignored: "deletion event, no commit to deploy" };
+		}
+
+		const dep = await createDeployment({
+			projectId: project.id,
+			sourceType: "git",
+			sourceRef: repoUrl,
+			branch,
+			commitSha,
+		});
+
+		orchestrator.enqueue(dep.id);
+
+		console.log(`[GitWebhook] Auto-deploy triggered for ${project.name} (${branch}) — commit ${commitSha.slice(0, 7)}`);
+
+		return { ok: true, deploymentId: dep.id };
 	});

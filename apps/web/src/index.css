@@ -91,3 +91,73 @@
 .log-msg {
   word-break: break-all;
 }
+
+/* Ko-fi overlay widget inside container */
+#kofi-widget-container {
+  display: block;
+  width: 100%;
+  height: 40px;
+}
+
+#kofi-widget-container .floatingchat-container-wrap,
+#kofi-widget-container .floatingchat-container-wrap-mobi {
+  position: static !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+  z-index: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#kofi-widget-container .floatingchat-container,
+#kofi-widget-container .floatingchat-container-mobi {
+  position: static !important;
+  display: block !important;
+  /* Give the iframe a virtual width slightly wider than its default 195px
+     then scale it down so the full button text fits the sidebar card */
+  width: 220px !important;
+  height: 100% !important;
+  opacity: 1 !important;
+  border: none !important;
+  z-index: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: scale(0.9) !important;
+  transform-origin: left center !important;
+}
+
+/* Show desktop button on large screens, mobile button on small */
+@media only screen and (max-device-width: 1000px) {
+  #kofi-widget-container .floatingchat-container-wrap {
+    display: none !important;
+  }
+  #kofi-widget-container .floatingchat-container-wrap-mobi {
+    display: block !important;
+  }
+}
+@media only screen and (min-device-width: 1001px) {
+  #kofi-widget-container .floatingchat-container-wrap {
+    display: block !important;
+  }
+  #kofi-widget-container .floatingchat-container-wrap-mobi {
+    display: none !important;
+  }
+}
+
+/* Popup floats over the page at a comfortable height */
+.floating-chat-kofi-popup-iframe,
+.floating-chat-kofi-popup-iframe-mobi {
+  position: fixed !important;
+  z-index: 999999 !important;
+}
+
+.floating-chat-kofi-popup-iframe[style*="opacity:1"],
+.floating-chat-kofi-popup-iframe[style*="opacity: 1"],
+.floating-chat-kofi-popup-iframe-mobi[style*="opacity:1"],
+.floating-chat-kofi-popup-iframe-mobi[style*="opacity: 1"] {
+  min-height: 650px !important;
+}

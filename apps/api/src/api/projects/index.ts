@@ -42,6 +42,9 @@ export const projectsRoutes = new Elysia()
 				repoBranch: body.repoBranch,
 				cpuLimit: body.cpuLimit,
 				memoryLimitMb: body.memoryLimitMb,
+				port: body.port ? Number(body.port) : null,
+				sourceDir: body.sourceDir || null,
+				sourceType: body.sourceType || "git",
 			});
 		},
 	)
@@ -56,6 +59,8 @@ export const projectsRoutes = new Elysia()
 				repoBranch: body?.repoBranch,
 				cpuLimit: body?.cpuLimit,
 				memoryLimitMb: body?.memoryLimitMb,
+				port: body?.port ? Number(body.port) : body?.port === null ? null : undefined,
+				sourceDir: body?.sourceDir ?? undefined,
 			});
 			if (!project) {
 				set.status = 404;

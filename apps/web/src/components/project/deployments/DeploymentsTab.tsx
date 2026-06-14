@@ -68,6 +68,9 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 	const [deleteConfirmId, setDeleteConfirmId] = useState<
 		string | null
 	>(null);
+	const [cancelConfirmId, setCancelConfirmId] = useState<
+		string | null
+	>(null);
 	const [selectedId, setSelectedId] = useState<
 		string | null
 	>(null);
@@ -559,7 +562,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 															e,
 														) => {
 															e.stopPropagation();
-															cancel.mutate(
+															setCancelConfirmId(
 																dep.id,
 															);
 														}}
@@ -651,6 +654,31 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 					}
 				/>
 			)}
+
+			<Dialog open={cancelConfirmId !== null} onOpenChange={(open) => { if (!open) setCancelConfirmId(null); }}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Cancel deployment?</DialogTitle>
+						<DialogDescription>
+							This will stop the current build/deploy process. The deployment will be marked as failed. This cannot be undone.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setCancelConfirmId(null)}>
+							Keep running
+						</Button>
+						<Button
+							variant="destructive"
+							onClick={() => {
+								if (cancelConfirmId) cancel.mutate(cancelConfirmId);
+								setCancelConfirmId(null);
+							}}
+						>
+							Cancel deployment
+					</Button>
+				</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
 			<Dialog open={deleteConfirmId !== null} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
 				<DialogContent>

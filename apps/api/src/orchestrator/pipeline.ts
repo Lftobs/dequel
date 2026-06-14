@@ -351,18 +351,20 @@ export class PipelineOrchestrator {
 				const cacheKey =
 					deployment.projectId ||
 					deploymentId;
-				await buildWithRailpack(
-					workspacePath,
-					imageTag,
-					async (line) => {
-						await emitLog(
-							deploymentId,
-							"build",
-							line,
-						);
-					},
-					{ cacheKey },
-				);
+			const project = deployment.projectId ? await getProjectById(deployment.projectId) : null;
+			const buildDir = project?.sourceDir ? workspacePath + '/' + project.sourceDir.replace(/^\//, '') : workspacePath;
+			await buildWithRailpack(
+				buildDir,
+				imageTag,
+				async (line) => {
+					await emitLog(
+						deploymentId,
+						"build",
+						line,
+					);
+				},
+				{ cacheKey },
+			);
 			} else {
 				await emitLog(
 					deploymentId,
@@ -463,6 +465,10 @@ export class PipelineOrchestrator {
 				| number
 				| null
 				| undefined;
+			let appPort:
+				| number
+				| null
+				| undefined;
 			if (deployment.projectId) {
 				const proj = await getProjectById(
 					deployment.projectId,
@@ -472,6 +478,7 @@ export class PipelineOrchestrator {
 					cpuLimit = proj.cpuLimit;
 					memoryLimitMb =
 						proj.memoryLimitMb;
+					appPort = proj.port;
 				}
 			}
 
@@ -495,6 +502,7 @@ export class PipelineOrchestrator {
 					volumes,
 					cpuLimit,
 					memoryLimitMb,
+					appPort: appPort ?? undefined,
 				},
 			);
 
