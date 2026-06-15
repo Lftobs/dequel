@@ -179,6 +179,8 @@ Requires secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
 | `DATABASE_PATH` | `./data/dequel.db` | SQLite database |
 | `WORKSPACE_ROOT` | `./workspace` | Build staging |
 | `CADDY_ROUTES_DIR` | `./infra/caddy/routes` | Caddy route output |
+| `CADDY_BASE_DOMAIN` | `localhost` | Base domain for deployment subdomains. Set to a real domain (e.g. `example.com`) for Let's Encrypt auto-SSL. |
+| `CADDY_EMAIL` | _(empty)_ | Email for Let's Encrypt SSL certificate notifications |
 | `DOCKER_NETWORK` | `dequel_net` | Docker network for deployments |
 | `BUILDKIT_HOST` | `tcp://buildkit:1234` | Buildkit daemon |
 | `RAILPACK_BUILD_TIMEOUT_MS` | `1200000` | Build timeout |

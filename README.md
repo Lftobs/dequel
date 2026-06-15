@@ -148,19 +148,23 @@ Key environment variables for the API service:
 | `DATABASE_PATH` | `./data/dequel.db` | SQLite database location |
 | `WORKSPACE_ROOT` | `./workspace` | Build staging directory |
 | `CADDY_ROUTES_DIR` | `./infra/caddy/routes` | Caddy route output |
+| `CADDY_BASE_DOMAIN` | `localhost` | Base domain for deployment subdomains. Set to a real domain (e.g. `example.com`) for Let's Encrypt auto-SSL. |
+| `CADDY_EMAIL` | _(empty)_ | Email for Let's Encrypt SSL certificate notifications |
 | `DOCKER_NETWORK` | `dequel_net` | Docker network for deployments |
 | `BUILDKIT_HOST` | `tcp://buildkit:1234` | Buildkit daemon address |
 | `RAILPACK_BUILD_TIMEOUT_MS` | `1200000` | Build timeout |
 
 ## Deployment Ingress
 
-Deployed applications get a subdomain under `localhost`:
+Deployed applications get a subdomain under the configured base domain:
 ```
-http://<deploymentId>.localhost
+https://<slug>.<CADDY_BASE_DOMAIN>
 ```
 
-For production, set `CADDY_BASE_DOMAIN` and configure DNS. Caddy
-auto-provisions SSL via Let's Encrypt.
+When `CADDY_BASE_DOMAIN=localhost` (default), apps are accessible via HTTP at
+`http://<slug>.localhost`. For production, set `CADDY_BASE_DOMAIN` to your
+domain (e.g. `example.com`) and configure a wildcard DNS `*.example.com`
+pointing to your server. Caddy auto-provisions SSL via Let's Encrypt.
 
 ## Design Decisions
 

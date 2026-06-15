@@ -22,6 +22,7 @@ export const config = {
   workspaceRoot: withFile<string>("WORKSPACE_ROOT", "/app/workspace"),
   caddyRoutesDir: withFile<string>("CADDY_ROUTES_DIR", "/caddy/routes"),
   caddyIngressBase: withFile<string>("CADDY_INGRESS_BASE", "http://localhost"),
+  caddyBaseDomain: withFile<string>("CADDY_BASE_DOMAIN", "localhost"),
   dockerNetwork: withFile<string>("DOCKER_NETWORK", "dequel_net"),
   appInternalPort: withFile<number>("APP_INTERNAL_PORT", "3000", Number),
   buildkitHost: withFile<string>("BUILDKIT_HOST", "tcp://buildkit:1234"),
