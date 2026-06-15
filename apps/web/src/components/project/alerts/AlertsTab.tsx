@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import * as api from "../../api/client";
-import { Card, CardContent } from "../ui/card";
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
+import * as api from "../../../api/client";
+import { Card, CardContent } from "../../ui/card";
+import { Input } from "../../ui/input";
+import { Button } from "../../ui/button";
+import { Badge } from "../../ui/badge";
 import {
 	Trash2,
 	BellOff,
@@ -21,7 +21,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogDescription,
-} from "../ui/dialog";
+	DialogFooter,
+} from "../../ui/dialog";
 
 interface AlertsTabProps {
 	projectId: string;
@@ -69,6 +70,15 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 	const [type, setType] = useState("cpu");
 	const [threshold, setThreshold] = useState("80");
 	const [channel, setChannel] = useState("email");
+
+	const [deletingAlertId, setDeletingAlertId] = useState<string | null>(null);
+
+	const handleDeleteAlert = async () => {
+		if (!deletingAlertId) return;
+		await api.deleteAlert(deletingAlertId);
+		setDeletingAlertId(null);
+		refetch();
+	};
 
 	const add = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -200,9 +210,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 											size="icon"
 											className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg opacity-80 group-hover:opacity-100 transition-all"
 											onClick={() =>
-												api
-													.deleteAlert(a.id)
-													.then(() => refetch())
+												setDeletingAlertId(a.id)
 											}
 										>
 											<Trash2 className="h-4 w-4" />
@@ -305,6 +313,40 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 							</Button>
 						</div>
 					</form>
+				</DialogContent>
+			</Dialog>
+
+			<Dialog
+				open={deletingAlertId !== null}
+				onOpenChange={(open) => {
+					if (!open) setDeletingAlertId(null);
+				}}
+			>
+				<DialogContent className="sm:max-w-[400px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
+					<DialogHeader>
+						<DialogTitle className="text-lg font-bold text-foreground">
+							Delete Alert Rule
+						</DialogTitle>
+						<DialogDescription className="text-xs text-muted-foreground mt-2">
+							Are you sure you want to delete this alert rule? You will
+							no longer receive notifications for this condition.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter className="flex justify-end gap-2 pt-4 border-t border-border/40">
+						<Button
+							variant="ghost"
+							onClick={() => setDeletingAlertId(null)}
+							className="h-10 text-xs px-4 rounded-xl hover:bg-[#1a1a21]"
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={handleDeleteAlert}
+							className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold h-10 text-xs px-5 rounded-xl shadow-lg transition-all"
+						>
+							Delete Rule
+						</Button>
+					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 		</div>

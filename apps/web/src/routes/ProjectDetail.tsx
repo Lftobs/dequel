@@ -11,15 +11,15 @@ import {
 } from "../components/ui/tabs";
 import { ArrowLeft, FolderKanban } from "lucide-react";
 
-import { DeploymentsTab } from "../components/project/DeploymentsTab";
-import { EnvVarsTab } from "../components/project/EnvVarsTab";
-import { VolumesTab } from "../components/project/VolumesTab";
-import { DatabasesTab } from "../components/project/DatabasesTab";
-import { DomainsTab } from "../components/project/DomainsTab";
-import { ScalingTab } from "../components/project/ScalingTab";
-import { AlertsTab } from "../components/project/AlertsTab";
-import { ObservabilityTab } from "../components/project/ObservabilityTab";
-import { LogsTab } from "../components/project/LogsTab";
+import { DeploymentsTab } from "../components/project/deployments/DeploymentsTab";
+import { EnvVarsTab } from "../components/project/envtab/EnvVarsTab";
+import { VolumesTab } from "../components/project/volumes/VolumesTab";
+import { DatabasesTab } from "../components/project/databases/DatabasesTab";
+import { DomainsTab } from "../components/project/domains/DomainsTab";
+import { ScalingTab } from "../components/project/scaling/ScalingTab";
+import { AlertsTab } from "../components/project/alerts/AlertsTab";
+import { ObservabilityTab } from "../components/project/observability/ObservabilityTab";
+import { LogsTab } from "../components/project/logs/LogsTab";
 
 export function ProjectDetail({
 	projectId,

@@ -8,7 +8,7 @@ import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
 import { formatUptime, parseMetrics } from '../lib/metrics';
 import { cn } from '../lib/utils';
-import { CreateProjectDialog } from '../components/project/CreateProjectDialog';
+import { CreateProjectDialog } from '../components/project/create/CreateProjectDialog';
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,7 @@ import {
   Laptop
 } from 'lucide-react';
 import * as api from '../api/client';
+import { ConfigWarnings } from '../components/ConfigWarnings';
 
 function formatTimeAgo(dateString?: string) {
   if (!dateString) return '—';
@@ -91,7 +92,9 @@ export function Dashboard() {
 
   return (
     <div className="space-y-8 max-w-[1400px] mx-auto">
-      
+
+      <ConfigWarnings />
+
       {/* Header section with page title & New Project button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[#1c1c21]">
         <div>
@@ -110,71 +113,61 @@ export function Dashboard() {
         
         {/* Left Side: Stats/Recent Previews */}
         <div className="w-full lg:w-[320px] shrink-0 space-y-6">
-          
-          {/* Usage Metrics Panel */}
-          <div className="rounded-xl border border-[#1c1c21] bg-[#0c0c0e] p-5 space-y-5">
+                   {/* Usage Metrics Panel */}
+          <div className="rounded-xl border border-[#1c1c21] bg-[#0c0c0e] p-5 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
               <Activity className="h-4 w-4 text-amber-500" />
               Node Allocation
             </h3>
             
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-zinc-500">
-                  <span>API Traffic / Capacity</span>
-                  <span className="text-zinc-300 font-mono font-medium">{metricsLoading ? '...' : (metrics?.requestsTotal ?? 0)} reqs</span>
-                </div>
-                <div className="w-full bg-[#18181b] h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-amber-500 to-rose-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(((metrics?.requestsTotal ?? 0) / 1500) * 100, 100)}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-zinc-500">
-                  <span>Active Deployments</span>
-                  <span className="text-zinc-300 font-mono font-medium">{metricsLoading ? '...' : (metrics?.activeDeployments ?? 0)} running</span>
-                </div>
-                <div className="w-full bg-[#18181b] h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-amber-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(((metrics?.activeDeployments ?? 0) / 10) * 100, 100)}%` }}
-                  />
+            <div className="grid grid-cols-1 gap-3">
+              {/* API Traffic */}
+              <div className="relative group/stat overflow-hidden rounded-xl border border-[#1c1c21] bg-[#101012] p-3.5 transition-all duration-300 hover:border-amber-500/20 hover:bg-[#131316]">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">API Traffic</span>
+                    <div className="text-lg font-bold text-zinc-100 font-mono tracking-tight">
+                      {metricsLoading ? '...' : (metrics?.requestsTotal ?? 0)}
+                      <span className="text-xs font-normal text-zinc-500 ml-1">requests</span>
+                    </div>
+                  </div>
+                  <div className="h-9 w-9 rounded-lg bg-amber-500/5 border border-amber-500/10 flex items-center justify-center text-amber-500">
+                    <Activity className="h-4 w-4 animate-pulse" />
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-zinc-500">
-                  <span>Cluster Ingress Uptime</span>
-                  <span className="text-zinc-300 font-mono font-medium">{metricsLoading ? '...' : formatUptime(metrics?.uptimeSeconds)}</span>
+              {/* Active Deployments */}
+              <div className="relative group/stat overflow-hidden rounded-xl border border-[#1c1c21] bg-[#101012] p-3.5 transition-all duration-300 hover:border-amber-500/20 hover:bg-[#131316]">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Active Deployments</span>
+                    <div className="text-lg font-bold text-zinc-100 font-mono tracking-tight flex items-center gap-1.5">
+                      {metricsLoading ? '...' : (metrics?.activeDeployments ?? 0)}
+                      <span className="text-xs font-normal text-zinc-500">running</span>
+                    </div>
+                  </div>
+                  <div className="h-9 w-9 rounded-lg bg-rose-500/5 border border-rose-500/10 flex items-center justify-center text-rose-500">
+                    <Server className="h-4 w-4" />
+                  </div>
                 </div>
-                <div className="w-full bg-[#18181b] h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: metrics?.uptimeSeconds ? '100%' : '0%' }}
-                  />
+              </div>
+
+              {/* Cluster Ingress Uptime */}
+              <div className="relative group/stat overflow-hidden rounded-xl border border-[#1c1c21] bg-[#101012] p-3.5 transition-all duration-300 hover:border-emerald-500/20 hover:bg-[#131316]">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Cluster Uptime</span>
+                    <div className="text-lg font-bold text-zinc-100 font-mono tracking-tight">
+                      {metricsLoading ? '...' : formatUptime(metrics?.uptimeSeconds)}
+                    </div>
+                  </div>
+                  <div className="h-9 w-9 rounded-lg bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-center text-emerald-500">
+                    <Clock className="h-4 w-4" />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Anomaly Alerts Pro Callout Box */}
-          <div className="rounded-xl border border-amber-500/20 bg-gradient-to-b from-amber-500/5 to-rose-500/5 p-5 space-y-3 relative overflow-hidden group">
-            <div className="absolute right-4 bottom-4 opacity-5 group-hover:scale-125 transition-transform duration-300">
-              <Sparkles className="h-16 w-16 text-amber-500" />
-            </div>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
-              <AlertCircle className="h-4 w-4" />
-              Get Alerted For Anomalies
-            </div>
-            <p className="text-xs text-zinc-400 leading-normal">
-              Automatically monitor container memory leaks and network request latency spikes.
-            </p>
-            <Button className="w-full bg-[#141418] border border-[#222227] hover:bg-[#1a1a21] hover:border-[#33333b] text-zinc-300 hover:text-white text-xs h-8 rounded-lg shadow-sm">
-              Upgrade to Pro
-            </Button>
           </div>
 
           {/* Recent Previews List */}
@@ -191,7 +184,7 @@ export function Dashboard() {
             ) : (
               <div className="space-y-3.5">
                 {allDeployments
-                  .filter(dep => dep.projectId && projects.some(p => p.id === dep.projectId))
+                  .filter(dep => dep.status === 'running' && dep.projectId && projects.some(p => p.id === dep.projectId))
                   .slice(0, 5)
                   .map(dep => {
                     const project = projects.find(p => p.id === dep.projectId);

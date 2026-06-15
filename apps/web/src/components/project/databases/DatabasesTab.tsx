@@ -3,17 +3,17 @@ import React, {
 	useEffect,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
-import * as api from "../../api/client";
+import * as api from "../../../api/client";
 import {
 	Card,
 	CardContent,
 	CardHeader,
 	CardTitle,
-} from "../ui/card";
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
-import { StatusBadge } from "../StatusBadge";
+} from "../../ui/card";
+import { Input } from "../../ui/input";
+import { Button } from "../../ui/button";
+import { Badge } from "../../ui/badge";
+import { StatusBadge } from "../../StatusBadge";
 import {
 	Database,
 	Trash2,
@@ -30,14 +30,14 @@ import {
 	DialogTitle,
 	DialogDescription,
 	DialogFooter,
-} from "../ui/dialog";
+} from "../../ui/dialog";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "../ui/select";
+} from "../../ui/select";
 
 interface DatabasesTabProps {
 	projectId: string;

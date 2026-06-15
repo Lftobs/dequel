@@ -3,17 +3,17 @@ import React, {
 	useEffect,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useProject } from "../../hooks/useProjects";
-import * as api from "../../api/client";
+import { useProject } from "../../../hooks/useProjects";
+import * as api from "../../../api/client";
 import {
 	Card,
 	CardContent,
 	CardHeader,
 	CardTitle,
-} from "../ui/card";
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
+} from "../../ui/card";
+import { Input } from "../../ui/input";
+import { Button } from "../../ui/button";
+import { Badge } from "../../ui/badge";
 import {
 	Dialog,
 	DialogContent,
@@ -21,7 +21,7 @@ import {
 	DialogTitle,
 	DialogDescription,
 	DialogFooter,
-} from "../ui/dialog";
+} from "../../ui/dialog";
 import {
 	Cpu,
 	Database,

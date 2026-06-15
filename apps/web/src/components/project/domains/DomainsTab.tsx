@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useProject } from "../../hooks/useProjects";
-import * as api from "../../api/client";
-import { Card, CardContent } from "../ui/card";
+import { useProject } from "../../../hooks/useProjects";
+import * as api from "../../../api/client";
+import { Card, CardContent } from "../../ui/card";
 import {
 	Table,
 	TableBody,
@@ -10,11 +10,11 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from "../ui/table";
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
-import { StatusBadge } from "../StatusBadge";
+} from "../../ui/table";
+import { Input } from "../../ui/input";
+import { Button } from "../../ui/button";
+import { Badge } from "../../ui/badge";
+import { StatusBadge } from "../../StatusBadge";
 import {
 	Trash2,
 	X,
@@ -30,7 +30,7 @@ import {
 	DialogTitle,
 	DialogDescription,
 	DialogFooter,
-} from "../ui/dialog";
+} from "../../ui/dialog";
 
 interface DomainsTabProps {
 	projectId: string;
@@ -270,7 +270,7 @@ export function DomainsTab({
 													IP:{" "}
 													<code className="text-primary font-mono font-bold bg-[#0d0d11] px-1.5 py-0.5 rounded border border-border/50">
 														{serverIp?.ip ??
-															"..."}
+															"../.."}
 													</code>
 												</p>
 											</>
@@ -315,7 +315,7 @@ export function DomainsTab({
 																<td className="px-3 py-2 text-foreground flex items-center justify-between">
 																	<span>
 																		{serverIp?.ip ??
-																			"..."}
+																			"../.."}
 																	</span>
 																	{serverIp?.ip && (
 																		<button

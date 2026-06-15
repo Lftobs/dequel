@@ -1,5 +1,5 @@
-import { Input } from '../ui/input';
-import { cn } from '../../lib/utils';
+import { Input } from '../../ui/input';
+import { cn } from '../../../lib/utils';
 import { Sliders, Database } from 'lucide-react';
 
 interface StepResourcesProps {
@@ -36,13 +36,13 @@ export function StepResources({
   setDbMemory
 }: StepResourcesProps) {
   return (
-    <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+    <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
       <div className="space-y-3.5 bg-[#0c0c0e]/60 p-4 rounded-xl border border-[#222227]">
         <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
           <Sliders className="h-3.5 w-3.5 text-amber-500" />
           Cluster Resource Limits
         </h4>
-        <div className="grid gap-3.5 sm:grid-cols-2 text-xs">
+        <div className="grid gap-3.5 sm:grid-cols-3 text-xs">
           <div className="grid gap-1.5">
             <label htmlFor="cpuLimit" className="font-semibold text-zinc-400">CPU Allocation (cores)</label>
             <Input

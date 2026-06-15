@@ -31,8 +31,8 @@ services:
 
     api:
         image: ghcr.io/lftobs/dequel/api:latest
-        build:
-            context: ./apps/api
+        # build:
+        #     context: ./apps/api
         environment:
             PORT: 3001
             DATABASE_PATH: /app/data/dequel.db
@@ -72,8 +72,8 @@ services:
 
     web:
         image: ghcr.io/lftobs/dequel/web:latest
-        build:
-            context: ./apps/web
+        # build:
+        #     context: ./apps/web
         healthcheck:
             test:
                 [
@@ -147,7 +147,14 @@ services:
                 aliases:
                     - cadvisor
         healthcheck:
-            test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/metrics"]
+            test:
+                [
+                    "CMD",
+                    "wget",
+                    "--spider",
+                    "-q",
+                    "http://localhost:8080/metrics",
+                ]
             interval: 10s
             timeout: 3s
             retries: 3
@@ -172,7 +179,14 @@ services:
                 aliases:
                     - prometheus
         healthcheck:
-            test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/ready"]
+            test:
+                [
+                    "CMD",
+                    "wget",
+                    "--spider",
+                    "-q",
+                    "http://localhost:9090/-/ready",
+                ]
             interval: 10s
             timeout: 3s
             retries: 3
@@ -190,7 +204,14 @@ services:
                 aliases:
                     - loki
         healthcheck:
-            test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
+            test:
+                [
+                    "CMD",
+                    "wget",
+                    "--spider",
+                    "-q",
+                    "http://localhost:3100/ready",
+                ]
             interval: 10s
             timeout: 3s
             retries: 3
@@ -231,7 +252,14 @@ services:
                 aliases:
                     - grafana
         healthcheck:
-            test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+            test:
+                [
+                    "CMD",
+                    "wget",
+                    "--spider",
+                    "-q",
+                    "http://localhost:3000/api/health",
+                ]
             interval: 10s
             timeout: 3s
             retries: 5

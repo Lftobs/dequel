@@ -218,6 +218,13 @@ declare module 'astro:content' {
   collection: "docs";
   data: any
 } & { render(): Render[".md"] };
+"system-config.md": {
+	id: "system-config.md";
+  slug: "system-config";
+  body: string;
+  collection: "docs";
+  data: any
+} & { render(): Render[".md"] };
 "volumes.md": {
 	id: "volumes.md";
   slug: "volumes";
