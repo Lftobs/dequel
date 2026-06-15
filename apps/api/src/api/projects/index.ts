@@ -121,7 +121,7 @@ export const projectsRoutes = new Elysia()
 			}
 			const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
 			const slug = slugify(project.name);
-			const domains = [`${slug}.localhost`];
+			const domains = [`${slug}.${config.caddyBaseDomain}`];
 			const projectDomains = await listDomains(id);
 			const verified = projectDomains.filter(d => d.validationStatus === 'verified');
 			for (const d of verified) {
@@ -197,7 +197,7 @@ export const projectsRoutes = new Elysia()
 			}
 			const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
 			const slug = slugify(project.name);
-			const domains = [`${slug}.localhost`];
+			const domains = [`${slug}.${config.caddyBaseDomain}`];
 			const projectDomains = await listDomains(id);
 			const verified = projectDomains.filter(d => d.validationStatus === 'verified');
 			for (const d of verified) {
@@ -250,7 +250,7 @@ export const projectsRoutes = new Elysia()
 			const encoder = new TextEncoder();
 			const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
 			const slug = slugify(project.name);
-			const domains = [`${slug}.localhost`];
+			const domains = [`${slug}.${config.caddyBaseDomain}`];
 			const projectDomains = await listDomains(id);
 			const verified = projectDomains.filter(d => d.validationStatus === 'verified');
 			for (const d of verified) {

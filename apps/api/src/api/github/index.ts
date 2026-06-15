@@ -198,7 +198,8 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			set.status = 401;
 			return { error: "Not authenticated" };
 		}
-		const webhookUrl = `${config.publicUrl}/api/github/webhook`;
+		const baseUrl = config.caddyBaseDomain === 'localhost' ? 'http://localhost' : `https://${config.caddyBaseDomain}`;
+		const webhookUrl = `${baseUrl}/api/github/webhook`;
 		const integration = await getGithubIntegration();
 		const secret = integration?.webhookSecret || config.githubWebhookSecret;
 
@@ -229,7 +230,8 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			set.status = 401;
 			return { error: "Not authenticated" };
 		}
-		const webhookUrl = `${config.publicUrl}/api/github/webhook`;
+		const baseUrl = config.caddyBaseDomain === 'localhost' ? 'http://localhost' : `https://${config.caddyBaseDomain}`;
+		const webhookUrl = `${baseUrl}/api/github/webhook`;
 		const hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);
 		const existing = Array.isArray(hooks) ? hooks.find((h: any) => h.config?.url === webhookUrl) : null;
 		if (!existing) {

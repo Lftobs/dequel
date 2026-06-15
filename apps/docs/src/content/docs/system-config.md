@@ -74,6 +74,22 @@ Config file equivalent:
 
 On boot, these values seed the `smtp_settings` table. The password is encrypted at rest using `ENV_ENCRYPTION_KEY`. You can also update these from the Settings page in the dashboard, and send a test email to verify the configuration.
 
+### Ingress
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CADDY_BASE_DOMAIN` | `localhost` | Base domain for deployment subdomains. Deployed apps are reachable at `https://<slug>.<domain>`. GitHub webhook URLs are derived from this automatically. Set to a real domain (e.g. `example.com`) and configure wildcard DNS for auto-SSL. |
+| `CADDY_EMAIL` | `""` | Email address for Let's Encrypt SSL certificate expiration notifications |
+
+Config file equivalent:
+
+```json
+{
+  "caddyBaseDomain": "example.com",
+  "caddyEmail": "admin@example.com"
+}
+```
+
 ## Full Config File Example
 
 ```json

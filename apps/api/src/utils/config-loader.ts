@@ -9,7 +9,7 @@ export interface FileConfig {
   databasePath?: string;
   workspaceRoot?: string;
   caddyRoutesDir?: string;
-  caddyIngressBase?: string;
+  caddyBaseDomain?: string;
   dockerNetwork?: string;
   appInternalPort?: number;
   buildkitHost?: string;
