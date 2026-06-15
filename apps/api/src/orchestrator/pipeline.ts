@@ -13,7 +13,7 @@ import { listEnvironmentVariablesForDeploy } from "../db/repo";
 import { listVolumes } from "../db/repo";
 import { logBus } from "./log-bus";
 import { DeploymentQueue } from "./queue";
-import { buildWithRailpack } from "./railpack";
+import { buildWithRailpack, CancelledError } from "./railpack";
 import {
 	prepareSourceWorkspace,
 	prepareUploadWorkspace,
@@ -56,9 +56,17 @@ const emitLog = async (
 export class PipelineOrchestrator {
 	private queue: DeploymentQueue;
 	private started = false;
+	private abortControllers = new Map<string, AbortController>();
 
 	constructor() {
 		this.queue = new DeploymentQueue();
+	}
+
+	private async checkCancelled(deploymentId: string) {
+		const dep = await getDeploymentById(deploymentId);
+		if (dep?.status === "failed") {
+			throw new CancelledError();
+		}
 	}
 
 	startWorker() {
@@ -98,6 +106,12 @@ export class PipelineOrchestrator {
 			deployment.status !== "building"
 		)
 			return;
+
+		const controller = this.abortControllers.get(deploymentId);
+		if (controller) {
+			controller.abort();
+			this.abortControllers.delete(deploymentId);
+		}
 
 		await Promise.all([
 			this.queue.remove(deploymentId),
@@ -269,6 +283,9 @@ export class PipelineOrchestrator {
 		if (deployment.status === "failed")
 			return true;
 
+		const controller = new AbortController();
+		this.abortControllers.set(deploymentId, controller);
+
 		let workspacePath = "";
 		let uploadedArchivePath: string | null =
 			null;
@@ -343,6 +360,8 @@ export class PipelineOrchestrator {
 						);
 				}
 
+				await this.checkCancelled(deploymentId);
+
 				await emitLog(
 					deploymentId,
 					"build",
@@ -352,9 +371,8 @@ export class PipelineOrchestrator {
 					deployment.projectId ||
 					deploymentId;
 			const project = deployment.projectId ? await getProjectById(deployment.projectId) : null;
-			const buildDir = project?.sourceDir ? workspacePath + '/' + project.sourceDir.replace(/^\//, '') : workspacePath;
 			await buildWithRailpack(
-				buildDir,
+				workspacePath,
 				imageTag,
 				async (line) => {
 					await emitLog(
@@ -363,7 +381,7 @@ export class PipelineOrchestrator {
 						line,
 					);
 				},
-				{ cacheKey },
+				{ cacheKey, sourceDir: project?.sourceDir, signal: controller.signal },
 			);
 			} else {
 				await emitLog(
@@ -372,6 +390,8 @@ export class PipelineOrchestrator {
 					`Rolling back to existing image: ${imageTag}`,
 				);
 			}
+
+			await this.checkCancelled(deploymentId);
 
 			await updateDeploymentStatus(
 				deploymentId,
@@ -383,6 +403,8 @@ export class PipelineOrchestrator {
 				"deploy",
 				"Starting container deployment",
 			);
+
+			await this.checkCancelled(deploymentId);
 
 			let envVars:
 				| Record<string, string>
@@ -455,6 +477,8 @@ export class PipelineOrchestrator {
 					);
 				}
 			}
+
+			await this.checkCancelled(deploymentId);
 
 			let projectName: string | undefined;
 			let cpuLimit:
@@ -555,6 +579,9 @@ export class PipelineOrchestrator {
 			);
 			return true;
 		} catch (error) {
+			if (error instanceof CancelledError) {
+				return true;
+			}
 			const message =
 				error instanceof Error
 					? error.message
@@ -598,6 +625,7 @@ export class PipelineOrchestrator {
 			}
 			return false;
 		} finally {
+			this.abortControllers.delete(deploymentId);
 			if (workspacePath)
 				await cleanupWorkspace(
 					workspacePath,

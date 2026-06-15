@@ -37,6 +37,47 @@ function formatTimeAgo(dateStr: string) {
 	return `${Math.floor(hours / 24)}d ago`;
 }
 
+function parseTimestamp(raw: string) {
+	if (!raw) return Date.now();
+	const normalized = raw.includes(" ") && !raw.includes("T") ? raw.replace(" ", "T") : raw;
+	const d = new Date(normalized);
+	return Number.isNaN(d.getTime()) ? Date.now() : d.getTime();
+}
+
+function DeploymentDuration({ deployment }: { deployment: any }) {
+	const [duration, setDuration] = useState("");
+
+	useEffect(() => {
+		const calculate = () => {
+			const start = parseTimestamp(deployment.createdAt);
+			const status = deployment.status;
+			const isFinished = status !== "pending" && status !== "building" && status !== "deploying";
+			const end = isFinished ? parseTimestamp(deployment.updatedAt) : Date.now();
+			
+			const diff = Math.max(0, end - start);
+			const secs = Math.floor(diff / 1000);
+			if (secs < 60) {
+				setDuration(`${secs}s`);
+			} else {
+				const mins = Math.floor(secs / 60);
+				const remainingSecs = secs % 60;
+				setDuration(`${mins}m ${remainingSecs}s`);
+			}
+		};
+
+		calculate();
+		
+		const status = deployment.status;
+		const isFinished = status !== "pending" && status !== "building" && status !== "deploying";
+		if (isFinished) return;
+
+		const interval = setInterval(calculate, 1000);
+		return () => clearInterval(interval);
+	}, [deployment.createdAt, deployment.updatedAt, deployment.status]);
+
+	return <span className="font-mono text-xs text-muted-foreground">{duration}</span>;
+}
+
 const PAGE_SIZE = 5;
 
 function depDisplayName(projectName: string | undefined, depId: string) {
@@ -462,6 +503,9 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 									Branch
 								</TableHead>
 								<TableHead>
+									Duration
+								</TableHead>
+								<TableHead>
 									Age
 								</TableHead>
 								<TableHead className="w-24"></TableHead>
@@ -527,6 +571,9 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 													—
 												</span>
 											)}
+										</TableCell>
+										<TableCell>
+											<DeploymentDuration deployment={dep} />
 										</TableCell>
 										<TableCell className="text-xs text-muted-foreground">
 											{formatTimeAgo(
@@ -734,10 +781,16 @@ function DeploymentLogs({
 	return (
 		<Card>
 			<CardHeader className="pb-3">
-				<CardTitle className="text-sm flex items-center gap-2">
-					<Terminal className="h-4 w-4" />
-					Build Logs —{" "}
-					{deployment.id.slice(0, 8)}
+				<CardTitle className="text-sm flex items-center justify-between w-full">
+					<span className="flex items-center gap-2">
+						<Terminal className="h-4 w-4" />
+						Build Logs —{" "}
+						{deployment.id.slice(0, 8)}
+					</span>
+					<span className="text-xs font-normal text-muted-foreground flex items-center gap-2 select-none">
+						<span>Duration:</span>
+						<DeploymentDuration deployment={deployment} />
+					</span>
 				</CardTitle>
 			</CardHeader>
 			<CardContent>

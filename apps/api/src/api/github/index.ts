@@ -39,6 +39,25 @@ const fetchGitHub = async (path: string, token: string) => {
 	return res.json();
 };
 
+const fetchGitHubWithBody = async (path: string, token: string, method: string, body?: unknown) => {
+	const res = await fetch(`https://api.github.com${path}`, {
+		method,
+		headers: {
+			Authorization: `Bearer ${token}`,
+			Accept: "application/vnd.github.v3+json",
+			"Content-Type": "application/json",
+			"User-Agent": "dequel",
+		},
+		body: body ? JSON.stringify(body) : undefined,
+	});
+	if (!res.ok) {
+		const err = await res.text();
+		throw new Error(`GitHub API error ${res.status}: ${err}`);
+	}
+	if (res.status === 204) return null;
+	return res.json();
+};
+
 export const githubRoutes = new Elysia({ prefix: "/github" })
 	.get("/integration", async () => {
 		const integration = await getGithubIntegration();
@@ -161,6 +180,63 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			defaultBranch: r.default_branch,
 			owner: { login: r.owner.login, avatarUrl: r.owner.avatar_url },
 		}));
+	})
+
+	.get("/repos/:owner/:repo/hooks", async ({ request, set, params }) => {
+		const token = getSession(request.headers.get("cookie"));
+		if (!token) {
+			set.status = 401;
+			return { error: "Not authenticated" };
+		}
+		const hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);
+		return Array.isArray(hooks) ? hooks.map((h: any) => ({ id: h.id, url: h.config.url, active: h.active, events: h.events })) : [];
+	})
+
+	.post("/repos/:owner/:repo/hook", async ({ request, set, params }) => {
+		const token = getSession(request.headers.get("cookie"));
+		if (!token) {
+			set.status = 401;
+			return { error: "Not authenticated" };
+		}
+		const webhookUrl = `${config.publicUrl}/api/github/webhook`;
+		const integration = await getGithubIntegration();
+		const secret = integration?.webhookSecret || config.githubWebhookSecret;
+
+		const hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);
+		const existing = Array.isArray(hooks) ? hooks.find((h: any) => h.config?.url === webhookUrl) : null;
+
+		if (existing) {
+			return { id: existing.id, created: false, url: webhookUrl };
+		}
+
+		const hook = await fetchGitHubWithBody(`/repos/${params.owner}/${params.repo}/hooks`, token, "POST", {
+			name: "web",
+			active: true,
+			events: ["push"],
+			config: {
+				url: webhookUrl,
+				content_type: "json",
+				secret,
+				insecure_ssl: "0",
+			},
+		});
+		return { id: hook.id, created: true, url: webhookUrl };
+	})
+
+	.delete("/repos/:owner/:repo/hook", async ({ request, set, params }) => {
+		const token = getSession(request.headers.get("cookie"));
+		if (!token) {
+			set.status = 401;
+			return { error: "Not authenticated" };
+		}
+		const webhookUrl = `${config.publicUrl}/api/github/webhook`;
+		const hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);
+		const existing = Array.isArray(hooks) ? hooks.find((h: any) => h.config?.url === webhookUrl) : null;
+		if (!existing) {
+			return { ok: true, removed: false };
+		}
+		await fetchGitHubWithBody(`/repos/${params.owner}/${params.repo}/hooks/${existing.id}`, token, "DELETE");
+		return { ok: true, removed: true };
 	})
 
 	.post("/disconnect", async ({ set, request }) => {

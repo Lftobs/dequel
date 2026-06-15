@@ -12,7 +12,6 @@ import { serverManager } from './servers/manager';
 import { startGitWatcher } from './git/watcher';
 import { startDomainPolling } from './utils/domain-verifier';
 import { alertEvaluator } from './monitoring/evaluator';
-
 const bootstrap = async () => {
   await mkdir(dirname(config.databasePath), { recursive: true });
   await mkdir(config.workspaceRoot, { recursive: true });

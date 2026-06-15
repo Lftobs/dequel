@@ -78,6 +78,10 @@ jobs:
           cp infra/monitoring/grafana/datasources/prometheus.yml "$TAR_DIR/infra/monitoring/grafana/datasources/"
           cd "$TAR_DIR" && tar -czf "../dequel-config-${VERSION}.tar.gz" .
 
+      - name: Inject PostHog key into install script
+        run: |
+          sed -i "s|__POSTHOG_API_KEY__|${{ secrets.POSTHOG_API_KEY }}|g" scripts/install.sh
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

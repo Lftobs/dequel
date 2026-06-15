@@ -60,6 +60,8 @@ export function CreateProjectDialog({
 
 	const [sourceType, setSourceType] =
 		useState("git");
+	const [zipFile, setZipFile] =
+		useState<File | null>(null);
 	const [cpuLimit, setCpuLimit] = useState("");
 	const [memoryLimitMb, setMemoryLimitMb] =
 		useState("");
@@ -129,6 +131,7 @@ export function CreateProjectDialog({
 			setSelectedRepo(null);
 			setSourceType("git");
 			setPort("");
+			setZipFile(null);
 		}
 	};
 
@@ -137,6 +140,11 @@ export function CreateProjectDialog({
 	) => {
 		e.preventDefault();
 		if (!name.trim()) return;
+
+		if (step < 3) {
+			setStep((prev) => prev + 1);
+			return;
+		}
 
 		setSubmittingStatus("creating_project");
 		setErrorMessage("");
@@ -167,6 +175,15 @@ export function CreateProjectDialog({
 						undefined,
 					sourceType,
 				});
+
+			if (zipFile && sourceType === "upload") {
+				setSubmittingStatus("creating_project");
+				const form = new FormData();
+				form.append("sourceType", "upload");
+				form.append("projectId", project.id);
+				form.append("archive", zipFile);
+				await api.createDeployment(form);
+			}
 
 			if (stagedEnvs.length > 0) {
 				setSubmittingStatus(
@@ -408,9 +425,11 @@ export function CreateProjectDialog({
 								setSourceType={
 									setSourceType
 								}
-								port={port}
-								setPort={setPort}
-							/>
+							port={port}
+							setPort={setPort}
+							zipFile={zipFile}
+							setZipFile={setZipFile}
+						/>
 						)}
 
 						{step === 2 && (

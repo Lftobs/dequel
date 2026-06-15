@@ -36,6 +36,8 @@ interface StepBasicsProps {
 	setSourceType: (v: string) => void;
 	port: string;
 	setPort: (v: string) => void;
+	zipFile: File | null;
+	setZipFile: (v: File | null) => void;
 }
 
 const sourceOptions = [
@@ -80,6 +82,8 @@ export function StepBasics({
 	setSourceType,
 	port,
 	setPort,
+	zipFile,
+	setZipFile,
 }: StepBasicsProps) {
 	const [showManual, setShowManual] =
 		useState(false);
@@ -312,6 +316,7 @@ export function StepBasics({
 							/>
 							<div className="flex items-center gap-2">
 								<button
+									type="button"
 									onClick={() =>
 										setShowManual(
 											!showManual,
@@ -363,6 +368,7 @@ export function StepBasics({
 					) : (
 						<div className="space-y-3">
 							<button
+								type="button"
 								onClick={
 									handleConnectGithub
 								}
@@ -397,6 +403,7 @@ export function StepBasics({
 
 							<div className="flex items-center gap-2">
 								<button
+									type="button"
 									onClick={() =>
 										setShowManual(
 											!showManual,
@@ -447,12 +454,56 @@ export function StepBasics({
 						Source Details
 					</h4>
 					{sourceType === "upload" && (
-						<p className="text-xs text-zinc-500">
-							Upload your source
-							code as a ZIP archive
-							after creating the
-							project.
-						</p>
+						<div className="grid gap-3.5 text-xs">
+							<div className="grid gap-1.5">
+								<label className="font-semibold text-zinc-400">
+									ZIP Archive
+								</label>
+								<label
+									htmlFor="zip-upload"
+									className={cn(
+										"flex items-center gap-2 p-3 rounded-lg border-2 border-dashed cursor-pointer transition-all",
+										zipFile
+											? "border-emerald-500/40 bg-emerald-500/5"
+											: "border-[#222227] bg-[#141418] hover:border-zinc-600",
+									)}
+								>
+									<Upload className="h-4 w-4 text-zinc-500" />
+									<span className={cn(
+										"text-xs",
+										zipFile
+											? "text-emerald-400"
+											: "text-zinc-400",
+									)}>
+										{zipFile
+											? zipFile.name
+											: "Click to select a ZIP file"}
+									</span>
+								</label>
+								<input
+									id="zip-upload"
+									type="file"
+									accept=".zip"
+									className="hidden"
+									onChange={(e) => {
+										const file = e.target.files?.[0] || null;
+										setZipFile(file);
+									}}
+								/>
+								{zipFile && (
+									<button
+										type="button"
+										onClick={() => setZipFile(null)}
+										className="text-[10px] text-zinc-600 hover:text-zinc-400 self-start"
+									>
+										Remove file
+									</button>
+								)}
+								<span className="text-[10px] text-zinc-500">
+									Upload your source code as a ZIP archive. It will be deployed automatically after project creation.
+								</span>
+							</div>
+						</div>
 					)}
 					{sourceType === "compose" && (
 						<p className="text-xs text-zinc-500">

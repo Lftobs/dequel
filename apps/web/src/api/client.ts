@@ -498,3 +498,18 @@ export const testSmtpSettings = () =>
 	apiFetch<{ ok: boolean } | { error: string }>("/settings/smtp/test", {
 		method: "POST",
 	});
+
+// ─── GitHub Webhook ───────────────────────────────────────
+
+export const getRepoHooks = (owner: string, repo: string) =>
+	apiFetch<Array<{ id: number; url: string; active: boolean; events: string[] }>>(`/github/repos/${owner}/${repo}/hooks`);
+
+export const registerRepoHook = (owner: string, repo: string) =>
+	apiFetch<{ id: number; created: boolean; url: string }>(`/github/repos/${owner}/${repo}/hook`, {
+		method: "POST",
+	});
+
+export const removeRepoHook = (owner: string, repo: string) =>
+	apiFetch<{ ok: boolean; removed: boolean }>(`/github/repos/${owner}/${repo}/hook`, {
+		method: "DELETE",
+	});
