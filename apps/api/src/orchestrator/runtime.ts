@@ -103,7 +103,8 @@ export const deployContainer = async (
   const slug = slugify(opts.projectName || opts.projectId || deploymentId);
   const shortId = deploymentId.slice(0, 8);
   const containerName = `${slug}-${shortId}`;
-  const liveUrl = `http://${slug}.localhost`;
+  const scheme = config.caddyBaseDomain === 'localhost' ? 'http' : 'https';
+  const liveUrl = `${scheme}://${slug}.${config.caddyBaseDomain}`;
 
   await onLog(`Starting container ${containerName} from image ${imageTag}`);
 

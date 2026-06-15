@@ -278,7 +278,8 @@ class ScalingEngine {
       targets.push(`deploy-${dep.id}-replica-${i}:${port}`);
     }
 
-    const caddySnippet = `${slug}.localhost:80 {\n  reverse_proxy ${targets.join(' ')}\n}\n`;
+    const baseDomain = config.caddyBaseDomain === 'localhost' ? `${config.caddyBaseDomain}:80` : config.caddyBaseDomain;
+    const caddySnippet = `${slug}.${baseDomain} {\n  reverse_proxy ${targets.join(' ')}\n}\n`;
     await writeFile(routeFile, caddySnippet, 'utf8');
 
     // Reload Caddy

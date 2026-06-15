@@ -38,7 +38,7 @@ services:
             DATABASE_PATH: /app/data/dequel.db
             WORKSPACE_ROOT: /app/workspace
             CADDY_ROUTES_DIR: /caddy/routes
-            CADDY_INGRESS_BASE: http://localhost
+            CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
             DOCKER_NETWORK: dequel_net
             APP_INTERNAL_PORT: 3000
             BUILDKIT_HOST: tcp://buildkit:1234
@@ -103,8 +103,12 @@ services:
                 "caddyfile",
                 "--watch",
             ]
+        environment:
+            CADDY_EMAIL: ${CADDY_EMAIL:-}
+            CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
         ports:
             - "80:80"
+            - "443:443"
         volumes:
             - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
             - ./infra/caddy/routes:/etc/caddy/routes

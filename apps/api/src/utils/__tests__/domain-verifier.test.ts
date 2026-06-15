@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 
 let tmpDir: string;
 let routesDir: string;
-const testConfig = { caddyRoutesDir: '', appInternalPort: 3000 };
+const testConfig = { caddyRoutesDir: '', appInternalPort: 3000, caddyBaseDomain: 'localhost' };
 
 const fileUrl = (path: string) => new URL(path, import.meta.url).toString();
 mock.module(fileUrl('../config'), () => ({ config: testConfig }));
