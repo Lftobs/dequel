@@ -2,17 +2,18 @@ import { useState, useEffect } from "react";
 import {
 	getGithubRepos,
 	disconnectGithub,
+	getRepoHooks,
+	registerRepoHook,
+	removeRepoHook,
 } from "../../api/client";
 import type { GithubRepo } from "../../types";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import {
 	Search,
-	X,
 	GitFork,
 	Lock,
 	Globe,
-	ExternalLink,
 	RefreshCw,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -34,6 +35,9 @@ export function RepoPicker({
 	const [loading, setLoading] = useState(true);
 	const [search, setSearch] = useState("");
 	const [error, setError] = useState("");
+	const [webhookActive, setWebhookActive] = useState(false);
+	const [webhookLoading, setWebhookLoading] = useState(false);
+	const [webhookChecked, setWebhookChecked] = useState(false);
 
 	const fetchRepos = async () => {
 		setLoading(true);
@@ -53,6 +57,45 @@ export function RepoPicker({
 	useEffect(() => {
 		fetchRepos();
 	}, []);
+
+	useEffect(() => {
+		if (!selected) {
+			setWebhookActive(false);
+			setWebhookChecked(false);
+			return;
+		}
+		const checkWebhook = async () => {
+			try {
+				const [owner, repo] = selected.fullName.split("/");
+				const hooks = await getRepoHooks(owner, repo);
+				setWebhookActive(hooks.length > 0);
+			} catch {
+				setWebhookActive(false);
+			} finally {
+				setWebhookChecked(true);
+			}
+		};
+		checkWebhook();
+	}, [selected]);
+
+	const toggleWebhook = async () => {
+		if (!selected) return;
+		setWebhookLoading(true);
+		try {
+			const [owner, repo] = selected.fullName.split("/");
+			if (webhookActive) {
+				await removeRepoHook(owner, repo);
+				setWebhookActive(false);
+			} else {
+				await registerRepoHook(owner, repo);
+				setWebhookActive(true);
+			}
+		} catch {
+			setWebhookActive(false);
+		} finally {
+			setWebhookLoading(false);
+		}
+	};
 
 	const filtered = repos.filter((r) =>
 		r.fullName
@@ -99,6 +142,33 @@ export function RepoPicker({
 						Change
 					</Button>
 				</div>
+				{webhookChecked && (
+					<button
+						type="button"
+						onClick={toggleWebhook}
+						disabled={webhookLoading}
+						className={cn(
+							"w-full flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-[10px] font-medium transition-all border",
+							webhookActive
+								? "bg-emerald-900/20 border-emerald-800/30 text-emerald-400 hover:bg-emerald-900/30"
+								: "bg-[#141418] border-[#222227] text-zinc-500 hover:text-zinc-300 hover:border-zinc-600",
+						)}
+					>
+						{webhookLoading ? (
+							<RefreshCw className="h-3 w-3 animate-spin" />
+						) : webhookActive ? (
+							<>
+								<span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+								Auto-Deploy Active
+							</>
+						) : (
+							<>
+								<span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+								Enable Auto-Deploy
+							</>
+						)}
+					</button>
+				)}
 			</div>
 		);
 	}
