@@ -9,7 +9,7 @@ In this guide, we'll configure a project, push the codebase, and verify that the
 
 ## Step 1: Create a Project
 
-Navigate to the Dequel dashboard (normally hosted at `localhost:5173`) and click the **+ Create Project** button in the upper right corner.
+Navigate to the Dequel dashboard (at `http://localhost` or your configured `CADDY_BASE_DOMAIN`) and click the **+ Create Project** button in the upper right corner.
 
 - Enter a unique project name (e.g. `my-web-app`).
 - Configure CPU limit boundaries (e.g., `0.5 cores`) and Memory bounds (e.g., `512MB`).
