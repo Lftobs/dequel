@@ -10,6 +10,9 @@ import type {
 	ApiKey,
 	Alert,
 	Log,
+	GithubRepo,
+	GithubIntegrationStatus,
+	SmtpSettingsStatus,
 } from "../types";
 
 const BASE = "/api";
@@ -81,6 +84,9 @@ export const createProject = (data: {
 	repoBranch?: string;
 	cpuLimit?: number;
 	memoryLimitMb?: number;
+	port?: number;
+	sourceDir?: string;
+	sourceType?: string;
 }) =>
 	apiFetch<Project>("/projects", {
 		method: "POST",
@@ -91,6 +97,9 @@ export const updateProject = (
 	data: Partial<Project> & {
 		repoUrl?: string | null;
 		repoBranch?: string | null;
+		baseDomain?: string | null;
+		sourceDir?: string | null;
+		port?: number | null;
 	},
 ) =>
 	apiFetch<Project>(`/projects/${id}`, {
@@ -439,5 +448,68 @@ export const toggleAlert = (
 	});
 export const deleteAlert = (id: string) =>
 	apiFetch<{ ok: boolean }>(`/alerts/${id}`, {
+		method: "DELETE",
+	});
+
+// ─── GitHub OAuth ───────────────────────────────────────
+
+export const getGithubAuthUrl = () =>
+	apiFetch<{ url: string }>("/github/auth-url");
+
+export const getGithubUser = () =>
+	apiFetch<{ login: string; avatar_url: string }>("/github/user");
+
+export const getGithubRepos = () =>
+	apiFetch<GithubRepo[]>("/github/repos");
+
+export const disconnectGithub = () =>
+	apiFetch<{ ok: boolean }>("/github/disconnect", { method: "POST" });
+
+export const getGithubIntegration = () =>
+	apiFetch<GithubIntegrationStatus>("/github/integration");
+
+export const setGithubIntegration = (data: {
+	clientId: string;
+	clientSecret: string;
+	appName?: string;
+	webhookSecret?: string;
+}) =>
+	apiFetch<{ ok: boolean }>("/github/integration", {
+		method: "PUT",
+		body: JSON.stringify(data),
+	});
+
+export const getSmtpSettings = () =>
+	apiFetch<SmtpSettingsStatus>("/settings/smtp");
+
+export const setSmtpSettings = (data: {
+	host: string;
+	port: number;
+	user?: string;
+	pass?: string;
+	fromAddress?: string;
+}) =>
+	apiFetch<{ ok: boolean }>("/settings/smtp", {
+		method: "PUT",
+		body: JSON.stringify(data),
+	});
+
+export const testSmtpSettings = () =>
+	apiFetch<{ ok: boolean } | { error: string }>("/settings/smtp/test", {
+		method: "POST",
+	});
+
+// ─── GitHub Webhook ───────────────────────────────────────
+
+export const getRepoHooks = (owner: string, repo: string) =>
+	apiFetch<Array<{ id: number; url: string; active: boolean; events: string[] }>>(`/github/repos/${owner}/${repo}/hooks`);
+
+export const registerRepoHook = (owner: string, repo: string) =>
+	apiFetch<{ id: number; created: boolean; url: string }>(`/github/repos/${owner}/${repo}/hook`, {
+		method: "POST",
+	});
+
+export const removeRepoHook = (owner: string, repo: string) =>
+	apiFetch<{ ok: boolean; removed: boolean }>(`/github/repos/${owner}/${repo}/hook`, {
 		method: "DELETE",
 	});

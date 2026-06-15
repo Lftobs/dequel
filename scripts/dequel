@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEQUEL_HOME="${DEQUEL_HOME:-$HOME/.dequel}"
+COMPOSE_FILE="$DEQUEL_HOME/docker-compose.yml"
+VERSION="0.1.0"
+
+BOLD='\033[1m'
+DIM='\033[2m'
+GREEN='\033[0;32m'
+AMBER='\033[0;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+header()  { printf "\n${BOLD}${AMBER}==>${NC}${BOLD} %s${NC}\n" "$*"; }
+info()    { printf "  ${DIM}%s${NC}\n" "$*"; }
+success() { printf "  ${GREEN}✓${NC} %s\n" "$*"; }
+fail()    { printf "  ${RED}✗${NC} %s\n" "$*"; exit 1; }
+
+cmd() {
+	if [ ! -f "$COMPOSE_FILE" ]; then
+		fail "Dequel not found at $DEQUEL_HOME. Run install.sh first or set \$DEQUEL_HOME."
+	fi
+	docker compose -f "$COMPOSE_FILE" "$@"
+}
+
+cmd_start() {
+	header "Starting Dequel"
+	cmd up -d
+	success "Dequel is running at http://localhost"
+}
+
+cmd_stop() {
+	header "Stopping Dequel"
+	cmd down
+	success "Dequel stopped."
+}
+
+cmd_restart() {
+	header "Restarting Dequel"
+	cmd restart
+	success "Dequel restarted."
+}
+
+cmd_status() {
+	cmd ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+}
+
+cmd_logs() {
+	shift
+	cmd logs -f "$@"
+}
+
+cmd_update() {
+	header "Updating Dequel"
+	cmd pull
+	cmd up -d
+	success "Dequel updated."
+}
+
+cmd_uninstall() {
+	echo ""
+	echo "${BOLD}${RED}⚠  Dequel Uninstall${NC}"
+	echo ""
+	echo "  This will permanently remove:"
+	echo ""
+	[ -d "$DEQUEL_HOME" ] && echo "  • Config directory: $DEQUEL_HOME"
+	[ -L "/usr/local/bin/dequel" ] && echo "  • CLI symlink: /usr/local/bin/dequel"
+	echo "  • Docker Compose stack (services + networks)"
+	echo "  • Docker named volumes (buildkit, redis, prometheus, loki, grafana data)"
+	echo "  • Docker images (ghcr.io/lftobs/dequel/api, ghcr.io/lftobs/dequel/web)"
+	echo ""
+	echo "  ${BOLD}Your deployed projects will lose their observability stack.${NC}"
+	echo ""
+	read -r -p "  ${BOLD}${RED}Are you sure?${NC} Type 'yes' to confirm: " CONFIRM
+
+	if [ "$CONFIRM" != "yes" ]; then
+		echo ""
+		info "Uninstall cancelled."
+		exit 0
+	fi
+
+	if [ -f "$COMPOSE_FILE" ]; then
+		header "Stopping services"
+		docker compose -f "$COMPOSE_FILE" down -v || true
+		success "Services stopped and volumes removed."
+	fi
+
+	header "Removing Docker images"
+	docker rmi -f ghcr.io/lftobs/dequel/api:latest ghcr.io/lftobs/dequel/web:latest 2>/dev/null || true
+	success "Images removed."
+
+	if [ -d "$DEQUEL_HOME" ]; then
+		header "Removing config directory"
+		rm -rf "$DEQUEL_HOME"
+		success "Removed $DEQUEL_HOME"
+	fi
+
+	if [ -L "/usr/local/bin/dequel" ]; then
+		header "Removing CLI symlink"
+		rm -f /usr/local/bin/dequel
+		success "Removed /usr/local/bin/dequel"
+	fi
+
+	echo ""
+	success "${BOLD}Dequel uninstalled.${NC}"
+	echo ""
+	info "Docker Engine and Docker Compose were left untouched."
+	echo ""
+}
+
+cmd_version() {
+	echo "dequel v$VERSION"
+}
+
+cmd_help() {
+	echo "Dequel - Self-hosted deployment platform"
+	echo ""
+	echo "Usage: dequel <command>"
+	echo ""
+	echo "Commands:"
+	echo "  start      Start all Dequel services"
+	echo "  stop       Stop all Dequel services"
+	echo "  restart    Restart all Dequel services"
+	echo "  status     Show service status"
+	echo "  logs       Follow service logs"
+	echo "  update     Pull latest images and recreate services"
+	echo "  uninstall  Remove Dequel completely (config, images, volumes)"
+	echo "  --version  Show version"
+	echo "  --help     Show this help"
+	echo ""
+	echo "Environment:"
+	echo "  DEQUEL_HOME  Config directory (default: \$HOME/.dequel)"
+}
+
+case "${1:-}" in
+	start)    cmd_start ;;
+	stop)     cmd_stop ;;
+	restart)  cmd_restart ;;
+	status)   cmd_status ;;
+	logs)     cmd_logs "$@" ;;
+	update)   cmd_update ;;
+	uninstall) cmd_uninstall ;;
+	--version|-v) cmd_version ;;
+	--help|-h|"") cmd_help ;;
+	*)        fail "Unknown command: $1. Run 'dequel --help' for usage." ;;
+esac

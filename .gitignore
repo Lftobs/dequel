@@ -2,9 +2,11 @@ node_modules
 dist
 .DS_Store
 *.log
+.env
 data
 workspace
 .specs
-routes/
+infra/caddy/routes/
 bugs
 apps/api/index
+docker-compose.yml

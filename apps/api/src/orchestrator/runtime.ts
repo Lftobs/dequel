@@ -15,6 +15,7 @@ export interface RuntimeOpts {
   replicas?: number;
   cpuLimit?: number | null;
   memoryLimitMb?: number | null;
+  appPort?: number;
 }
 
 export const run = (cmd: string, args: string[]) =>
@@ -110,7 +111,7 @@ export const deployContainer = async (
     'run', '-d',
     '--name', containerName,
     '--network', config.dockerNetwork,
-    '-e', `PORT=${config.appInternalPort}`,
+    '-e', `PORT=${opts.appPort ?? config.appInternalPort}`,
   ];
 
   if (opts.cpuLimit && opts.cpuLimit > 0) {
@@ -155,7 +156,7 @@ export const deployContainer = async (
 
   const caddyRouteFile = join(config.caddyRoutesDir, `${slug}.caddy`);
   const { buildCaddySnippet } = await import('../utils/domain-verifier');
-  const caddySnippet = await buildCaddySnippet(slug, containerName, opts.projectId);
+  const caddySnippet = await buildCaddySnippet(slug, containerName, opts.projectId, undefined, opts.appPort);
 
   await onLog(`Writing Caddy route file: ${caddyRouteFile}`);
   await writeFile(caddyRouteFile, caddySnippet, 'utf8');

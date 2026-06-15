@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import { getCollection } from "astro:content";
 
 interface Props {
 	title?: string;
@@ -32,78 +33,27 @@ const description =
 	frontmatter?.description ||
 	"";
 
-const docMenu = [
-	{
-		title: "Getting Started",
-		items: [
-			{
-				title: "Introduction",
-				href: "/docs",
-				slug: "docs",
-			},
-			{
-				title: "Quickstart",
-				href: "/docs/quickstart",
-				slug: "quickstart",
-			},
-			{
-				title: "Configuration",
-				href: "/docs/configuration",
-				slug: "configuration",
-			},
-		],
-	},
-	{
-		title: "Core Architecture",
-		items: [
-			{
-				title: "Deployments",
-				href: "/docs/deployments",
-				slug: "deployments",
-			},
-			{
-				title: "Environment Variables",
-				href: "/docs/env-vars",
-				slug: "env-vars",
-			},
-			{
-				title: "Scaling Policies",
-				href: "/docs/scaling",
-				slug: "scaling",
-			},
-		],
-	},
-	{
-		title: "Cluster Storage & Data",
-		items: [
-			{
-				title: "Managed Databases",
-				href: "/docs/databases",
-				slug: "databases",
-			},
-			{
-				title: "Persistent Volumes",
-				href: "/docs/volumes",
-				slug: "volumes",
-			},
-		],
-	},
-	{
-		title: "Networking & Security",
-		items: [
-			{
-				title: "Custom Domains",
-				href: "/docs/domains",
-				slug: "domains",
-			},
-			{
-				title: "SSL Certificates",
-				href: "/docs/ssl",
-				slug: "ssl",
-			},
-		],
-	},
+const allDocs = await getCollection("docs");
+const categoryOrder = [
+	"Getting Started",
+	"Core Architecture",
+	"Cluster Storage & Data",
+	"Networking & Security",
+	"Release",
 ];
+const grouped: Record<string, { title: string; href: string; slug: string }[]> = {};
+for (const entry of allDocs) {
+	const cat = entry.data.category;
+	if (!grouped[cat]) grouped[cat] = [];
+	grouped[cat].push({
+		title: entry.data.title,
+		href: entry.data.slug === "docs" ? "/docs" : `/docs/${entry.data.slug}`,
+		slug: entry.data.slug,
+	});
+}
+const docMenu = categoryOrder
+	.filter((cat) => grouped[cat])
+	.map((cat) => ({ title: cat, items: grouped[cat] }));
 ---
 
 <!doctype html>
@@ -226,13 +176,11 @@ const docMenu = [
 							>Home</a
 						>
 						<a
-							href="http://localhost:5173"
-							target="_blank"
-							rel="noreferrer"
+							href="/docs/installation"
 							class="dq-btn dq-btn--ghost"
 							style="font-size:0.68rem;"
 						>
-							Console <span
+							Install <span
 								class="dq-btn-arrow"
 								>→</span
 							>

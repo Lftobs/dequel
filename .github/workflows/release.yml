@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Set image names
+        run: |
+          REPO_LC="${REPO,,}"
+          echo "API_IMAGE=ghcr.io/${REPO_LC}/api" >> $GITHUB_ENV
+          echo "WEB_IMAGE=ghcr.io/${REPO_LC}/web" >> $GITHUB_ENV
+        env:
+          REPO: ${{ github.repository }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/api
+          push: true
+          tags: |
+            ${{ env.API_IMAGE }}:${{ steps.version.outputs.VERSION }}
+            ${{ env.API_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/web
+          push: true
+          tags: |
+            ${{ env.WEB_IMAGE }}:${{ steps.version.outputs.VERSION }}
+            ${{ env.WEB_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build config tarball
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          TAR_DIR=_tar
+          mkdir -p "$TAR_DIR/infra/caddy" "$TAR_DIR/infra/monitoring/grafana/datasources"
+          cp docker-compose.yml "$TAR_DIR/"
+          cp scripts/dequel "$TAR_DIR/dequel"
+          cp infra/caddy/Caddyfile "$TAR_DIR/infra/caddy/"
+          cp infra/monitoring/prometheus.yml "$TAR_DIR/infra/monitoring/"
+          cp infra/monitoring/loki-config.yml "$TAR_DIR/infra/monitoring/"
+          cp infra/monitoring/promtail-config.yml "$TAR_DIR/infra/monitoring/"
+          cp infra/monitoring/grafana/datasources/loki.yml "$TAR_DIR/infra/monitoring/grafana/datasources/"
+          cp infra/monitoring/grafana/datasources/prometheus.yml "$TAR_DIR/infra/monitoring/grafana/datasources/"
+          cd "$TAR_DIR" && tar -czf "../dequel-config-${VERSION}.tar.gz" .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.VERSION }}
+          body_path: CHANGELOG.md
+          generate_release_notes: true
+          files: |
+            scripts/install.sh
+            dequel-config-${{ steps.version.outputs.VERSION }}.tar.gz

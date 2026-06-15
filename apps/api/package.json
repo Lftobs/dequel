@@ -10,11 +10,13 @@
   },
   "dependencies": {
     "@elysiajs/cors": "^1.1.1",
+    "drizzle-orm": "^0.45.2",
     "elysia": "^1.1.26",
     "ioredis": "^5.4.1",
     "nodemailer": "^8.0.10"
   },
   "devDependencies": {
-    "@types/nodemailer": "^8.0.0"
+    "@types/nodemailer": "^8.0.0",
+    "drizzle-kit": "^0.31.10"
   }
 }

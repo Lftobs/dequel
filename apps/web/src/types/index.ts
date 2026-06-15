@@ -19,6 +19,9 @@ export interface Project {
   baseDomain: string | null;
   cpuLimit: number | null;
   memoryLimitMb: number | null;
+  port: number | null;
+  sourceDir: string | null;
+  sourceType: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -150,4 +153,32 @@ export interface Log {
   stage: LogStage;
   message: string;
   createdAt: string;
+}
+
+export interface GithubRepo {
+  id: number;
+  name: string;
+  fullName: string;
+  cloneUrl: string;
+  sshUrl: string;
+  description: string | null;
+  language: string | null;
+  private: boolean;
+  defaultBranch: string;
+  owner: { login: string; avatarUrl: string };
+}
+
+export interface SmtpSettingsStatus {
+  configured: boolean;
+  host?: string;
+  port?: number;
+  user?: string;
+  fromAddress?: string;
+}
+
+export interface GithubIntegrationStatus {
+  configured: boolean;
+  clientId?: string;
+  appName?: string;
+  hasWebhookSecret?: boolean;
 }

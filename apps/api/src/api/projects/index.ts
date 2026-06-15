@@ -3,11 +3,10 @@ import { join } from 'node:path';
 import { Elysia } from "elysia";
 import {
 	createProject,
-	deleteProjectCascade,
-	getProjectById,
 	listProjects,
+	getProjectById,
 	updateProject,
-	listDomains,
+	deleteProject,
 } from "../../db/repo";
 import { tryRun, reloadCaddy } from "../../orchestrator/runtime";
 import { removeFromCaddyRoute } from "../../utils/domain-verifier";
@@ -34,7 +33,7 @@ export const projectsRoutes = new Elysia()
 				set.status = 400;
 				return { error: "name is required" };
 			}
-			return createProject({
+			const project = await createProject({
 				name: body.name,
 				description: body.description,
 				baseDomain: body.baseDomain,
@@ -42,7 +41,11 @@ export const projectsRoutes = new Elysia()
 				repoBranch: body.repoBranch,
 				cpuLimit: body.cpuLimit,
 				memoryLimitMb: body.memoryLimitMb,
+				port: body.port ? Number(body.port) : null,
+				sourceDir: body.sourceDir || null,
+				sourceType: body.sourceType || "git",
 			});
+			return project;
 		},
 	)
 	.patch(
@@ -56,6 +59,8 @@ export const projectsRoutes = new Elysia()
 				repoBranch: body?.repoBranch,
 				cpuLimit: body?.cpuLimit,
 				memoryLimitMb: body?.memoryLimitMb,
+				port: body?.port ? Number(body.port) : body?.port === null ? null : undefined,
+				sourceDir: body?.sourceDir ?? undefined,
 			});
 			if (!project) {
 				set.status = 404;
