@@ -38,7 +38,6 @@ services:
             DATABASE_PATH: /app/data/dequel.db
             WORKSPACE_ROOT: /app/workspace
             CADDY_ROUTES_DIR: /caddy/routes
-            CADDY_INGRESS_BASE: http://localhost
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
             DOCKER_NETWORK: dequel_net
             APP_INTERNAL_PORT: 3000
