@@ -58,50 +58,6 @@ setup_directories() {
 	info "Installing to: $INSTALL_DIR"
 }
 
-sample_machine_id() {
-	if [ -f /etc/machine-id ]; then
-		cat /etc/machine-id
-	elif command -v hostname &>/dev/null; then
-		hostname
-	else
-		uuidgen 2>/dev/null || echo "unknown"
-	fi
-}
-
-posthog_track_install() {
-	local version="$1"
-	local install_marker="$INSTALL_DIR/.install-id"
-	if [ -f "$install_marker" ]; then
-		return
-	fi
-
-	local mid
-	mid="$(sample_machine_id)"
-	local distinct_id="install-$(printf '%s' "$mid" | sha256sum 2>/dev/null | cut -c1-32)"
-	if [ -z "$distinct_id" ]; then
-		distinct_id="install-$(uuidgen 2>/dev/null || date +%s)"
-	fi
-
-	local key="${POSTHOG_API_KEY:-__POSTHOG_API_KEY__}"
-	# If the placeholder wasn't replaced at release time, skip silently
-	if echo "$key" | grep -q "^__"; then
-		echo "$distinct_id" > "$install_marker"
-		return
-	fi
-	if [ -z "$key" ]; then
-		echo "$distinct_id" > "$install_marker"
-		return
-	fi
-
-	# Fire and forget — one-shot at install time, never again
-	curl -fsSL -X POST "https://us.i.posthog.com/capture" \
-		-H "Content-Type: application/json" \
-		-d "{\"api_key\":\"$key\",\"event\":\"dequel_installed\",\"distinct_id\":\"$distinct_id\",\"properties\":{\"version\":\"$version\"}}" \
-		>/dev/null 2>&1 || true
-
-	echo "$distinct_id" > "$install_marker"
-}
-
 resolve_base_url() {
 	header "Downloading configuration"
 	TAG=""
@@ -233,11 +189,6 @@ main() {
 	prompt_config
 	pull_images
 	install_cli
-
-	local version="${TAG#v}"
-	[ -z "$version" ] && version="latest"
-	posthog_track_install "$version"
-
 	print_summary
 }
 
