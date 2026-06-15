@@ -105,6 +105,7 @@ services:
             ]
         environment:
             CADDY_EMAIL: ${CADDY_EMAIL:-}
+            CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
         ports:
             - "80:80"
             - "443:443"

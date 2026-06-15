@@ -78,17 +78,15 @@ On boot, these values seed the `smtp_settings` table. The password is encrypted 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CADDY_BASE_DOMAIN` | `localhost` | Base domain for deployment subdomains. Deployed apps are reachable at `https://<slug>.<domain>`. Set to a real domain (e.g. `example.com`) and configure wildcard DNS for auto-SSL. |
+| `CADDY_BASE_DOMAIN` | `localhost` | Base domain for deployment subdomains. Deployed apps are reachable at `https://<slug>.<domain>`. GitHub webhook URLs are derived from this automatically. Set to a real domain (e.g. `example.com`) and configure wildcard DNS for auto-SSL. |
 | `CADDY_EMAIL` | `""` | Email address for Let's Encrypt SSL certificate expiration notifications |
-| `PUBLIC_URL` | `http://localhost` | Externally reachable URL for GitHub webhook callbacks |
 
 Config file equivalent:
 
 ```json
 {
   "caddyBaseDomain": "example.com",
-  "caddyEmail": "admin@example.com",
-  "publicUrl": "https://example.com"
+  "caddyEmail": "admin@example.com"
 }
 ```
 

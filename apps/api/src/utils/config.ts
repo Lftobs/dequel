@@ -36,7 +36,6 @@ export const config = {
   smtpPass: withFile<string>("SMTP_PASS", ""),
   smtpFrom: withFile<string>("SMTP_FROM", "dequel@localhost"),
   alertEvalIntervalMs: withFile<number>("ALERT_EVAL_INTERVAL_MS", "60000", Number),
-  publicUrl: withFile<string>("PUBLIC_URL", "http://localhost"),
   githubClientId: withFile<string>("GITHUB_CLIENT_ID", ""),
   githubClientSecret: withFile<string>("GITHUB_CLIENT_SECRET", ""),
   githubAppName: withFile<string>("GITHUB_APP_NAME", "Dequel"),
