@@ -1,0 +1,139 @@
+---
+---
+<section class="dq-how-it-works dq-reveal py-24 max-w-[1100px] mx-auto px-8 border-t border-[#222228]" id="how-it-works">
+  <div class="mb-16">
+    <div class="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#ea580c] mb-4">Self-Hosting Engine</div>
+    <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-4 max-w-xl">
+      Your own PaaS, running on <em class="text-[#ea580c]">your own servers</em>.
+    </h2>
+    <p class="text-sm text-[#7f7f8a] max-w-2xl leading-relaxed">
+      Dequel wraps raw Docker containers, Buildkit compilation, and Caddy reverse proxy routing in a single cohesive platform. No third-party APIs, no hidden fees, and zero vendor lock-in.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+    <!-- Steps -->
+    <div class="lg:col-span-5 space-y-8">
+      <div class="group border border-[#222228] p-6 hover:border-[#ea580c] transition-all bg-[#111114]">
+        <div class="text-xs font-mono text-[#ea580c] mb-2">STEP 01</div>
+        <h3 class="text-lg font-bold mb-2">Connect Your Server</h3>
+        <p class="text-xs text-[#7f7f8a] leading-relaxed">
+          Run our installer script on any clean Debian/Ubuntu machine. Dequel boots its control plane, Redis task queue, and SQLite database inside a dedicated Docker network.
+        </p>
+      </div>
+
+      <div class="group border border-[#222228] p-6 hover:border-[#ea580c] transition-all bg-[#111114]">
+        <div class="text-xs font-mono text-[#ea580c] mb-2">STEP 02</div>
+        <h3 class="text-lg font-bold mb-2">Push Code, Detect Stack</h3>
+        <p class="text-xs text-[#7f7f8a] leading-relaxed">
+          Dequel uses Railpack to analyze your source code (Git repo or ZIP upload), automatically detects the language, and compiles a containerized image via local Buildkit.
+        </p>
+      </div>
+
+      <div class="group border border-[#222228] p-6 hover:border-[#ea580c] transition-all bg-[#111114]">
+        <div class="text-xs font-mono text-[#ea580c] mb-2">STEP 03</div>
+        <h3 class="text-lg font-bold mb-2">Auto Routing & SSL</h3>
+        <p class="text-xs text-[#7f7f8a] leading-relaxed">
+          The internal Caddy engine dynamically reloads routes and automatically provisions SSL certificates via Let's Encrypt, mapping your domain directly to the app container.
+        </p>
+      </div>
+    </div>
+
+    <!-- Visual Illustrative Diagram -->
+    <div class="lg:col-span-7 border border-[#222228] bg-[#000000] p-8 relative overflow-hidden h-[450px] flex flex-col justify-between">
+      <!-- Background Grid/Scanlines -->
+      <div class="absolute inset-0 opacity-10 pointer-events-none bg-[linear-gradient(rgba(234,88,12,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(234,88,12,0.15)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+      
+      <!-- Top header / Status bar -->
+      <div class="flex items-center justify-between border-b border-[#151519] pb-4 z-10">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 bg-green-500 inline-block animate-pulse"></span>
+          <span class="text-[0.65rem] font-mono tracking-wider text-[#e2e2e8]">HOST: vps-node-01 (ONLINE)</span>
+        </div>
+        <span class="text-[0.65rem] font-mono text-[#7f7f8a]">dequel-network (10.0.0.0/16)</span>
+      </div>
+
+      <!-- Diagram Body -->
+      <div class="grid grid-cols-12 gap-4 my-auto relative z-10">
+        <!-- Client Request / Ingress -->
+        <div class="col-span-3 flex flex-col justify-center items-center">
+          <div class="border border-[#ea580c] p-2 bg-[#111114] text-center w-full relative group">
+            <span class="text-[0.6rem] font-mono text-[#ea580c]">Client Request</span>
+            <div class="text-[0.55rem] text-[#7f7f8a]">my-app.com</div>
+            <!-- Arrow animated -->
+            <div class="absolute right-[-17px] top-[40%] text-[#ea580c] font-mono text-xs animate-ping">→</div>
+          </div>
+          <div class="mt-4 border border-[#222228] p-2 bg-[#111114] text-center w-full relative">
+            <span class="text-[0.6rem] font-mono text-[#e2e2e8]">Git Push</span>
+            <div class="text-[0.55rem] text-[#7f7f8a]">Repo Webhook</div>
+            <div class="absolute right-[-17px] top-[40%] text-[#7f7f8a] font-mono text-xs">→</div>
+          </div>
+        </div>
+
+        <!-- Caddy & API Orchestrator -->
+        <div class="col-span-5 flex flex-col justify-center gap-4">
+          <!-- Ingress (Caddy) -->
+          <div class="border border-[#222228] p-3 bg-[#0d0d0f] relative flex items-center justify-between">
+            <div>
+              <span class="text-[0.65rem] font-mono font-bold text-[#e2e2e8] block">Caddy Ingress</span>
+              <span class="text-[0.55rem] font-mono text-[#7f7f8a]">Auto SSL / Proxy</span>
+            </div>
+            <span class="text-[0.55rem] bg-[#ea580c]/10 text-[#ea580c] px-1 font-mono">PORT 80/443</span>
+            <div class="absolute right-[-17px] top-[40%] text-[#ea580c] font-mono text-xs">→</div>
+          </div>
+
+          <!-- API Control Plane -->
+          <div class="border border-[#ea580c] p-3 bg-[#111114] relative">
+            <span class="text-[0.65rem] font-mono font-bold text-[#ea580c] block">Dequel API</span>
+            <span class="text-[0.55rem] font-mono text-[#7f7f8a]">Docker Orchestrator</span>
+            <div class="absolute bottom-[-18px] left-[20%] text-[#7f7f8a] font-mono text-xs flex flex-col items-center">
+              <span>↓</span>
+            </div>
+            <!-- SQLite & Redis -->
+            <div class="absolute right-[-17px] top-[40%] text-[#e2e2e8] font-mono text-xs">→</div>
+          </div>
+        </div>
+
+        <!-- Deployments / Containers -->
+        <div class="col-span-4 flex flex-col justify-center gap-3">
+          <!-- App 1 Container -->
+          <div class="border border-green-500/50 p-2 bg-[#0a0a0c] relative flex items-center justify-between group hover:border-green-500 transition-colors">
+            <div>
+              <span class="text-[0.6rem] font-mono font-bold text-green-500 block">deploy-my-app</span>
+              <span class="text-[0.5rem] font-mono text-[#7f7f8a]">Running (Replica 1)</span>
+            </div>
+            <span class="w-1.5 h-1.5 bg-green-500 inline-block"></span>
+          </div>
+
+          <!-- Build stage container -->
+          <div class="border border-dashed border-[#ea580c]/50 p-2 bg-[#0a0a0c] relative flex items-center justify-between">
+            <div>
+              <span class="text-[0.6rem] font-mono font-bold text-[#ea580c] block">buildkit-daemon</span>
+              <span class="text-[0.5rem] font-mono text-[#7f7f8a]">Railpack compiling...</span>
+            </div>
+            <span class="w-1.5 h-1.5 bg-[#ea580c] inline-block animate-pulse"></span>
+          </div>
+
+          <!-- Database container -->
+          <div class="border border-blue-500/50 p-2 bg-[#0a0a0c] relative flex items-center justify-between">
+            <div>
+              <span class="text-[0.6rem] font-mono font-bold text-blue-400 block">db-postgres-1</span>
+              <span class="text-[0.5rem] font-mono text-[#7f7f8a]">Private volume active</span>
+            </div>
+            <span class="w-1.5 h-1.5 bg-blue-500 inline-block"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Status bar -->
+      <div class="flex items-center justify-between border-t border-[#151519] pt-4 z-10">
+        <!-- DB / Redis layer connection info -->
+        <div class="flex gap-4">
+          <span class="text-[0.6rem] font-mono text-[#4b4b54]">SQLite: Local Persistence</span>
+          <span class="text-[0.6rem] font-mono text-[#4b4b54]">Redis: Job Queue</span>
+        </div>
+        <span class="text-[0.6rem] font-mono text-[#ea580c]">100% Owned by You</span>
+      </div>
+    </div>
+  </div>
+</section>
