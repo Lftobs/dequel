@@ -1,0 +1,1 @@
+scripts/workflow/bump.sh

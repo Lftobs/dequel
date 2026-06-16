@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Dequel Documentation
+    url: https://dequel.intrep.xyz
+    about: Check the documentation before opening an issue.
+  - name: Discussions
+    url: https://github.com/Lftobs/dequel/discussions
+    about: Please ask questions and start discussions here.

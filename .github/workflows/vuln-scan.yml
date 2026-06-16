@@ -1,0 +1,42 @@
+name: Security Scans
+
+on:
+    push:
+    pull_request:
+    workflow_dispatch:
+
+concurrency:
+    group: security-scans-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    forbidden-pattern-scan:
+        name: Forbidden Pattern Scan
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Run forbidden pattern scan
+              run: bash scripts/workflow/forbidden-pattern-scan.sh "${{ github.workspace }}"
+
+    lazarus-scanner:
+        name: Lazarus Scanner
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Download lazarus_scanner.py
+              run: |
+                  curl -fsSL -o lazarus_scanner.py \
+                    https://raw.githubusercontent.com/hngprojects/lazarus-scanner/main/lazarus_scanner.py
+                  [ -s lazarus_scanner.py ] || { echo "FAIL: lazarus_scanner.py is empty or missing"; exit 1; }
+
+            - name: Run Lazarus scanner
+              run: python3 lazarus_scanner.py
