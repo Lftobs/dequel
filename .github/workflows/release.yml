@@ -71,11 +71,7 @@ jobs:
           cp docker-compose.yml "$TAR_DIR/"
           cp scripts/dequel "$TAR_DIR/dequel"
           cp infra/caddy/Caddyfile "$TAR_DIR/infra/caddy/"
-          cp infra/monitoring/prometheus.yml "$TAR_DIR/infra/monitoring/"
-          cp infra/monitoring/loki-config.yml "$TAR_DIR/infra/monitoring/"
-          cp infra/monitoring/promtail-config.yml "$TAR_DIR/infra/monitoring/"
-          cp infra/monitoring/grafana/datasources/loki.yml "$TAR_DIR/infra/monitoring/grafana/datasources/"
-          cp infra/monitoring/grafana/datasources/prometheus.yml "$TAR_DIR/infra/monitoring/grafana/datasources/"
+          cp -r infra/monitoring "$TAR_DIR/infra/"
           cd "$TAR_DIR" && tar -czf "../dequel-config-${VERSION}.tar.gz" .
 
       - name: Create GitHub Release

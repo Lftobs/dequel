@@ -1,5 +1,5 @@
 {
-  email {$CADDY_EMAIL}
+  email {$CADDY_EMAIL:admin@dequel.local}
 }
 
 import /etc/caddy/routes/*.caddy

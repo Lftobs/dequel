@@ -626,14 +626,22 @@ export class PipelineOrchestrator {
 			return false;
 		} finally {
 			this.abortControllers.delete(deploymentId);
-			if (workspacePath)
-				await cleanupWorkspace(
-					workspacePath,
-				);
-			if (uploadedArchivePath)
-				await rm(uploadedArchivePath, {
-					force: true,
-				});
+			try {
+				if (workspacePath)
+					await cleanupWorkspace(
+						workspacePath,
+					);
+			} catch {
+				// cleanup failures must never mask the deployment result
+			}
+			try {
+				if (uploadedArchivePath)
+					await rm(uploadedArchivePath, {
+						force: true,
+					});
+			} catch {
+				// cleanup failures must never mask the deployment result
+			}
 		}
 	}
 

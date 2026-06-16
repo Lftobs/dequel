@@ -54,7 +54,7 @@ check_prerequisites() {
 
 setup_directories() {
 	header "Setting up installation directory"
-	mkdir -p "$INSTALL_DIR/data" "$INSTALL_DIR/workspace" "$INSTALL_DIR/infra/caddy/routes" "$INSTALL_DIR/infra/monitoring/grafana/datasources"
+	mkdir -p "$INSTALL_DIR/data" "$INSTALL_DIR/workspace" "$INSTALL_DIR/infra/caddy/routes" "$INSTALL_DIR/infra/monitoring/grafana/datasources" "$INSTALL_DIR/infra/monitoring/grafana/dashboards"
 	info "Installing to: $INSTALL_DIR"
 }
 
@@ -113,28 +113,52 @@ download_configs() {
 	for f in loki.yml prometheus.yml; do
 		download_if_missing "$BASE_URL/infra/monitoring/grafana/datasources/$f" "$INSTALL_DIR/infra/monitoring/grafana/datasources/$f"
 	done
+
+	for f in dashboards.yml deployed-apps.json; do
+		download_if_missing "$BASE_URL/infra/monitoring/grafana/dashboards/$f" "$INSTALL_DIR/infra/monitoring/grafana/dashboards/$f"
+	done
 }
 
 prompt_config() {
 	header "Configuration"
 
-	if [ ! -t 0 ]; then
-		warn "Non-interactive mode: skipping configuration prompt"
-		warn "Set CADDY_EMAIL and CADDY_BASE_DOMAIN manually in $INSTALL_DIR/.env"
+	local ADMIN_EMAIL=""
+	local HOSTNAME=""
+
+	if [ -t 0 ]; then
+		read -r -p "  Admin email (for SSL notifications, optional): " ADMIN_EMAIL
+		read -r -p "  Base domain (e.g. dequel.example.com, optional): " HOSTNAME
+	elif (: </dev/tty) 2>/dev/null; then
+		read -r -p "  Admin email (for SSL notifications, optional): " ADMIN_EMAIL < /dev/tty
+		read -r -p "  Base domain (e.g. dequel.example.com, optional): " HOSTNAME < /dev/tty
+	else
+		warn "No terminal — skipping configuration prompt"
+		warn "Set CADDY_EMAIL and CADDY_BASE_DOMAIN in $INSTALL_DIR/.env after install"
 		return
 	fi
 
-	read -r -p "  Admin email (for SSL notifications, optional): " ADMIN_EMAIL
-	read -r -p "  Hostname (e.g. dequel.example.com, optional): " HOSTNAME
+	mkdir -p "$INSTALL_DIR/data"
 
-	if [ -n "$ADMIN_EMAIL" ] || [ -n "$HOSTNAME" ]; then
-		cat > "$INSTALL_DIR/.env" <<EOF
-# Dequel environment configuration
-$( [ -n "$ADMIN_EMAIL" ] && echo "CADDY_EMAIL=$ADMIN_EMAIL" )
-$( [ -n "$HOSTNAME" ] && echo "CADDY_BASE_DOMAIN=$HOSTNAME" )
+	local ENC_KEY
+	ENC_KEY=$(openssl rand -hex 32 2>/dev/null || dd if=/dev/urandom bs=32 count=1 status=none 2>/dev/null | od -A n -t x1 | tr -d ' \n' || echo "dev-env-key-change-me")
+
+	cat > "$INSTALL_DIR/data/dequel.json" <<EOF
+{
+  "CADDY_BASE_DOMAIN": "$HOSTNAME",
+  "ENV_ENCRYPTION_KEY": "$ENC_KEY",
+  "GITHUB_APP_NAME": "Dequel"
+}
 EOF
-		success "Created $INSTALL_DIR/.env"
-	fi
+	chmod 600 "$INSTALL_DIR/data/dequel.json"
+	success "Created $INSTALL_DIR/data/dequel.json"
+
+	{
+		echo "# Dequel environment configuration"
+		[ -n "$ADMIN_EMAIL" ] && echo "CADDY_EMAIL=$ADMIN_EMAIL"
+		[ -n "$HOSTNAME" ] && echo "CADDY_BASE_DOMAIN=$HOSTNAME"
+	} > "$INSTALL_DIR/.env"
+	chmod 600 "$INSTALL_DIR/.env"
+	success "Created $INSTALL_DIR/.env"
 }
 
 pull_images() {

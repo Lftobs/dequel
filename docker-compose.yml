@@ -18,11 +18,8 @@ services:
         healthcheck:
             test:
                 [
-                    "CMD",
-                    "wget",
-                    "--spider",
-                    "-q",
-                    "tcp://localhost:1234",
+                    "CMD-SHELL",
+                    "wget -q -T 2 -O /dev/null http://localhost:1234 >/dev/null 2>&1; [ $$? -ne 4 ]",
                 ]
             interval: 5s
             timeout: 3s
@@ -104,7 +101,7 @@ services:
                 "--watch",
             ]
         environment:
-            CADDY_EMAIL: ${CADDY_EMAIL:-}
+            CADDY_EMAIL: ${CADDY_EMAIL:-admin@dequel.local}
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
         ports:
             - "80:80"
@@ -166,12 +163,19 @@ services:
 
     prometheus:
         image: prom/prometheus:latest
+        stop_grace_period: 60s
         command:
-            - --config.file=/etc/prometheus/prometheus.yml
-            - --storage.tsdb.path=/prometheus
-            - --web.console.libraries=/usr/share/prometheus/console_libraries
-            - --web.console.templates=/usr/share/prometheus/consoles
-            - --storage.tsdb.retention.time=30d
+            - sh
+            - -c
+            - |
+                promtool tsdb rebuild-index /prometheus 2>/dev/null || true
+                exec prometheus \
+                    --config.file=/etc/prometheus/prometheus.yml \
+                    --storage.tsdb.path=/prometheus \
+                    --web.console.libraries=/usr/share/prometheus/console_libraries \
+                    --web.console.templates=/usr/share/prometheus/consoles \
+                    --storage.tsdb.retention.time=30d \
+                    --storage.tsdb.wal-compression
         volumes:
             - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
             - prometheus-data:/prometheus
@@ -245,6 +249,7 @@ services:
             GF_INSTALL_PLUGINS: ""
         volumes:
             - ./infra/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+            - ./infra/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
             - grafana-data:/var/lib/grafana
         depends_on:
             prometheus:
