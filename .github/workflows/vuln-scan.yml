@@ -9,13 +9,19 @@ concurrency:
     group: security-scans-${{ github.ref }}
     cancel-in-progress: true
 
+permissions:
+    contents: read
+    pull-requests: read
+
 jobs:
     forbidden-pattern-scan:
         name: Forbidden Pattern Scan
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+              with:
+                  persist-credentials: false
 
             - name: Run forbidden pattern scan
               run: bash scripts/workflow/forbidden-pattern-scan.sh "${{ github.workspace }}"
@@ -25,7 +31,9 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+              with:
+                  persist-credentials: false
 
             - name: Setup Python
               uses: actions/setup-python@v5
@@ -35,8 +43,8 @@ jobs:
             - name: Download lazarus_scanner.py
               run: |
                   curl -fsSL -o lazarus_scanner.py \
-                    https://raw.githubusercontent.com/hngprojects/lazarus-scanner/main/lazarus_scanner.py
-                  [ -s lazarus_scanner.py ] || { echo "FAIL: lazarus_scanner.py is empty or missing"; exit 1; }
+                    https://raw.githubusercontent.com/hngprojects/lazarus-scanner/b1367e3a7a1463fbef90919867555a73f6acdf66/lazarus_scanner.py
+                  echo "ddbb2181479f9a07d5859ceeac9160fd45084d28d95311ce49fc63fc1959e831  lazarus_scanner.py" | sha256sum --check || { echo "FAIL: SHA256 mismatch"; exit 1; }
 
             - name: Run Lazarus scanner
               run: python3 lazarus_scanner.py

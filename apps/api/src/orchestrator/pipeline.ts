@@ -26,6 +26,7 @@ import {
 	reloadCaddy,
 	tryRun,
 } from "./runtime";
+import { ensureProjectDashboard } from "../utils/grafana";
 
 const now = () =>
 	new Date()
@@ -541,6 +542,24 @@ export class PipelineOrchestrator {
 					failureReason: null,
 				},
 			);
+
+			if (projectName) {
+				const dashSlug = projectName
+					.toLowerCase()
+					.replace(/[^a-z0-9-]+/g, "-")
+					.replace(/^-+|-+$/g, "")
+					.slice(0, 63);
+				const containerRegex = `${dashSlug}-.*`;
+				ensureProjectDashboard(
+					projectName,
+					containerRegex,
+				).catch((e) =>
+					console.warn(
+						"[Pipeline] Grafana dashboard creation failed:",
+						e,
+					),
+				);
+			}
 
 			if (
 				oldContainerName &&

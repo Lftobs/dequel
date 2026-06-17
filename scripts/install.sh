@@ -137,10 +137,8 @@ prompt_config() {
 		return
 	fi
 
-	mkdir -p "$INSTALL_DIR/data"
-
 	local ENC_KEY
-	ENC_KEY=$(openssl rand -hex 32 2>/dev/null || dd if=/dev/urandom bs=32 count=1 status=none 2>/dev/null | od -A n -t x1 | tr -d ' \n' || echo "dev-env-key-change-me")
+	ENC_KEY=$(openssl rand -hex 32 2>/dev/null || dd if=/dev/urandom bs=32 count=1 status=none 2>/dev/null | od -A n -t x1 | tr -d ' \n' || fail "Cannot generate encryption key — openssl and dd both failed")
 
 	cat > "$INSTALL_DIR/data/dequel.json" <<EOF
 {

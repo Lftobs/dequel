@@ -109,4 +109,16 @@ export const config = {
 		"GITHUB_WEBHOOK_SECRET",
 		"",
 	),
+	grafanaUrl: withFile<string>(
+		"GRAFANA_URL",
+		"http://grafana:3000",
+	),
+	grafanaUser: withFile<string>(
+		"GRAFANA_USER",
+		"admin",
+	),
+	grafanaPass: withFile<string>(
+		"GRAFANA_PASS",
+		"admin",
+	),
 };

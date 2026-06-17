@@ -66,13 +66,14 @@ add_changelog_entry() {
       entry="$entry\n- $line"
     fi
   done <<< "$bullets"
-  sed -i "2a\\$entry" "$ROOT_DIR/CHANGELOG.md"
+  sed -i'' "2a\\$entry" "$ROOT_DIR/CHANGELOG.md"
   echo -e "${GREEN}✓${NC} Added changelog entry"
 }
 
 print_summary() {
   local version="$1"
   local changelog_updated="$2"
+  local branch="${3:-main}"
   echo ""
   echo -e "${CYAN}=== Summary ===${NC}"
   echo -e "  VERSION:        ${GREEN}$version${NC}"
@@ -87,7 +88,7 @@ print_summary() {
   echo -e "  ${YELLOW}1. Review CHANGELOG.md${NC}"
   echo -e "  ${YELLOW}2. Commit: git add -A && git commit -m \"chore: bump to v$version\"${NC}"
   echo -e "  ${YELLOW}3. Tag:    git tag v$version${NC}"
-  echo -e "  ${YELLOW}4. Push:   git push origin main --tags${NC}"
+  echo -e "  ${YELLOW}4. Push:   git push origin $branch --tags${NC}"
 }
 
 main() {
@@ -118,7 +119,10 @@ main() {
     changelog_updated=true
   fi
 
-  print_summary "$version" "$changelog_updated"
+  local current_branch
+  current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+
+  print_summary "$version" "$changelog_updated" "$current_branch"
 }
 
 main "$@"

@@ -7,6 +7,7 @@ import {
 	getProjectById,
 	updateProject,
 	deleteProject,
+	listDomains,
 } from "../../db/repo";
 import { tryRun, reloadCaddy } from "../../orchestrator/runtime";
 import { removeFromCaddyRoute } from "../../utils/domain-verifier";
