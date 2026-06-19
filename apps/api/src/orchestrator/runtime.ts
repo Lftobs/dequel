@@ -75,6 +75,7 @@ const waitForRunningContainer = async (
     await new Promise(r => setTimeout(r, 500));
   }
   await onLog(`Container ${containerName} did not reach running state — attempting docker start`);
+  await tryRun(dockerBin, ['network', 'disconnect', '-f', config.dockerNetwork, containerName]);
   await tryRun(dockerBin, ['start', containerName]);
   await tryRun(dockerBin, ['network', 'connect', config.dockerNetwork, containerName]);
 };
@@ -82,7 +83,10 @@ const waitForRunningContainer = async (
 export const ensureContainerRunning = async (containerName: string) => {
   try {
     const status = (await run(dockerBin, ['inspect', '-f', '{{.State.Status}}', containerName])).trim();
-    if (status !== 'running') await run(dockerBin, ['start', containerName]);
+    if (status !== 'running') {
+      await tryRun(dockerBin, ['network', 'disconnect', '-f', config.dockerNetwork, containerName]);
+      await run(dockerBin, ['start', containerName]);
+    }
     await tryRun(dockerBin, ['network', 'connect', config.dockerNetwork, containerName]);
   } catch (error) {
     console.error(`Failed to reconcile container ${containerName}:`, error);

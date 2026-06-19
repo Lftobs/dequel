@@ -26,6 +26,7 @@ import {
 	reloadCaddy,
 	tryRun,
 } from "./runtime";
+import { ensureProjectDashboard } from "../utils/grafana";
 
 const now = () =>
 	new Date()
@@ -542,6 +543,24 @@ export class PipelineOrchestrator {
 				},
 			);
 
+			if (projectName) {
+				const dashSlug = projectName
+					.toLowerCase()
+					.replace(/[^a-z0-9-]+/g, "-")
+					.replace(/^-+|-+$/g, "")
+					.slice(0, 63);
+				const containerRegex = `${dashSlug}-.*`;
+				ensureProjectDashboard(
+					projectName,
+					containerRegex,
+				).catch((e) =>
+					console.warn(
+						"[Pipeline] Grafana dashboard creation failed:",
+						e,
+					),
+				);
+			}
+
 			if (
 				oldContainerName &&
 				deployment.projectId
@@ -626,14 +645,22 @@ export class PipelineOrchestrator {
 			return false;
 		} finally {
 			this.abortControllers.delete(deploymentId);
-			if (workspacePath)
-				await cleanupWorkspace(
-					workspacePath,
-				);
-			if (uploadedArchivePath)
-				await rm(uploadedArchivePath, {
-					force: true,
-				});
+			try {
+				if (workspacePath)
+					await cleanupWorkspace(
+						workspacePath,
+					);
+			} catch {
+				// cleanup failures must never mask the deployment result
+			}
+			try {
+				if (uploadedArchivePath)
+					await rm(uploadedArchivePath, {
+						force: true,
+					});
+			} catch {
+				// cleanup failures must never mask the deployment result
+			}
 		}
 	}
 
