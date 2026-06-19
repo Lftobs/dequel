@@ -10,3 +10,5 @@ infra/caddy/routes/
 bugs
 apps/api/index
 docker-compose.yml
+bump.sh
+scripts/workflow/bump.sh
