@@ -5,12 +5,12 @@ Thank you for your interest in contributing! Here's how to get started.
 ## Getting Started
 
 1. Fork and clone the repo
-2. Install dependencies: `bun install`
+2. Install dependencies: `bun install` (from repo root — needed for tests, version syncing, and local tooling)
 3. Read [`AGENTS.md`](./AGENTS.md) for the full architecture and conventions
 
 ## Reporting Bugs
 
-Open a [Bug Report](https://github.com/Lftobs/dequel/issues/new?template=bug_report.yml). Include:
+Open a [Bug Report](https://github.com/Lftobs/dequel/issues/new?template=bug_report.md). Include:
 
 - Steps to reproduce
 - Expected vs actual behavior
@@ -19,7 +19,7 @@ Open a [Bug Report](https://github.com/Lftobs/dequel/issues/new?template=bug_rep
 
 ## Suggesting Features
 
-Open a [Feature Request](https://github.com/Lftobs/dequel/issues/new?template=feature_request.yml). Describe:
+Open a [Feature Request](https://github.com/Lftobs/dequel/issues/new?template=feature_request.md). Describe:
 
 - The problem you're solving
 - Your proposed solution
@@ -30,16 +30,13 @@ Open a [Feature Request](https://github.com/Lftobs/dequel/issues/new?template=fe
 
 ### Running Locally
 
+Run the full stack with Docker Compose:
+
 ```bash
-# API (port 3001)
-bun apps/api/src/index.ts
-
-# Web dashboard (port 3000)
-bun apps/web/src/main.tsx
-
-# Docs (port 4321)
-bun apps/docs/src/main.tsx
+docker compose up -d --build
 ```
+
+This starts all services (API, Web, Caddy, BuildKit, Redis, Prometheus, Loki, Grafana). The dashboard is at `https://localhost`, API at `https://localhost/api`, Grafana at `https://localhost/grafana` (admin/admin).
 
 ### Code Conventions
 
@@ -52,27 +49,27 @@ bun apps/docs/src/main.tsx
 
 ### Database Migrations
 
-```bash
-# Generate migration from schema changes
-bunx drizzle-kit generate
+Run from `apps/api/`:
 
-# Push schema directly (dev only)
+```bash
+cd apps/api
+bunx drizzle-kit generate
 bunx drizzle-kit push
 ```
 
 ### Testing
 
+Run from `apps/api/`:
+
 ```bash
-# API tests
-bun test
+cd apps/api && bun test
 ```
 
-Always run `bun test` in `apps/api/` before committing API changes.
+Always run tests before committing API changes.
 
 ### Versioning
 
 ```bash
-# Bump version across the codebase
 ./bump.sh v0.2.0
 ```
 
@@ -81,14 +78,14 @@ This updates `VERSION`, all `package.json` files, and optionally adds a changelo
 ## Pull Requests
 
 1. Create a PR from your fork using the [PR template](./.github/PULL_REQUEST_TEMPLATE.md)
-2. Ensure all tests pass (`bun test`)
+2. Ensure all tests pass (`cd apps/api && bun test`)
 3. Keep changes focused — one feature/fix per PR
 4. Update documentation if your change affects user-facing behavior
 5. If changing API behavior, update the docs site content
 
 ### PR Checklist
 
-- [ ] Tests pass (`bun test` in `apps/api/`)
+- [ ] Tests pass (`cd apps/api && bun test`)
 - [ ] No new warnings or lint errors
 - [ ] Documentation updated (if applicable)
 - [ ] Version synced (`bun run sync-versions`) if `VERSION` changed
@@ -103,7 +100,7 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-CI builds Docker images to `ghcr.io/lftobs/dequel/{api,web}:X.Y.Z` and creates a GitHub Release.
+CI builds Docker images to `ghcr.io/lftobs/dequel/{api,web}:X.Y.Z`, deploys docs to Vercel, and creates a GitHub Release.
 
 ## Questions?
 

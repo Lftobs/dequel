@@ -164,19 +164,12 @@ services:
     prometheus:
         image: prom/prometheus:latest
         stop_grace_period: 60s
+        entrypoint: []
         command:
             - sh
-            - -c
-            - |
-                promtool tsdb rebuild-index /prometheus 2>/dev/null || true
-                exec prometheus \
-                    --config.file=/etc/prometheus/prometheus.yml \
-                    --storage.tsdb.path=/prometheus \
-                    --web.console.libraries=/usr/share/prometheus/console_libraries \
-                    --web.console.templates=/usr/share/prometheus/consoles \
-                    --storage.tsdb.retention.time=30d \
-                    --storage.tsdb.wal-compression
+            - /entrypoint.sh
         volumes:
+            - ./infra/monitoring/prometheus-entrypoint.sh:/entrypoint.sh:ro
             - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
             - prometheus-data:/prometheus
         depends_on:
@@ -233,6 +226,7 @@ services:
             - ./infra/monitoring/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
             - /var/run/docker.sock:/var/run/docker.sock
             - /var/lib/docker/containers:/var/lib/docker/containers:ro
+            - promtail-data:/data
         depends_on:
             loki:
                 condition: service_started
@@ -284,3 +278,4 @@ volumes:
     prometheus-data:
     loki-data:
     grafana-data:
+    promtail-data:
