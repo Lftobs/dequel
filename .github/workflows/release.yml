@@ -74,11 +74,19 @@ jobs:
           cp -r infra/monitoring "$TAR_DIR/infra/"
           cd "$TAR_DIR" && tar -czf "../dequel-config-${VERSION}.tar.gz" .
 
+      - name: Extract changelog entry for this version
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          awk '/^## \['"$VERSION"'\] -/{flag=1; next} /^## \[/{if(flag) exit} flag' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "No changelog entry for v$VERSION, will use auto-generated notes"
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: v${{ steps.version.outputs.VERSION }}
-          body_path: CHANGELOG.md
+          body_path: release-notes.md
           generate_release_notes: true
           files: |
             scripts/install.sh
