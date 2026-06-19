@@ -13,7 +13,7 @@ import { listEnvironmentVariablesForDeploy } from "../db/repo";
 import { listVolumes } from "../db/repo";
 import { logBus } from "./log-bus";
 import { DeploymentQueue } from "./queue";
-import { buildWithRailpack } from "./railpack";
+import { buildWithRailpack, CancelledError } from "./railpack";
 import {
 	prepareSourceWorkspace,
 	prepareUploadWorkspace,
@@ -26,6 +26,7 @@ import {
 	reloadCaddy,
 	tryRun,
 } from "./runtime";
+import { ensureProjectDashboard } from "../utils/grafana";
 
 const now = () =>
 	new Date()
@@ -56,9 +57,17 @@ const emitLog = async (
 export class PipelineOrchestrator {
 	private queue: DeploymentQueue;
 	private started = false;
+	private abortControllers = new Map<string, AbortController>();
 
 	constructor() {
 		this.queue = new DeploymentQueue();
+	}
+
+	private async checkCancelled(deploymentId: string) {
+		const dep = await getDeploymentById(deploymentId);
+		if (dep?.status === "failed") {
+			throw new CancelledError();
+		}
 	}
 
 	startWorker() {
@@ -98,6 +107,12 @@ export class PipelineOrchestrator {
 			deployment.status !== "building"
 		)
 			return;
+
+		const controller = this.abortControllers.get(deploymentId);
+		if (controller) {
+			controller.abort();
+			this.abortControllers.delete(deploymentId);
+		}
 
 		await Promise.all([
 			this.queue.remove(deploymentId),
@@ -269,6 +284,9 @@ export class PipelineOrchestrator {
 		if (deployment.status === "failed")
 			return true;
 
+		const controller = new AbortController();
+		this.abortControllers.set(deploymentId, controller);
+
 		let workspacePath = "";
 		let uploadedArchivePath: string | null =
 			null;
@@ -343,6 +361,8 @@ export class PipelineOrchestrator {
 						);
 				}
 
+				await this.checkCancelled(deploymentId);
+
 				await emitLog(
 					deploymentId,
 					"build",
@@ -351,18 +371,19 @@ export class PipelineOrchestrator {
 				const cacheKey =
 					deployment.projectId ||
 					deploymentId;
-				await buildWithRailpack(
-					workspacePath,
-					imageTag,
-					async (line) => {
-						await emitLog(
-							deploymentId,
-							"build",
-							line,
-						);
-					},
-					{ cacheKey },
-				);
+			const project = deployment.projectId ? await getProjectById(deployment.projectId) : null;
+			await buildWithRailpack(
+				workspacePath,
+				imageTag,
+				async (line) => {
+					await emitLog(
+						deploymentId,
+						"build",
+						line,
+					);
+				},
+				{ cacheKey, sourceDir: project?.sourceDir, signal: controller.signal },
+			);
 			} else {
 				await emitLog(
 					deploymentId,
@@ -370,6 +391,8 @@ export class PipelineOrchestrator {
 					`Rolling back to existing image: ${imageTag}`,
 				);
 			}
+
+			await this.checkCancelled(deploymentId);
 
 			await updateDeploymentStatus(
 				deploymentId,
@@ -381,6 +404,8 @@ export class PipelineOrchestrator {
 				"deploy",
 				"Starting container deployment",
 			);
+
+			await this.checkCancelled(deploymentId);
 
 			let envVars:
 				| Record<string, string>
@@ -454,12 +479,18 @@ export class PipelineOrchestrator {
 				}
 			}
 
+			await this.checkCancelled(deploymentId);
+
 			let projectName: string | undefined;
 			let cpuLimit:
 				| number
 				| null
 				| undefined;
 			let memoryLimitMb:
+				| number
+				| null
+				| undefined;
+			let appPort:
 				| number
 				| null
 				| undefined;
@@ -472,6 +503,7 @@ export class PipelineOrchestrator {
 					cpuLimit = proj.cpuLimit;
 					memoryLimitMb =
 						proj.memoryLimitMb;
+					appPort = proj.port;
 				}
 			}
 
@@ -495,6 +527,7 @@ export class PipelineOrchestrator {
 					volumes,
 					cpuLimit,
 					memoryLimitMb,
+					appPort: appPort ?? undefined,
 				},
 			);
 
@@ -509,6 +542,24 @@ export class PipelineOrchestrator {
 					failureReason: null,
 				},
 			);
+
+			if (projectName) {
+				const dashSlug = projectName
+					.toLowerCase()
+					.replace(/[^a-z0-9-]+/g, "-")
+					.replace(/^-+|-+$/g, "")
+					.slice(0, 63);
+				const containerRegex = `${dashSlug}-.*`;
+				ensureProjectDashboard(
+					projectName,
+					containerRegex,
+				).catch((e) =>
+					console.warn(
+						"[Pipeline] Grafana dashboard creation failed:",
+						e,
+					),
+				);
+			}
 
 			if (
 				oldContainerName &&
@@ -547,6 +598,9 @@ export class PipelineOrchestrator {
 			);
 			return true;
 		} catch (error) {
+			if (error instanceof CancelledError) {
+				return true;
+			}
 			const message =
 				error instanceof Error
 					? error.message
@@ -590,14 +644,23 @@ export class PipelineOrchestrator {
 			}
 			return false;
 		} finally {
-			if (workspacePath)
-				await cleanupWorkspace(
-					workspacePath,
-				);
-			if (uploadedArchivePath)
-				await rm(uploadedArchivePath, {
-					force: true,
-				});
+			this.abortControllers.delete(deploymentId);
+			try {
+				if (workspacePath)
+					await cleanupWorkspace(
+						workspacePath,
+					);
+			} catch {
+				// cleanup failures must never mask the deployment result
+			}
+			try {
+				if (uploadedArchivePath)
+					await rm(uploadedArchivePath, {
+						force: true,
+					});
+			} catch {
+				// cleanup failures must never mask the deployment result
+			}
 		}
 	}
 

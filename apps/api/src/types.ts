@@ -19,8 +19,23 @@ export interface Project {
   baseDomain: string | null;
   cpuLimit: number | null;
   memoryLimitMb: number | null;
+  port: number | null;
+  sourceDir: string | null;
+  sourceType: string;
+  githubTokenEncrypted: string | null;
+  githubTokenIv: string | null;
+  githubTokenTag: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface GithubIntegration {
+  id: string;
+  clientId: string;
+  clientSecret: string;
+  appName: string;
+  webhookSecret: string | null;
+  createdAt: string;
 }
 
 export interface CreateProjectInput {
@@ -31,6 +46,9 @@ export interface CreateProjectInput {
   baseDomain?: string;
   cpuLimit?: number | null;
   memoryLimitMb?: number | null;
+  port?: number | null;
+  sourceDir?: string | null;
+  sourceType?: string;
 }
 
 export interface EnvironmentVariable {

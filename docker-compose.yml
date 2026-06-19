@@ -18,11 +18,8 @@ services:
         healthcheck:
             test:
                 [
-                    "CMD",
-                    "wget",
-                    "--spider",
-                    "-q",
-                    "tcp://localhost:1234",
+                    "CMD-SHELL",
+                    "wget -q -T 2 -O /dev/null http://localhost:1234 >/dev/null 2>&1; [ $$? -ne 4 ]",
                 ]
             interval: 5s
             timeout: 3s
@@ -31,14 +28,14 @@ services:
 
     api:
         image: ghcr.io/lftobs/dequel/api:latest
-        build:
-            context: ./apps/api
+        # build:
+        #     context: ./apps/api
         environment:
             PORT: 3001
             DATABASE_PATH: /app/data/dequel.db
             WORKSPACE_ROOT: /app/workspace
             CADDY_ROUTES_DIR: /caddy/routes
-            CADDY_INGRESS_BASE: http://localhost
+            CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
             DOCKER_NETWORK: dequel_net
             APP_INTERNAL_PORT: 3000
             BUILDKIT_HOST: tcp://buildkit:1234
@@ -73,8 +70,8 @@ services:
 
     web:
         image: ghcr.io/lftobs/dequel/web:latest
-        build:
-            context: ./apps/web
+        # build:
+        #     context: ./apps/web
         healthcheck:
             test:
                 [
@@ -104,8 +101,12 @@ services:
                 "caddyfile",
                 "--watch",
             ]
+        environment:
+            CADDY_EMAIL: ${CADDY_EMAIL:-admin@dequel.local}
+            CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
         ports:
             - "80:80"
+            - "443:443"
         volumes:
             - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
             - ./infra/caddy/routes:/etc/caddy/routes
@@ -148,7 +149,14 @@ services:
                 aliases:
                     - cadvisor
         healthcheck:
-            test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/metrics"]
+            test:
+                [
+                    "CMD",
+                    "wget",
+                    "--spider",
+                    "-q",
+                    "http://localhost:8080/metrics",
+                ]
             interval: 10s
             timeout: 3s
             retries: 3
@@ -156,13 +164,13 @@ services:
 
     prometheus:
         image: prom/prometheus:latest
+        stop_grace_period: 60s
+        entrypoint: []
         command:
-            - --config.file=/etc/prometheus/prometheus.yml
-            - --storage.tsdb.path=/prometheus
-            - --web.console.libraries=/usr/share/prometheus/console_libraries
-            - --web.console.templates=/usr/share/prometheus/consoles
-            - --storage.tsdb.retention.time=30d
+            - sh
+            - /entrypoint.sh
         volumes:
+            - ./infra/monitoring/prometheus-entrypoint.sh:/entrypoint.sh:ro
             - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
             - prometheus-data:/prometheus
         depends_on:
@@ -173,7 +181,14 @@ services:
                 aliases:
                     - prometheus
         healthcheck:
-            test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/ready"]
+            test:
+                [
+                    "CMD",
+                    "wget",
+                    "--spider",
+                    "-q",
+                    "http://localhost:9090/-/ready",
+                ]
             interval: 10s
             timeout: 3s
             retries: 3
@@ -191,7 +206,14 @@ services:
                 aliases:
                     - loki
         healthcheck:
-            test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
+            test:
+                [
+                    "CMD",
+                    "wget",
+                    "--spider",
+                    "-q",
+                    "http://localhost:3100/ready",
+                ]
             interval: 10s
             timeout: 3s
             retries: 3
@@ -205,6 +227,7 @@ services:
             - ./infra/monitoring/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
             - /var/run/docker.sock:/var/run/docker.sock
             - /var/lib/docker/containers:/var/lib/docker/containers:ro
+            - promtail-data:/data
         depends_on:
             loki:
                 condition: service_started
@@ -221,6 +244,7 @@ services:
             GF_INSTALL_PLUGINS: ""
         volumes:
             - ./infra/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+            - ./infra/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
             - grafana-data:/var/lib/grafana
         depends_on:
             prometheus:
@@ -232,7 +256,14 @@ services:
                 aliases:
                     - grafana
         healthcheck:
-            test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+            test:
+                [
+                    "CMD",
+                    "wget",
+                    "--spider",
+                    "-q",
+                    "http://localhost:3000/api/health",
+                ]
             interval: 10s
             timeout: 3s
             retries: 5
@@ -249,3 +280,4 @@ volumes:
     loki-data:
     grafana-data:
     railpack-cache:
+    promtail-data:

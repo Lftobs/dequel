@@ -15,6 +15,7 @@ export interface RuntimeOpts {
   replicas?: number;
   cpuLimit?: number | null;
   memoryLimitMb?: number | null;
+  appPort?: number;
 }
 
 export const run = (cmd: string, args: string[]) =>
@@ -74,6 +75,7 @@ const waitForRunningContainer = async (
     await new Promise(r => setTimeout(r, 500));
   }
   await onLog(`Container ${containerName} did not reach running state — attempting docker start`);
+  await tryRun(dockerBin, ['network', 'disconnect', '-f', config.dockerNetwork, containerName]);
   await tryRun(dockerBin, ['start', containerName]);
   await tryRun(dockerBin, ['network', 'connect', config.dockerNetwork, containerName]);
 };
@@ -81,7 +83,10 @@ const waitForRunningContainer = async (
 export const ensureContainerRunning = async (containerName: string) => {
   try {
     const status = (await run(dockerBin, ['inspect', '-f', '{{.State.Status}}', containerName])).trim();
-    if (status !== 'running') await run(dockerBin, ['start', containerName]);
+    if (status !== 'running') {
+      await tryRun(dockerBin, ['network', 'disconnect', '-f', config.dockerNetwork, containerName]);
+      await run(dockerBin, ['start', containerName]);
+    }
     await tryRun(dockerBin, ['network', 'connect', config.dockerNetwork, containerName]);
   } catch (error) {
     console.error(`Failed to reconcile container ${containerName}:`, error);
@@ -102,7 +107,8 @@ export const deployContainer = async (
   const slug = slugify(opts.projectName || opts.projectId || deploymentId);
   const shortId = deploymentId.slice(0, 8);
   const containerName = `${slug}-${shortId}`;
-  const liveUrl = `http://${slug}.localhost`;
+  const scheme = config.caddyBaseDomain === 'localhost' ? 'http' : 'https';
+  const liveUrl = `${scheme}://${slug}.${config.caddyBaseDomain}`;
 
   await onLog(`Starting container ${containerName} from image ${imageTag}`);
 
@@ -110,7 +116,7 @@ export const deployContainer = async (
     'run', '-d',
     '--name', containerName,
     '--network', config.dockerNetwork,
-    '-e', `PORT=${config.appInternalPort}`,
+    '-e', `PORT=${opts.appPort ?? config.appInternalPort}`,
   ];
 
   if (opts.cpuLimit && opts.cpuLimit > 0) {
@@ -155,7 +161,7 @@ export const deployContainer = async (
 
   const caddyRouteFile = join(config.caddyRoutesDir, `${slug}.caddy`);
   const { buildCaddySnippet } = await import('../utils/domain-verifier');
-  const caddySnippet = await buildCaddySnippet(slug, containerName, opts.projectId);
+  const caddySnippet = await buildCaddySnippet(slug, containerName, opts.projectId, undefined, opts.appPort);
 
   await onLog(`Writing Caddy route file: ${caddyRouteFile}`);
   await writeFile(caddyRouteFile, caddySnippet, 'utf8');

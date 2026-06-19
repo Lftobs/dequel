@@ -5,6 +5,7 @@ import { databasesRoutes } from "./databases";
 import { deploymentsRoutes } from "./deployments";
 import { domainsRoutes } from "./domains";
 import { envVarsRoutes } from "./env-vars";
+import { githubRoutes } from "./github";
 import { healthRoutes } from "./health";
 import { projectsRoutes } from "./projects";
 import { prometheusRoutes } from "./prometheus";
@@ -12,6 +13,7 @@ import { scalingRoutes } from "./scaling";
 import { serverInfoRoutes } from "./server-info";
 import { serversRoutes } from "./servers";
 import { volumesRoutes } from "./volumes";
+import { settingsRoutes } from "./settings";
 
 const authMiddleware = (app: Elysia) =>
 	app.onBeforeHandle(async ({ request, set }) => {
@@ -47,4 +49,6 @@ export const apiRoutes = new Elysia({
 	.use(serverInfoRoutes)
 	.use(apiKeysRoutes)
 	.use(prometheusRoutes)
-	.use(alertsRoutes);
+	.use(alertsRoutes)
+	.use(githubRoutes)
+	.use(settingsRoutes);
