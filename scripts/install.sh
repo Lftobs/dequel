@@ -34,16 +34,16 @@ download_if_missing() {
 check_prerequisites() {
 	header "Checking prerequisites"
 
-	if command -v docker &>/dev/null; then
+	if command -v docker >/dev/null 2>&1; then
 		success "Docker found: $(docker --version)"
 	else
 		fail "Docker is not installed. See https://docs.docker.com/engine/install/"
 	fi
 
-	if docker compose version &>/dev/null; then
+	if docker compose version >/dev/null 2>&1; then
 		success "Docker Compose found: $(docker compose version)"
 		COMPOSE_CMD="docker compose"
-	elif docker-compose --version &>/dev/null; then
+	elif docker-compose --version >/dev/null 2>&1; then
 		success "docker-compose found: $(docker-compose --version)"
 		warn "Consider upgrading to 'docker compose' (Docker Compose v2)"
 		COMPOSE_CMD="docker-compose"
