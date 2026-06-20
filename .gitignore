@@ -12,3 +12,4 @@ apps/api/index
 docker-compose.yml
 bump.sh
 scripts/workflow/bump.sh
+__pycache__
