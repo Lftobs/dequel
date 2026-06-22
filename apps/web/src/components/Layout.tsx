@@ -11,6 +11,26 @@ import { NotificationBanner } from "./layout/NotificationBanner";
 export function Layout({ children }: { children: React.ReactNode }) {
 	const location = useLocation();
 	const navigate = useNavigate();
+
+	const { data: me, isLoading: authLoading } = useQuery({
+		queryKey: ["auth", "me"],
+		queryFn: () => api.getMe(),
+		retry: false,
+	});
+
+	useEffect(() => {
+		if (authLoading) return;
+		if (location.pathname === "/login") {
+			if (me?.authenticated) {
+				navigate({ to: "/" });
+			}
+			return;
+		}
+		if (!me?.authenticated) {
+			navigate({ to: "/login" });
+		}
+	}, [me, authLoading, location.pathname, navigate]);
+
 	const { data: projects = [] } = useProjects();
 	const [projectSelectorOpen, setProjectSelectorOpen] = useState(false);
 
@@ -69,9 +89,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 		return () => clearTimeout(t);
 	}, [notification]);
 
+	const isLoginPage = location.pathname === "/login";
+
 	const match = location.pathname.match(/\/project\/([^/]+)/);
 	const currentProjectId = match ? match[1] : null;
 	const currentProject = projects.find((p) => p.id === currentProjectId);
+
+	if (isLoginPage) {
+		return <div className="min-h-screen bg-[#070708]">{children}</div>;
+	}
 
 	return (
 		<div className="flex min-h-screen bg-[#070708] text-zinc-100 font-sans antialiased">

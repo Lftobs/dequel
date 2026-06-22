@@ -48,6 +48,9 @@ services:
             - ./infra/caddy/routes:/caddy/routes
             - /var/run/docker.sock:/var/run/docker.sock
             - railpack-cache:/tmp/railpack
+            - /etc/passwd:/etc/passwd:ro
+            - /etc/shadow:/etc/shadow:ro
+            - /etc/group:/etc/group:ro
         depends_on:
             buildkit:
                 condition: service_started

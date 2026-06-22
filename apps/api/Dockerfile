@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     tar \
     gnupg \
+    python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Docker CLI + buildx plugin from Docker's official repo
@@ -31,10 +32,11 @@ RUN curl -sSL https://mise.jdx.dev/install.sh | sh \
 
 WORKDIR /app
 
-COPY package.json ./
+COPY apps/api/package.json ./
 RUN bun install
 
-COPY src ./src
+COPY apps/api/src ./src
+COPY scripts ./scripts
 
 RUN mkdir -p /app/data /app/workspace /caddy/routes
 

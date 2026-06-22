@@ -12,10 +12,15 @@ import { serverManager } from './servers/manager';
 import { startGitWatcher } from './git/watcher';
 import { startDomainPolling } from './utils/domain-verifier';
 import { alertEvaluator } from './monitoring/evaluator';
+import { loadOrCreateJwtSecret } from './utils/secrets';
+import { initAuth, cleanupExpiredTokens } from './utils/auth';
 const bootstrap = async () => {
   await mkdir(dirname(config.databasePath), { recursive: true });
   await mkdir(config.workspaceRoot, { recursive: true });
   await mkdir(config.caddyRoutesDir, { recursive: true });
+
+  const jwtSecret = await loadOrCreateJwtSecret(dirname(config.databasePath));
+  initAuth(jwtSecret);
 
   await migrate();
   await orchestrator.reconcileState();
@@ -25,6 +30,7 @@ const bootstrap = async () => {
   startGitWatcher();
   startDomainPolling();
   alertEvaluator.start();
+  setInterval(() => { cleanupExpiredTokens().catch(() => {}); }, 60_000);
 
   const metrics = {
     requestsTotal: 0,
