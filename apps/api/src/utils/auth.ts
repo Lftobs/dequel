@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { getDrizzle } from '../db/drizzle';
+import { getDb } from '../db/client';
 import { eq, and, sql } from 'drizzle-orm';
 import { refreshTokens } from '../db/schema';
 
@@ -94,7 +95,7 @@ export const validateRefreshToken = async (token: string): Promise<string | null
     .where(and(
       eq(refreshTokens.tokenHash, tokenHash),
       sql`${refreshTokens.blacklistedAt} IS NULL`,
-      sql`${refreshTokens.expiresAt} > datetime('now')`,
+      sql`datetime(${refreshTokens.expiresAt}) > datetime('now')`,
     ))
     .get();
   return row?.username ?? null;
@@ -111,6 +112,6 @@ export const blacklistRefreshToken = async (token: string): Promise<void> => {
 };
 
 export const cleanupExpiredTokens = async (): Promise<void> => {
-  const drizzle = await getDrizzle();
-  drizzle.run(sql`DELETE FROM refresh_tokens WHERE expires_at < datetime('now')`);
+  const db = await getDb();
+  db.run(`DELETE FROM refresh_tokens WHERE expires_at < datetime('now')`);
 };

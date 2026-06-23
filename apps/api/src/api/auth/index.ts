@@ -1,31 +1,32 @@
 import { Elysia } from "elysia";
-import { spawn } from "node:child_process";
 import { signAccessToken, verifyAccessToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, blacklistRefreshToken } from "../../utils/auth";
 import { config } from "../../utils/config";
-import { join } from "node:path";
 
-const PAM_SCRIPT = "/app/scripts/pam-verify.py";
+const PAM_AUTH_URL = "http://pam-auth:4567";
 
-const callPam = (username: string, password: string): Promise<{ ok: boolean; username?: string; error?: string }> =>
-  new Promise((resolve) => {
-    const proc = spawn("python3", [PAM_SCRIPT], { stdio: ["pipe", "pipe", "pipe"] });
-    let stdout = "";
-    let stderr = "";
-    proc.stdout.on("data", (chunk) => { stdout += String(chunk); });
-    proc.stderr.on("data", (chunk) => { stderr += String(chunk); });
-    proc.on("close", (code) => {
-      if (code !== 0) {
-        try { resolve(JSON.parse(stdout)); }
-        catch { resolve({ ok: false, error: stderr.trim() || "Authentication failed" }); }
-        return;
-      }
-      try { resolve(JSON.parse(stdout)); }
-      catch { resolve({ ok: false, error: "Invalid response from auth helper" }); }
+const callPam = async (username: string, password: string): Promise<{ ok: boolean; username?: string; error?: string }> => {
+  try {
+    const res = await fetch(`${PAM_AUTH_URL}/auth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
     });
-    proc.stdin!.end(JSON.stringify({ username, password }));
-  });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    return { ok: false, error: "Auth service unavailable" };
+  }
+};
 
-const COOKIE_OPTS = {
+const SESSION_COOKIE_OPTS = {
+  path: "/",
+  httpOnly: true,
+  sameSite: "strict" as const,
+  secure: config.caddyBaseDomain !== "localhost",
+  maxAge: 900,
+};
+
+const REFRESH_COOKIE_OPTS = {
   path: "/",
   httpOnly: true,
   sameSite: "strict" as const,
@@ -49,9 +50,9 @@ export const authRoutes = new Elysia()
     const refreshToken = generateRefreshToken();
     await storeRefreshToken(username, refreshToken);
     dequel_session.value = accessToken;
-    dequel_session.set(COOKIE_OPTS);
+    dequel_session.set(SESSION_COOKIE_OPTS);
     dequel_refresh.value = refreshToken;
-    dequel_refresh.set(COOKIE_OPTS);
+    dequel_refresh.set(REFRESH_COOKIE_OPTS);
     return { ok: true, username };
   })
   .post("/auth/logout", async ({ cookie: { dequel_session, dequel_refresh } }) => {
@@ -74,14 +75,14 @@ export const authRoutes = new Elysia()
       set.status = 401;
       return { error: "Invalid or expired refresh token" };
     }
-    try { await blacklistRefreshToken(rt); } catch {}
+    await blacklistRefreshToken(rt);
     const accessToken = await signAccessToken(username);
     const newRefreshToken = generateRefreshToken();
     await storeRefreshToken(username, newRefreshToken);
     dequel_session.value = accessToken;
-    dequel_session.set(COOKIE_OPTS);
+    dequel_session.set(SESSION_COOKIE_OPTS);
     dequel_refresh.value = newRefreshToken;
-    dequel_refresh.set(COOKIE_OPTS);
+    dequel_refresh.set(REFRESH_COOKIE_OPTS);
     return { ok: true, username };
   })
   .get("/auth/me", async ({ cookie: { dequel_session } }) => {

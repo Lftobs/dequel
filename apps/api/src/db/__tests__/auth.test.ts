@@ -74,11 +74,11 @@ describe('blacklistRefreshToken', () => {
 
 describe('cleanupExpiredTokens', () => {
   it('removes expired tokens', async () => {
-    const { generateRefreshToken, storeRefreshToken, validateRefreshToken, cleanupExpiredTokens, hashToken } = await import('../../utils/auth');
+    const { generateRefreshToken, storeRefreshToken, cleanupExpiredTokens } = await import('../../utils/auth');
     const token = generateRefreshToken();
     await storeRefreshToken('testuser', token);
-    const tokenHash = hashToken(token);
-    db.run(`UPDATE refresh_tokens SET expires_at = '2000-01-01T00:00:00.000Z' WHERE token_hash = ?`, [tokenHash]);
+    const row = db.query('SELECT token_hash FROM refresh_tokens ORDER BY created_at DESC LIMIT 1').get() as { token_hash: string };
+    db.run(`UPDATE refresh_tokens SET expires_at = '2000-01-01T00:00:00.000Z' WHERE token_hash = ?`, [row.token_hash]);
     await cleanupExpiredTokens();
     const remaining = db.query('SELECT COUNT(*) as c FROM refresh_tokens').get() as { c: number };
     expect(remaining.c).toBe(0);

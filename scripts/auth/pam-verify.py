@@ -41,7 +41,10 @@ class PamConv(ctypes.Structure):
 
 
 def verify(username: str, password: str) -> dict:
-    libpam = ctypes.cdll.LoadLibrary(ctypes.util.find_library("pam"))
+    lib_path = ctypes.util.find_library("pam")
+    if not lib_path:
+        return {"ok": False, "error": "PAM library not found on system"}
+    libpam = ctypes.cdll.LoadLibrary(lib_path)
     libc = ctypes.cdll.LoadLibrary("libc.so.6")
     libpam.pam_start.restype = ctypes.c_int
     libpam.pam_authenticate.restype = ctypes.c_int
@@ -97,9 +100,24 @@ def verify(username: str, password: str) -> dict:
     if result.returncode != 0:
         return {"ok": False, "error": f"Group '{GRP_NAME}' does not exist"}
 
-    members = result.stdout.strip().split(":")[-1].split(",") if ":" in result.stdout else []
-    if username not in members:
-        return {"ok": False, "error": f"User '{username}' is not in the '{GRP_NAME}' group"}
+    group_parts = result.stdout.strip().split(":")
+    members = group_parts[-1].split(",") if len(group_parts) >= 4 else []
+    gid = group_parts[2] if len(group_parts) >= 3 else None
+
+    if username in members:
+        return {"ok": True, "username": username}
+
+    if gid:
+        pw_result = subprocess.run(
+            ["getent", "passwd", username],
+            capture_output=True, text=True, timeout=10,
+        )
+        if pw_result.returncode == 0:
+            user_gid = pw_result.stdout.strip().split(":")[3] if ":" in pw_result.stdout else None
+            if user_gid == gid:
+                return {"ok": True, "username": username}
+
+    return {"ok": False, "error": f"User '{username}' is not in the '{GRP_NAME}' group"}
 
     return {"ok": True, "username": username}
 
