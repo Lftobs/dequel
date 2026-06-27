@@ -152,6 +152,15 @@ export const servers = sqliteTable("servers", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const refreshTokens = sqliteTable("refresh_tokens", {
+	id: text().primaryKey(),
+	username: text().notNull(),
+	tokenHash: text("token_hash").notNull().unique(),
+	expiresAt: text("expires_at").notNull(),
+	createdAt: text("created_at").notNull(),
+	blacklistedAt: text("blacklisted_at"),
+});
+
 export const apiKeys = sqliteTable("api_keys", {
   id: text().primaryKey(),
   name: text().notNull(),

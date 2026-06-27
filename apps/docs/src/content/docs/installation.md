@@ -34,6 +34,18 @@ dequel start
 
 Open `http://localhost` to access the dashboard (or the configured `CADDY_BASE_DOMAIN` in production).
 
+## Post-Installation: User Setup
+
+Dequel authenticates against Linux system users in the `dequel` group. After install, create a user:
+
+```bash
+sudo useradd -m -s /bin/bash <username>
+sudo passwd <username>
+sudo usermod -aG dequel <username>
+```
+
+See [Authentication & Access Control](/docs/auth) for details on session management and API keys.
+
 ## Manual Setup (no install script)
 
 If the installer fails, set up the platform manually with just Docker Compose and the config files:

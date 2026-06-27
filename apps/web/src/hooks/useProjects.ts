@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listProjects, createProject, deleteProject } from '../api/client';
 import type { Project } from '../types';
 
-export function useProjects() {
-  return useQuery({ queryKey: ['projects'], queryFn: listProjects, refetchInterval: 10_000 });
+export function useProjects(options?: { enabled?: boolean }) {
+  return useQuery({ queryKey: ['projects'], queryFn: listProjects, refetchInterval: 10_000, ...options });
 }
 
 export function useProject(id: string) {

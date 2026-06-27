@@ -48,6 +48,8 @@ services:
             - ./infra/caddy/routes:/caddy/routes
             - /var/run/docker.sock:/var/run/docker.sock
             - railpack-cache:/tmp/railpack
+            - /etc/passwd:/etc/passwd:ro
+            - /etc/group:/etc/group:ro
         depends_on:
             buildkit:
                 condition: service_started
@@ -67,6 +69,30 @@ services:
             dequel:
                 aliases:
                     - api
+
+    pam-auth:
+        image: python:3-slim
+        entrypoint: []
+        command:
+            - sh
+            - -c
+            - |
+                apt-get update -qq > /dev/null 2>&1 && apt-get install -y -qq libpam-modules > /dev/null 2>&1 && exec python3 -u /app/pam-server.py
+        volumes:
+            - ./scripts/auth/pam-server.py:/app/pam-server.py:ro
+            - /etc/passwd:/etc/passwd:ro
+            - /etc/shadow:/etc/shadow:ro
+            - /etc/group:/etc/group:ro
+        networks:
+            dequel:
+                aliases:
+                    - pam-auth
+        healthcheck:
+            test: ["CMD", "python3", "-c", "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:4567/health').status == 200 else 1)"]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+            start_period: 10s
 
     web:
         image: ghcr.io/lftobs/dequel/web:latest

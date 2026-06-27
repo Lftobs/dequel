@@ -24,9 +24,6 @@ const withFile = <T>(
 };
 
 const SYSTEM = {
-	databasePath: "/app/data/dequel.db",
-	workspaceRoot: "/app/workspace",
-	caddyRoutesDir: "/caddy/routes",
 	dockerNetwork: "dequel_net",
 	buildkitHost: "tcp://buildkit:1234",
 	redisUrl: "redis://redis:6379",
@@ -34,6 +31,9 @@ const SYSTEM = {
 
 export const config = {
 	...SYSTEM,
+	databasePath: withFile<string>("DATABASE_PATH", "/app/data/dequel.db"),
+	workspaceRoot: withFile<string>("WORKSPACE_ROOT", "/app/workspace"),
+	caddyRoutesDir: withFile<string>("CADDY_ROUTES_DIR", "/caddy/routes"),
 	port: withFile<number>(
 		"PORT",
 		"17474",
