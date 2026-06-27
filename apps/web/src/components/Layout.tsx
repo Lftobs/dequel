@@ -31,7 +31,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 		}
 	}, [me, authLoading, location.pathname, navigate]);
 
-	const { data: projects = [] } = useProjects();
+	const { data: projects = [] } = useProjects({ enabled: !!me?.authenticated && location.pathname !== "/login" });
 	const [projectSelectorOpen, setProjectSelectorOpen] = useState(false);
 
 	const { data: metricsText } = useQuery({

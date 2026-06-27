@@ -41,13 +41,15 @@ def verify(username: str, password: str) -> dict:
     if not lib_path:
         return {"ok": False, "error": "PAM library not found on system"}
     libpam = ctypes.cdll.LoadLibrary(lib_path)
-    libc = ctypes.cdll.LoadLibrary("libc.so.6")
+    libc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("c") or "libc.so.6")
     libpam.pam_start.restype = ctypes.c_int
     libpam.pam_authenticate.restype = ctypes.c_int
     libpam.pam_acct_mgmt.restype = ctypes.c_int
     libpam.pam_end.restype = ctypes.c_int
     libpam.pam_strerror.restype = ctypes.c_char_p
     libpam.pam_strerror.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    libc.malloc.restype = ctypes.c_void_p
+    libc.strdup.restype = ctypes.c_void_p
 
     password_cpy = [password]
 
