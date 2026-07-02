@@ -47,6 +47,13 @@ export const migrate = async () => {
     console.log("[Migrate] Added projects.source_type column");
   }
 
+  const deploymentsTableInfo = sqlite.query("PRAGMA table_info('deployments')").all() as { name: string }[];
+  const deploymentsColumns = deploymentsTableInfo.map(r => r.name);
+  if (!deploymentsColumns.includes('clear_cache')) {
+    sqlite.exec("ALTER TABLE deployments ADD COLUMN clear_cache integer NOT NULL DEFAULT 0");
+    console.log("[Migrate] Added deployments.clear_cache column");
+  }
+
   await seedFromConfig();
 };
 

@@ -34,14 +34,19 @@ const run = (cmd: string, args: string[], cwd?: string) =>
     });
   });
 
-export const prepareSourceWorkspace = async (deploymentId: string, gitUrl: string, branch?: string) => {
+export const prepareSourceWorkspace = async (deploymentId: string, gitUrl: string, branch?: string, commitSha?: string) => {
   const root = join(config.workspaceRoot, deploymentId);
   await rm(root, { recursive: true, force: true });
   await mkdir(root, { recursive: true });
-  const args = ['clone', '--depth', '1'];
-  if (branch) args.push('--branch', branch);
-  args.push(gitUrl, root);
-  await run('git', args);
+  if (commitSha) {
+    await run('git', ['clone', gitUrl, root]);
+    await run('git', ['checkout', commitSha], root);
+  } else {
+    const args = ['clone', '--depth', '1'];
+    if (branch) args.push('--branch', branch);
+    args.push(gitUrl, root);
+    await run('git', args);
+  }
   return root;
 };
 

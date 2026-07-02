@@ -246,6 +246,39 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 		setShowGitSwitch(false);
 	};
 
+	const [showManualDeployDialog, setShowManualDeployDialog] = useState(false);
+	const [deployOption, setDeployOption] = useState<"latest" | "commit">("latest");
+	const [commitSha, setCommitSha] = useState("");
+	const [clearCache, setClearCache] = useState(false);
+
+	const handleManualDeploy = async () => {
+		const form = new FormData();
+		form.set("sourceType", "git");
+		if (projectId) form.set("projectId", projectId);
+		if (project?.repoUrl) form.set("gitUrl", project.repoUrl);
+		if (project?.repoBranch) form.set("branch", project.repoBranch);
+		if (environment) form.set("environment", environment);
+		
+		if (deployOption === "commit") {
+			if (!commitSha.trim()) return;
+			form.set("commitSha", commitSha.trim());
+		}
+		
+		if (clearCache) {
+			form.set("clearCache", "true");
+		}
+		
+		try {
+			await createDeployment.mutateAsync(form);
+			setShowManualDeployDialog(false);
+			setCommitSha("");
+			setDeployOption("latest");
+			setClearCache(false);
+		} catch (err) {
+			console.error("Failed to start manual deployment:", err);
+		}
+	};
+
 	const selectedDeployment = deployments.find(
 		(d) => d.id === selectedId,
 	);
@@ -288,132 +321,138 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 						</div>
 					)}
 
-					<form
-						onSubmit={handleDeploy}
-						className="space-y-3"
-					>
-						<div className="flex gap-2">
-							{(
-								[
-									"git",
-									"upload",
-									"compose",
-								] as const
-							).map((type) => (
-								<Button
-									key={type}
-									type="button"
-									variant={
-										sourceType ===
-										type
-											? "default"
-											: "outline"
-									}
-									size="sm"
-									onClick={() =>
-										setSourceType(
-											type,
-										)
-									}
-									disabled={
-										!canEditSource &&
-										type !==
-											sourceType
-									}
-								>
-									{type ===
-									"git"
-										? "Git"
-										: type ===
-											  "upload"
-											? "Upload"
-											: "Compose"}
-								</Button>
-							))}
-						</div>
-						{sourceType === "git" ? (
-							<div className="flex gap-2">
-								<Input
-									placeholder="https://github.com/user/repo.git"
-									value={gitUrl}
-									onChange={(
-										e,
-									) =>
-										setGitUrl(
-											e
-												.target
-												.value,
-										)
-									}
-									className="flex-1"
-									disabled
-								/>
-								<Input
-									placeholder="Branch"
-									value={branch}
-									onChange={(
-										e,
-									) =>
-										setBranch(
-											e
-												.target
-												.value,
-										)
-									}
-									className="w-32"
-									disabled
-								/>
+					{sourceType === "git" ? (
+						<div className="space-y-4">
+							<div className="p-4 rounded-lg bg-[#141417]/50 border border-[#222227] space-y-3">
+								<div className="flex items-center justify-between">
+									<div className="space-y-1">
+										<div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Repository URL</div>
+										<div className="text-sm font-mono text-zinc-200">{project?.repoUrl || "No repository configured"}</div>
+									</div>
+									<div className="text-right space-y-1">
+										<div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Branch</div>
+										<div className="text-xs bg-[#1a1a20] border border-[#33333b] text-zinc-300 px-2 py-1 rounded font-mono inline-block">
+											{project?.repoBranch || "main"}
+										</div>
+									</div>
+								</div>
+								
+								<div className="pt-2 flex justify-end gap-2">
+									<Button
+										type="button"
+										onClick={() => setShowManualDeployDialog(true)}
+										className="bg-amber-600 hover:bg-amber-700 text-white font-medium flex items-center gap-2 shadow-lg shadow-amber-500/10"
+									>
+										<Play className="h-4 w-4 fill-current" /> Manual Deploy...
+									</Button>
+								</div>
 							</div>
-						) : (
+						</div>
+					) : (
+						<form
+							onSubmit={handleDeploy}
+							className="space-y-3"
+						>
+							<div className="flex gap-2">
+								{(
+									[
+										"git",
+										"upload",
+										"compose",
+									] as const
+								).map((type) => (
+									<Button
+										key={type}
+										type="button"
+										variant={
+											sourceType ===
+											type
+												? "default"
+												: "outline"
+										}
+										size="sm"
+										onClick={() =>
+											setSourceType(
+												type,
+											)
+										}
+										disabled={
+											!canEditSource &&
+											type !==
+											sourceType
+										}
+									>
+										{type ===
+										"git"
+											? "Git"
+											: type ===
+											  "upload"
+												? "Upload"
+												: "Compose"}
+									</Button>
+								))}
+							</div>
 							<Input
 								type="file"
 								accept=".zip,.tar,.tar.gz,.tgz"
 								className="file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-primary file:text-primary-foreground"
 							/>
-						)}
-						<div className="flex gap-2">
-							<Input
-								placeholder="Environment (e.g. production)"
-								value={
-									environment
-								}
-								onChange={(e) =>
-									setEnvironment(
-										e.target
-											.value,
-									)
-								}
-								className="flex-1"
-							/>
-							<Button
-								type="submit"
-								disabled={
-									createDeployment.isPending ||
-									!canUpdateDeployment ||
-									isAutoDeploying
-								}
-							>
-								{createDeployment.isPending ||
-								isAutoDeploying ? (
-									"Deploying..."
-								) : (
-									<>
-										<Play className="mr-1.5 h-4 w-4" />
-										Update
-									</>
-								)}
-							</Button>
-						</div>
-						{!canEditSource && (
-							<div className="text-xs text-muted-foreground">
-								Source type locked
-								after first
-								deploy. Use Switch
-								to Git to change
-								source.
+							<div className="flex items-center gap-2.5 py-1.5 px-3 rounded-lg bg-[#121215]/50 border border-[#222227]/50">
+								<input
+									type="checkbox"
+									id="clearCacheUpload"
+									checked={clearCache}
+									onChange={(e) => setClearCache(e.target.checked)}
+									className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-950 cursor-pointer"
+								/>
+								<label htmlFor="clearCacheUpload" className="text-xs text-zinc-400 cursor-pointer select-none">
+									Clear build cache for this deployment
+								</label>
 							</div>
-						)}
-					</form>
+							<div className="flex gap-2">
+								<Input
+									placeholder="Environment (e.g. production)"
+									value={
+										environment
+									}
+									onChange={(e) =>
+										setEnvironment(
+											e.target
+												.value,
+										)
+									}
+									className="flex-1"
+								/>
+								<Button
+									type="submit"
+									disabled={
+										createDeployment.isPending ||
+										!canUpdateDeployment ||
+										isAutoDeploying
+									}
+								>
+									{createDeployment.isPending ||
+									isAutoDeploying ? (
+										"Deploying..."
+									) : (
+										<>
+											<Play className="mr-1.5 h-4 w-4" />
+											Update
+										</>
+									)}
+								</Button>
+							</div>
+							{!canEditSource && (
+								<div className="text-xs text-muted-foreground">
+									Source type locked
+									after first
+									deploy. Use Switch
+									to Git to change
+									source.
+								</div>
+							)}
+						</form>
+					)}
 				</CardContent>
 			</Card>
 
@@ -749,6 +788,106 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 							Delete
 					</Button>
 				</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			<Dialog open={showManualDeployDialog} onOpenChange={setShowManualDeployDialog}>
+				<DialogContent className="sm:max-w-[480px] bg-[#0c0c0e] border-[#1d1d22] text-zinc-100">
+					<DialogHeader>
+						<DialogTitle className="text-lg font-bold text-zinc-100 flex items-center gap-2">
+							<Rocket className="h-5 w-5 text-amber-500" />
+							Manual Deployment
+						</DialogTitle>
+						<DialogDescription className="text-zinc-500 text-xs">
+							Build and deploy a new version of <span className="text-zinc-300 font-semibold">{project?.name}</span>.
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className="space-y-4 py-4">
+						{/* Deploy Option Selection */}
+						<div className="space-y-2">
+							<label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Deployment Option</label>
+							<div className="grid grid-cols-2 gap-2">
+								<button
+									type="button"
+									onClick={() => setDeployOption("latest")}
+									className={cn(
+										"flex flex-col items-start p-3 rounded-lg border text-left transition-all",
+										deployOption === "latest"
+											? "bg-amber-500/10 border-amber-500 text-amber-400"
+											: "bg-[#121215] border-[#222227] text-zinc-400 hover:border-[#33333b] hover:text-zinc-200"
+									)}
+								>
+									<span className="text-xs font-bold">Latest Commit</span>
+									<span className="text-[10px] opacity-75 mt-0.5">Deploy HEAD from {project?.repoBranch || "main"}</span>
+								</button>
+								<button
+									type="button"
+									onClick={() => setDeployOption("commit")}
+									className={cn(
+										"flex flex-col items-start p-3 rounded-lg border text-left transition-all",
+										deployOption === "commit"
+											? "bg-amber-500/10 border-amber-500 text-amber-400"
+											: "bg-[#121215] border-[#222227] text-zinc-400 hover:border-[#33333b] hover:text-zinc-200"
+									)}
+								>
+									<span className="text-xs font-bold">Specific Commit</span>
+									<span className="text-[10px] opacity-75 mt-0.5">Specify a commit hash/SHA</span>
+								</button>
+							</div>
+						</div>
+
+						{/* Commit Hash Input */}
+						{deployOption === "commit" && (
+							<div className="space-y-1.5 animate-in fade-in-50 duration-200">
+								<label className="text-xs font-semibold text-zinc-400">Commit SHA / Hash</label>
+								<Input
+									placeholder="e.g. a1b2c3d4e5f6..."
+									value={commitSha}
+									onChange={(e) => setCommitSha(e.target.value)}
+									className="bg-[#121215] border-[#222227] text-zinc-200 focus:border-amber-500 text-xs font-mono h-9"
+								/>
+							</div>
+						)}
+
+						{/* Clear Cache Toggle */}
+						<div className="flex items-center gap-2.5 p-3 rounded-lg bg-[#121215]/50 border border-[#222227]/50">
+							<input
+								type="checkbox"
+								id="clearCache"
+								checked={clearCache}
+								onChange={(e) => setClearCache(e.target.checked)}
+								className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-950 cursor-pointer"
+							/>
+							<div className="flex flex-col cursor-pointer select-none" onClick={() => setClearCache(!clearCache)}>
+								<label htmlFor="clearCache" className="text-xs font-semibold text-zinc-300 cursor-pointer">
+									Clear build cache
+								</label>
+								<span className="text-[10px] text-zinc-500 leading-normal">
+									Bypasses cached Buildkit stages to force a clean dependency fetch and build.
+								</span>
+							</div>
+						</div>
+					</div>
+
+					<DialogFooter className="border-t border-[#1d1d22] pt-4 gap-2 sm:gap-0">
+						<Button
+							type="button"
+							variant="ghost"
+							onClick={() => setShowManualDeployDialog(false)}
+							className="text-zinc-400 hover:text-zinc-200 text-xs h-9"
+						>
+							Cancel
+						</Button>
+						<Button
+							type="button"
+							onClick={handleManualDeploy}
+							disabled={createDeployment.isPending || (deployOption === "commit" && !commitSha.trim())}
+							className="bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs h-9 px-4 flex items-center gap-2"
+						>
+							{createDeployment.isPending ? "Deploying..." : "Start Deployment"}
+						</Button>
+					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 		</div>

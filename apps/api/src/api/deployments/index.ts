@@ -62,6 +62,10 @@ export const deploymentsRoutes = new Elysia()
 			const environment =
 				String(form.get("environment") ?? "").trim() ||
 				undefined;
+			const commitSha =
+				String(form.get("commitSha") ?? "").trim() ||
+				undefined;
+			const clearCache = form.get("clearCache") === "true";
 			if (
 				sourceType !== "git" &&
 				sourceType !== "upload" &&
@@ -86,6 +90,8 @@ export const deploymentsRoutes = new Elysia()
 					sourceRef: gitUrl,
 					branch,
 					environment,
+					commitSha,
+					clearCache,
 				});
 				orchestrator.enqueue(deployment.id);
 				return deployment;
@@ -118,6 +124,7 @@ export const deploymentsRoutes = new Elysia()
 				sourceRef: uploadPath,
 				branch,
 				environment,
+				clearCache,
 			});
 			orchestrator.enqueue(deployment.id);
 			return deployment;
