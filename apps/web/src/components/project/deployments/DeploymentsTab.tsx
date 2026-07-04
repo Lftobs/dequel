@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Rocket, Play } from "lucide-react";
 import { ManualDeployDialog } from "./manual-deploy-dialog";
 import { DeploymentHistory } from "./deployment-history";
+import { ClearCacheToggle } from "./clear-cache-toggle";
 
 const PAGE_SIZE = 5;
 
@@ -292,18 +293,11 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 								accept=".zip,.tar,.tar.gz,.tgz"
 								className="file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-primary file:text-primary-foreground"
 							/>
-							<div className="flex items-center gap-2.5 py-1.5 px-3 rounded-lg bg-[#121215]/50 border border-[#222227]/50">
-								<input
-									type="checkbox"
-									id="clearCacheUpload"
-									checked={clearCache}
-									onChange={(e) => setClearCache(e.target.checked)}
-									className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-950 cursor-pointer"
-								/>
-								<label htmlFor="clearCacheUpload" className="text-xs text-zinc-400 cursor-pointer select-none">
-									Clear build cache for this deployment
-								</label>
-							</div>
+							<ClearCacheToggle
+								checked={clearCache}
+								onChange={setClearCache}
+								id="clearCacheUpload"
+							/>
 							<div className="flex gap-2">
 								<Input
 									placeholder="Environment (e.g. production)"

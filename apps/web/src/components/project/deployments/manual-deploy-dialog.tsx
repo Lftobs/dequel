@@ -11,6 +11,7 @@ import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Rocket } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import { ClearCacheToggle } from "./clear-cache-toggle";
 
 interface ManualDeployDialogProps {
 	open: boolean;
@@ -122,23 +123,13 @@ export function ManualDeployDialog({
 						</div>
 					)}
 
-					<div className="flex items-center gap-2.5 p-3 rounded-lg bg-[#121215]/50 border border-[#222227]/50">
-						<input
-							type="checkbox"
-							id="clearCacheManual"
-							checked={clearCache}
-							onChange={(e) => setClearCache(e.target.checked)}
-							className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-950 cursor-pointer"
-						/>
-						<div className="flex flex-col cursor-pointer select-none" onClick={() => setClearCache(!clearCache)}>
-							<label htmlFor="clearCacheManual" className="text-xs font-semibold text-zinc-300 cursor-pointer">
-								Clear build cache
-							</label>
-							<span className="text-[10px] text-zinc-500 leading-normal">
-								Bypasses cached Buildkit stages to force a clean dependency fetch and build.
-							</span>
-						</div>
-					</div>
+					<ClearCacheToggle
+						checked={clearCache}
+						onChange={setClearCache}
+						id="clearCacheManual"
+						label="Clear build cache"
+						description="Bypasses cached Buildkit stages to force a clean dependency fetch and build."
+					/>
 				</div>
 
 				{error && (
