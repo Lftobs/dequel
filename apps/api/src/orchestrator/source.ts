@@ -34,13 +34,20 @@ const run = (cmd: string, args: string[], cwd?: string) =>
     });
   });
 
+const isValidSha = (s: string) => /^[0-9a-f]{7,40}$/i.test(s);
+
 export const prepareSourceWorkspace = async (deploymentId: string, gitUrl: string, branch?: string, commitSha?: string) => {
   const root = join(config.workspaceRoot, deploymentId);
   await rm(root, { recursive: true, force: true });
   await mkdir(root, { recursive: true });
   if (commitSha) {
-    await run('git', ['clone', gitUrl, root]);
-    await run('git', ['checkout', commitSha], root);
+    if (!isValidSha(commitSha)) {
+      throw new Error(`Invalid commit SHA: ${commitSha}`);
+    }
+    await run('git', ['init'], root);
+    await run('git', ['remote', 'add', 'origin', gitUrl], root);
+    await run('git', ['fetch', '--depth', '1', 'origin', commitSha], root);
+    await run('git', ['checkout', 'FETCH_HEAD'], root);
   } else {
     const args = ['clone', '--depth', '1'];
     if (branch) args.push('--branch', branch);

@@ -27,9 +27,10 @@ services:
             start_period: 5s
 
     api:
-        image: ghcr.io/lftobs/dequel/api:latest
-        # build:
-        #     context: ./apps/api
+        # image: ghcr.io/lftobs/dequel/api:latest
+        build:
+            context: .
+            dockerfile: ./apps/api/Dockerfile
         environment:
             PORT: 3001
             DATABASE_PATH: /app/data/dequel.db
@@ -88,16 +89,22 @@ services:
                 aliases:
                     - pam-auth
         healthcheck:
-            test: ["CMD", "python3", "-c", "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:4567/health').status == 200 else 1)"]
+            test:
+                [
+                    "CMD",
+                    "python3",
+                    "-c",
+                    "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:4567/health').status == 200 else 1)",
+                ]
             interval: 5s
             timeout: 3s
             retries: 5
             start_period: 10s
 
     web:
-        image: ghcr.io/lftobs/dequel/web:latest
-        # build:
-        #     context: ./apps/web
+        # image: ghcr.io/lftobs/dequel/web:latest
+        build:
+            context: ./apps/web
         healthcheck:
             test:
                 [

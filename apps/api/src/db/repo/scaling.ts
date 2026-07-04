@@ -42,7 +42,7 @@ export const upsertScalingPolicy = async (input: CreateScalingPolicyInput): Prom
     cpuThresholdPercent: input.cpuThresholdPercent ?? 70,
     memoryThresholdPercent: input.memoryThresholdPercent ?? 85,
     cooldownSeconds: input.cooldownSeconds ?? 120,
-    enabled: input.enabled ? 1 : 1,
+    enabled: input.enabled !== undefined ? (input.enabled ? 1 : 0) : 1,
     createdAt: timestamp,
     updatedAt: timestamp,
   }).run();
