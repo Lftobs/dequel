@@ -78,6 +78,11 @@
   opacity: 0.4;
 }
 
+.log-line.error {
+  color: hsl(0 72% 56%);
+  opacity: 0.7;
+}
+
 .log-stage {
   color: hsl(24 95% 53%);
   flex-shrink: 0;
