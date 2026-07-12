@@ -175,7 +175,7 @@ export function DeploymentLogs({
 						{logs.map((log, i) => (
 							<div
 								key={i}
-								className={`log-line ${log.message.startsWith("CRITICAL") ? "" : log.message.startsWith("ERROR") ? "error" : ""}`}
+								className={`log-line ${log.message.startsWith("CRITICAL") ? "error" : log.message.startsWith("ERROR") ? "error" : ""}`}
 							>
 								<span className="log-stage">
 									[{log.stage}
