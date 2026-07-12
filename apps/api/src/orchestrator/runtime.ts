@@ -94,6 +94,7 @@ export const ensureContainerRunning = async (containerName: string) => {
 };
 
 export const reloadCaddy = async () => {
+  if (process.env.NODE_ENV === 'test') return;
   const caddyContainer = await getCaddyContainer();
   await run(dockerBin, ['exec', caddyContainer, 'caddy', 'reload', '--config', '/etc/caddy/Caddyfile']);
 };

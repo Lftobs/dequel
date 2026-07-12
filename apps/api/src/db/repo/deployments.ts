@@ -20,6 +20,7 @@ const mapDeployment = (row: typeof deployments.$inferSelect): Deployment => ({
   replicas: row.replicas,
   environment: row.environment,
   failureReason: row.failureReason,
+  clearCache: Boolean(row.clearCache),
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 });
@@ -38,6 +39,7 @@ export const createDeployment = async (input: CreateDeploymentInput): Promise<De
     branch: input.branch ?? null,
     commitSha: input.commitSha ?? null,
     environment: input.environment ?? null,
+    clearCache: input.clearCache ? 1 : 0,
     createdAt: timestamp,
     updatedAt: timestamp,
   }).run();

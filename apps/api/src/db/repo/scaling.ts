@@ -28,6 +28,8 @@ export const upsertScalingPolicy = async (input: CreateScalingPolicyInput): Prom
     if (input.maxReplicas !== undefined) updates.maxReplicas = input.maxReplicas;
     if (input.cpuThresholdPercent !== undefined) updates.cpuThresholdPercent = input.cpuThresholdPercent;
     if (input.memoryThresholdPercent !== undefined) updates.memoryThresholdPercent = input.memoryThresholdPercent;
+    if (input.cooldownSeconds !== undefined) updates.cooldownSeconds = input.cooldownSeconds;
+    if (input.enabled !== undefined) updates.enabled = input.enabled ? 1 : 0;
     db.update(scalingPolicies).set(updates).where(eq(scalingPolicies.projectId, input.projectId)).run();
     return mapScalingPolicy(db.select().from(scalingPolicies).where(eq(scalingPolicies.projectId, input.projectId)).get()!);
   }
@@ -39,6 +41,8 @@ export const upsertScalingPolicy = async (input: CreateScalingPolicyInput): Prom
     maxReplicas: input.maxReplicas ?? 5,
     cpuThresholdPercent: input.cpuThresholdPercent ?? 70,
     memoryThresholdPercent: input.memoryThresholdPercent ?? 85,
+    cooldownSeconds: input.cooldownSeconds ?? 120,
+    enabled: input.enabled !== undefined ? (input.enabled ? 1 : 0) : 1,
     createdAt: timestamp,
     updatedAt: timestamp,
   }).run();

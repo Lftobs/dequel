@@ -1,8 +1,7 @@
-import { existsSync } from "node:fs";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { migrate as drizzleMigrate } from "drizzle-orm/bun-sqlite/migrator";
 import { getDrizzle } from "./drizzle";
-import { getDb } from "./client";
+import { sql } from "drizzle-orm";
 import { config } from "../utils/config";
 import { getSmtpSettings, upsertSmtpSettings } from "./repo/settings";
 import { getGithubIntegration, setGithubIntegration } from "./repo/github";
@@ -30,24 +29,19 @@ export const migrate = async () => {
 
   drizzleMigrate(db, { migrationsFolder });
 
-  // Apply schema additions that Drizzle Kit migrations may miss
-  const sqlite = await getDb();
-  const tableInfo = sqlite.query("PRAGMA table_info('projects')").all() as { name: string }[];
-  const columns = tableInfo.map(r => r.name);
-  if (!columns.includes('port')) {
-    sqlite.exec("ALTER TABLE projects ADD COLUMN port integer");
-    console.log("[Migrate] Added projects.port column");
-  }
-  if (!columns.includes('source_dir')) {
-    sqlite.exec("ALTER TABLE projects ADD COLUMN source_dir text");
-    console.log("[Migrate] Added projects.source_dir column");
-  }
-  if (!columns.includes('source_type')) {
-    sqlite.exec("ALTER TABLE projects ADD COLUMN source_type text NOT NULL DEFAULT 'git'");
-    console.log("[Migrate] Added projects.source_type column");
-  }
-
+  await addClearCacheColumn(db);
   await seedFromConfig();
+};
+
+const addClearCacheColumn = async (db: ReturnType<typeof getDrizzle>) => {
+  try {
+    db.run(sql`ALTER TABLE deployments ADD COLUMN clear_cache integer NOT NULL DEFAULT 0`);
+    console.log("[Migrate] Added clear_cache column to deployments table");
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("duplicate column name")) return;
+    console.error("[Migrate] Failed to add clear_cache column:", err);
+    throw err;
+  }
 };
 
 const seedFromConfig = async () => {

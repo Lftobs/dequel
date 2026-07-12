@@ -43,6 +43,7 @@ export const deployments = sqliteTable("deployments", {
   replicas: integer().notNull().default(1),
   environment: text(),
   failureReason: text("failure_reason"),
+  clearCache: integer("clear_cache").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

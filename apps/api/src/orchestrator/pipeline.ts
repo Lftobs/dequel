@@ -316,20 +316,23 @@ export class PipelineOrchestrator {
 					deployment.sourceType ===
 					"git"
 				) {
-					const branchLabel =
-						deployment.branch
+					const commitLabel = deployment.commitSha
+						? ` (commit ${deployment.commitSha.slice(0, 7)})`
+						: deployment.branch
 							? ` (branch ${deployment.branch})`
 							: "";
 					await emitLog(
 						deploymentId,
 						"build",
-						`Cloning git repository: ${deployment.sourceRef}${branchLabel}`,
+						`Cloning git repository: ${deployment.sourceRef}${commitLabel}`,
 					);
 					workspacePath =
 						await prepareSourceWorkspace(
 							deploymentId,
 							deployment.sourceRef,
 							deployment.branch ??
+								undefined,
+							deployment.commitSha ??
 								undefined,
 						);
 					const sha = await getHeadSha(
@@ -382,7 +385,7 @@ export class PipelineOrchestrator {
 						line,
 					);
 				},
-				{ cacheKey, sourceDir: project?.sourceDir, signal: controller.signal },
+				{ cacheKey, sourceDir: project?.sourceDir, signal: controller.signal, clearCache: deployment.clearCache },
 			);
 			} else {
 				await emitLog(

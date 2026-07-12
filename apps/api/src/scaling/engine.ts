@@ -1,26 +1,10 @@
-import { spawn } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import Redis from 'ioredis';
 import { config } from '../utils/config';
 import { dockerBin } from '../utils/docker-bin';
+import { run, tryRun } from './docker-utils';
 import { getScalingPolicy, listDeployments, updateDeploymentStatus, listEnvironmentVariablesForDeploy } from '../db/repo';
-
-const run = (cmd: string, args: string[]) =>
-  new Promise<string>((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', (chunk) => { stdout += String(chunk); });
-    child.stderr.on('data', (chunk) => { stderr += String(chunk); });
-    child.on('close', (code) => {
-      if (code === 0) resolve((stdout + '\n' + stderr).trim());
-      else reject(new Error(`${cmd} ${args.join(' ')} failed (${code}): ${stderr}`));
-    });
-  });
-
-const tryRun = (cmd: string, args: string[]) =>
-  run(cmd, args).catch(() => '');
 
 interface ContainerStats {
   containerName: string;

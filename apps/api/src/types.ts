@@ -221,6 +221,7 @@ export interface Deployment {
   replicas: number;
   environment: string | null;
   failureReason: string | null;
+  clearCache: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -239,6 +240,7 @@ export interface CreateDeploymentInput {
   branch?: string;
   commitSha?: string;
   environment?: string;
+  clearCache?: boolean;
 }
 
 export interface DeploymentLog {
