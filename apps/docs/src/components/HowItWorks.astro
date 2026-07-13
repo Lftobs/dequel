@@ -60,13 +60,18 @@
           <div class="border border-[#ea580c] p-2 bg-[#111114] text-center w-full relative group">
             <span class="text-[0.6rem] font-mono text-[#ea580c]">Client Request</span>
             <div class="text-[0.55rem] text-[#7f7f8a]">my-app.com</div>
-            <!-- Arrow animated -->
-            <div class="absolute right-[-17px] top-[40%] text-[#ea580c] font-mono text-xs animate-ping">→</div>
+            <!-- Pulse dot indicator -->
+            <div class="absolute -right-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-5 h-5 bg-[#ea580c]/10 border border-[#ea580c]/20">
+              <span class="w-1.5 h-1.5 bg-[#ea580c] animate-ping absolute"></span>
+              <span class="w-1.5 h-1.5 bg-[#ea580c]"></span>
+            </div>
           </div>
           <div class="mt-4 border border-[#222228] p-2 bg-[#111114] text-center w-full relative">
             <span class="text-[0.6rem] font-mono text-[#e2e2e8]">Git Push</span>
             <div class="text-[0.55rem] text-[#7f7f8a]">Repo Webhook</div>
-            <div class="absolute right-[-17px] top-[40%] text-[#7f7f8a] font-mono text-xs">→</div>
+            <div class="absolute -right-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-5 h-5 bg-[#7f7f8a]/10 border border-[#222228]">
+              <span class="w-1.5 h-1.5 bg-[#7f7f8a]"></span>
+            </div>
           </div>
         </div>
 
@@ -79,18 +84,23 @@
               <span class="text-[0.55rem] font-mono text-[#7f7f8a]">Auto SSL / Proxy</span>
             </div>
             <span class="text-[0.55rem] bg-[#ea580c]/10 text-[#ea580c] px-1 font-mono">PORT 80/443</span>
-            <div class="absolute right-[-17px] top-[40%] text-[#ea580c] font-mono text-xs">→</div>
+            <div class="absolute -right-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-5 h-5 bg-[#ea580c]/10 border border-[#ea580c]/20">
+              <span class="w-1.5 h-1.5 bg-[#ea580c] animate-ping absolute"></span>
+              <span class="w-1.5 h-1.5 bg-[#ea580c]"></span>
+            </div>
           </div>
 
           <!-- API Control Plane -->
           <div class="border border-[#ea580c] p-3 bg-[#111114] relative">
             <span class="text-[0.65rem] font-mono font-bold text-[#ea580c] block">Dequel API</span>
             <span class="text-[0.55rem] font-mono text-[#7f7f8a]">Docker Orchestrator</span>
-            <div class="absolute bottom-[-18px] left-[20%] text-[#7f7f8a] font-mono text-xs flex flex-col items-center">
-              <span>↓</span>
+            <div class="absolute -bottom-3 left-[20%] transform -translate-x-1/2 flex items-center justify-center w-5 h-5 bg-[#7f7f8a]/10 border border-[#222228]">
+              <span class="w-1.5 h-1.5 bg-[#7f7f8a]"></span>
             </div>
             <!-- SQLite & Redis -->
-            <div class="absolute right-[-17px] top-[40%] text-[#e2e2e8] font-mono text-xs">→</div>
+            <div class="absolute -right-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-5 h-5 bg-[#e2e2e8]/10 border border-[#222228]">
+              <span class="w-1.5 h-1.5 bg-[#e2e2e8]"></span>
+            </div>
           </div>
         </div>
 

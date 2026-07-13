@@ -162,3 +162,4 @@ dequel update
 ```
 
 This pulls the latest images from GitHub Container Registry and recreates the services.
+

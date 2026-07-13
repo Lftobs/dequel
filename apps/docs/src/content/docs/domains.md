@@ -29,9 +29,3 @@ In your DNS registrar's control panel (Cloudflare, GoDaddy, Namecheap, etc.), ad
 - **Verified:** DNS records resolve correctly. The proxy router is configured.
 - **Failed:** Resolving record targets did not match the required target targets. Check your DNS values.
 
-<div class="pt-6">
-  <a href="/docs/ssl" class="inline-flex items-center gap-2 bg-[#0c0c0e] hover:bg-[#121215] text-foreground border border-border font-semibold px-4 py-2 rounded-xl transition-all text-xs">
-    Next: SSL Certificates
-    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-  </a>
-</div>

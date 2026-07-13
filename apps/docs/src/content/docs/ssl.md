@@ -32,8 +32,3 @@ If your domain status is stuck on `PENDING_SSL`:
 - Verify that your DNS CNAME/A records have fully propagated.
 - Ensure that no CDN service (e.g. Cloudflare proxy) is blocking HTTP ACME challenge endpoints (`/.well-known/acme-challenge/`).
 
-<div class="pt-6">
-  <a href="/docs" class="inline-flex items-center gap-2 bg-[#0c0c0e] hover:bg-[#121215] text-foreground border border-border font-semibold px-4 py-2 rounded-xl transition-all text-xs">
-    Back to Intro
-  </a>
-</div>
