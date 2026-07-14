@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import Redis from 'ioredis';
 import { config } from '../utils/config';
 import { dockerBin } from '../utils/docker-bin';
+import { DEQUEL_MANAGED_LABEL } from '../utils/dequel-labels';
 import { run, tryRun } from './docker-utils';
 import { getScalingPolicy, listDeployments, updateDeploymentStatus, listEnvironmentVariablesForDeploy } from '../db/repo';
 
@@ -201,6 +202,7 @@ class ScalingEngine {
       await run(dockerBin, [
         'run', '-d', '--name', containerName,
         '--network', config.dockerNetwork,
+        '-l', DEQUEL_MANAGED_LABEL,
         ...volumes, ...envVars,
         imageTag,
       ]);

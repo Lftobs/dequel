@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { config } from '../utils/config';
 import { dockerBin } from '../utils/docker-bin';
+import { DEQUEL_MANAGED_LABEL } from '../utils/dequel-labels';
 import type { Database } from '../types';
 import { updateDatabaseStatus } from '../db/repo';
 
@@ -52,6 +53,7 @@ export const provisionDatabase = async (dbRecord: Database): Promise<void> => {
     '--name', containerName,
     '--network', config.dockerNetwork,
     '--network-alias', containerName,
+    '-l', DEQUEL_MANAGED_LABEL,
     ...(dbRecord.cpuLimit ? ['--cpus', String(dbRecord.cpuLimit)] : []),
     ...(dbRecord.memoryLimitMb ? ['--memory', `${Math.round(dbRecord.memoryLimitMb)}m`] : []),
     '-v', `${volumeName}:/var/lib/${dbRecord.type === 'mysql' ? 'mysql' : 'postgresql/data'}`,
