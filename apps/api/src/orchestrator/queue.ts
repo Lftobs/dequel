@@ -22,12 +22,14 @@ const decodeJob = (raw: string): JobPayload | null => {
   }
 };
 
+const createRedis = () => new Redis(config.redisUrl, { maxRetriesPerRequest: null });
+
 export class DeploymentQueue {
   private redis: Redis;
   private shuttingDown = false;
 
   constructor() {
-    this.redis = new Redis(config.redisUrl, { maxRetriesPerRequest: null });
+    this.redis = createRedis();
   }
 
   async enqueue(deploymentId: string) {
@@ -41,7 +43,9 @@ export class DeploymentQueue {
       encodeJob({ id: deploymentId, attempt: i }),
     );
     await this.redis.zrem(RETRY_KEY, ...allAttempts);
-    await this.redis.lrem(DLQ_KEY, 0, encodeJob({ id: deploymentId, attempt: 0 }));
+    for (let i = 0; i <= config.queueRetryMax + 1; i++) {
+      await this.redis.lrem(DLQ_KEY, 0, encodeJob({ id: deploymentId, attempt: i }));
+    }
   }
 
   async start(handler: (deploymentId: string) => Promise<boolean>) {
@@ -55,21 +59,26 @@ export class DeploymentQueue {
   }
 
   private async runWorker(workerId: number, handler: (deploymentId: string) => Promise<boolean>) {
-    while (!this.shuttingDown) {
-      await this.requeueDueJobs();
+    const workerRedis = createRedis();
+    try {
+      while (!this.shuttingDown) {
+        await this.requeueDueJobs();
 
-      const item = await this.redis.blpop(QUEUE_KEY, BLOCK_TIMEOUT_SEC);
-      if (!item) continue;
-      const job = decodeJob(item[1]);
-      if (!job) continue;
+        const item = await workerRedis.blpop(QUEUE_KEY, BLOCK_TIMEOUT_SEC);
+        if (!item) continue;
+        const job = decodeJob(item[1]);
+        if (!job) continue;
 
-      try {
-        const ok = await handler(job.id);
-        if (!ok) await this.retryOrDlq(job);
-      } catch (err) {
-        console.error(`[Queue] Worker ${workerId} handler error:`, err);
-        await this.retryOrDlq(job);
+        try {
+          const ok = await handler(job.id);
+          if (!ok) await this.retryOrDlq(job);
+        } catch (err) {
+          console.error(`[Queue] Worker ${workerId} handler error:`, err);
+          await this.retryOrDlq(job);
+        }
       }
+    } finally {
+      await workerRedis.quit();
     }
   }
 
