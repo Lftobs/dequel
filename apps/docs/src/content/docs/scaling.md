@@ -28,9 +28,3 @@ Auto-scaling lets you scale compute bounds in response to real-time resource dem
 
 To disable auto-scaling policies or switch back to static scaling, click **Delete Policy** in the scaling panel. Confirm the change in the custom Radix confirmation dialog to update the scaling configuration safely.
 
-<div class="pt-6">
-  <a href="/docs/databases" class="inline-flex items-center gap-2 bg-[#0c0c0e] hover:bg-[#121215] text-foreground border border-border font-semibold px-4 py-2 rounded-xl transition-all text-xs">
-    Next: Managed Databases
-    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-  </a>
-</div>

@@ -37,3 +37,4 @@ slug: changelog
 ### Fixed
 
 - Railpack build timeout handling and log scrolling
+

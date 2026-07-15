@@ -106,3 +106,4 @@ Config file equivalent:
   "envEncryptionKey": "your-secure-key-here"
 }
 ```
+
