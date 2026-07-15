@@ -233,8 +233,8 @@ export function VolumesTab({
 						</Button>
 					</div>
 
-					<div className="rounded-xl border border-border bg-card/35 backdrop-blur-sm overflow-hidden">
-						<Table>
+					<div className="rounded-xl border border-border bg-card/35 backdrop-blur-sm overflow-hidden overflow-x-auto">
+						<Table className="min-w-[600px] md:min-w-full">
 							<TableHeader className="bg-[#0b0b0f]/50">
 								<TableRow className="border-border hover:bg-transparent">
 									<TableHead className="text-xs font-semibold py-3">

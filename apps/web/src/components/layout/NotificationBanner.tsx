@@ -18,7 +18,7 @@ export function NotificationBanner({
   const Icon = notification.type === "success" ? CheckCircle2 : AlertCircle;
 
   return (
-    <div className="fixed bottom-6 right-6 z-[999999] w-full max-w-sm animate-in fade-in slide-in-from-bottom-5 duration-300">
+    <div className="fixed bottom-6 left-6 right-6 md:left-auto md:right-6 z-[999999] w-auto md:w-full md:max-w-sm animate-in fade-in slide-in-from-bottom-5 duration-300">
       <Alert
         variant={notification.type === "success" ? "success" : "destructive"}
         className="bg-[#0f0f12]/95 border-[#222227] shadow-2xl backdrop-blur-md pr-10"
