@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEQUEL_HOME="${DEQUEL_HOME:-$HOME/.dequel}"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd 2>/dev/null)"
+DEQUEL_HOME="${DEQUEL_HOME:-${SCRIPT_DIR:-$HOME/.dequel}}"
 COMPOSE_FILE="$DEQUEL_HOME/docker-compose.yml"
 VERSION="0.1.0"
 
@@ -27,7 +28,12 @@ cmd() {
 cmd_start() {
 	header "Starting Dequel"
 	cmd up -d
-	success "Dequel is running at http://localhost"
+	local domain="${CADDY_BASE_DOMAIN:-localhost}"
+	if [ "$domain" = "localhost" ]; then
+		success "Dequel is running at http://localhost"
+	else
+		success "Dequel is running at https://$domain"
+	fi
 }
 
 cmd_stop() {
@@ -130,7 +136,7 @@ cmd_help() {
 	echo "  --help     Show this help"
 	echo ""
 	echo "Environment:"
-	echo "  DEQUEL_HOME  Config directory (default: \$HOME/.dequel)"
+	echo "  DEQUEL_HOME  Config directory (default: auto-detected from install path)"
 }
 
 case "${1:-}" in

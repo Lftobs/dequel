@@ -1,19 +1,29 @@
 import { Link } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Menu } from "lucide-react";
 
 interface HeaderProps {
 	currentProject: { name: string } | undefined;
 	currentProjectId: string | null;
 	location: { pathname: string; search: any };
+	setSidebarOpen: (open: boolean) => void;
 }
 
 export function Header({
 	currentProject,
 	currentProjectId,
 	location,
+	setSidebarOpen,
 }: HeaderProps) {
 	return (
-		<header className="h-14 border-b border-[#1a1a1f] bg-[#0c0c0e] flex items-center px-6 gap-2 text-xs text-zinc-500">
+		<header className="h-14 border-b border-[#1a1a1f] bg-[#0c0c0e] flex items-center px-4 sm:px-6 gap-2 text-xs text-zinc-500">
+			<button
+				onClick={() => setSidebarOpen(true)}
+				className="lg:hidden p-1.5 -ml-1 mr-1 rounded-md hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+				aria-label="Open sidebar"
+			>
+				<Menu className="h-4.5 w-4.5" />
+			</button>
+
 			<Link to="/" className="hover:text-zinc-200 transition-colors">
 				Workspace
 			</Link>

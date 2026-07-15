@@ -72,8 +72,8 @@ function ServersSection() {
           <Button type="submit" size="sm">Add Server</Button>
         </form>
         {servers.length > 0 && (
-          <div className="rounded-xl border border-border overflow-hidden">
-            <Table>
+          <div className="rounded-xl border border-border overflow-hidden overflow-x-auto">
+            <Table className="min-w-[500px] md:min-w-full">
               <TableHeader>
                 <TableRow><TableHead>Name</TableHead><TableHead>Host</TableHead><TableHead>Status</TableHead><TableHead className="w-12"></TableHead></TableRow>
               </TableHeader>
@@ -322,7 +322,7 @@ function ApiKeysSection() {
             <code className="block bg-emerald-950/50 rounded px-2 py-1 font-mono text-xs break-all">{newKey}</code>
           </div>
         )}
-        <form onSubmit={add} className="flex items-end gap-3 mb-4">
+        <form onSubmit={add} className="flex flex-wrap items-end gap-3 mb-4">
           <div className="grid gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">Key Name</label>
             <Input placeholder="ci-cd-token" value={name} onChange={e => setName(e.target.value)} className="w-56" />
@@ -330,8 +330,8 @@ function ApiKeysSection() {
           <Button type="submit" size="sm">Generate Key</Button>
         </form>
         {apiKeys.length > 0 && (
-          <div className="rounded-xl border border-border overflow-hidden">
-            <Table>
+          <div className="rounded-xl border border-border overflow-hidden overflow-x-auto">
+            <Table className="min-w-[500px] md:min-w-full">
               <TableHeader>
                 <TableRow><TableHead>Name</TableHead><TableHead>Key Hash</TableHead><TableHead>Created</TableHead><TableHead className="w-12"></TableHead></TableRow>
               </TableHeader>
