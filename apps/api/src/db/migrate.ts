@@ -38,7 +38,8 @@ const addClearCacheColumn = async (db: ReturnType<typeof getDrizzle>) => {
     db.run(sql`ALTER TABLE deployments ADD COLUMN clear_cache integer NOT NULL DEFAULT 0`);
     console.log("[Migrate] Added clear_cache column to deployments table");
   } catch (err) {
-    if (err instanceof Error && err.message.includes("duplicate column name")) return;
+    const cause = err instanceof Error && "cause" in err ? err.cause : err;
+    if (cause instanceof Error && cause.message.includes("duplicate column name")) return;
     console.error("[Migrate] Failed to add clear_cache column:", err);
     throw err;
   }

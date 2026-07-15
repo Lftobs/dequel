@@ -26,9 +26,3 @@ Because environment variables are injected during container startup, modifying o
 
 Dequel displays a **Redeployment Warning Banner** at the top of the tab whenever variables are mutated. Click the **Redeploy Now** button on the banner to execute a zero-downtime rolling update with the new configurations.
 
-<div class="pt-6">
-  <a href="/docs/scaling" class="inline-flex items-center gap-2 bg-[#0c0c0e] hover:bg-[#121215] text-foreground border border-border font-semibold px-4 py-2 rounded-xl transition-all text-xs">
-    Next: Scaling Policies
-    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-  </a>
-</div>

@@ -51,3 +51,4 @@ API keys are scoped to the entire platform with the same permissions as the user
 | `GET` | `/api/health` | None | Health check |
 
 The web dashboard redirects to `/login` when no valid session is detected.
+

@@ -563,6 +563,7 @@ export class PipelineOrchestrator {
 					.slice(0, 63);
 				const containerRegex = `${dashSlug}-.*`;
 				ensureProjectDashboard(
+					deployment.projectId!,
 					projectName,
 					containerRegex,
 				).catch((e) =>
