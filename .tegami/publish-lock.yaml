@@ -1,0 +1,17 @@
+core:packages:
+  - id: npm:dequel
+    updated: false
+  - changelogIds: []
+    id: npm:dequel-docs
+    updated: true
+  - changelogIds: []
+    id: npm:dequel-api
+    updated: true
+  - changelogIds: []
+    id: npm:dequel-web
+    updated: true
+npm:packages:
+  - id: npm:dequel
+  - id: npm:dequel-docs
+  - id: npm:dequel-api
+  - id: npm:dequel-web
