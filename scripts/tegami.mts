@@ -138,12 +138,32 @@ ${body}
   };
 }
 
+function tagReleasePlugin(): TegamiPlugin {
+  return {
+    name: "tag-release",
+    async afterPublish(this: any) {
+      const pkg = this.graph.get("npm:dequel-api");
+      if (!pkg) return;
+      const pkgJson = JSON.parse(await readFile(join(pkg.path, "package.json"), "utf8"));
+      const tag = `v${pkgJson.version}`;
+      try {
+        execSync(`git tag ${tag}`, { cwd: this.cwd });
+        execSync(`git push origin ${tag}`, { cwd: this.cwd });
+        console.log(`[Tegami] Pushed tag ${tag} — release workflow will trigger`);
+      } catch (e) {
+        console.warn(`[Tegami] Failed to push tag ${tag}:`, e);
+      }
+    },
+  };
+}
+
 const paper = tegami({
   npm: {
     client: "bun",
   },
   plugins: [
     docsChangelogPlugin(),
+    tagReleasePlugin(),
     github({
       repo: REPO,
       release: false,
@@ -160,9 +180,9 @@ const paper = tegami({
   },
   packages: {
     "npm:dequel": { publish: false },
-    "npm:dequel-api": { group: "dequel" },
-    "npm:dequel-web": { group: "dequel" },
-    "npm:dequel-docs": { group: "dequel" },
+    "npm:dequel-api": { group: "dequel", publish: false },
+    "npm:dequel-web": { group: "dequel", publish: false },
+    "npm:dequel-docs": { group: "dequel", publish: false },
   },
 });
 
