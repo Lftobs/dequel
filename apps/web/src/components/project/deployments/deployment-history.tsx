@@ -51,8 +51,8 @@ export function DeploymentHistory({
 
 	return (
 		<>
-			<div className="rounded-xl border border-border bg-card overflow-hidden">
-				<Table>
+			<div className="rounded-xl border border-border bg-card overflow-hidden overflow-x-auto">
+				<Table className="min-w-[650px] md:min-w-full">
 					<TableHeader>
 						<TableRow>
 							<TableHead>Status</TableHead>

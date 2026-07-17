@@ -151,24 +151,9 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			set.status = 401;
 			return { error: "Not authenticated" };
 		}
-		const repos = await fetchGitHub("/user/repos?per_page=100&sort=updated&type=all", token);
-		const user = await fetchGitHub("/user", token) as { login: string };
-		const orgs = await fetchGitHub("/user/orgs", token) as { login: string }[];
+		const repos = await fetchGitHub("/user/repos?per_page=100&sort=updated&affiliation=owner", token);
 		const allRepos = Array.isArray(repos) ? repos : [];
-		const orgRepos: any[] = [];
-		for (const org of Array.isArray(orgs) ? orgs : []) {
-			try {
-				const orgR = await fetchGitHub(`/orgs/${org.login}/repos?per_page=100&sort=updated&type=all`, token);
-				if (Array.isArray(orgR)) orgRepos.push(...orgR);
-			} catch {}
-		}
-		const seen = new Set<number>();
-		const merged = [...allRepos, ...orgRepos].filter((r) => {
-			if (seen.has(r.id)) return false;
-			seen.add(r.id);
-			return true;
-		});
-		return merged.map((r: any) => ({
+		return allRepos.map((r: any) => ({
 			id: r.id,
 			name: r.name,
 			fullName: r.full_name,

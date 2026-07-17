@@ -33,6 +33,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 	const { data: projects = [] } = useProjects({ enabled: !!me?.authenticated && location.pathname !== "/login" });
 	const [projectSelectorOpen, setProjectSelectorOpen] = useState(false);
+	const [sidebarOpen, setSidebarOpen] = useState(false);
+
+	useEffect(() => {
+		setSidebarOpen(false);
+	}, [location.pathname, location.search]);
 
 	const { data: metricsText } = useQuery({
 		queryKey: ["metrics"],
@@ -100,7 +105,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 	}
 
 	return (
-		<div className="flex min-h-screen bg-[#070708] text-zinc-100 font-sans antialiased">
+		<div className="flex min-h-screen bg-[#070708] text-zinc-100 font-sans antialiased overflow-x-hidden">
 			<Sidebar
 				projects={projects}
 				currentProject={currentProject}
@@ -110,13 +115,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				metrics={metrics}
 				location={location}
 				navigate={navigate}
+				sidebarOpen={sidebarOpen}
+				setSidebarOpen={setSidebarOpen}
 			/>
 
-			<div className="flex-1 flex flex-col min-w-0">
+			<div className="flex-1 flex flex-col min-w-0 relative">
 				<Header
 					currentProject={currentProject}
 					currentProjectId={currentProjectId}
 					location={location}
+					setSidebarOpen={setSidebarOpen}
 				/>
 
 				<NotificationBanner
@@ -124,7 +132,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 					onClose={() => setNotification(null)}
 				/>
 
-				<main className="flex-1 p-8 overflow-auto">{children}</main>
+				<main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">{children}</main>
 			</div>
 		</div>
 	);

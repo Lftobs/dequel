@@ -21,6 +21,7 @@ import {
 	getHeadSha,
 } from "./source";
 import {
+	cleanupFailedDeployment,
 	deployContainer,
 	ensureContainerRunning,
 	reloadCaddy,
@@ -158,6 +159,10 @@ export class PipelineOrchestrator {
 			]);
 		}
 
+		if (deployment.imageTag) {
+			await tryRun("docker", ["rmi", "-f", deployment.imageTag]);
+		}
+
 		await deleteDeploymentAndLogs(
 			deploymentId,
 		);
@@ -290,6 +295,9 @@ export class PipelineOrchestrator {
 		let workspacePath = "";
 		let uploadedArchivePath: string | null =
 			null;
+		let imageTag: string | undefined;
+		let projectName: string | undefined;
+		let deployed = false;
 
 		try {
 			await emitLog(
@@ -298,7 +306,7 @@ export class PipelineOrchestrator {
 				"Deployment enqueued",
 			);
 
-			const imageTag =
+			imageTag =
 				await this.resolveImageTag(
 					deployment,
 				);
@@ -484,7 +492,6 @@ export class PipelineOrchestrator {
 
 			await this.checkCancelled(deploymentId);
 
-			let projectName: string | undefined;
 			let cpuLimit:
 				| number
 				| null
@@ -545,6 +552,8 @@ export class PipelineOrchestrator {
 					failureReason: null,
 				},
 			);
+
+			deployed = true;
 
 			if (projectName) {
 				const dashSlug = projectName
@@ -623,6 +632,23 @@ export class PipelineOrchestrator {
 				"failed",
 				{ failureReason: message },
 			);
+
+			if (!deployed) {
+				await emitLog(
+					deploymentId,
+					"system",
+					"Cleaning up Docker resources from failed deployment",
+				);
+				await cleanupFailedDeployment(
+					deploymentId,
+					imageTag,
+					projectName,
+					deployment.projectId,
+				).catch(e =>
+					console.warn(`[Cleanup] Failed to clean deployment ${deploymentId}:`, e),
+				);
+			}
+
 			if (deployment.projectId) {
 				try {
 					const dbs =

@@ -40,6 +40,19 @@ check_prerequisites() {
 		fail "Docker is not installed. See https://docs.docker.com/engine/install/"
 	fi
 
+	if docker info >/dev/null 2>&1; then
+		success "Docker socket accessible"
+	else
+		warn "Docker socket not accessible — attempting to add user to docker group"
+		if sudo usermod -aG docker "$USER" 2>/dev/null; then
+			success "Added $USER to docker group"
+			warn "Log out and back in (or run 'newgrp docker') for the change to take effect"
+		else
+			warn "Could not add user to docker group automatically"
+			warn "Run this manually: sudo usermod -aG docker $USER && newgrp docker"
+		fi
+	fi
+
 	if docker compose version >/dev/null 2>&1; then
 		success "Docker Compose found: $(docker compose version)"
 		COMPOSE_CMD="docker compose"
