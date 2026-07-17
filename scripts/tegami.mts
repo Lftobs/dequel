@@ -8,8 +8,22 @@ import type { Draft, TegamiPlugin } from "tegami";
 
 const REPO = "Lftobs/dequel";
 
+function getPreviousTag(): string {
+  try {
+    const output = execSync(
+      "git tag -l 'v*' --sort=-v:refname",
+      { encoding: "utf-8" }
+    );
+    const tags = output.trim().split("\n").filter(Boolean);
+    return tags[0] ?? "";
+  } catch {
+    return "";
+  }
+}
+
 function getCommitMap(fromTag: string): Map<string, string> {
   const map = new Map<string, string>();
+  if (!fromTag) return map;
   try {
     const output = execSync(
       `git log --oneline --format="%H %s" ${fromTag}..HEAD --no-merges`,
@@ -78,7 +92,7 @@ function docsChangelogPlugin(): TegamiPlugin {
       await mkdir(logsDir, { recursive: true });
 
       const seen = new Set<string>();
-      const commitMap = getCommitMap("v0.1.1");
+      const commitMap = getCommitMap(getPreviousTag());
 
       for (const [pkgId, packageDraft] of draft.getPackageDrafts()) {
         if (!packageDraft.changelogs?.length) continue;
