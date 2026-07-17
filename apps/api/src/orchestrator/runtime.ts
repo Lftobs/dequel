@@ -110,11 +110,12 @@ export const cleanupFailedDeployment = async (
   imageTag?: string | null,
   projectName?: string,
   projectId?: string,
+  sourceType?: string | null,
 ) => {
   const containerName = getContainerName(deploymentId, projectName, projectId);
   await tryRun(dockerBin, ['network', 'disconnect', '-f', config.dockerNetwork, containerName]);
   await tryRun(dockerBin, ['rm', '-f', containerName]);
-  if (imageTag) {
+  if (imageTag && sourceType !== "image") {
     await tryRun(dockerBin, ['rmi', '-f', imageTag]);
   }
 };

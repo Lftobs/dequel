@@ -17,8 +17,8 @@ const getRedis = () => {
 
 export const pruneDocker = async () => {
   await tryRun(dockerBin, ['container', 'prune', '-f', '--filter', `label=${DEQUEL_MANAGED_LABEL}`]);
-  await tryRun(dockerBin, ['image', 'prune', '-f']);
-  await tryRun(dockerBin, ['buildx', 'prune', '-f']);
+  await tryRun(dockerBin, ['image', 'prune', '-f', '--filter', 'until=24h']);
+  await tryRun(dockerBin, ['buildx', 'prune', '-f', '--filter', 'until=24h']);
 };
 
 export const pruneDlq = async () => {

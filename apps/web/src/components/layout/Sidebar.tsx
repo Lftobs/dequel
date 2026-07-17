@@ -48,8 +48,8 @@ export function Sidebar({
 
 			<aside
 				className={cn(
-					"w-64 border-r border-[#1a1a1f] bg-[#0c0c0e] shrink-0 flex flex-col justify-between select-none",
-					"fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 lg:z-auto",
+					"w-64 border-r border-[#1a1a1f] bg-[#0c0c0e] shrink-0 flex flex-col justify-between select-none overflow-y-auto",
+					"fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out",
 					sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
 				)}
 			>
@@ -61,7 +61,7 @@ export function Sidebar({
 								dequel
 							</span>
 							<span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 font-mono font-bold scale-90">
-								v0.1
+								v{__DEQUEL_VERSION__}
 							</span>
 						</div>
 						<button
@@ -93,7 +93,7 @@ export function Sidebar({
 					<NodeStatusCard metrics={metrics} />
 					<SupportSection />
 					<div className="flex items-center justify-between text-[10px] text-zinc-600">
-						<span>Dequel Platform v0.1</span>
+						<span>Dequel Platform v{__DEQUEL_VERSION__}</span>
 					</div>
 				</div>
 			</aside>

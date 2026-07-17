@@ -8,10 +8,11 @@ import {
 	useCancelDeployment,
 	useDeleteDeployment,
 } from "../../../hooks/useDeployments";
+import { getRepoHooks, registerRepoHook, removeRepoHook } from "../../../api/client";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import { Rocket, Play } from "lucide-react";
+import { Rocket, Play, Webhook } from "lucide-react";
 import { ManualDeployDialog } from "./manual-deploy-dialog";
 import { DeploymentHistory } from "./deployment-history";
 import { ClearCacheToggle } from "./clear-cache-toggle";
@@ -57,6 +58,60 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 		useState(false);
 	const autoDeployedRef =
 		useRef(false);
+
+	const [webhookActive, setWebhookActive] = useState(false);
+	const [webhookLoading, setWebhookLoading] = useState(false);
+	const [webhookChecked, setWebhookChecked] = useState(false);
+	const [webhookError, setWebhookError] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (!project?.repoUrl) return;
+		const parseRepo = (url: string): { owner: string; repo: string } | null => {
+			const match = url.replace(/\.git$/, "").match(/github\.com\/([^/]+)\/([^/]+)/);
+			return match ? { owner: match[1], repo: match[2] } : null;
+		};
+		const repo = parseRepo(project.repoUrl);
+		if (!repo) return;
+		setWebhookChecked(false);
+		let cancelled = false;
+		getRepoHooks(repo.owner, repo.repo)
+			.then((hooks) => {
+				if (!cancelled) {
+					const expectedUrl = `${window.location.origin}/api/github/webhook`;
+					setWebhookActive(hooks.some((h) => h.url === expectedUrl));
+				}
+			})
+			.catch(() => {
+				if (!cancelled) setWebhookActive(false);
+			})
+			.finally(() => {
+				if (!cancelled) setWebhookChecked(true);
+			});
+		return () => { cancelled = true; };
+	}, [project?.repoUrl]);
+
+	const toggleWebhook = async () => {
+		if (!project?.repoUrl) return;
+		const match = project.repoUrl.replace(/\.git$/, "").match(/github\.com\/([^/]+)\/([^/]+)/);
+		if (!match) return;
+		const [, owner, repo] = match;
+		setWebhookLoading(true);
+		setWebhookError(null);
+		try {
+			if (webhookActive) {
+				await removeRepoHook(owner, repo);
+				setWebhookActive(false);
+			} else {
+				await registerRepoHook(owner, repo);
+				setWebhookActive(true);
+			}
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Failed to update webhook";
+			setWebhookError(message.includes("Not authenticated") ? "GitHub session expired. Reconnect GitHub in Settings, then try again." : message);
+		} finally {
+			setWebhookLoading(false);
+		}
+	};
 
 	useEffect(() => {
 		if (!project) return;
@@ -232,16 +287,38 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 										</div>
 									</div>
 								</div>
-								
-								<div className="pt-2 flex justify-end gap-2">
+								{webhookError && (
+									<p className="text-xs text-red-400">{webhookError}</p>
+								)}
+							<div className="pt-2 flex justify-end gap-2">
+								{webhookChecked && (
 									<Button
 										type="button"
-										onClick={() => setShowManualDeployDialog(true)}
-										className="bg-amber-600 hover:bg-amber-700 text-white font-medium flex items-center gap-2 shadow-lg shadow-amber-500/10"
+										variant="outline"
+										size="sm"
+										onClick={toggleWebhook}
+										disabled={webhookLoading}
+										className={webhookActive
+											? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+											: "border-zinc-700 text-zinc-400 hover:border-zinc-600"
+										}
 									>
-										<Play className="h-4 w-4 fill-current" /> Manual Deploy...
+										<Webhook className="h-3.5 w-3.5 mr-1.5" />
+										{webhookLoading
+											? "Loading..."
+											: webhookActive
+												? "Auto-deploy on"
+												: "Enable auto-deploy"}
 									</Button>
-								</div>
+								)}
+								<Button
+									type="button"
+									onClick={() => setShowManualDeployDialog(true)}
+									className="bg-amber-600 hover:bg-amber-700 text-white font-medium flex items-center gap-2 shadow-lg shadow-amber-500/10"
+								>
+									<Play className="h-4 w-4 fill-current" /> Manual Deploy...
+								</Button>
+							</div>
 							</div>
 						</div>
 					) : (

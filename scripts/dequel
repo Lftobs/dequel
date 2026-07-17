@@ -6,6 +6,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 DEQUEL_HOME="${DEQUEL_HOME:-$SCRIPT_DIR}"
 COMPOSE_FILE="$DEQUEL_HOME/docker-compose.yml"
 INSTALLED_VERSION="$(cat "$DEQUEL_HOME/VERSION" 2>/dev/null || echo "0.1.0")"
+export DEQUEL_VERSION="$INSTALLED_VERSION"
 
 BOLD='\033[1m'
 DIM='\033[2m'
@@ -17,6 +18,7 @@ NC='\033[0m'
 header()  { printf "\n${BOLD}${AMBER}==>${NC}${BOLD} %s${NC}\n" "$*"; }
 info()    { printf "  ${DIM}%s${NC}\n" "$*"; }
 success() { printf "  ${GREEN}✓${NC} %s\n" "$*"; }
+warn()    { printf "  ${AMBER}⚠${NC} %s\n" "$*"; }
 fail()    { printf "  ${RED}✗${NC} %s\n" "$*"; exit 1; }
 
 cmd() {
@@ -120,11 +122,13 @@ with open('$tmp_dir/docker-compose.yml', 'w') as f:
     f.write(content)
 " 2>/dev/null || true
 
-	mv "$tmp_dir/docker-compose.yml" "$DEQUEL_HOME/docker-compose.yml"
-	mv "$tmp_dir/Caddyfile" "$DEQUEL_HOME/infra/caddy/Caddyfile"
-	mkdir -p "$DEQUEL_HOME/infra/monitoring/grafana/datasources" \
+	mkdir -p "$DEQUEL_HOME/infra/caddy" \
+		"$DEQUEL_HOME/infra/monitoring/grafana/datasources" \
 		"$DEQUEL_HOME/infra/monitoring/grafana/dashboards" \
 		"$DEQUEL_HOME/scripts/auth"
+
+	mv "$tmp_dir/docker-compose.yml" "$DEQUEL_HOME/docker-compose.yml"
+	mv "$tmp_dir/Caddyfile" "$DEQUEL_HOME/infra/caddy/Caddyfile"
 
 	for f in prometheus.yml loki-config.yml promtail-config.yml; do
 		mv "$tmp_dir/infra/monitoring/$f" "$DEQUEL_HOME/infra/monitoring/$f"
@@ -151,7 +155,7 @@ with open('$tmp_dir/docker-compose.yml', 'w') as f:
 	header "Recreating services"
 	cmd up -d
 
-	success "Dequel updated to $tag"
+	success "Dequel updated to ${tag:-main}"
 }
 
 cmd_uninstall() {

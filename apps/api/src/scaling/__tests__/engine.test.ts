@@ -103,7 +103,17 @@ mock.module(fileUrl('../../db/repo'), () => ({
   updateDomainValidation: mock(() => Promise.resolve()),
 }));
 
-// Mock docker-bin
+mock.module(fileUrl('../../utils/config'), () => ({
+  config: {
+    redisUrl: 'redis://localhost:6379',
+    caddyRoutesDir: '/tmp/dequel-test-routes',
+    caddyBaseDomain: 'localhost',
+    appInternalPort: 3000,
+    dockerNetwork: 'dequel_net',
+  },
+}));
+
+
 mock.module(fileUrl('../../utils/docker-bin'), () => ({ dockerBin: '/usr/bin/docker' }));
 
 const { scalingEngine } = await import('../engine');

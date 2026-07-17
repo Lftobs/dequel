@@ -38,6 +38,7 @@ export function RepoPicker({
 	const [webhookActive, setWebhookActive] = useState(false);
 	const [webhookLoading, setWebhookLoading] = useState(false);
 	const [webhookChecked, setWebhookChecked] = useState(false);
+	const [webhookError, setWebhookError] = useState("");
 
 	const fetchRepos = async () => {
 		setLoading(true);
@@ -68,7 +69,8 @@ export function RepoPicker({
 			try {
 				const [owner, repo] = selected.fullName.split("/");
 				const hooks = await getRepoHooks(owner, repo);
-				setWebhookActive(hooks.length > 0);
+				const expectedUrl = `${window.location.origin}/api/github/webhook`;
+				setWebhookActive(hooks.some((h) => h.url === expectedUrl));
 			} catch {
 				setWebhookActive(false);
 			} finally {
@@ -81,6 +83,7 @@ export function RepoPicker({
 	const toggleWebhook = async () => {
 		if (!selected) return;
 		setWebhookLoading(true);
+		setWebhookError("");
 		try {
 			const [owner, repo] = selected.fullName.split("/");
 			if (webhookActive) {
@@ -90,8 +93,9 @@ export function RepoPicker({
 				await registerRepoHook(owner, repo);
 				setWebhookActive(true);
 			}
-		} catch {
-			setWebhookActive(false);
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Failed to update webhook";
+			setWebhookError(message.includes("Not authenticated") ? "GitHub session expired. Reconnect GitHub, then try again." : message);
 		} finally {
 			setWebhookLoading(false);
 		}
@@ -167,11 +171,14 @@ export function RepoPicker({
 								Enable Auto-Deploy
 							</>
 						)}
-					</button>
-				)}
-			</div>
-		);
-	}
+						</button>
+					)}
+					{webhookError && (
+						<p className="text-[10px] text-red-400">{webhookError}</p>
+					)}
+				</div>
+			);
+		}
 
 	return (
 		<div className="space-y-3 w-full max-w-full overflow-hidden">

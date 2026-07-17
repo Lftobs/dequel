@@ -22,7 +22,7 @@ const callPam = async (username: string, password: string): Promise<{ ok: boolea
 const SESSION_COOKIE_OPTS = {
   path: "/",
   httpOnly: true,
-  sameSite: "strict" as const,
+  sameSite: "lax" as const,
   secure: config.caddyBaseDomain !== "localhost",
   maxAge: 900,
 };

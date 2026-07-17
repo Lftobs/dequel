@@ -44,7 +44,7 @@ export function Login() {
               dequel
             </span>
             <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-500 border border-orange-500/20 font-mono font-bold">
-              v0.1
+              v{__DEQUEL_VERSION__}
             </span>
           </div>
 
