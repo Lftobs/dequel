@@ -1,9 +1,15 @@
 {
   "name": "dequel",
-  "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
+    "tegami": "bun scripts/tegami.mts",
     "sync-versions": "node -e \"const v = require('fs').readFileSync('VERSION','utf8').trim(); ['apps/api/package.json','apps/web/package.json','apps/docs/package.json'].forEach(f => { const p = require('./'+f); p.version = v; require('fs').writeFileSync(f, JSON.stringify(p, null, 2) + '\\n'); }); console.log('Versions synced to', v);\"",
     "postinstall": "bun sync-versions"
+  },
+  "devDependencies": {
+    "tegami": "^1.2.5"
   }
 }
