@@ -47,6 +47,7 @@ check_prerequisites() {
 		if sudo usermod -aG docker "$USER" 2>/dev/null; then
 			success "Added $USER to docker group"
 			warn "Log out and back in (or run 'newgrp docker') for the change to take effect"
+			fail "Please log out and back in, then re-run the install script"
 		else
 			warn "Could not add user to docker group automatically"
 			warn "Run this manually: sudo usermod -aG docker $USER && newgrp docker"

@@ -34,6 +34,16 @@ export const projectsRoutes = new Elysia()
 				set.status = 400;
 				return { error: "name is required" };
 			}
+			if (body?.repoUrl) {
+				const projects = await listProjects();
+				const normalize = (u: string) => u.replace(/\.git$/, "").replace(/\/+$/, "").toLowerCase();
+				const incoming = normalize(body.repoUrl);
+				const duplicate = projects.find((p) => p.repoUrl && normalize(p.repoUrl) === incoming);
+				if (duplicate) {
+					set.status = 409;
+					return { error: `A project with this repository URL already exists: "${duplicate.name}"` };
+				}
+			}
 			const project = await createProject({
 				name: body.name,
 				description: body.description,
@@ -52,6 +62,16 @@ export const projectsRoutes = new Elysia()
 	.patch(
 		"/projects/:id",
 		async ({ params: { id }, body, set }: any) => {
+			if (body?.repoUrl) {
+				const projects = await listProjects();
+				const normalize = (u: string) => u.replace(/\.git$/, "").replace(/\/+$/, "").toLowerCase();
+				const incoming = normalize(body.repoUrl);
+				const duplicate = projects.find((p) => p.id !== id && p.repoUrl && normalize(p.repoUrl) === incoming);
+				if (duplicate) {
+					set.status = 409;
+					return { error: `A project with this repository URL already exists: "${duplicate.name}"` };
+				}
+			}
 			const project = await updateProject(id, {
 				name: body?.name,
 				description: body?.description,

@@ -6,6 +6,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 DEQUEL_HOME="${DEQUEL_HOME:-$SCRIPT_DIR}"
 COMPOSE_FILE="$DEQUEL_HOME/docker-compose.yml"
 INSTALLED_VERSION="$(cat "$DEQUEL_HOME/VERSION" 2>/dev/null || echo "0.1.0")"
+export DEQUEL_VERSION="$INSTALLED_VERSION"
 
 BOLD='\033[1m'
 DIM='\033[2m'
@@ -17,6 +18,7 @@ NC='\033[0m'
 header()  { printf "\n${BOLD}${AMBER}==>${NC}${BOLD} %s${NC}\n" "$*"; }
 info()    { printf "  ${DIM}%s${NC}\n" "$*"; }
 success() { printf "  ${GREEN}✓${NC} %s\n" "$*"; }
+warn()    { printf "  ${AMBER}⚠${NC} %s\n" "$*"; }
 fail()    { printf "  ${RED}✗${NC} %s\n" "$*"; exit 1; }
 
 cmd() {
@@ -92,24 +94,27 @@ cmd_update() {
 		curl -fsSL "$base_url/infra/monitoring/$f" -o "$tmp_dir/$f"
 	done
 
+	mkdir -p "$tmp_dir/datasources"
 	for f in loki.yml prometheus.yml; do
-		curl -fsSL "$base_url/infra/monitoring/grafana/datasources/$f" -o "$tmp_dir/$f"
+		curl -fsSL "$base_url/infra/monitoring/grafana/datasources/$f" -o "$tmp_dir/datasources/$f"
 	done
 
 	for f in dashboards.yml deployed-apps.json; do
 		curl -fsSL "$base_url/infra/monitoring/grafana/dashboards/$f" -o "$tmp_dir/$f"
 	done
 
+	mkdir -p "$DEQUEL_HOME/infra/caddy" \
+		"$DEQUEL_HOME/infra/monitoring/grafana/datasources" \
+		"$DEQUEL_HOME/infra/monitoring/grafana/dashboards"
+
 	mv "$tmp_dir/docker-compose.yml" "$DEQUEL_HOME/docker-compose.yml"
 	mv "$tmp_dir/Caddyfile" "$DEQUEL_HOME/infra/caddy/Caddyfile"
-	mkdir -p "$DEQUEL_HOME/infra/monitoring/grafana/datasources" \
-		"$DEQUEL_HOME/infra/monitoring/grafana/dashboards"
 
 	for f in prometheus.yml loki-config.yml promtail-config.yml; do
 		mv "$tmp_dir/$f" "$DEQUEL_HOME/infra/monitoring/$f"
 	done
 	for f in loki.yml prometheus.yml; do
-		mv "$tmp_dir/$f" "$DEQUEL_HOME/infra/monitoring/grafana/datasources/$f"
+		mv "$tmp_dir/datasources/$f" "$DEQUEL_HOME/infra/monitoring/grafana/datasources/$f"
 	done
 	for f in dashboards.yml deployed-apps.json; do
 		mv "$tmp_dir/$f" "$DEQUEL_HOME/infra/monitoring/grafana/dashboards/$f"
@@ -127,7 +132,7 @@ cmd_update() {
 	header "Recreating services"
 	cmd up -d
 
-	success "Dequel updated to $tag"
+	success "Dequel updated to ${tag:-main}"
 }
 
 cmd_uninstall() {

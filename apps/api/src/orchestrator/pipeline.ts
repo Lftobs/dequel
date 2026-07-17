@@ -159,7 +159,7 @@ export class PipelineOrchestrator {
 			]);
 		}
 
-		if (deployment.imageTag) {
+		if (deployment.imageTag && deployment.sourceType !== "image") {
 			await tryRun("docker", ["rmi", "-f", deployment.imageTag]);
 		}
 
@@ -541,6 +541,8 @@ export class PipelineOrchestrator {
 				},
 			);
 
+			deployed = true;
+
 			await updateDeploymentStatus(
 				deploymentId,
 				"running",
@@ -552,8 +554,6 @@ export class PipelineOrchestrator {
 					failureReason: null,
 				},
 			);
-
-			deployed = true;
 
 			if (projectName) {
 				const dashSlug = projectName
@@ -641,7 +641,7 @@ export class PipelineOrchestrator {
 				);
 				await cleanupFailedDeployment(
 					deploymentId,
-					imageTag,
+					deployment.sourceType === "image" ? undefined : imageTag,
 					projectName,
 					deployment.projectId,
 				).catch(e =>

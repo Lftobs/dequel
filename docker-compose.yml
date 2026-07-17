@@ -109,6 +109,8 @@ services:
         restart: unless-stopped
         build:
             context: ./apps/web
+            args:
+                DEQUEL_VERSION: ${DEQUEL_VERSION:-}
         healthcheck:
             test:
                 [

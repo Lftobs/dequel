@@ -119,7 +119,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				setSidebarOpen={setSidebarOpen}
 			/>
 
-			<div className="flex-1 flex flex-col min-w-0 relative">
+			<div className="flex-1 flex flex-col min-w-0 relative lg:ml-64">
 				<Header
 					currentProject={currentProject}
 					currentProjectId={currentProjectId}

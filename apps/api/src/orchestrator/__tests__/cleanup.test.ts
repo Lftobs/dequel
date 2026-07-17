@@ -22,13 +22,13 @@ mock.module(fileUrl('../runtime'), () => ({
   tryRun: mockTryRun,
 }));
 
-mock.module(fileUrl('../utils/config'), () => ({
+mock.module(fileUrl('../../utils/config'), () => ({
   config: {
     redisUrl: 'redis://localhost:6379',
   },
 }));
 
-mock.module(fileUrl('../utils/docker-bin'), () => ({
+mock.module(fileUrl('../../utils/docker-bin'), () => ({
   dockerBin: '/usr/bin/docker',
 }));
 

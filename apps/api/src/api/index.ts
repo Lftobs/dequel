@@ -16,7 +16,7 @@ import { serversRoutes } from "./servers";
 import { volumesRoutes } from "./volumes";
 import { settingsRoutes } from "./settings";
 
-const BYPASS_PATHS = new Set(["/api/auth/login", "/api/auth/logout", "/api/auth/refresh", "/api/auth/me", "/api/health"]);
+const BYPASS_PATHS = new Set(["/api/auth/login", "/api/auth/logout", "/api/auth/refresh", "/api/auth/me", "/api/health", "/api/github/callback", "/api/github/webhook"]);
 
 const authMiddleware = (app: Elysia) =>
 	app.onBeforeHandle(async ({ request, set, path }) => {
