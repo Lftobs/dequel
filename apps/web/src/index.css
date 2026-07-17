@@ -157,6 +157,10 @@
 .floating-chat-kofi-popup-iframe,
 .floating-chat-kofi-popup-iframe-mobi {
   position: fixed !important;
+  left: 16px !important;
+  bottom: 80px !important;
+  top: auto !important;
+  right: auto !important;
   z-index: 999999 !important;
 }
 
