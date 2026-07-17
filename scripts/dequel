@@ -88,31 +88,55 @@ cmd_update() {
 	curl -fsSL "$base_url/scripts/dequel" -o "$tmp_dir/dequel"
 	curl -fsSL "$base_url/VERSION" -o "$tmp_dir/VERSION"
 
+	mkdir -p "$tmp_dir/infra/monitoring/grafana/datasources" \
+		"$tmp_dir/infra/monitoring/grafana/dashboards" \
+		"$tmp_dir/scripts/auth"
+
 	for f in prometheus.yml loki-config.yml promtail-config.yml; do
-		curl -fsSL "$base_url/infra/monitoring/$f" -o "$tmp_dir/$f"
+		curl -fsSL "$base_url/infra/monitoring/$f" -o "$tmp_dir/infra/monitoring/$f"
 	done
 
 	for f in loki.yml prometheus.yml; do
-		curl -fsSL "$base_url/infra/monitoring/grafana/datasources/$f" -o "$tmp_dir/$f"
+		curl -fsSL "$base_url/infra/monitoring/grafana/datasources/$f" -o "$tmp_dir/infra/monitoring/grafana/datasources/$f"
 	done
 
 	for f in dashboards.yml deployed-apps.json; do
-		curl -fsSL "$base_url/infra/monitoring/grafana/dashboards/$f" -o "$tmp_dir/$f"
+		curl -fsSL "$base_url/infra/monitoring/grafana/dashboards/$f" -o "$tmp_dir/infra/monitoring/grafana/dashboards/$f"
 	done
+
+	for f in pam-server.py pam-verify.py; do
+		curl -fsSL "$base_url/scripts/auth/$f" -o "$tmp_dir/scripts/auth/$f"
+	done
+
+	python3 -c "
+import re
+with open('$tmp_dir/docker-compose.yml', 'r') as f:
+    content = f.read()
+content = re.sub(r'#\s*(image:\s*ghcr\.io/lftobs/dequel/api:latest)', r'\1', content)
+content = re.sub(r'#\s*(image:\s*ghcr\.io/lftobs/dequel/web:latest)', r'\1', content)
+content = re.sub(r'(build:\s*\n\s*context:\s*\.\s*\n\s*dockerfile:\s*\./apps/api/Dockerfile)', lambda m: '\n'.join('        # ' + line.strip() for line in m.group(1).split('\n')), content)
+content = re.sub(r'(build:\s*\n\s*context:\s*\./apps/web)', lambda m: '\n'.join('        # ' + line.strip() for line in m.group(1).split('\n')), content)
+with open('$tmp_dir/docker-compose.yml', 'w') as f:
+    f.write(content)
+" 2>/dev/null || true
 
 	mv "$tmp_dir/docker-compose.yml" "$DEQUEL_HOME/docker-compose.yml"
 	mv "$tmp_dir/Caddyfile" "$DEQUEL_HOME/infra/caddy/Caddyfile"
 	mkdir -p "$DEQUEL_HOME/infra/monitoring/grafana/datasources" \
-		"$DEQUEL_HOME/infra/monitoring/grafana/dashboards"
+		"$DEQUEL_HOME/infra/monitoring/grafana/dashboards" \
+		"$DEQUEL_HOME/scripts/auth"
 
 	for f in prometheus.yml loki-config.yml promtail-config.yml; do
-		mv "$tmp_dir/$f" "$DEQUEL_HOME/infra/monitoring/$f"
+		mv "$tmp_dir/infra/monitoring/$f" "$DEQUEL_HOME/infra/monitoring/$f"
 	done
 	for f in loki.yml prometheus.yml; do
-		mv "$tmp_dir/$f" "$DEQUEL_HOME/infra/monitoring/grafana/datasources/$f"
+		mv "$tmp_dir/infra/monitoring/grafana/datasources/$f" "$DEQUEL_HOME/infra/monitoring/grafana/datasources/$f"
 	done
 	for f in dashboards.yml deployed-apps.json; do
-		mv "$tmp_dir/$f" "$DEQUEL_HOME/infra/monitoring/grafana/dashboards/$f"
+		mv "$tmp_dir/infra/monitoring/grafana/dashboards/$f" "$DEQUEL_HOME/infra/monitoring/grafana/dashboards/$f"
+	done
+	for f in pam-server.py pam-verify.py; do
+		mv "$tmp_dir/scripts/auth/$f" "$DEQUEL_HOME/scripts/auth/$f"
 	done
 
 	mv "$tmp_dir/VERSION" "$DEQUEL_HOME/VERSION"
