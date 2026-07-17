@@ -32,11 +32,10 @@ RUN curl -sSL https://mise.jdx.dev/install.sh | sh \
 
 WORKDIR /app
 
-COPY apps/api/package.json ./
+COPY package.json ./
 RUN bun install
 
-COPY apps/api/src ./src
-COPY scripts ./scripts
+COPY src ./src
 
 RUN mkdir -p /app/data /app/workspace /caddy/routes
 

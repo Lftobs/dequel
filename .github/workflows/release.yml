@@ -57,6 +57,8 @@ jobs:
         with:
           context: apps/web
           push: true
+          build-args: |
+            DEQUEL_VERSION=${{ steps.version.outputs.VERSION }}
           tags: |
             ${{ env.WEB_IMAGE }}:${{ steps.version.outputs.VERSION }}
             ${{ env.WEB_IMAGE }}:latest

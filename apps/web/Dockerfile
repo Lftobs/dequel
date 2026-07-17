@@ -1,5 +1,8 @@
 FROM oven/bun:1 AS build
 
+ARG DEQUEL_VERSION
+ENV DEQUEL_VERSION=$DEQUEL_VERSION
+
 WORKDIR /app
 COPY package.json ./
 RUN bun install
