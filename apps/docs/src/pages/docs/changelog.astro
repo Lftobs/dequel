@@ -1,0 +1,30 @@
+---
+import { getCollection, render } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+
+const changelogs = (await getCollection('changelogs')).sort((a, b) =>
+  b.data.date.localeCompare(a.data.date)
+);
+---
+
+<Layout
+  title="Changelog"
+  category="Release"
+  description="All notable changes to Dequel, tracked per release."
+  currentSlug="changelog"
+>
+  <h1>Changelog</h1>
+  <p>All notable changes to Dequel, tracked per release.</p>
+
+  {changelogs.map(async (entry) => {
+    const { Content } = await render(entry);
+    return (
+      <section>
+        <h2>{entry.data.version} — {entry.data.date}</h2>
+        <Content />
+      </section>
+    );
+  })}
+
+  {!changelogs.length && <p>No changelogs yet.</p>}
+</Layout>
