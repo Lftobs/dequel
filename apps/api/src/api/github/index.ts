@@ -1,18 +1,53 @@
 import { Elysia } from "elysia";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { getGithubIntegration, setGithubIntegration, createDeployment, listProjects } from "../../db/repo";
 import { orchestrator } from "../../orchestrator";
 import { config } from "../../utils/config";
 
-const SESSIONS = new Map<string, { token: string; expiresAt: number }>();
-const SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const SESSIONS_FILE = join(process.env.DATA_DIR ?? "./data", ".github-sessions.json");
 
-const getSession = (cookie: string | null): string | null => {
+let SESSIONS = new Map<string, { token: string }>();
+
+const loadSessions = () => {
+	try {
+		const raw = readFileSync(SESSIONS_FILE, "utf-8");
+		const entries: [string, { token: string }][] = JSON.parse(raw);
+		SESSIONS = new Map(entries);
+	} catch {}
+};
+
+const saveSessions = () => {
+	try {
+		const dir = SESSIONS_FILE.substring(0, SESSIONS_FILE.lastIndexOf("/"));
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(SESSIONS_FILE, JSON.stringify([...SESSIONS]), "utf-8");
+	} catch {}
+};
+
+loadSessions();
+
+const validateToken = async (token: string): Promise<boolean> => {
+	try {
+		const res = await fetch("https://api.github.com/user", {
+			headers: { Authorization: `Bearer ${token}`, "User-Agent": "dequel" },
+		});
+		return res.ok;
+	} catch {
+		return true;
+	}
+};
+
+const getSession = async (cookie: string | null): Promise<string | null> => {
 	if (!cookie) return null;
 	const match = cookie.match(/github_session=([^;]+)/);
 	if (!match) return null;
 	const session = SESSIONS.get(match[1]);
-	if (!session || session.expiresAt < Date.now()) {
-		if (session) SESSIONS.delete(match[1]);
+	if (!session) return null;
+	const valid = await validateToken(session.token);
+	if (!valid) {
+		SESSIONS.delete(match[1]);
+		saveSessions();
 		return null;
 	}
 	return session.token;
@@ -20,8 +55,29 @@ const getSession = (cookie: string | null): string | null => {
 
 const createSession = (token: string): string => {
 	const id = crypto.randomUUID();
-	SESSIONS.set(id, { token, expiresAt: Date.now() + SESSION_TTL_MS });
+	SESSIONS.set(id, { token });
+	saveSessions();
 	return id;
+};
+
+const publicUrl = (request: Request): URL => {
+  const proto = request.headers.get("x-forwarded-proto") || "http";
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "localhost";
+  return new URL(`${proto}://${host}${new URL(request.url).pathname}`);
+};
+
+const describeGithubError = (err: unknown): { status: number; message: string } => {
+	const raw = err instanceof Error ? err.message : String(err);
+	const match = raw.match(/^GitHub API error (\d+): (.*)$/s);
+	if (!match) return { status: 502, message: raw };
+	const status = Number(match[1]);
+	if (status === 403 && /not accessible by integration/i.test(match[2])) {
+		return {
+			status: 502,
+			message: "GitHub App is missing the 'Webhooks' repository permission. In your GitHub App settings, go to Permissions & events and set Webhooks to Read and write, approve the new permission, then try again.",
+		};
+	}
+	return { status: 502, message: `GitHub API error ${status}: ${match[2]}` };
 };
 
 const fetchGitHub = async (path: string, token: string) => {
@@ -84,7 +140,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			set.status = 400;
 			return { error: "GitHub integration not configured" };
 		}
-		const url = new URL(request.url);
+		const url = publicUrl(request);
 		const redirectUri = `${url.protocol}//${url.host}/api/github/callback`;
 		const state = crypto.randomUUID();
 		const params = new URLSearchParams({
@@ -107,7 +163,8 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			set.status = 400;
 			return { error: "GitHub integration not configured" };
 		}
-		const origin = new URL(request.url).origin;
+		const url = publicUrl(request);
+		const origin = url.origin;
 		const redirectUri = `${origin}/api/github/callback`;
 
 		const res = await fetch("https://github.com/login/oauth/access_token", {
@@ -132,12 +189,12 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		}
 		const sessionId = createSession(data.access_token);
 		set.status = 302;
-		set.headers["Set-Cookie"] = `github_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_MS / 1000}`;
+		set.headers["Set-Cookie"] = `github_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=315360000`;
 		set.headers["Location"] = `${origin}/?github=connected`;
 	})
 
 	.get("/user", async ({ request, set }) => {
-		const token = getSession(request.headers.get("cookie"));
+		const token = await getSession(request.headers.get("cookie"));
 		if (!token) {
 			set.status = 401;
 			return { error: "Not authenticated" };
@@ -146,29 +203,20 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 	})
 
 	.get("/repos", async ({ request, set }) => {
-		const token = getSession(request.headers.get("cookie"));
+		const token = await getSession(request.headers.get("cookie"));
 		if (!token) {
 			set.status = 401;
 			return { error: "Not authenticated" };
 		}
-		const repos = await fetchGitHub("/user/repos?per_page=100&sort=updated&type=all", token);
-		const user = await fetchGitHub("/user", token) as { login: string };
-		const orgs = await fetchGitHub("/user/orgs", token) as { login: string }[];
-		const allRepos = Array.isArray(repos) ? repos : [];
-		const orgRepos: any[] = [];
-		for (const org of Array.isArray(orgs) ? orgs : []) {
-			try {
-				const orgR = await fetchGitHub(`/orgs/${org.login}/repos?per_page=100&sort=updated&type=all`, token);
-				if (Array.isArray(orgR)) orgRepos.push(...orgR);
-			} catch {}
+		const allRepos: any[] = [];
+		let page = 1;
+		while (page <= 10) {
+			const repos = await fetchGitHub(`/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner`, token);
+			if (!Array.isArray(repos) || repos.length === 0) break;
+			allRepos.push(...repos);
+			page++;
 		}
-		const seen = new Set<number>();
-		const merged = [...allRepos, ...orgRepos].filter((r) => {
-			if (seen.has(r.id)) return false;
-			seen.add(r.id);
-			return true;
-		});
-		return merged.map((r: any) => ({
+		return allRepos.map((r: any) => ({
 			id: r.id,
 			name: r.name,
 			fullName: r.full_name,
@@ -183,82 +231,119 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 	})
 
 	.get("/repos/:owner/:repo/hooks", async ({ request, set, params }) => {
-		const token = getSession(request.headers.get("cookie"));
+		const token = await getSession(request.headers.get("cookie"));
 		if (!token) {
 			set.status = 401;
 			return { error: "Not authenticated" };
 		}
-		const hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);
-		return Array.isArray(hooks) ? hooks.map((h: any) => ({ id: h.id, url: h.config.url, active: h.active, events: h.events })) : [];
+		try {
+			const hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);
+			return Array.isArray(hooks) ? hooks.map((h: any) => ({ id: h.id, url: h.config.url, active: h.active, events: h.events })) : [];
+		} catch (err) {
+			const { status, message } = describeGithubError(err);
+			set.status = status;
+			return { error: message };
+		}
 	})
 
 	.post("/repos/:owner/:repo/hook", async ({ request, set, params }) => {
-		const token = getSession(request.headers.get("cookie"));
+		const token = await getSession(request.headers.get("cookie"));
 		if (!token) {
 			set.status = 401;
 			return { error: "Not authenticated" };
 		}
-		const baseUrl = config.caddyBaseDomain === 'localhost' ? 'http://localhost' : `https://${config.caddyBaseDomain}`;
-		const webhookUrl = `${baseUrl}/api/github/webhook`;
+		const webhookUrl = `${publicUrl(request).origin}/api/github/webhook`;
 		const integration = await getGithubIntegration();
 		const secret = integration?.webhookSecret || config.githubWebhookSecret;
 
-		const hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);
-		const existing = Array.isArray(hooks) ? hooks.find((h: any) => h.config?.url === webhookUrl) : null;
+		try {
+			const hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);
+			const existing = Array.isArray(hooks) ? hooks.find((h: any) => h.config?.url === webhookUrl) : null;
 
-		if (existing) {
-			return { id: existing.id, created: false, url: webhookUrl };
+			if (existing) {
+				return { id: existing.id, created: false, url: webhookUrl };
+			}
+
+			// Remove stale Dequel webhooks left over from a previous tunnel/domain
+			const stale = Array.isArray(hooks)
+				? hooks.filter((h: any) => typeof h.config?.url === "string" && h.config.url.endsWith("/api/github/webhook") && h.config.url !== webhookUrl)
+				: [];
+			for (const h of stale) {
+				await fetchGitHubWithBody(`/repos/${params.owner}/${params.repo}/hooks/${h.id}`, token, "DELETE").catch(() => {});
+			}
+
+			const hook = await fetchGitHubWithBody(`/repos/${params.owner}/${params.repo}/hooks`, token, "POST", {
+				name: "web",
+				active: true,
+				events: ["push"],
+				config: {
+					url: webhookUrl,
+					content_type: "json",
+					secret,
+					insecure_ssl: "0",
+				},
+			});
+			return { id: hook.id, created: true, url: webhookUrl };
+		} catch (err) {
+			const { status, message } = describeGithubError(err);
+			set.status = status;
+			return { error: message };
 		}
-
-		const hook = await fetchGitHubWithBody(`/repos/${params.owner}/${params.repo}/hooks`, token, "POST", {
-			name: "web",
-			active: true,
-			events: ["push"],
-			config: {
-				url: webhookUrl,
-				content_type: "json",
-				secret,
-				insecure_ssl: "0",
-			},
-		});
-		return { id: hook.id, created: true, url: webhookUrl };
 	})
 
 	.delete("/repos/:owner/:repo/hook", async ({ request, set, params }) => {
-		const token = getSession(request.headers.get("cookie"));
+		const token = await getSession(request.headers.get("cookie"));
 		if (!token) {
 			set.status = 401;
 			return { error: "Not authenticated" };
 		}
-		const baseUrl = config.caddyBaseDomain === 'localhost' ? 'http://localhost' : `https://${config.caddyBaseDomain}`;
-		const webhookUrl = `${baseUrl}/api/github/webhook`;
-		const hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);
+		const webhookUrl = `${publicUrl(request).origin}/api/github/webhook`;
+		let hooks: any;
+		try {
+			hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);
+		} catch (err) {
+			const { status, message } = describeGithubError(err);
+			set.status = status;
+			return { error: message };
+		}
 		const existing = Array.isArray(hooks) ? hooks.find((h: any) => h.config?.url === webhookUrl) : null;
 		if (!existing) {
 			return { ok: true, removed: false };
 		}
-		await fetchGitHubWithBody(`/repos/${params.owner}/${params.repo}/hooks/${existing.id}`, token, "DELETE");
-		return { ok: true, removed: true };
+		try {
+			await fetchGitHubWithBody(`/repos/${params.owner}/${params.repo}/hooks/${existing.id}`, token, "DELETE");
+			return { ok: true, removed: true };
+		} catch (err) {
+			const { status, message } = describeGithubError(err);
+			set.status = status;
+			return { error: message };
+		}
 	})
 
 	.post("/disconnect", async ({ set, request }) => {
 		const cookie = request.headers.get("cookie");
 		const match = cookie?.match(/github_session=([^;]+)/);
-		if (match) SESSIONS.delete(match[1]);
+		if (match) {
+			SESSIONS.delete(match[1]);
+			saveSessions();
+		}
 		set.headers["Set-Cookie"] = "github_session=; Path=/; Max-Age=0";
 		return { ok: true };
 	})
 
 	.post("/webhook", async ({ request, set }) => {
 		const integration = await getGithubIntegration();
+		const event = request.headers.get("x-github-event") || "";
+		const delivery = request.headers.get("x-github-delivery") || "";
+		console.log(`[GitWebhook] received event=${event} delivery=${delivery}`);
+
 		if (!integration?.webhookSecret) {
+			console.log("[GitWebhook] rejected: no webhook secret configured on this Dequel instance");
 			set.status = 400;
 			return { error: "GitHub webhook not configured" };
 		}
 
 		const signature = request.headers.get("x-hub-signature-256") || "";
-		const event = request.headers.get("x-github-event") || "";
-		const delivery = request.headers.get("x-github-delivery") || "";
 		const rawBody = await request.text();
 
 		const encoder = new TextEncoder();
@@ -273,15 +358,18 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		const expectedSig = "sha256=" + Array.from(new Uint8Array(expectedSigRaw)).map(b => b.toString(16).padStart(2, "0")).join("");
 
 		if (signature.length !== expectedSig.length) {
+			console.log(`[GitWebhook] rejected delivery=${delivery}: signature length mismatch (check webhook secret matches Dequel settings)`);
 			set.status = 401;
 			return { error: "Invalid signature" };
 		}
 		if (!crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signature))) {
+			console.log(`[GitWebhook] rejected delivery=${delivery}: signature mismatch (check webhook secret matches Dequel settings)`);
 			set.status = 401;
 			return { error: "Invalid signature" };
 		}
 
 		if (event !== "push") {
+			console.log(`[GitWebhook] ignored delivery=${delivery}: unsupported event ${event}`);
 			return { ok: true, ignored: `unsupported event: ${event}` };
 		}
 
@@ -302,37 +390,40 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		const branch = payload?.ref?.replace("refs/heads/", "") || "main";
 		const commitSha = payload?.after || "";
 
-		const projects = await listProjects();
-		const project = projects.find(p =>
-			p.repoUrl && (
-				p.repoUrl === repoUrl ||
-				p.repoUrl.replace(/\.git$/, "") === repoUrl.replace(/\.git$/, "")
-			)
-		);
-
-		if (!project) {
-			return { ok: true, ignored: `no project found for repo: ${repoUrl}` };
-		}
-
-		if (project.repoBranch && project.repoBranch !== branch) {
-			return { ok: true, ignored: `branch "${branch}" does not match project branch "${project.repoBranch}"` };
-		}
-
 		if (!commitSha || commitSha === "0000000000000000000000000000000000000000") {
+			console.log(`[GitWebhook] ignored delivery=${delivery}: deletion event, no commit to deploy`);
 			return { ok: true, ignored: "deletion event, no commit to deploy" };
 		}
 
-		const dep = await createDeployment({
-			projectId: project.id,
-			sourceType: "git",
-			sourceRef: repoUrl,
-			branch,
-			commitSha,
-		});
+		const projects = await listProjects();
+		const normalize = (u: string) => u.replace(/\.git$/, "").replace(/\/+$/, "").toLowerCase();
+		const matching = projects.filter(p => p.repoUrl && normalize(p.repoUrl) === normalize(repoUrl));
 
-		orchestrator.enqueue(dep.id);
+		if (matching.length === 0) {
+			console.log(`[GitWebhook] ignored delivery=${delivery}: no project found for repo ${repoUrl}. Known project repos: ${projects.map(p => p.repoUrl).filter(Boolean).join(", ") || "(none)"}`);
+			return { ok: true, ignored: `no project found for repo: ${repoUrl}` };
+		}
 
-		console.log(`[GitWebhook] Auto-deploy triggered for ${project.name} (${branch}) — commit ${commitSha.slice(0, 7)}`);
+		const targets = matching.filter(p => !p.repoBranch || p.repoBranch === branch);
 
-		return { ok: true, deploymentId: dep.id };
+		if (targets.length === 0) {
+			console.log(`[GitWebhook] ignored delivery=${delivery}: branch "${branch}" does not match any project watching ${repoUrl} (branches: ${matching.map(p => p.repoBranch ?? "any").join(", ")})`);
+			return { ok: true, ignored: `branch "${branch}" does not match any watching project's branch` };
+		}
+
+		const deploymentIds: string[] = [];
+		for (const project of targets) {
+			const dep = await createDeployment({
+				projectId: project.id,
+				sourceType: "git",
+				sourceRef: repoUrl,
+				branch,
+				commitSha,
+			});
+			orchestrator.enqueue(dep.id);
+			deploymentIds.push(dep.id);
+			console.log(`[GitWebhook] Auto-deploy triggered for ${project.name} (${branch}) — commit ${commitSha.slice(0, 7)}`);
+		}
+
+		return { ok: true, deploymentIds };
 	});

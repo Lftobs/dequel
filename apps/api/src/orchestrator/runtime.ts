@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { config } from '../utils/config';
 import { dockerBin } from '../utils/docker-bin';
+import { DEQUEL_MANAGED_LABEL } from '../utils/dequel-labels';
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
 
@@ -75,6 +76,7 @@ const waitForRunningContainer = async (
     await new Promise(r => setTimeout(r, 500));
   }
   await onLog(`Container ${containerName} did not reach running state — attempting docker start`);
+  await tryRun(dockerBin, ['network', 'disconnect', '-f', config.dockerNetwork, containerName]);
   await tryRun(dockerBin, ['start', containerName]);
   await tryRun(dockerBin, ['network', 'connect', config.dockerNetwork, containerName]);
 };
@@ -82,7 +84,10 @@ const waitForRunningContainer = async (
 export const ensureContainerRunning = async (containerName: string) => {
   try {
     const status = (await run(dockerBin, ['inspect', '-f', '{{.State.Status}}', containerName])).trim();
-    if (status !== 'running') await run(dockerBin, ['start', containerName]);
+    if (status !== 'running') {
+      await tryRun(dockerBin, ['network', 'disconnect', '-f', config.dockerNetwork, containerName]);
+      await run(dockerBin, ['start', containerName]);
+    }
     await tryRun(dockerBin, ['network', 'connect', config.dockerNetwork, containerName]);
   } catch (error) {
     console.error(`Failed to reconcile container ${containerName}:`, error);
@@ -90,8 +95,29 @@ export const ensureContainerRunning = async (containerName: string) => {
 };
 
 export const reloadCaddy = async () => {
+  if (process.env.NODE_ENV === 'test') return;
   const caddyContainer = await getCaddyContainer();
   await run(dockerBin, ['exec', caddyContainer, 'caddy', 'reload', '--config', '/etc/caddy/Caddyfile']);
+};
+
+export const getContainerName = (deploymentId: string, projectName?: string, projectId?: string) => {
+  const slug = slugify(projectName || projectId || deploymentId);
+  return `${slug}-${deploymentId.slice(0, 8)}`;
+};
+
+export const cleanupFailedDeployment = async (
+  deploymentId: string,
+  imageTag?: string | null,
+  projectName?: string,
+  projectId?: string,
+  sourceType?: string | null,
+) => {
+  const containerName = getContainerName(deploymentId, projectName, projectId);
+  await tryRun(dockerBin, ['network', 'disconnect', '-f', config.dockerNetwork, containerName]);
+  await tryRun(dockerBin, ['rm', '-f', containerName]);
+  if (imageTag && sourceType !== "image") {
+    await tryRun(dockerBin, ['rmi', '-f', imageTag]);
+  }
 };
 
 export const deployContainer = async (
@@ -112,6 +138,7 @@ export const deployContainer = async (
     'run', '-d',
     '--name', containerName,
     '--network', config.dockerNetwork,
+    '-l', DEQUEL_MANAGED_LABEL,
     '-e', `PORT=${opts.appPort ?? config.appInternalPort}`,
   ];
 

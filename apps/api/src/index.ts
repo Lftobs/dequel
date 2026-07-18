@@ -9,22 +9,28 @@ import { config } from './utils/config';
 import { getDb } from './db/client';
 import { scalingEngine } from './scaling/engine';
 import { serverManager } from './servers/manager';
-import { startGitWatcher } from './git/watcher';
 import { startDomainPolling } from './utils/domain-verifier';
 import { alertEvaluator } from './monitoring/evaluator';
+import { loadOrCreateJwtSecret } from './utils/secrets';
+import { initAuth, cleanupExpiredTokens } from './utils/auth';
+import { startBuildCleanup } from './orchestrator/cleanup';
 const bootstrap = async () => {
   await mkdir(dirname(config.databasePath), { recursive: true });
   await mkdir(config.workspaceRoot, { recursive: true });
   await mkdir(config.caddyRoutesDir, { recursive: true });
+
+  const jwtSecret = await loadOrCreateJwtSecret(dirname(config.databasePath));
+  initAuth(jwtSecret);
 
   await migrate();
   await orchestrator.reconcileState();
   orchestrator.startWorker();
   scalingEngine.start();
   serverManager.start();
-  startGitWatcher();
   startDomainPolling();
   alertEvaluator.start();
+  startBuildCleanup();
+  setInterval(() => { cleanupExpiredTokens().catch(() => {}); }, 60_000);
 
   const metrics = {
     requestsTotal: 0,

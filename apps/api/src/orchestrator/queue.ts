@@ -22,12 +22,14 @@ const decodeJob = (raw: string): JobPayload | null => {
   }
 };
 
+const createRedis = () => new Redis(config.redisUrl, { maxRetriesPerRequest: null });
+
 export class DeploymentQueue {
   private redis: Redis;
   private shuttingDown = false;
 
   constructor() {
-    this.redis = new Redis(config.redisUrl, { maxRetriesPerRequest: null });
+    this.redis = createRedis();
   }
 
   async enqueue(deploymentId: string) {
@@ -37,11 +39,13 @@ export class DeploymentQueue {
   async remove(deploymentId: string) {
     await this.redis.lrem(QUEUE_KEY, 0, encodeJob({ id: deploymentId, attempt: 0 }));
     await this.redis.zrem(RETRY_KEY, encodeJob({ id: deploymentId, attempt: 0 }));
-    const allAttempts = Array.from({ length: 10 }, (_, i) =>
+    const allAttempts = Array.from({ length: config.queueRetryMax + 2 }, (_, i) =>
       encodeJob({ id: deploymentId, attempt: i }),
     );
     await this.redis.zrem(RETRY_KEY, ...allAttempts);
-    await this.redis.lrem(DLQ_KEY, 0, encodeJob({ id: deploymentId, attempt: 0 }));
+    for (let i = 0; i <= config.queueRetryMax + 1; i++) {
+      await this.redis.lrem(DLQ_KEY, 0, encodeJob({ id: deploymentId, attempt: i }));
+    }
   }
 
   async start(handler: (deploymentId: string) => Promise<boolean>) {
@@ -55,40 +59,47 @@ export class DeploymentQueue {
   }
 
   private async runWorker(workerId: number, handler: (deploymentId: string) => Promise<boolean>) {
-    while (!this.shuttingDown) {
-      await this.requeueDueJobs();
+    const workerRedis = createRedis();
+    try {
+      while (!this.shuttingDown) {
+        await this.requeueDueJobs(workerRedis);
 
-      const item = await this.redis.blpop(QUEUE_KEY, BLOCK_TIMEOUT_SEC);
-      if (!item) continue;
-      const job = decodeJob(item[1]);
-      if (!job) continue;
+        const item = await workerRedis.blpop(QUEUE_KEY, BLOCK_TIMEOUT_SEC);
+        if (!item) continue;
+        const job = decodeJob(item[1]);
+        if (!job) continue;
 
-      try {
-        const ok = await handler(job.id);
-        if (!ok) await this.retryOrDlq(job);
-      } catch (err) {
-        console.error(`[Queue] Worker ${workerId} handler error:`, err);
-        await this.retryOrDlq(job);
+        try {
+          const ok = await handler(job.id);
+          if (!ok) await this.retryOrDlq(job, workerRedis);
+        } catch (err) {
+          console.error(`[Queue] Worker ${workerId} handler error:`, err);
+          await this.retryOrDlq(job, workerRedis);
+        }
       }
+    } finally {
+      await workerRedis.quit();
     }
   }
 
-  private async retryOrDlq(job: JobPayload) {
+  private async retryOrDlq(job: JobPayload, redis?: Redis) {
+    const r = redis ?? this.redis;
     const attempt = job.attempt + 1;
     if (attempt > config.queueRetryMax) {
-      await this.redis.rpush(DLQ_KEY, encodeJob({ ...job, attempt }));
+      await r.rpush(DLQ_KEY, encodeJob({ ...job, attempt }));
       return;
     }
     const delayMs = config.queueRetryBaseMs * Math.pow(2, attempt - 1);
     const runAt = Date.now() + delayMs;
-    await this.redis.zadd(RETRY_KEY, String(runAt), encodeJob({ ...job, attempt }));
+    await r.zadd(RETRY_KEY, String(runAt), encodeJob({ ...job, attempt }));
   }
 
-  private async requeueDueJobs() {
+  private async requeueDueJobs(redis?: Redis) {
+    const r = redis ?? this.redis;
     const now = Date.now();
-    const jobs = await this.redis.zrangebyscore(RETRY_KEY, 0, now, 'LIMIT', 0, 50);
+    const jobs = await r.zrangebyscore(RETRY_KEY, 0, now, 'LIMIT', 0, 50);
     if (!jobs.length) return;
-    await this.redis.zrem(RETRY_KEY, ...jobs);
-    await this.redis.rpush(QUEUE_KEY, ...jobs);
+    await r.zrem(RETRY_KEY, ...jobs);
+    await r.rpush(QUEUE_KEY, ...jobs);
   }
 }

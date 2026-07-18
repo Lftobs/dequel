@@ -43,6 +43,7 @@ export const deployments = sqliteTable("deployments", {
   replicas: integer().notNull().default(1),
   environment: text(),
   failureReason: text("failure_reason"),
+  clearCache: integer("clear_cache").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -150,6 +151,15 @@ export const servers = sqliteTable("servers", {
   lastHeartbeat: text("last_heartbeat"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+});
+
+export const refreshTokens = sqliteTable("refresh_tokens", {
+	id: text().primaryKey(),
+	username: text().notNull(),
+	tokenHash: text("token_hash").notNull().unique(),
+	expiresAt: text("expires_at").notNull(),
+	createdAt: text("created_at").notNull(),
+	blacklistedAt: text("blacklisted_at"),
 });
 
 export const apiKeys = sqliteTable("api_keys", {

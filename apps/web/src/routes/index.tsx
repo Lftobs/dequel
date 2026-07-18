@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
 import { Layout } from '../components/Layout';
 import { Dashboard } from './Dashboard';
+import { Login } from './Login';
 import { Settings } from './Settings';
 import { ProjectDetail } from './ProjectDetail';
 
@@ -16,6 +17,12 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: Dashboard,
+});
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: Login,
 });
 
 const settingsRoute = createRoute({
@@ -38,7 +45,7 @@ const projectRoute = createRoute({
   }),
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, settingsRoute, projectRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, loginRoute, settingsRoute, projectRoute]);
 
 export const router = createRouter({ routeTree });
 

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-06-19
+
+### Added
+
+- Per-project Grafana dashboards automatically created on successful deployment
+- Configurable `CADDY_BASE_DOMAIN` for public ingress with automatic Let's Encrypt SSL
+- Dynamic `railpack.json` generation with deployment abort support
+- GitHub webhook management and project management API endpoints
+- Project source and port configuration options
+- SMTP configuration and system settings API
+
+### Changed
+
+- Monitoring stack hardened: Prometheus now validates TSDB blocks and quarantines corrupted ones on startup; Promtail scoped to `dequel_net` network; Grafana datasources use stable UIDs for reliable dashboard provisioning
+- `PUBLIC_URL` is now derived from `CADDY_BASE_DOMAIN` instead of requiring separate configuration
+- Refactored infrastructure monitoring configs into dedicated files for maintainability
+
+### Fixed
+
+- Container network reconciliation now force-disconnects stale network references before starting containers, preventing Docker network ID changes from breaking deployments
+
+### Documentation
+
+- Installation guide, quickstart, and system configuration docs updated for `CADDY_BASE_DOMAIN`
+
 ## [0.1.0] - 2026-06-08
 
 ### Added

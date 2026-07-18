@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     tar \
     gnupg \
+    python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Docker CLI + buildx plugin from Docker's official repo

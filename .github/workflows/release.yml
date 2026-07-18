@@ -57,6 +57,8 @@ jobs:
         with:
           context: apps/web
           push: true
+          build-args: |
+            DEQUEL_VERSION=${{ steps.version.outputs.VERSION }}
           tags: |
             ${{ env.WEB_IMAGE }}:${{ steps.version.outputs.VERSION }}
             ${{ env.WEB_IMAGE }}:latest
@@ -71,18 +73,22 @@ jobs:
           cp docker-compose.yml "$TAR_DIR/"
           cp scripts/dequel "$TAR_DIR/dequel"
           cp infra/caddy/Caddyfile "$TAR_DIR/infra/caddy/"
-          cp infra/monitoring/prometheus.yml "$TAR_DIR/infra/monitoring/"
-          cp infra/monitoring/loki-config.yml "$TAR_DIR/infra/monitoring/"
-          cp infra/monitoring/promtail-config.yml "$TAR_DIR/infra/monitoring/"
-          cp infra/monitoring/grafana/datasources/loki.yml "$TAR_DIR/infra/monitoring/grafana/datasources/"
-          cp infra/monitoring/grafana/datasources/prometheus.yml "$TAR_DIR/infra/monitoring/grafana/datasources/"
+          cp -r infra/monitoring "$TAR_DIR/infra/"
           cd "$TAR_DIR" && tar -czf "../dequel-config-${VERSION}.tar.gz" .
+
+      - name: Extract changelog entry for this version
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          awk '/^## \['"$VERSION"'\] -/{flag=1; next} /^## \[/{if(flag) exit} flag' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "No changelog entry for v$VERSION, will use auto-generated notes"
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: v${{ steps.version.outputs.VERSION }}
-          body_path: CHANGELOG.md
+          body_path: release-notes.md
           generate_release_notes: true
           files: |
             scripts/install.sh

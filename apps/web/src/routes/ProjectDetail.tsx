@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useProject } from "../hooks/useProjects";
 import { useDeployments } from "../hooks/useDeployments";
 import { useNavigate, useLocation } from "@tanstack/react-router";
@@ -32,6 +32,17 @@ export function ProjectDetail({
 	const navigate = useNavigate();
 	const location = useLocation();
 	const activeTab = new URLSearchParams(location.search).get("tab") || "deployments";
+	const tabsListRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!tabsListRef.current) return;
+		const activeTrigger = tabsListRef.current.querySelector(
+			`[data-value="${activeTab}"]`,
+		) as HTMLElement | null;
+		if (activeTrigger) {
+			activeTrigger.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+		}
+	}, [activeTab]);
 
 	if (isLoading)
 		return (
@@ -106,32 +117,32 @@ export function ProjectDetail({
 			</div>
 
 			<Tabs value={activeTab} onValueChange={(val) => navigate({ search: { tab: val } as any })} className="space-y-4">
-				<TabsList className="mb-6 flex flex-wrap h-auto p-1 bg-[#141417] border border-[#222227] rounded-lg">
-					<TabsTrigger value="deployments" className="text-xs px-3 py-1.5 rounded-md data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+				<TabsList ref={tabsListRef} className="mb-6 flex overflow-x-auto whitespace-nowrap justify-start h-auto p-1 bg-[#141417] border border-[#222227] rounded-lg max-w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+					<TabsTrigger value="deployments" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Deployments
 					</TabsTrigger>
-					<TabsTrigger value="env-vars" className="text-xs px-3 py-1.5 rounded-md data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger value="env-vars" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Env Vars
 					</TabsTrigger>
-					<TabsTrigger value="volumes" className="text-xs px-3 py-1.5 rounded-md data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger value="volumes" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Volumes
 					</TabsTrigger>
-					<TabsTrigger value="databases" className="text-xs px-3 py-1.5 rounded-md data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger value="databases" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Databases
 					</TabsTrigger>
-					<TabsTrigger value="domains" className="text-xs px-3 py-1.5 rounded-md data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger value="domains" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Domains
 					</TabsTrigger>
-					<TabsTrigger value="scaling" className="text-xs px-3 py-1.5 rounded-md data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger value="scaling" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Scaling
 					</TabsTrigger>
-					<TabsTrigger value="alerts" className="text-xs px-3 py-1.5 rounded-md data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger value="alerts" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Alerts
 					</TabsTrigger>
-					<TabsTrigger value="observability" className="text-xs px-3 py-1.5 rounded-md data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger value="observability" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Observability
 					</TabsTrigger>
-					<TabsTrigger value="logs" className="text-xs px-3 py-1.5 rounded-md data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger value="logs" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Logs
 					</TabsTrigger>
 				</TabsList>

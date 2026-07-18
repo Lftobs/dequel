@@ -35,9 +35,3 @@ To inject this secret into your container runtime, navigate to **Environment Var
   DATABASE_URL=postgresql://postgres:random-password@db-my-web-app.dequel.local:5432/postgres
 </div>
 
-<div class="pt-6">
-  <a href="/docs/volumes" class="inline-flex items-center gap-2 bg-[#0c0c0e] hover:bg-[#121215] text-foreground border border-border font-semibold px-4 py-2 rounded-xl transition-all text-xs">
-    Next: Persistent Volumes
-    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-  </a>
-</div>

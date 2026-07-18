@@ -6,7 +6,8 @@ import {
 	listProjects,
 	getProjectById,
 	updateProject,
-	deleteProject,
+	deleteProjectCascade,
+	listDomains,
 } from "../../db/repo";
 import { tryRun, reloadCaddy } from "../../orchestrator/runtime";
 import { removeFromCaddyRoute } from "../../utils/domain-verifier";
@@ -33,6 +34,16 @@ export const projectsRoutes = new Elysia()
 				set.status = 400;
 				return { error: "name is required" };
 			}
+			if (body?.repoUrl) {
+				const projects = await listProjects();
+				const normalize = (u: string) => u.replace(/\.git$/, "").replace(/\/+$/, "").toLowerCase();
+				const incoming = normalize(body.repoUrl);
+				const duplicate = projects.find((p) => p.repoUrl && normalize(p.repoUrl) === incoming);
+				if (duplicate) {
+					set.status = 409;
+					return { error: `A project with this repository URL already exists: "${duplicate.name}"` };
+				}
+			}
 			const project = await createProject({
 				name: body.name,
 				description: body.description,
@@ -51,6 +62,16 @@ export const projectsRoutes = new Elysia()
 	.patch(
 		"/projects/:id",
 		async ({ params: { id }, body, set }: any) => {
+			if (body?.repoUrl) {
+				const projects = await listProjects();
+				const normalize = (u: string) => u.replace(/\.git$/, "").replace(/\/+$/, "").toLowerCase();
+				const incoming = normalize(body.repoUrl);
+				const duplicate = projects.find((p) => p.id !== id && p.repoUrl && normalize(p.repoUrl) === incoming);
+				if (duplicate) {
+					set.status = 409;
+					return { error: `A project with this repository URL already exists: "${duplicate.name}"` };
+				}
+			}
 			const project = await updateProject(id, {
 				name: body?.name,
 				description: body?.description,
@@ -78,7 +99,6 @@ export const projectsRoutes = new Elysia()
 				return { error: "Project not found" };
 			}
 
-			// Docker containers cleanup
 			for (const name of info.deploymentContainerNames) {
 				await tryRun(dockerBin, ['stop', '-t', '5', name]);
 				await tryRun(dockerBin, ['rm', '-f', name]);
@@ -88,22 +108,18 @@ export const projectsRoutes = new Elysia()
 				await tryRun(dockerBin, ['rm', '-f', name]);
 			}
 
-			// Docker volumes cleanup
 			for (const name of [...info.databaseVolumeNames, ...info.volumeDockerNames]) {
 				await tryRun(dockerBin, ['volume', 'rm', '-f', name]);
 			}
 
-			// Docker images cleanup
 			for (const tag of info.deploymentImageTags) {
 				if (tag) await tryRun(dockerBin, ['rmi', '-f', tag]);
 			}
 
-			// Remove domains from Caddy route file
 			for (const { domain, projectName } of info.domains) {
 				await removeFromCaddyRoute(domain, id, projectName);
 			}
 
-			// Delete the Caddy route file for this project's slug
 			const caddyFilePath = join(config.caddyRoutesDir, `${info.slug}.caddy`);
 			await unlink(caddyFilePath).catch(() => {});
 			await reloadCaddy().catch(() => {});
@@ -205,14 +221,14 @@ export const projectsRoutes = new Elysia()
 			}
 
 			const regexEscaped = domains.map(d => d.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\\\$&')).join('|');
-			
+
 			// Loki metric query for request rate
 			const query = `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [5m]))`;
-			
+
 			const end = Math.floor(Date.now() / 1000);
 			const start = end - (6 * 60 * 60); // 6 hours ago
 			const step = "60s"; // 1 min resolution
-			
+
 			try {
 				const response = await fetch(
 					`http://loki:3100/loki/api/v1/query_range?query=${encodeURIComponent(query)}&start=${start}&end=${end}&step=${step}`
@@ -303,8 +319,8 @@ export const projectsRoutes = new Elysia()
 						ws.onmessage = (event) => {
 							if (closed) return;
 							try {
-								const dataStr = typeof event.data === "string" 
-									? event.data 
+								const dataStr = typeof event.data === "string"
+									? event.data
 									: new TextDecoder().decode(event.data as any);
 								const data = JSON.parse(dataStr) as any;
 								if (data.streams) {

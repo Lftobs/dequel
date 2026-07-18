@@ -340,7 +340,23 @@ export const deleteScalingPolicy = (
 
 // Server
 export const getServerIp = () =>
-	apiFetch<{ ip: string }>("/server/ip");
+	apiFetch<{ ip: string; baseDomain: string; resolves: boolean; url: string }>("/server/ip");
+
+// Auth
+export const login = (username: string, password: string) =>
+	apiFetch<{ ok: boolean; username: string; error?: string }>("/auth/login", {
+		method: "POST",
+		body: JSON.stringify({ username, password }),
+	});
+
+export const logout = () =>
+	apiFetch<{ ok: boolean }>("/auth/logout", { method: "POST" });
+
+export const refreshSession = () =>
+	apiFetch<{ ok: boolean; username: string }>("/auth/refresh", { method: "POST" });
+
+export const getMe = () =>
+	apiFetch<{ authenticated: boolean; username?: string }>("/auth/me");
 
 // Prometheus
 export const queryPrometheus = (query: string) =>

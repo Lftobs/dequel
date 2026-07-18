@@ -2,11 +2,18 @@
   "version": "6",
   "dialect": "sqlite",
   "entries": [
-{
-    "idx": 0,
+    {
+      "idx": 0,
       "version": "6",
       "when": 1718000000000,
       "tag": "0000_baseline",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1782100000000,
+      "tag": "0001_refresh_tokens",
       "breakpoints": true
     }
   ]

@@ -32,7 +32,7 @@ export const setGithubIntegration = async (input: { clientId: string; clientSecr
         clientId: input.clientId,
         clientSecret: input.clientSecret,
         appName: input.appName ?? "Dequel",
-        webhookSecret: input.webhookSecret ?? null,
+        webhookSecret: input.webhookSecret ?? existing.webhookSecret,
       }).where(eq(githubIntegrations.id, existing.id)).run();
       const updated = tx.select().from(githubIntegrations).where(eq(githubIntegrations.id, existing.id)).get()!;
       return mapGithubIntegration(updated);

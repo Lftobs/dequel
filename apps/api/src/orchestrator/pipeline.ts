@@ -21,11 +21,13 @@ import {
 	getHeadSha,
 } from "./source";
 import {
+	cleanupFailedDeployment,
 	deployContainer,
 	ensureContainerRunning,
 	reloadCaddy,
 	tryRun,
 } from "./runtime";
+import { ensureProjectDashboard } from "../utils/grafana";
 
 const now = () =>
 	new Date()
@@ -155,6 +157,10 @@ export class PipelineOrchestrator {
 				"-f",
 				deployment.containerName,
 			]);
+		}
+
+		if (deployment.imageTag && deployment.sourceType !== "image") {
+			await tryRun("docker", ["rmi", "-f", deployment.imageTag]);
 		}
 
 		await deleteDeploymentAndLogs(
@@ -289,6 +295,9 @@ export class PipelineOrchestrator {
 		let workspacePath = "";
 		let uploadedArchivePath: string | null =
 			null;
+		let imageTag: string | undefined;
+		let projectName: string | undefined;
+		let deployed = false;
 
 		try {
 			await emitLog(
@@ -297,7 +306,7 @@ export class PipelineOrchestrator {
 				"Deployment enqueued",
 			);
 
-			const imageTag =
+			imageTag =
 				await this.resolveImageTag(
 					deployment,
 				);
@@ -315,20 +324,23 @@ export class PipelineOrchestrator {
 					deployment.sourceType ===
 					"git"
 				) {
-					const branchLabel =
-						deployment.branch
+					const commitLabel = deployment.commitSha
+						? ` (commit ${deployment.commitSha.slice(0, 7)})`
+						: deployment.branch
 							? ` (branch ${deployment.branch})`
 							: "";
 					await emitLog(
 						deploymentId,
 						"build",
-						`Cloning git repository: ${deployment.sourceRef}${branchLabel}`,
+						`Cloning git repository: ${deployment.sourceRef}${commitLabel}`,
 					);
 					workspacePath =
 						await prepareSourceWorkspace(
 							deploymentId,
 							deployment.sourceRef,
 							deployment.branch ??
+								undefined,
+							deployment.commitSha ??
 								undefined,
 						);
 					const sha = await getHeadSha(
@@ -381,7 +393,7 @@ export class PipelineOrchestrator {
 						line,
 					);
 				},
-				{ cacheKey, sourceDir: project?.sourceDir, signal: controller.signal },
+				{ cacheKey, sourceDir: project?.sourceDir, signal: controller.signal, clearCache: deployment.clearCache },
 			);
 			} else {
 				await emitLog(
@@ -480,7 +492,6 @@ export class PipelineOrchestrator {
 
 			await this.checkCancelled(deploymentId);
 
-			let projectName: string | undefined;
 			let cpuLimit:
 				| number
 				| null
@@ -530,6 +541,8 @@ export class PipelineOrchestrator {
 				},
 			);
 
+			deployed = true;
+
 			await updateDeploymentStatus(
 				deploymentId,
 				"running",
@@ -541,6 +554,25 @@ export class PipelineOrchestrator {
 					failureReason: null,
 				},
 			);
+
+			if (projectName) {
+				const dashSlug = projectName
+					.toLowerCase()
+					.replace(/[^a-z0-9-]+/g, "-")
+					.replace(/^-+|-+$/g, "")
+					.slice(0, 63);
+				const containerRegex = `${dashSlug}-.*`;
+				ensureProjectDashboard(
+					deployment.projectId!,
+					projectName,
+					containerRegex,
+				).catch((e) =>
+					console.warn(
+						"[Pipeline] Grafana dashboard creation failed:",
+						e,
+					),
+				);
+			}
 
 			if (
 				oldContainerName &&
@@ -600,6 +632,23 @@ export class PipelineOrchestrator {
 				"failed",
 				{ failureReason: message },
 			);
+
+			if (!deployed) {
+				await emitLog(
+					deploymentId,
+					"system",
+					"Cleaning up Docker resources from failed deployment",
+				);
+				await cleanupFailedDeployment(
+					deploymentId,
+					deployment.sourceType === "image" ? undefined : imageTag,
+					projectName,
+					deployment.projectId,
+				).catch(e =>
+					console.warn(`[Cleanup] Failed to clean deployment ${deploymentId}:`, e),
+				);
+			}
+
 			if (deployment.projectId) {
 				try {
 					const dbs =
@@ -626,14 +675,22 @@ export class PipelineOrchestrator {
 			return false;
 		} finally {
 			this.abortControllers.delete(deploymentId);
-			if (workspacePath)
-				await cleanupWorkspace(
-					workspacePath,
-				);
-			if (uploadedArchivePath)
-				await rm(uploadedArchivePath, {
-					force: true,
-				});
+			try {
+				if (workspacePath)
+					await cleanupWorkspace(
+						workspacePath,
+					);
+			} catch {
+				// cleanup failures must never mask the deployment result
+			}
+			try {
+				if (uploadedArchivePath)
+					await rm(uploadedArchivePath, {
+						force: true,
+					});
+			} catch {
+				// cleanup failures must never mask the deployment result
+			}
 		}
 	}
 

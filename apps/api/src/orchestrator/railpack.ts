@@ -722,6 +722,7 @@ export const buildWithRailpack = async (
 		cacheKey?: string;
 		sourceDir?: string | null;
 		signal?: AbortSignal;
+		clearCache?: boolean;
 	},
 ): Promise<RailpackBuildResult> => {
 	await onLog(
@@ -731,12 +732,17 @@ export const buildWithRailpack = async (
 	// Ensure builder exists (persists across builds)
 	await ensureBuilder();
 
-	const cacheKey =
+	let cacheKey =
 		opts?.cacheKey ??
 		imageTag
 			.split(":")[0]
 			.replace(/-[0-9a-f]{8}$/i, "") // Strip unique deployment short ID suffix
 			.replace(/[^a-zA-Z0-9_-]/g, "-");
+
+	if (opts?.clearCache) {
+		cacheKey = `${cacheKey}-clear-${Date.now()}`;
+		await onLog(`Bypassing cache for clean build (cacheKey: ${cacheKey})`);
+	}
 
 	const cleanSourceDir = opts?.sourceDir
 		? opts.sourceDir.replace(/^\//, "")

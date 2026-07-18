@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from './ui/button';
-import { Mail, GitBranch, type LucideIcon } from 'lucide-react';
+import { Globe, Mail, GitBranch, type LucideIcon } from 'lucide-react';
 import * as api from '../api/client';
 
 export function ConfigWarnings() {
@@ -12,6 +12,9 @@ export function ConfigWarnings() {
   });
   const github = useQuery({
     queryKey: ['github-integration'], queryFn: () => api.getGithubIntegration(),
+  });
+  const serverInfo = useQuery({
+    queryKey: ['server-ip'], queryFn: () => api.getServerIp(),
   });
 
   const missing: { key: string; icon: LucideIcon; title: string; desc: string }[] = [];
@@ -29,6 +32,14 @@ export function ConfigWarnings() {
       icon: GitBranch,
       title: 'GitHub integration not configured',
       desc: 'Connect a GitHub OAuth App to enable the repo picker and auto-deploy.',
+    });
+  }
+  if (serverInfo.data && !serverInfo.data.resolves) {
+    missing.push({
+      key: 'base-domain',
+      icon: Globe,
+      title: 'Base domain misconfigured',
+      desc: `The base domain ${serverInfo.data.baseDomain} does not resolve to this server (${serverInfo.data.ip}). Access the dashboard at ${serverInfo.data.url}.`,
     });
   }
 

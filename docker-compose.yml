@@ -1,6 +1,7 @@
 services:
     buildkit:
         image: moby/buildkit:latest
+        restart: unless-stopped
         command:
             [
                 "--addr",
@@ -18,11 +19,8 @@ services:
         healthcheck:
             test:
                 [
-                    "CMD",
-                    "wget",
-                    "--spider",
-                    "-q",
-                    "tcp://localhost:1234",
+                    "CMD-SHELL",
+                    "wget -q -T 2 -O /dev/null http://localhost:1234 >/dev/null 2>&1; [ $$? -ne 4 ]",
                 ]
             interval: 5s
             timeout: 3s
@@ -31,8 +29,10 @@ services:
 
     api:
         image: ghcr.io/lftobs/dequel/api:latest
+        restart: unless-stopped
         # build:
-        #     context: ./apps/api
+        #     context: .
+        #     dockerfile: ./apps/api/Dockerfile
         environment:
             PORT: 3001
             DATABASE_PATH: /app/data/dequel.db
@@ -45,11 +45,15 @@ services:
             DOCKER_BIN: /usr/bin/docker
             RAILPACK_VERBOSE: "1"
             RAILPACK_BUILD_TIMEOUT_MS: "1200000"
+            GRAFANA_URL: http://grafana:3000/grafana
         volumes:
             - ./data:/app/data
             - ./workspace:/app/workspace
             - ./infra/caddy/routes:/caddy/routes
             - /var/run/docker.sock:/var/run/docker.sock
+            - railpack-cache:/tmp/railpack
+            - /etc/passwd:/etc/passwd:ro
+            - /etc/group:/etc/group:ro
         depends_on:
             buildkit:
                 condition: service_started
@@ -70,10 +74,44 @@ services:
                 aliases:
                     - api
 
+    pam-auth:
+        image: python:3-slim
+        restart: unless-stopped
+        entrypoint: []
+        command:
+            - sh
+            - -c
+            - |
+                apt-get update -qq > /dev/null 2>&1 && apt-get install -y -qq libpam-modules > /dev/null 2>&1 && exec python3 -u /app/pam-server.py
+        volumes:
+            - ./scripts/auth/pam-server.py:/app/pam-server.py:ro
+            - /etc/passwd:/etc/passwd:ro
+            - /etc/shadow:/etc/shadow:ro
+            - /etc/group:/etc/group:ro
+        networks:
+            dequel:
+                aliases:
+                    - pam-auth
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "python3",
+                    "-c",
+                    "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:4567/health').status == 200 else 1)",
+                ]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+            start_period: 10s
+
     web:
         image: ghcr.io/lftobs/dequel/web:latest
+        restart: unless-stopped
         # build:
         #     context: ./apps/web
+        #     args:
+        #         DEQUEL_VERSION: ${DEQUEL_VERSION:-}
         healthcheck:
             test:
                 [
@@ -93,6 +131,7 @@ services:
 
     caddy:
         image: caddy:2.8-alpine
+        restart: unless-stopped
         command:
             [
                 "caddy",
@@ -104,7 +143,7 @@ services:
                 "--watch",
             ]
         environment:
-            CADDY_EMAIL: ${CADDY_EMAIL:-}
+            CADDY_EMAIL: ${CADDY_EMAIL:-admin@dequel.local}
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
         ports:
             - "80:80"
@@ -122,6 +161,7 @@ services:
 
     redis:
         image: redis:7-alpine
+        restart: unless-stopped
         command: redis-server --appendonly yes
         volumes:
             - redis-data:/data
@@ -137,6 +177,7 @@ services:
 
     cadvisor:
         image: gcr.io/cadvisor/cadvisor:latest
+        restart: unless-stopped
         volumes:
             - /:/rootfs:ro
             - /var/run:/var/run:ro
@@ -166,13 +207,14 @@ services:
 
     prometheus:
         image: prom/prometheus:latest
+        restart: unless-stopped
+        stop_grace_period: 60s
+        entrypoint: []
         command:
-            - --config.file=/etc/prometheus/prometheus.yml
-            - --storage.tsdb.path=/prometheus
-            - --web.console.libraries=/usr/share/prometheus/console_libraries
-            - --web.console.templates=/usr/share/prometheus/consoles
-            - --storage.tsdb.retention.time=30d
+            - sh
+            - /entrypoint.sh
         volumes:
+            - ./infra/monitoring/prometheus-entrypoint.sh:/entrypoint.sh:ro
             - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
             - prometheus-data:/prometheus
         depends_on:
@@ -198,6 +240,7 @@ services:
 
     loki:
         image: grafana/loki:3.0.0
+        restart: unless-stopped
         command:
             - -config.file=/etc/loki/loki-config.yml
         volumes:
@@ -223,12 +266,14 @@ services:
 
     promtail:
         image: grafana/promtail:3.0.0
+        restart: unless-stopped
         command:
             - -config.file=/etc/promtail/promtail-config.yml
         volumes:
             - ./infra/monitoring/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
             - /var/run/docker.sock:/var/run/docker.sock
             - /var/lib/docker/containers:/var/lib/docker/containers:ro
+            - promtail-data:/data
         depends_on:
             loki:
                 condition: service_started
@@ -237,6 +282,7 @@ services:
 
     grafana:
         image: grafana/grafana:latest
+        restart: unless-stopped
         environment:
             GF_SECURITY_ADMIN_USER: admin
             GF_SECURITY_ADMIN_PASSWORD: admin
@@ -245,6 +291,7 @@ services:
             GF_INSTALL_PLUGINS: ""
         volumes:
             - ./infra/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+            - ./infra/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
             - grafana-data:/var/lib/grafana
         depends_on:
             prometheus:
@@ -279,3 +326,5 @@ volumes:
     prometheus-data:
     loki-data:
     grafana-data:
+    railpack-cache:
+    promtail-data:
