@@ -140,10 +140,33 @@ declare module 'astro:content' {
 	>;
 
 	type ContentEntryMap = {
-		"docs": {
-"changelog.md": {
-	id: "changelog.md";
-  slug: "changelog";
+		"changelogs": {
+"v0.1.0.md": {
+	id: "v0.1.0.md";
+  slug: "v010";
+  body: string;
+  collection: "changelogs";
+  data: any
+} & { render(): Render[".md"] };
+"v0.1.1.md": {
+	id: "v0.1.1.md";
+  slug: "v011";
+  body: string;
+  collection: "changelogs";
+  data: any
+} & { render(): Render[".md"] };
+"v0.2.0.md": {
+	id: "v0.2.0.md";
+  slug: "v020";
+  body: string;
+  collection: "changelogs";
+  data: any
+} & { render(): Render[".md"] };
+};
+"docs": {
+"auth.md": {
+	id: "auth.md";
+  slug: "auth";
   body: string;
   collection: "docs";
   data: any
