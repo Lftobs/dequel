@@ -122,8 +122,6 @@
 #kofi-widget-container .floatingchat-container-mobi {
   position: static !important;
   display: block !important;
-  /* Give the iframe a virtual width slightly wider than its default 195px
-     then scale it down so the full button text fits the sidebar card */
   width: 220px !important;
   height: 100% !important;
   opacity: 1 !important;

@@ -41,6 +41,7 @@ export interface Deployment {
   replicas: number;
   environment: string | null;
   failureReason: string | null;
+  finishedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

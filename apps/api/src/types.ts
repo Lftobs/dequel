@@ -222,6 +222,7 @@ export interface Deployment {
   environment: string | null;
   failureReason: string | null;
   clearCache: boolean;
+  finishedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

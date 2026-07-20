@@ -54,7 +54,14 @@ const waitForRunningContainer = async (
 ) => {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const status = (await run(dockerBin, ['inspect', '-f', '{{.State.Status}}', containerName])).trim();
+    const exists = await run(dockerBin, ['inspect', '-f', '{{.Id}}', containerName])
+      .then(() => true)
+      .catch(() => false);
+    if (!exists) {
+      await new Promise(r => setTimeout(r, 500));
+      continue;
+    }
+    const status = (await run(dockerBin, ['inspect', '-f', '{{.State.Status}}', containerName])).trim();
       if (status === 'running') {
         await new Promise(r => setTimeout(r, 2000));
         const stabilityStatus = (await run(dockerBin, ['inspect', '-f', '{{.State.Status}}', containerName])).trim();
@@ -83,6 +90,11 @@ const waitForRunningContainer = async (
 
 export const ensureContainerRunning = async (containerName: string) => {
   try {
+    const exists = await run(dockerBin, ['inspect', '-f', '{{.Id}}', containerName]).then(() => true).catch(() => false);
+    if (!exists) {
+      console.warn(`Container ${containerName} not found — skipping reconciliation`);
+      return;
+    }
     const status = (await run(dockerBin, ['inspect', '-f', '{{.State.Status}}', containerName])).trim();
     if (status !== 'running') {
       await tryRun(dockerBin, ['network', 'disconnect', '-f', config.dockerNetwork, containerName]);

@@ -30,6 +30,7 @@ export const migrate = async () => {
   drizzleMigrate(db, { migrationsFolder });
 
   await addClearCacheColumn(db);
+  await addFinishedAtColumn(db);
   await seedFromConfig();
 };
 
@@ -41,6 +42,18 @@ const addClearCacheColumn = async (db: ReturnType<typeof getDrizzle>) => {
     const cause = err instanceof Error && "cause" in err ? err.cause : err;
     if (cause instanceof Error && cause.message.includes("duplicate column name")) return;
     console.error("[Migrate] Failed to add clear_cache column:", err);
+    throw err;
+  }
+};
+
+const addFinishedAtColumn = async (db: ReturnType<typeof getDrizzle>) => {
+  try {
+    db.run(sql`ALTER TABLE deployments ADD COLUMN finished_at text`);
+    console.log("[Migrate] Added finished_at column to deployments table");
+  } catch (err) {
+    const cause = err instanceof Error && "cause" in err ? err.cause : err;
+    if (cause instanceof Error && cause.message.includes("duplicate column name")) return;
+    console.error("[Migrate] Failed to add finished_at column:", err);
     throw err;
   }
 };
