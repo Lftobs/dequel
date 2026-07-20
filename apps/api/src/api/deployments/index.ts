@@ -5,6 +5,7 @@ import {
 	createDeployment,
 	countDeployments,
 	getDeploymentById,
+	getProjectById,
 	getLogs,
 	listDeployments,
 } from "../../db/repo";
@@ -66,6 +67,7 @@ export const deploymentsRoutes = new Elysia()
 				String(form.get("commitSha") ?? "").trim() ||
 				undefined;
 			const clearCache = form.get("clearCache") === "true";
+			const resolvedBranch = branch || (projectId ? (await getProjectById(projectId))?.repoBranch || undefined : undefined);
 			if (
 				sourceType !== "git" &&
 				sourceType !== "upload" &&
@@ -88,7 +90,7 @@ export const deploymentsRoutes = new Elysia()
 					projectId,
 					sourceType: "git",
 					sourceRef: gitUrl,
-					branch,
+					branch: resolvedBranch,
 					environment,
 					commitSha,
 					clearCache,
@@ -122,7 +124,7 @@ export const deploymentsRoutes = new Elysia()
 				projectId,
 				sourceType: "upload",
 				sourceRef: uploadPath,
-				branch,
+				branch: resolvedBranch,
 				environment,
 				clearCache,
 			});
@@ -186,11 +188,12 @@ export const deploymentsRoutes = new Elysia()
 					error: "Cannot redeploy an image-based (rollback) deployment — rollback to an earlier source deployment instead",
 				};
 			}
+			const project = original.projectId ? await getProjectById(original.projectId) : null;
 			const deployment = await createDeployment({
 				projectId: original.projectId || undefined,
 				sourceType: original.sourceType,
 				sourceRef: original.sourceRef,
-				branch: original.branch || undefined,
+				branch: original.branch || project?.repoBranch || undefined,
 				environment: original.environment || undefined,
 			});
 			orchestrator.enqueue(deployment.id);

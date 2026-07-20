@@ -21,6 +21,7 @@ const mapDeployment = (row: typeof deployments.$inferSelect): Deployment => ({
   environment: row.environment,
   failureReason: row.failureReason,
   clearCache: Boolean(row.clearCache),
+  finishedAt: row.finishedAt ?? null,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 });
@@ -74,18 +75,41 @@ export const updateDeploymentCommitSha = async (id: string, commitSha: string) =
   db.update(deployments).set({ commitSha, updatedAt: now() }).where(eq(deployments.id, id)).run();
 };
 
+const ACTIVE_STATUSES: DeploymentStatus[] = [
+  "pending",
+  "building",
+  "deploying",
+];
+
+const STAMP_FINISHED_UNCONDITIONALLY: DeploymentStatus[] = [
+  "running",
+  "failed",
+];
+
 export const updateDeploymentStatus = async (
   id: string,
   status: DeploymentStatus,
   patch: Partial<Pick<Deployment, "imageTag" | "containerName" | "liveUrl" | "failureReason" | "replicas">> = {},
 ) => {
   const db = await getDrizzle();
+  const existing = db
+    .select({ finishedAt: deployments.finishedAt })
+    .from(deployments)
+    .where(eq(deployments.id, id))
+    .get();
   const updates: Record<string, unknown> = { status, updatedAt: now() };
   if (patch.imageTag !== undefined) updates.imageTag = patch.imageTag;
   if (patch.containerName !== undefined) updates.containerName = patch.containerName;
   if (patch.liveUrl !== undefined) updates.liveUrl = patch.liveUrl;
   if (patch.failureReason !== undefined) updates.failureReason = patch.failureReason;
   if (patch.replicas !== undefined) updates.replicas = patch.replicas;
+  if (!ACTIVE_STATUSES.includes(status)) {
+    if (!existing?.finishedAt) {
+      updates.finishedAt = now();
+    } else if (STAMP_FINISHED_UNCONDITIONALLY.includes(status)) {
+      updates.finishedAt = now();
+    }
+  }
   db.update(deployments).set(updates).where(eq(deployments.id, id)).run();
 };
 

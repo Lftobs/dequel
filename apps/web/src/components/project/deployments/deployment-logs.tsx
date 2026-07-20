@@ -68,7 +68,8 @@ export function DeploymentDuration({
 				status !== "deploying";
 			const end = isFinished
 				? parseTimestamp(
-						deployment.updatedAt,
+						deployment.finishedAt ??
+							deployment.updatedAt,
 					)
 				: Date.now();
 
