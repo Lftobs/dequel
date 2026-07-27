@@ -144,5 +144,5 @@ export const buildCaddySnippet = async (
     }
   }
 
-  return `${domains.join(', ')} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${containerName}:${port}\n}\n`;
+  return `${domains.join(', ')} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${containerName}:${port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
 };

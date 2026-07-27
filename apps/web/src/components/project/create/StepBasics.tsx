@@ -34,6 +34,8 @@ interface StepBasicsProps {
 	githubConfigured: boolean;
 	sourceType: string;
 	setSourceType: (v: string) => void;
+	projectType: string;
+	setProjectType: (v: string) => void;
 	port: string;
 	setPort: (v: string) => void;
 	zipFile: File | null;
@@ -80,6 +82,8 @@ export function StepBasics({
 	githubConfigured,
 	sourceType,
 	setSourceType,
+	projectType,
+	setProjectType,
 	port,
 	setPort,
 	zipFile,
@@ -172,6 +176,49 @@ export function StepBasics({
 								)
 							}
 						/>
+					</div>
+					<div className="grid gap-1.5 sm:col-span-2">
+						<label className="font-semibold text-zinc-400">
+							Project Type
+						</label>
+						<div className="grid grid-cols-2 gap-2 mt-0.5">
+							<button
+								type="button"
+								onClick={() => setProjectType("web")}
+								className={cn(
+									"flex flex-col items-start gap-2 p-3 rounded-lg border text-left transition-all select-none active:scale-[0.98]",
+									projectType === "web"
+										? "border-amber-500/30 bg-amber-500/5 text-zinc-200"
+										: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
+								)}
+							>
+								<div className="flex items-center gap-1.5 font-semibold text-xs text-zinc-200">
+									<Box className="h-4 w-4 text-amber-500" />
+									Web Application
+								</div>
+								<span className="text-[10px] text-zinc-500 leading-normal">
+									For Node, Go, Rust, APIs, or database-connected backends.
+								</span>
+							</button>
+							<button
+								type="button"
+								onClick={() => setProjectType("static")}
+								className={cn(
+									"flex flex-col items-start gap-2 p-3 rounded-lg border text-left transition-all select-none active:scale-[0.98]",
+									projectType === "static"
+										? "border-amber-500/30 bg-amber-500/5 text-zinc-200"
+										: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
+								)}
+							>
+								<div className="flex items-center gap-1.5 font-semibold text-xs text-zinc-200">
+									<Globe className="h-4 w-4 text-amber-500" />
+									Static Site
+								</div>
+								<span className="text-[10px] text-zinc-500 leading-normal">
+									For React, Vite, Astro, Vue, Docusaurus, or static HTML.
+								</span>
+							</button>
+						</div>
 					</div>
 					<div className="grid gap-1.5 sm:col-span-2">
 						<label

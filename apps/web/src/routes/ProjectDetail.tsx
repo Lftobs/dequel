@@ -20,6 +20,7 @@ import { ScalingTab } from "../components/project/scaling/ScalingTab";
 import { AlertsTab } from "../components/project/alerts/AlertsTab";
 import { ObservabilityTab } from "../components/project/observability/ObservabilityTab";
 import { LogsTab } from "../components/project/logs/LogsTab";
+import { ProjectSettingsTab } from "../components/project/settings/ProjectSettingsTab";
 
 export function ProjectDetail({
 	projectId,
@@ -145,6 +146,9 @@ export function ProjectDetail({
 					<TabsTrigger value="logs" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Logs
 					</TabsTrigger>
+					<TabsTrigger value="settings" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+						Settings
+					</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="deployments">
@@ -189,6 +193,11 @@ export function ProjectDetail({
 				</TabsContent>
 				<TabsContent value="logs">
 					<LogsTab
+						projectId={projectId}
+					/>
+				</TabsContent>
+				<TabsContent value="settings">
+					<ProjectSettingsTab
 						projectId={projectId}
 					/>
 				</TabsContent>

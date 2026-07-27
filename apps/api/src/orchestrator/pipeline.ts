@@ -11,6 +11,7 @@ import {
 } from "../db/repo";
 import { listEnvironmentVariablesForDeploy } from "../db/repo";
 import { listVolumes } from "../db/repo";
+import { filterBuildEnvVars } from "../utils/env-filter";
 import { logBus } from "./log-bus";
 import { DeploymentQueue } from "./queue";
 import { buildWithRailpack, CancelledError } from "./railpack";
@@ -297,6 +298,7 @@ export class PipelineOrchestrator {
 			null;
 		let imageTag: string | undefined;
 		let projectName: string | undefined;
+		let project: import("../../types").Project | null = null;
 		let deployed = false;
 
 		try {
@@ -310,6 +312,10 @@ export class PipelineOrchestrator {
 				await this.resolveImageTag(
 					deployment,
 				);
+
+			project = deployment.projectId ? await getProjectById(
+				deployment.projectId,
+			) : null;
 
 			if (
 				deployment.sourceType !== "image"
@@ -382,7 +388,7 @@ export class PipelineOrchestrator {
 				const cacheKey =
 					deployment.projectId ||
 					deploymentId;
-			const project = deployment.projectId ? await getProjectById(deployment.projectId) : null;
+			const envVars = deployment.projectId ? await listEnvironmentVariablesForDeploy(deployment.projectId, "production") : [];
 			await buildWithRailpack(
 				workspacePath,
 				imageTag,
@@ -393,7 +399,16 @@ export class PipelineOrchestrator {
 						line,
 					);
 				},
-				{ cacheKey, sourceDir: project?.sourceDir, signal: controller.signal, clearCache: deployment.clearCache },
+				{
+					cacheKey,
+					sourceDir: project?.sourceDir,
+					projectType: project?.projectType,
+					buildCommand: project?.buildCommand,
+					startCommand: project?.startCommand,
+					environmentVariables: filterBuildEnvVars(envVars),
+					signal: controller.signal,
+					clearCache: deployment.clearCache
+				},
 			);
 			} else {
 				await emitLog(
@@ -504,17 +519,12 @@ export class PipelineOrchestrator {
 				| number
 				| null
 				| undefined;
-			if (deployment.projectId) {
-				const proj = await getProjectById(
-					deployment.projectId,
-				);
-				if (proj) {
-					projectName = proj.name;
-					cpuLimit = proj.cpuLimit;
-					memoryLimitMb =
-						proj.memoryLimitMb;
-					appPort = proj.port;
-				}
+			if (project) {
+				projectName = project.name;
+				cpuLimit = project.cpuLimit;
+				memoryLimitMb =
+					project.memoryLimitMb;
+				appPort = project.port;
 			}
 
 			const runtime = await deployContainer(

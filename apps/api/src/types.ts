@@ -22,6 +22,9 @@ export interface Project {
   port: number | null;
   sourceDir: string | null;
   sourceType: string;
+  projectType: string;
+  buildCommand: string | null;
+  startCommand: string | null;
   githubTokenEncrypted: string | null;
   githubTokenIv: string | null;
   githubTokenTag: string | null;
@@ -49,6 +52,9 @@ export interface CreateProjectInput {
   port?: number | null;
   sourceDir?: string | null;
   sourceType?: string;
+  projectType?: string;
+  buildCommand?: string | null;
+  startCommand?: string | null;
 }
 
 export interface EnvironmentVariable {
@@ -145,6 +151,8 @@ export interface CreateScalingPolicyInput {
   maxReplicas?: number;
   cpuThresholdPercent?: number;
   memoryThresholdPercent?: number;
+  cooldownSeconds?: number;
+  enabled?: boolean;
 }
 
 export interface Server {
