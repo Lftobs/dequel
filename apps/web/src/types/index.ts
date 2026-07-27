@@ -22,6 +22,9 @@ export interface Project {
   port: number | null;
   sourceDir: string | null;
   sourceType: string;
+  projectType: string;
+  buildCommand: string | null;
+  startCommand: string | null;
   createdAt: string;
   updatedAt: string;
 }

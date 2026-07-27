@@ -5,7 +5,7 @@ import { config } from '../utils/config';
 import { dockerBin } from '../utils/docker-bin';
 import { DEQUEL_MANAGED_LABEL } from '../utils/dequel-labels';
 import { run, tryRun } from './docker-utils';
-import { getScalingPolicy, listDeployments, updateDeploymentStatus, listEnvironmentVariablesForDeploy } from '../db/repo';
+import { getScalingPolicy, listDeployments, updateDeploymentStatus, listEnvironmentVariablesForDeploy, getProjectById } from '../db/repo';
 
 interface ContainerStats {
   containerName: string;
@@ -57,8 +57,12 @@ class ScalingEngine {
     const policy = await getScalingPolicy(dep.projectId);
     if (!policy || !policy.enabled) return;
 
+    const project = await getProjectById(dep.projectId);
+    if (!project || !project.cpuLimit || project.cpuLimit <= 0) return;
+
     const stats = await this.getContainerStats(dep.containerName);
     if (!stats) return;
+    const slug = project ? project.name.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63) : dep.projectId;
 
     const state = await this.getCooldownState(dep.id);
     const now = Date.now();
@@ -69,7 +73,7 @@ class ScalingEngine {
         state.highCpuSince = now;
       } else if (now - state.highCpuSince > policy.cooldownSeconds * 1000) {
         if (now - state.lastScaleUp > policy.cooldownSeconds * 1000) {
-          await this.scaleUp(dep, policy.maxReplicas);
+          await this.scaleUp(dep, policy.maxReplicas, slug, project?.cpuLimit, project?.memoryLimitMb);
           state.lastScaleUp = now;
           state.highCpuSince = null;
         }
@@ -85,7 +89,7 @@ class ScalingEngine {
         state.lowCpuSince = now;
       } else if (now - state.lowCpuSince > 300_000) { // 5 min
         if (now - state.lastScaleDown > policy.cooldownSeconds * 1000) {
-          await this.scaleDown(dep, policy.minReplicas);
+          await this.scaleDown(dep, policy.minReplicas, slug);
           state.lastScaleDown = now;
           state.lowCpuSince = null;
         }
@@ -166,8 +170,10 @@ class ScalingEngine {
   private async scaleUp(
     dep: { id: string; projectId: string | null; containerName: string | null },
     maxReplicas: number,
+    slug: string,
+    cpuLimit?: number | null,
+    memoryLimitMb?: number | null,
   ) {
-    const slug = dep.projectId || dep.id;
     const currentReplicas = await this.getCurrentReplicas(slug);
     if (currentReplicas >= maxReplicas) return;
 
@@ -198,11 +204,20 @@ class ScalingEngine {
       }
     } catch {}
 
+    const resources: string[] = [];
+    if (cpuLimit && cpuLimit > 0) {
+      resources.push('--cpus', String(cpuLimit));
+    }
+    if (memoryLimitMb && memoryLimitMb > 0) {
+      resources.push('--memory', `${Math.round(memoryLimitMb)}m`);
+    }
+
     try {
       await run(dockerBin, [
         'run', '-d', '--name', containerName,
         '--network', config.dockerNetwork,
         '-l', DEQUEL_MANAGED_LABEL,
+        ...resources,
         ...volumes, ...envVars,
         imageTag,
       ]);
@@ -219,8 +234,8 @@ class ScalingEngine {
   private async scaleDown(
     dep: { id: string; projectId: string | null; containerName: string | null },
     minReplicas: number,
+    slug: string,
   ) {
-    const slug = dep.projectId || dep.id;
     const currentReplicas = await this.getCurrentReplicas(slug);
     if (currentReplicas <= minReplicas) return;
 
@@ -265,7 +280,7 @@ class ScalingEngine {
     }
 
     const baseDomain = config.caddyBaseDomain === 'localhost' ? `${config.caddyBaseDomain}:80` : config.caddyBaseDomain;
-    const caddySnippet = `${slug}.${baseDomain} {\n  reverse_proxy ${targets.join(' ')}\n}\n`;
+    const caddySnippet = `${slug}.${baseDomain} {\n  reverse_proxy ${targets.join(' ')} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
     await writeFile(routeFile, caddySnippet, 'utf8');
 
     // Reload Caddy
