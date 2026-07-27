@@ -380,6 +380,7 @@ export function CreateProjectDialog({
 
 						{step === 1 && (
 							<StepBasics
+								key="step-basics"
 								name={name}
 								setName={setName}
 								description={
@@ -443,6 +444,7 @@ export function CreateProjectDialog({
 
 						{step === 2 && (
 							<StepEnvironment
+								key="step-environment"
 								stagedEnvs={
 									stagedEnvs
 								}
@@ -454,6 +456,7 @@ export function CreateProjectDialog({
 
 						{step === 3 && (
 							<StepResources
+								key="step-resources"
 								cpuLimit={
 									cpuLimit
 								}
