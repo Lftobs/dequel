@@ -376,8 +376,9 @@ export function StepBasics({
 										: "Or paste URL manually"}
 								</button>
 							</div>
-							{showManual && (
+							{showManual ? (
 								<ManualGitInputs
+									key="manual-git-inputs"
 									repoUrl={
 										repoUrl
 									}
@@ -392,9 +393,9 @@ export function StepBasics({
 									}
 									showBranch
 								/>
-							)}
-							{!showManual && (
+							) : (
 								<BranchInput
+									key="branch-input"
 									repoBranch={
 										repoBranch
 									}
@@ -466,6 +467,7 @@ export function StepBasics({
 
 							{showManual && (
 								<ManualGitInputs
+									key="manual-git-inputs-not-connected"
 									repoUrl={
 										repoUrl
 									}
@@ -501,7 +503,7 @@ export function StepBasics({
 						Source Details
 					</h4>
 					{sourceType === "upload" && (
-						<div className="grid gap-3.5 text-xs">
+						<div key="upload-details" className="grid gap-3.5 text-xs">
 							<div className="grid gap-1.5">
 								<label className="font-semibold text-zinc-400">
 									ZIP Archive
@@ -553,7 +555,7 @@ export function StepBasics({
 						</div>
 					)}
 					{sourceType === "compose" && (
-						<p className="text-xs text-zinc-500">
+						<p key="compose-details" className="text-xs text-zinc-500">
 							Provide a
 							docker-compose.yml
 							file URL or upload
@@ -562,7 +564,7 @@ export function StepBasics({
 						</p>
 					)}
 					{sourceType === "image" && (
-						<div className="grid gap-3.5 text-xs">
+						<div key="image-details" className="grid gap-3.5 text-xs">
 							<div className="grid gap-1.5">
 								<label className="font-semibold text-zinc-400">
 									Container
