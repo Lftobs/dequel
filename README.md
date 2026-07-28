@@ -61,7 +61,7 @@ and in the `apps/docs/` directory of this repository.
 ## Quick Start
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Lftobs/dequel/main/scripts/install.sh | sh
+curl -fsSL https://github.com/Lftobs/dequel/releases/latest/download/install.sh | bash
 ```
 
 Once installed, manage Dequel with the `dequel` CLI:
