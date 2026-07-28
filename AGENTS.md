@@ -115,7 +115,7 @@ docker compose up -d               # Start full stack
 docker compose up -d --build       # Rebuild and start
 
 # Install / Manage
-curl -fsSL https://raw.githubusercontent.com/Lftobs/dequel/main/scripts/install.sh | sh
+curl -fsSL https://github.com/Lftobs/dequel/releases/latest/download/install.sh | bash
 scripts/dequel start               # Start platform
 scripts/dequel uninstall           # Remove everything (prompts)
 
