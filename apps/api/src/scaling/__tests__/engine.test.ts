@@ -92,7 +92,7 @@ mock.module('ioredis', () => ({
 
 // Mock db/repo
 mock.module(fileUrl('../../db/repo'), () => ({
-  getProjectById: mock(() => Promise.resolve(null)),
+  getProjectById: mock(() => Promise.resolve({ id: "proj-1", name: "proj-1", cpuLimit: 0.5, memoryLimitMb: 512 })),
   listDeployments: mock(() => Promise.resolve([])),
   getScalingPolicy: mock((id: string) =>
     mockGetScalingPolicyResult ? Promise.resolve(mockGetScalingPolicyResult(id)) : Promise.resolve(null)

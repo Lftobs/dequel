@@ -84,6 +84,26 @@ export function SupportSection() {
 		};
 	}, []);
 
+	useEffect(() => {
+		const observer = new MutationObserver(() => {
+			const popup = document.querySelector(".floating-chat-kofi-popup-iframe");
+			const popupMobi = document.querySelector(".floating-chat-kofi-popup-iframe-mobi");
+			if (popup && popup.parentElement !== document.body) {
+				document.body.appendChild(popup);
+			}
+			if (popupMobi && popupMobi.parentElement !== document.body) {
+				document.body.appendChild(popupMobi);
+			}
+		});
+
+		observer.observe(document.body, {
+			childList: true,
+			subtree: true,
+		});
+
+		return () => observer.disconnect();
+	}, []);
+
 	return (
 		<div className="rounded-lg bg-gradient-to-r from-[#FFDD00]/5 to-amber-500/5 border border-[#FFDD00]/10 p-3 space-y-2 text-zinc-300 shadow-sm relative overflow-hidden group">
 			<div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">

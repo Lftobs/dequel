@@ -21,6 +21,9 @@ export const projects = sqliteTable("projects", {
   port: integer("port"),
   sourceDir: text("source_dir"),
   sourceType: text("source_type").default("git").notNull(),
+  projectType: text("project_type").default("web").notNull(),
+  buildCommand: text("build_command"),
+  startCommand: text("start_command"),
   githubTokenEncrypted: text("github_token_encrypted"),
   githubTokenIv: text("github_token_iv"),
   githubTokenTag: text("github_token_tag"),
@@ -44,6 +47,7 @@ export const deployments = sqliteTable("deployments", {
   environment: text(),
   failureReason: text("failure_reason"),
   clearCache: integer("clear_cache").notNull().default(0),
+  finishedAt: text("finished_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

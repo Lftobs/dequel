@@ -34,16 +34,6 @@ export const projectsRoutes = new Elysia()
 				set.status = 400;
 				return { error: "name is required" };
 			}
-			if (body?.repoUrl) {
-				const projects = await listProjects();
-				const normalize = (u: string) => u.replace(/\.git$/, "").replace(/\/+$/, "").toLowerCase();
-				const incoming = normalize(body.repoUrl);
-				const duplicate = projects.find((p) => p.repoUrl && normalize(p.repoUrl) === incoming);
-				if (duplicate) {
-					set.status = 409;
-					return { error: `A project with this repository URL already exists: "${duplicate.name}"` };
-				}
-			}
 			const project = await createProject({
 				name: body.name,
 				description: body.description,
@@ -55,6 +45,9 @@ export const projectsRoutes = new Elysia()
 				port: body.port ? Number(body.port) : null,
 				sourceDir: body.sourceDir || null,
 				sourceType: body.sourceType || "git",
+				projectType: body.projectType || "web",
+				buildCommand: body.buildCommand || undefined,
+				startCommand: body.startCommand || undefined,
 			});
 			return project;
 		},
@@ -62,16 +55,6 @@ export const projectsRoutes = new Elysia()
 	.patch(
 		"/projects/:id",
 		async ({ params: { id }, body, set }: any) => {
-			if (body?.repoUrl) {
-				const projects = await listProjects();
-				const normalize = (u: string) => u.replace(/\.git$/, "").replace(/\/+$/, "").toLowerCase();
-				const incoming = normalize(body.repoUrl);
-				const duplicate = projects.find((p) => p.id !== id && p.repoUrl && normalize(p.repoUrl) === incoming);
-				if (duplicate) {
-					set.status = 409;
-					return { error: `A project with this repository URL already exists: "${duplicate.name}"` };
-				}
-			}
 			const project = await updateProject(id, {
 				name: body?.name,
 				description: body?.description,
@@ -82,6 +65,9 @@ export const projectsRoutes = new Elysia()
 				memoryLimitMb: body?.memoryLimitMb,
 				port: body?.port ? Number(body.port) : body?.port === null ? null : undefined,
 				sourceDir: body?.sourceDir ?? undefined,
+				projectType: body?.projectType ?? undefined,
+				buildCommand: "buildCommand" in (body ?? {}) ? (body.buildCommand ?? "") || null : undefined,
+				startCommand: "startCommand" in (body ?? {}) ? (body.startCommand ?? "") || null : undefined,
 			});
 			if (!project) {
 				set.status = 404;

@@ -22,6 +22,9 @@ export interface Project {
   port: number | null;
   sourceDir: string | null;
   sourceType: string;
+  projectType: string;
+  buildCommand: string | null;
+  startCommand: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +44,7 @@ export interface Deployment {
   replicas: number;
   environment: string | null;
   failureReason: string | null;
+  finishedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

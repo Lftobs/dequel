@@ -3,6 +3,7 @@ import {
 	deleteScalingPolicy,
 	getScalingPolicy,
 	upsertScalingPolicy,
+	getProjectById,
 } from "../../db/repo";
 
 export const scalingRoutes = new Elysia()
@@ -23,6 +24,15 @@ export const scalingRoutes = new Elysia()
 			if (!body) {
 				set.status = 400;
 				return { error: "body is required" };
+			}
+			const project = await getProjectById(params.id);
+			if (!project) {
+				set.status = 404;
+				return { error: "Project not found" };
+			}
+			if (body.enabled !== false && (!project.cpuLimit || project.cpuLimit <= 0)) {
+				set.status = 400;
+				return { error: "Cannot enable autoscaling on a project without CPU resource limits configured." };
 			}
 			return upsertScalingPolicy({
 				projectId: params.id,

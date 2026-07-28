@@ -31,8 +31,8 @@ services:
         image: ghcr.io/lftobs/dequel/api:latest
         restart: unless-stopped
         # build:
-        #     context: .
-        #     dockerfile: ./apps/api/Dockerfile
+        #     context: ./apps/api
+        #     dockerfile: Dockerfile
         environment:
             PORT: 3001
             DATABASE_PATH: /app/data/dequel.db

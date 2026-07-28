@@ -1,6 +1,6 @@
 {
   "name": "dequel-api",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@elysiajs/cors": "^1.1.1",
+    "@sinclair/typebox": "^0.34.13",
     "drizzle-orm": "^0.45.2",
     "elysia": "^1.1.26",
     "ioredis": "^5.4.1",

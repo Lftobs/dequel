@@ -116,8 +116,8 @@ with open('$tmp_dir/docker-compose.yml', 'r') as f:
     content = f.read()
 content = re.sub(r'#\s*(image:\s*ghcr\.io/lftobs/dequel/api:latest)', r'\1', content)
 content = re.sub(r'#\s*(image:\s*ghcr\.io/lftobs/dequel/web:latest)', r'\1', content)
-content = re.sub(r'(build:\s*\n\s*context:\s*\.\s*\n\s*dockerfile:\s*\./apps/api/Dockerfile)', lambda m: '\n'.join('        # ' + line.strip() for line in m.group(1).split('\n')), content)
-content = re.sub(r'(build:\s*\n\s*context:\s*\./apps/web)', lambda m: '\n'.join('        # ' + line.strip() for line in m.group(1).split('\n')), content)
+content = re.sub(r'([ \t]+)build:\s*\n\s+context:\s*(?:\.|\./apps/api)\s*\n\s+dockerfile:\s*\S+', r'\1# build:\n\1#     context: ./apps/api\n\1#     dockerfile: Dockerfile', content)
+content = re.sub(r'([ \t]+)build:\s*\n\s+context:\s*\./apps/web(?:\s*\n\s+args:\s*\n\s+DEQUEL_VERSION:\s*\S+)?', r'\1# build:\n\1#     context: ./apps/web\n\1#     args:\n\1#         DEQUEL_VERSION: \${DEQUEL_VERSION:-}', content)
 with open('$tmp_dir/docker-compose.yml', 'w') as f:
     f.write(content)
 " 2>/dev/null || true

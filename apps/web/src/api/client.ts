@@ -87,6 +87,9 @@ export const createProject = (data: {
 	port?: number;
 	sourceDir?: string;
 	sourceType?: string;
+	projectType?: string;
+	buildCommand?: string;
+	startCommand?: string;
 }) =>
 	apiFetch<Project>("/projects", {
 		method: "POST",
@@ -100,6 +103,9 @@ export const updateProject = (
 		baseDomain?: string | null;
 		sourceDir?: string | null;
 		port?: number | null;
+		projectType?: string;
+		buildCommand?: string | null;
+		startCommand?: string | null;
 	},
 ) =>
 	apiFetch<Project>(`/projects/${id}`, {

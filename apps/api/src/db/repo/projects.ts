@@ -28,6 +28,9 @@ const mapProject = (row: typeof projects.$inferSelect): Project => ({
   port: row.port ?? null,
   sourceDir: row.sourceDir ?? null,
   sourceType: row.sourceType,
+  projectType: row.projectType,
+  buildCommand: row.buildCommand ?? null,
+  startCommand: row.startCommand ?? null,
   githubTokenEncrypted: row.githubTokenEncrypted ?? null,
   githubTokenIv: row.githubTokenIv ?? null,
   githubTokenTag: row.githubTokenTag ?? null,
@@ -51,6 +54,9 @@ export const createProject = async (input: CreateProjectInput): Promise<Project>
     port: input.port ?? null,
     sourceDir: input.sourceDir ?? null,
     sourceType: input.sourceType ?? "git",
+    projectType: input.projectType ?? "web",
+    buildCommand: input.buildCommand ?? null,
+    startCommand: input.startCommand ?? null,
     createdAt: timestamp,
     updatedAt: timestamp,
   }).run();
@@ -88,6 +94,9 @@ export const updateProject = async (id: string, patch: Partial<CreateProjectInpu
   if (patch.memoryLimitMb !== undefined) updates.memoryLimitMb = patch.memoryLimitMb;
   if (patch.port !== undefined) updates.port = patch.port;
   if (patch.sourceDir !== undefined) updates.sourceDir = patch.sourceDir;
+  if (patch.projectType !== undefined) updates.projectType = patch.projectType;
+  if (patch.buildCommand !== undefined) updates.buildCommand = patch.buildCommand;
+  if (patch.startCommand !== undefined) updates.startCommand = patch.startCommand;
   db.update(projects).set(updates).where(eq(projects.id, id)).run();
   return getProjectById(id);
 };

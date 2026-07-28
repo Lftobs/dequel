@@ -60,6 +60,8 @@ export function CreateProjectDialog({
 
 	const [sourceType, setSourceType] =
 		useState("git");
+	const [projectType, setProjectType] =
+		useState("web");
 	const [zipFile, setZipFile] =
 		useState<File | null>(null);
 	const [cpuLimit, setCpuLimit] = useState("");
@@ -167,13 +169,14 @@ export function CreateProjectDialog({
 					repoBranch:
 						repoBranch.trim() ||
 						undefined,
-					port: port.trim()
-						? Number(port)
-						: undefined,
+				port: port.trim()
+					? Number(port) || null
+					: undefined,
 					sourceDir:
 						sourceDir.trim() ||
 						undefined,
 					sourceType,
+					projectType,
 				});
 
 			if (zipFile && sourceType === "upload") {
@@ -377,6 +380,7 @@ export function CreateProjectDialog({
 
 						{step === 1 && (
 							<StepBasics
+								key="step-basics"
 								name={name}
 								setName={setName}
 								description={
@@ -425,6 +429,12 @@ export function CreateProjectDialog({
 								setSourceType={
 									setSourceType
 								}
+								projectType={
+									projectType
+								}
+								setProjectType={
+									setProjectType
+								}
 							port={port}
 							setPort={setPort}
 							zipFile={zipFile}
@@ -434,6 +444,7 @@ export function CreateProjectDialog({
 
 						{step === 2 && (
 							<StepEnvironment
+								key="step-environment"
 								stagedEnvs={
 									stagedEnvs
 								}
@@ -445,6 +456,7 @@ export function CreateProjectDialog({
 
 						{step === 3 && (
 							<StepResources
+								key="step-resources"
 								cpuLimit={
 									cpuLimit
 								}
