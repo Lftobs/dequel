@@ -69,11 +69,12 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           TAR_DIR=_tar
-          mkdir -p "$TAR_DIR/infra/caddy" "$TAR_DIR/infra/monitoring/grafana/datasources"
+          mkdir -p "$TAR_DIR/infra/caddy" "$TAR_DIR/infra/monitoring/grafana/datasources" "$TAR_DIR/scripts/auth"
           cp docker-compose.yml "$TAR_DIR/"
           cp scripts/dequel "$TAR_DIR/dequel"
           cp infra/caddy/Caddyfile "$TAR_DIR/infra/caddy/"
           cp -r infra/monitoring "$TAR_DIR/infra/"
+          cp -r scripts/auth/* "$TAR_DIR/scripts/auth/"
           cd "$TAR_DIR" && tar -czf "../dequel-config-${VERSION}.tar.gz" .
 
       - name: Extract changelog entry for this version
