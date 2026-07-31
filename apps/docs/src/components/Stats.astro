@@ -1,27 +1,28 @@
 ---
 const stats = [
-	{ value: "15.2s", label: "Avg Deploy Time" },
-	{ value: "99.9%", label: "Uptime SLA" },
-	{ value: "0", label: "Vendor Lock-in" },
-	{ value: "∞", label: "Your Infrastructure" },
+  { value: "< 10s", label: "Average Deploy Time", sub: "Railpack + Buildkit" },
+  { value: "100%", label: "Self-Hosted Control", sub: "On your own VPS" },
+  { value: "$0", label: "Third-Party SaaS Fees", sub: "Zero vendor lock-in" },
+  { value: "0%", label: "Infrastructure Markup", sub: "Pay only for raw VPS" },
 ];
 ---
 
-<hr class="dq-rule" />
-<section class="dq-stats dq-reveal">
-	<div class="dq-stats-inner">
-		{
-			stats.map((stat) => (
-				<div class="dq-stat">
-					<div class="dq-stat-value">
-						{stat.value}
-					</div>
-					<div class="dq-stat-label">
-						{stat.label}
-					</div>
-				</div>
-			))
-		}
-	</div>
+<section class="max-w-[1150px] mx-auto px-4 py-12 dq-reveal">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 bg-[#111114] border border-[#222228] rounded-2xl p-8 shadow-xl">
+    {stats.map((stat) => (
+      <div class="flex flex-col justify-between border-r border-[#222228] last:border-r-0 pr-4 last:pr-0">
+        <div>
+          <div class="text-3xl md:text-5xl font-bold tracking-tight text-[#ea580c] mb-1">
+            {stat.value}
+          </div>
+          <div class="text-xs font-bold uppercase tracking-wider text-[#e2e2e8]">
+            {stat.label}
+          </div>
+        </div>
+        <div class="text-[0.65rem] font-mono text-[#7f7f8a] mt-2">
+          {stat.sub}
+        </div>
+      </div>
+    ))}
+  </div>
 </section>
-<hr class="dq-rule" />

@@ -8,8 +8,8 @@ let routesDir: string;
 const testConfig = { caddyRoutesDir: '', appInternalPort: 3000, caddyBaseDomain: 'localhost' };
 
 const fileUrl = (path: string) => new URL(path, import.meta.url).toString();
-mock.module(fileUrl('../config'), () => ({ config: testConfig }));
-mock.module(fileUrl('../../orchestrator/runtime'), () => ({
+mock.module(fileUrl('../config.ts'), () => ({ config: testConfig }));
+mock.module(fileUrl('../../orchestrator/runtime.ts'), () => ({
   reloadCaddy: mock(() => Promise.resolve()),
 }));
 

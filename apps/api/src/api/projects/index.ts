@@ -13,6 +13,24 @@ import { tryRun, reloadCaddy } from "../../orchestrator/runtime";
 import { removeFromCaddyRoute } from "../../utils/domain-verifier";
 import { config } from "../../utils/config";
 import { dockerBin } from "../../utils/docker-bin";
+import { SERVICE_NAME_RE, isPort, validateComposeServices } from "../../utils/validate";
+
+const validateComposeFields = (body: any): string | null => {
+	if (body?.composeService && !SERVICE_NAME_RE.test(String(body.composeService))) {
+		return "composeService may only contain letters, numbers, underscores and hyphens";
+	}
+	if (body?.composePort) {
+		const port = Number(body.composePort);
+		if (!isPort(port)) {
+			return "composePort must be an integer between 1 and 65535";
+		}
+	}
+	if (body?.composeServices) {
+		const result = validateComposeServices(body.composeServices);
+		if (!result.ok) return result.error;
+	}
+	return null;
+};
 
 export const projectsRoutes = new Elysia()
 	.get("/projects", async () => listProjects())
@@ -34,6 +52,11 @@ export const projectsRoutes = new Elysia()
 				set.status = 400;
 				return { error: "name is required" };
 			}
+			const validationError = validateComposeFields(body);
+			if (validationError) {
+				set.status = 400;
+				return { error: validationError };
+			}
 			const project = await createProject({
 				name: body.name,
 				description: body.description,
@@ -46,6 +69,10 @@ export const projectsRoutes = new Elysia()
 				sourceDir: body.sourceDir || null,
 				sourceType: body.sourceType || "git",
 				projectType: body.projectType || "web",
+				buildType: body.buildType || "railpack",
+				composeService: body.composeService || null,
+				composePort: body.composePort ? Number(body.composePort) : null,
+				composeServices: body.composeServices ? (typeof body.composeServices === 'string' ? body.composeServices : JSON.stringify(body.composeServices)) : null,
 				buildCommand: body.buildCommand || undefined,
 				startCommand: body.startCommand || undefined,
 			});
@@ -55,6 +82,11 @@ export const projectsRoutes = new Elysia()
 	.patch(
 		"/projects/:id",
 		async ({ params: { id }, body, set }: any) => {
+			const validationError = validateComposeFields(body);
+			if (validationError) {
+				set.status = 400;
+				return { error: validationError };
+			}
 			const project = await updateProject(id, {
 				name: body?.name,
 				description: body?.description,
@@ -66,6 +98,10 @@ export const projectsRoutes = new Elysia()
 				port: body?.port ? Number(body.port) : body?.port === null ? null : undefined,
 				sourceDir: body?.sourceDir ?? undefined,
 				projectType: body?.projectType ?? undefined,
+				buildType: body?.buildType ?? undefined,
+				composeService: "composeService" in (body ?? {}) ? (body.composeService || null) : undefined,
+				composePort: "composePort" in (body ?? {}) ? (body.composePort ? Number(body.composePort) : null) : undefined,
+				composeServices: "composeServices" in (body ?? {}) ? (body.composeServices ? (typeof body.composeServices === 'string' ? body.composeServices : JSON.stringify(body.composeServices)) : null) : undefined,
 				buildCommand: "buildCommand" in (body ?? {}) ? (body.buildCommand ?? "") || null : undefined,
 				startCommand: "startCommand" in (body ?? {}) ? (body.startCommand ?? "") || null : undefined,
 			});

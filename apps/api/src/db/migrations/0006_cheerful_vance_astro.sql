@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `compose_services` text;

@@ -1,4 +1,5 @@
-import { rm } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import {
 	appendLog,
 	deleteDeploymentAndLogs,
@@ -29,6 +30,10 @@ import {
 	tryRun,
 } from "./runtime";
 import { ensureProjectDashboard } from "../utils/grafana";
+import { buildWithCompose, deployWithCompose, parseComposeTarget, parseAllComposeServices, destroyComposeStack, getComposeContainerNames } from "./compose";
+import { buildCaddySnippet } from "../utils/domain-verifier";
+import { dockerBin } from "../utils/docker-bin";
+import { config } from "../utils/config";
 
 const now = () =>
 	new Date()
@@ -146,22 +151,37 @@ export class PipelineOrchestrator {
 
 		await this.queue.remove(deploymentId);
 
-		if (deployment.containerName) {
-			await tryRun("docker", [
-				"stop",
-				"-t",
-				"5",
-				deployment.containerName,
-			]);
-			await tryRun("docker", [
-				"rm",
-				"-f",
-				deployment.containerName,
-			]);
-		}
+		const project = deployment.projectId
+			? await getProjectById(deployment.projectId)
+			: null;
 
-		if (deployment.imageTag && deployment.sourceType !== "image") {
-			await tryRun("docker", ["rmi", "-f", deployment.imageTag]);
+		if (project?.buildType === "compose") {
+			await destroyComposeStack(
+				`deploy-${deploymentId}`,
+			).catch((e) =>
+				console.warn(
+					`[Pipeline] Compose teardown failed for ${deploymentId}:`,
+					e,
+				),
+			);
+		} else {
+			if (deployment.containerName) {
+				await tryRun("docker", [
+					"stop",
+					"-t",
+					"5",
+					deployment.containerName,
+				]);
+				await tryRun("docker", [
+					"rm",
+					"-f",
+					deployment.containerName,
+				]);
+			}
+
+			if (deployment.imageTag && deployment.sourceType !== "image") {
+				await tryRun("docker", ["rmi", "-f", deployment.imageTag]);
+			}
 		}
 
 		await deleteDeploymentAndLogs(
@@ -389,27 +409,45 @@ export class PipelineOrchestrator {
 					deployment.projectId ||
 					deploymentId;
 			const envVars = deployment.projectId ? await listEnvironmentVariablesForDeploy(deployment.projectId, "production") : [];
-			await buildWithRailpack(
-				workspacePath,
-				imageTag,
-				async (line) => {
-					await emitLog(
-						deploymentId,
-						"build",
-						line,
-					);
-				},
-				{
-					cacheKey,
-					sourceDir: project?.sourceDir,
-					projectType: project?.projectType,
-					buildCommand: project?.buildCommand,
-					startCommand: project?.startCommand,
-					environmentVariables: filterBuildEnvVars(envVars),
-					signal: controller.signal,
-					clearCache: deployment.clearCache
-				},
-			);
+			if (project?.buildType === "compose") {
+				const envMap: Record<string, string> = {};
+				for (const v of envVars) envMap[v.key] = v.value;
+				await buildWithCompose(
+					workspacePath,
+					`deploy-${deploymentId}`,
+					async (line) => {
+						await emitLog(
+							deploymentId,
+							"build",
+							line,
+						);
+					},
+					project?.sourceDir,
+					envMap,
+				);
+			} else {
+				await buildWithRailpack(
+					workspacePath,
+					imageTag,
+					async (line) => {
+						await emitLog(
+							deploymentId,
+							"build",
+							line,
+						);
+					},
+					{
+						cacheKey,
+						sourceDir: project?.sourceDir,
+						projectType: project?.projectType,
+						buildCommand: project?.buildCommand,
+						startCommand: project?.startCommand,
+						environmentVariables: filterBuildEnvVars(envVars),
+						signal: controller.signal,
+						clearCache: deployment.clearCache
+					},
+				);
+			}
 			} else {
 				await emitLog(
 					deploymentId,
@@ -483,6 +521,9 @@ export class PipelineOrchestrator {
 			let oldContainerName:
 				| string
 				| undefined;
+			let oldDeploymentId:
+				| string
+				| undefined;
 			if (deployment.projectId) {
 				const all = await listDeployments(
 					deployment.projectId,
@@ -497,6 +538,7 @@ export class PipelineOrchestrator {
 				if (prev?.containerName) {
 					oldContainerName =
 						prev.containerName;
+					oldDeploymentId = prev.id;
 					await emitLog(
 						deploymentId,
 						"deploy",
@@ -527,29 +569,135 @@ export class PipelineOrchestrator {
 				appPort = project.port;
 			}
 
-			const runtime = await deployContainer(
-				deploymentId,
-				imageTag,
-				async (line) => {
+			let runtimeContainerName = "";
+			let runtimeLiveUrl = "";
+
+			if (project?.buildType === "compose") {
+				if (oldDeploymentId) {
 					await emitLog(
 						deploymentId,
 						"deploy",
-						line,
+						`Stopping previous compose stack deploy-${oldDeploymentId}`,
 					);
-				},
-				{
-					projectId:
-						deployment.projectId ||
-						undefined,
-					projectName,
-					oldContainerName,
+					await destroyComposeStack(
+						`deploy-${oldDeploymentId}`,
+					);
+				}
+
+				await deployWithCompose(
+					workspacePath,
+					`deploy-${deploymentId}`,
+					async (line) => {
+						await emitLog(
+							deploymentId,
+							"deploy",
+							line,
+						);
+					},
+					project?.sourceDir,
 					envVars,
-					volumes,
-					cpuLimit,
-					memoryLimitMb,
-					appPort: appPort ?? undefined,
-				},
-			);
+				);
+
+				const allServices = parseAllComposeServices(
+					workspacePath,
+					project?.sourceDir,
+					project?.composeService,
+					project?.composePort,
+				);
+
+				const composeContainers = await getComposeContainerNames(
+					`deploy-${deploymentId}`,
+				);
+				const containerFor = (serviceName: string) =>
+					composeContainers.get(serviceName) || `deploy-${deploymentId}-${serviceName}-1`;
+
+				for (const s of allServices) {
+					const cName = containerFor(s.serviceName);
+					await tryRun(dockerBin, ["network", "connect", config.dockerNetwork, cName]);
+				}
+
+				const target = allServices.find((s) => s.isPrimary) || allServices[0];
+				const containerName = containerFor(target.serviceName);
+
+				const slug = project.name
+					? project.name.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 63)
+					: project.id;
+
+				let snippet = await buildCaddySnippet(
+					slug,
+					containerName,
+					project.id,
+					undefined,
+					target.port,
+				);
+
+				const rawBaseDomain = config.caddyBaseDomain || 'localhost';
+				const baseDomainForCaddy = rawBaseDomain === 'localhost' ? `${rawBaseDomain}:80` : rawBaseDomain;
+				let customMappings: { serviceName: string; port: number | string; subdomain?: string }[] = [];
+				if ((project as any).composeServices) {
+					try {
+						customMappings = typeof (project as any).composeServices === 'string'
+							? JSON.parse((project as any).composeServices)
+							: (project as any).composeServices;
+					} catch (e) {}
+				}
+
+				for (const s of allServices) {
+					if (s.isPrimary) continue;
+					const sContainer = containerFor(s.serviceName);
+					const customMatch = customMappings.find((c) => c.serviceName === s.serviceName);
+					const domains: string[] = [];
+					if (customMatch?.subdomain?.trim()) {
+						domains.push(`${customMatch.subdomain.trim()}.${slug}.${baseDomainForCaddy}`);
+					} else {
+						domains.push(`${s.serviceName}.${slug}.${baseDomainForCaddy}`);
+						if (s.serviceName === "server" && !domains.includes(`api.${slug}.${baseDomainForCaddy}`)) {
+							domains.push(`api.${slug}.${baseDomainForCaddy}`);
+						}
+					}
+					const targetPort = customMatch?.port ? Number(customMatch.port) : s.port;
+					snippet += `\n${domains.join(", ")} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${sContainer}:${targetPort} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+				}
+
+				const caddyRouteFile = join(config.caddyRoutesDir, `${slug}.caddy`);
+				await writeFile(caddyRouteFile, snippet, "utf8");
+				try {
+					await reloadCaddy();
+				} catch {
+					console.warn(
+						"[Pipeline] Caddy not ready for reload after compose deploy",
+					);
+				}
+
+				runtimeContainerName = containerName;
+				runtimeLiveUrl = rawBaseDomain === 'localhost' ? `http://${slug}.localhost` : `https://${slug}.${rawBaseDomain}`;
+			} else {
+				const runtime = await deployContainer(
+					deploymentId,
+					imageTag,
+					async (line) => {
+						await emitLog(
+							deploymentId,
+							"deploy",
+							line,
+						);
+					},
+					{
+						projectId:
+							deployment.projectId ||
+							undefined,
+						projectName,
+						oldContainerName,
+						envVars,
+						volumes,
+						cpuLimit,
+						memoryLimitMb,
+						appPort: appPort ?? undefined,
+					},
+				);
+				runtimeContainerName = runtime.containerName;
+				runtimeLiveUrl = runtime.liveUrl;
+			}
 
 			deployed = true;
 
@@ -558,9 +706,8 @@ export class PipelineOrchestrator {
 				"running",
 				{
 					imageTag,
-					containerName:
-						runtime.containerName,
-					liveUrl: runtime.liveUrl,
+					containerName: runtimeContainerName,
+					liveUrl: runtimeLiveUrl,
 					failureReason: null,
 				},
 			);
@@ -649,14 +796,22 @@ export class PipelineOrchestrator {
 					"system",
 					"Cleaning up Docker resources from failed deployment",
 				);
-				await cleanupFailedDeployment(
-					deploymentId,
-					deployment.sourceType === "image" ? undefined : imageTag,
-					projectName,
-					deployment.projectId,
-				).catch(e =>
-					console.warn(`[Cleanup] Failed to clean deployment ${deploymentId}:`, e),
-				);
+				if (project?.buildType === "compose") {
+					await destroyComposeStack(
+						`deploy-${deploymentId}`,
+					).catch((e) =>
+						console.warn(`[Cleanup] Failed to tear down compose stack for ${deploymentId}:`, e),
+					);
+				} else {
+					await cleanupFailedDeployment(
+						deploymentId,
+						deployment.sourceType === "image" ? undefined : imageTag,
+						projectName,
+						deployment.projectId,
+					).catch(e =>
+						console.warn(`[Cleanup] Failed to clean deployment ${deploymentId}:`, e),
+					);
+				}
 			}
 
 			if (deployment.projectId) {

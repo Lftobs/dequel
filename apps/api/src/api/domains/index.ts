@@ -7,6 +7,7 @@ import {
 	listDomains,
 	updateDomainValidation,
 } from "../../db/repo";
+import { SERVICE_NAME_RE, isPort } from "../../utils/validate";
 
 export const domainsRoutes = new Elysia()
 	.get(
@@ -20,10 +21,21 @@ export const domainsRoutes = new Elysia()
 				set.status = 400;
 				return { error: "domain is required" };
 			}
+			if (body.targetService && !SERVICE_NAME_RE.test(String(body.targetService))) {
+				set.status = 400;
+				return { error: "targetService may only contain letters, numbers, underscores and hyphens" };
+			}
+			const targetPort = body.targetPort ? Number(body.targetPort) : null;
+			if (targetPort !== null && !isPort(targetPort)) {
+				set.status = 400;
+				return { error: "targetPort must be an integer between 1 and 65535" };
+			}
 			const domain = await createDomain({
 				projectId: params.id,
 				domain: body.domain,
 				type: body.type ?? "custom",
+				targetService: body.targetService || null,
+				targetPort,
 			});
 			const { validateDomain, resolveServerIp } = await import(
 				"../../utils/dns",

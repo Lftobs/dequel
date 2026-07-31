@@ -23,6 +23,10 @@ export interface Project {
   sourceDir: string | null;
   sourceType: string;
   projectType: string;
+  buildType: string;
+  composeService: string | null;
+  composePort: number | null;
+  composeServices: string | null;
   buildCommand: string | null;
   startCommand: string | null;
   githubTokenEncrypted: string | null;
@@ -53,6 +57,10 @@ export interface CreateProjectInput {
   sourceDir?: string | null;
   sourceType?: string;
   projectType?: string;
+  buildType?: string;
+  composeService?: string | null;
+  composePort?: number | null;
+  composeServices?: string | null;
   buildCommand?: string | null;
   startCommand?: string | null;
 }
@@ -122,6 +130,8 @@ export interface Domain {
   type: DomainType;
   validationStatus: DomainValidationStatus;
   sslStatus: SslStatus;
+  targetService: string | null;
+  targetPort: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -130,6 +140,8 @@ export interface CreateDomainInput {
   projectId: string;
   domain: string;
   type: DomainType;
+  targetService?: string | null;
+  targetPort?: number | null;
 }
 
 export interface ScalingPolicy {

@@ -162,6 +162,13 @@ declare module 'astro:content' {
   collection: "changelogs";
   data: any
 } & { render(): Render[".md"] };
+"v0.2.1.md": {
+	id: "v0.2.1.md";
+  slug: "v021";
+  body: string;
+  collection: "changelogs";
+  data: any
+} & { render(): Render[".md"] };
 };
 "docs": {
 "auth.md": {
