@@ -29,6 +29,10 @@ const mapProject = (row: typeof projects.$inferSelect): Project => ({
   sourceDir: row.sourceDir ?? null,
   sourceType: row.sourceType,
   projectType: row.projectType,
+  buildType: row.buildType,
+  composeService: row.composeService ?? null,
+  composePort: row.composePort ?? null,
+  composeServices: row.composeServices ?? null,
   buildCommand: row.buildCommand ?? null,
   startCommand: row.startCommand ?? null,
   githubTokenEncrypted: row.githubTokenEncrypted ?? null,
@@ -55,6 +59,10 @@ export const createProject = async (input: CreateProjectInput): Promise<Project>
     sourceDir: input.sourceDir ?? null,
     sourceType: input.sourceType ?? "git",
     projectType: input.projectType ?? "web",
+    buildType: input.buildType ?? "railpack",
+    composeService: input.composeService ?? null,
+    composePort: input.composePort ?? null,
+    composeServices: input.composeServices ?? null,
     buildCommand: input.buildCommand ?? null,
     startCommand: input.startCommand ?? null,
     createdAt: timestamp,
@@ -95,6 +103,10 @@ export const updateProject = async (id: string, patch: Partial<CreateProjectInpu
   if (patch.port !== undefined) updates.port = patch.port;
   if (patch.sourceDir !== undefined) updates.sourceDir = patch.sourceDir;
   if (patch.projectType !== undefined) updates.projectType = patch.projectType;
+  if (patch.buildType !== undefined) updates.buildType = patch.buildType;
+  if (patch.composeService !== undefined) updates.composeService = patch.composeService;
+  if (patch.composePort !== undefined) updates.composePort = patch.composePort;
+  if (patch.composeServices !== undefined) updates.composeServices = patch.composeServices;
   if (patch.buildCommand !== undefined) updates.buildCommand = patch.buildCommand;
   if (patch.startCommand !== undefined) updates.startCommand = patch.startCommand;
   db.update(projects).set(updates).where(eq(projects.id, id)).run();

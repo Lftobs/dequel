@@ -23,6 +23,9 @@ export interface Project {
   sourceDir: string | null;
   sourceType: string;
   projectType: string;
+  composeService?: string | null;
+  composePort?: number | null;
+  composeServices?: string | null;
   buildCommand: string | null;
   startCommand: string | null;
   createdAt: string;

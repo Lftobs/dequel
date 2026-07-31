@@ -300,6 +300,8 @@ export const createDomain = (
 	projectId: string,
 	domain: string,
 	type?: string,
+	targetService?: string,
+	targetPort?: number,
 ) =>
 	apiFetch<Domain>(
 		`/projects/${projectId}/domains`,
@@ -308,6 +310,8 @@ export const createDomain = (
 			body: JSON.stringify({
 				domain,
 				type,
+				targetService,
+				targetPort,
 			}),
 		},
 	);
@@ -361,8 +365,16 @@ export const logout = () =>
 export const refreshSession = () =>
 	apiFetch<{ ok: boolean; username: string }>("/auth/refresh", { method: "POST" });
 
-export const getMe = () =>
-	apiFetch<{ authenticated: boolean; username?: string }>("/auth/me");
+export const getMe = async () => {
+	const res = await apiFetch<{ authenticated: boolean; username?: string }>("/auth/me");
+	if (!res.authenticated) {
+		const refreshed = await apiFetch<{ ok: boolean }>("/auth/refresh", { method: "POST" }).catch(() => ({ ok: false }));
+		if (refreshed.ok) {
+			return apiFetch<{ authenticated: boolean; username?: string }>("/auth/me");
+		}
+	}
+	return res;
+};
 
 // Prometheus
 export const queryPrometheus = (query: string) =>

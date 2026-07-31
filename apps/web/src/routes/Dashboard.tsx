@@ -104,7 +104,12 @@ export function Dashboard() {
           <p className="text-zinc-500 text-xs mt-1">Manage, deploy and monitor your workspace cluster services.</p>
         </div>
         <div className="flex items-center gap-3">
-          <CreateProjectDialog open={open} onOpenChange={setOpen} />
+          <Link to="/projects/new">
+            <Button className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-medium text-xs px-4 py-2 rounded-lg shadow-lg shadow-amber-500/10 border-0 flex items-center gap-1.5 transition-all">
+              <Plus className="h-4 w-4" />
+              New Project
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -253,9 +258,11 @@ export function Dashboard() {
               <p className="text-zinc-500 text-xs max-w-xs mb-4">
                 Create a new project deployment to see container orchestration on the cluster.
               </p>
-              <Button onClick={() => setOpen(true)} className="bg-amber-500 hover:bg-amber-600 text-white text-xs h-8 rounded-lg">
-                <Plus className="h-3.5 w-3.5 mr-1" />New Project
-              </Button>
+              <Link to="/projects/new">
+                <Button className="bg-amber-500 hover:bg-amber-600 text-white text-xs h-8 rounded-lg">
+                  <Plus className="h-3.5 w-3.5 mr-1" />New Project
+                </Button>
+              </Link>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
