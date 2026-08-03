@@ -101,9 +101,10 @@ export function CreateProjectPage() {
   const [bulkText, setBulkText] = useState('');
   const [fileError, setFileError] = useState('');
 
-  // Provision Database State & Version Selection
-  const [provisionDb, setProvisionDb] = useState(false);
-  const [dbType, setDbType] = useState<'postgresql' | 'mysql'>('postgresql');
+  // Legacy project-scoped database controls are hidden in favor of /databases.
+  const provisionDb = false;
+  const setProvisionDb = (_value: boolean) => {};
+  const [dbType, setDbType] = useState<DatabaseType>('postgresql');
   const [dbVersion, setDbVersion] = useState('16-alpine');
   const [dbCpu, setDbCpu] = useState('');
   const [dbMemory, setDbMemory] = useState('');
@@ -131,11 +132,11 @@ export function CreateProjectPage() {
 
   // Update default version when database engine changes
   useEffect(() => {
-    if (dbType === 'postgresql') {
-      setDbVersion('16-alpine');
-    } else {
-      setDbVersion('8.0');
-    }
+    if (dbType === 'postgresql') setDbVersion('16');
+    else if (dbType === 'mysql') setDbVersion('8.0');
+    else if (dbType === 'mariadb') setDbVersion('11.4');
+    else if (dbType === 'redis') setDbVersion('7.4');
+    else if (dbType === 'mongodb') setDbVersion('7.0');
   }, [dbType]);
 
   // Env Parsing helper
@@ -286,15 +287,6 @@ export function CreateProjectPage() {
             })
           )
         );
-      }
-
-      if (provisionDb) {
-        setSubmittingStatus('creating_db');
-        await api.createDatabase(project.id, dbType, {
-          version: dbVersion.trim() || undefined,
-          cpuLimit: dbCpu.trim() ? Number(dbCpu) : null,
-          memoryLimitMb: dbMemory.trim() ? Number(dbMemory) : null,
-        });
       }
 
       setSubmittingStatus('done');
@@ -877,7 +869,7 @@ export function CreateProjectPage() {
                 </div>
 
                 {/* Managed Database Selection Cards */}
-                <div className="pt-4 border-t border-[#1c1c21] space-y-4">
+                <div className="hidden pt-4 border-t border-[#1c1c21] space-y-4">
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#121215] border border-[#1c1c21]">
                     <div>
                       <div className="text-xs font-bold text-zinc-200 flex items-center gap-2">
@@ -905,45 +897,85 @@ export function CreateProjectPage() {
                   {provisionDb && (
                     <div className="p-5 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-4">
                       <label className="block text-xs font-semibold text-zinc-300">Select Database Engine</label>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <button
                           type="button"
                           onClick={() => setDbType('postgresql')}
                           className={cn(
-                            'p-4 rounded-xl border text-left transition-all space-y-2',
+                            'p-3.5 rounded-xl border text-left transition-all space-y-1.5',
                             dbType === 'postgresql'
                               ? 'bg-orange-500/10 border-orange-500/40 text-orange-400'
                               : 'bg-[#0c0c0e] border-[#1c1c21] text-zinc-400 hover:border-zinc-700'
                           )}
                         >
                           <div className="flex items-center justify-between">
-                            <Database className="h-5 w-5 text-emerald-400" />
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                            <Database className="h-4 w-4 text-emerald-400" />
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
                               PostgreSQL
                             </span>
                           </div>
-                          <div className="font-bold text-xs text-zinc-100">PostgreSQL 16</div>
-                          <p className="text-[11px] text-zinc-500">Powerful relational database for modern applications.</p>
+                          <div className="font-bold text-xs text-zinc-100">PostgreSQL</div>
+                          <p className="text-[10px] text-zinc-500">Relational SQL Engine</p>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setDbType('mysql')}
                           className={cn(
-                            'p-4 rounded-xl border text-left transition-all space-y-2',
+                            'p-3.5 rounded-xl border text-left transition-all space-y-1.5',
                             dbType === 'mysql'
                               ? 'bg-orange-500/10 border-orange-500/40 text-orange-400'
                               : 'bg-[#0c0c0e] border-[#1c1c21] text-zinc-400 hover:border-zinc-700'
                           )}
                         >
                           <div className="flex items-center justify-between">
-                            <Database className="h-5 w-5 text-blue-400" />
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">
+                            <Database className="h-4 w-4 text-blue-400" />
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">
                               MySQL
                             </span>
                           </div>
-                          <div className="font-bold text-xs text-zinc-100">MySQL 8.0</div>
-                          <p className="text-[11px] text-zinc-500">Fast, reliable open-source relational database.</p>
+                          <div className="font-bold text-xs text-zinc-100">MySQL</div>
+                          <p className="text-[10px] text-zinc-500">Relational SQL Engine</p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setDbType('redis')}
+                          className={cn(
+                            'p-3.5 rounded-xl border text-left transition-all space-y-1.5',
+                            dbType === 'redis'
+                              ? 'bg-orange-500/10 border-orange-500/40 text-orange-400'
+                              : 'bg-[#0c0c0e] border-[#1c1c21] text-zinc-400 hover:border-zinc-700'
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <Database className="h-4 w-4 text-red-400" />
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">
+                              Redis
+                            </span>
+                          </div>
+                          <div className="font-bold text-xs text-zinc-100">Redis (KV)</div>
+                          <p className="text-[10px] text-zinc-500">In-Memory Key-Value</p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setDbType('mongodb')}
+                          className={cn(
+                            'p-3.5 rounded-xl border text-left transition-all space-y-1.5',
+                            dbType === 'mongodb'
+                              ? 'bg-orange-500/10 border-orange-500/40 text-orange-400'
+                              : 'bg-[#0c0c0e] border-[#1c1c21] text-zinc-400 hover:border-zinc-700'
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <Database className="h-4 w-4 text-green-400" />
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-500/20 text-green-300">
+                              MongoDB
+                            </span>
+                          </div>
+                          <div className="font-bold text-xs text-zinc-100">MongoDB</div>
+                          <p className="text-[10px] text-zinc-500">NoSQL Document Store</p>
                         </button>
                       </div>
 
@@ -954,17 +986,32 @@ export function CreateProjectPage() {
                           onChange={(e) => setDbVersion(e.target.value)}
                           className="w-full bg-[#0c0c0e] border border-[#222227] rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono focus:outline-none focus:border-orange-500"
                         >
-                          {dbType === 'postgresql' ? (
+                          {dbType === 'postgresql' && (
                             <>
-                              <option value="16-alpine">16-alpine (Recommended)</option>
-                              <option value="15-alpine">15-alpine</option>
-                              <option value="14-alpine">14-alpine</option>
-                              <option value="16">16 (latest)</option>
+                              <option value="17">17</option>
+                              <option value="16">16</option>
+                              <option value="15">15</option>
                             </>
-                          ) : (
+                          )}
+                          {dbType === 'mysql' && (
                             <>
-                              <option value="8.0">8.0 (Recommended)</option>
-                              <option value="8.4">8.4 (LTS)</option>
+                              <option value="8.4">8.4</option>
+                              <option value="8.0">8.0</option>
+                              <option value="9.0">9.0</option>
+                            </>
+                          )}
+                          {dbType === 'redis' && (
+                            <>
+                              <option value="7.4">7.4</option>
+                              <option value="7.2">7.2</option>
+                              <option value="7.0">7.0</option>
+                            </>
+                          )}
+                          {dbType === 'mongodb' && (
+                            <>
+                              <option value="8.0">8.0</option>
+                              <option value="7.0">7.0</option>
+                              <option value="6.0">6.0</option>
                             </>
                           )}
                         </select>

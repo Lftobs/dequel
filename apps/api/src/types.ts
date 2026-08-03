@@ -1,8 +1,8 @@
 export type DeploymentStatus = 'pending' | 'building' | 'deploying' | 'running' | 'failed' | 'inactive';
 export type SourceType = 'git' | 'upload' | 'image' | 'compose';
 export type LogStage = 'build' | 'deploy' | 'system';
-export type DatabaseType = 'postgresql' | 'mysql';
-export type DatabaseStatus = 'provisioning' | 'running' | 'failed';
+export type DatabaseType = 'postgresql' | 'mysql' | 'redis' | 'mongodb';
+export type DatabaseStatus = 'provisioning' | 'running' | 'stopped' | 'restarting' | 'deleting' | 'deletion_failed' | 'failed';
 export type DomainType = 'base' | 'custom';
 export type DomainValidationStatus = 'pending' | 'verified' | 'failed';
 export type SslStatus = 'pending' | 'provisioned' | 'failed';
@@ -98,7 +98,8 @@ export interface CreateVolumeInput {
 
 export interface Database {
   id: string;
-  projectId: string;
+  projectId: string | null;
+  name: string;
   type: DatabaseType;
   version: string | null;
   databaseName: string;
@@ -108,6 +109,14 @@ export interface Database {
   internalPort: number;
   cpuLimit: number | null;
   memoryLimitMb: number | null;
+  storageLimitMb: number | null;
+  storageUsedMb: number;
+  publicAccess: boolean;
+  allowPublicAccessFromAnywhere: boolean;
+  allowedCidrs: string[];
+  externalPort: number | null;
+  proxyContainerName: string | null;
+  volumeName: string;
   connectionString: string;
   status: DatabaseStatus;
   containerName: string | null;
@@ -116,11 +125,16 @@ export interface Database {
 }
 
 export interface CreateDatabaseInput {
-  projectId: string;
+  projectId?: string | null;
+  name: string;
   type: DatabaseType;
   version?: string;
   cpuLimit?: number | null;
   memoryLimitMb?: number | null;
+  storageLimitMb?: number | null;
+  publicAccess?: boolean;
+  allowPublicAccessFromAnywhere?: boolean;
+  allowedCidrs?: string[];
 }
 
 export interface Domain {

@@ -54,6 +54,18 @@ export function SidebarNav({
 						Projects
 					</Link>
 					<Link
+						to="/databases"
+						className={cn(
+							"flex items-center gap-2.5 px-3 py-2 rounded-md text-xs transition-all duration-200",
+							location.pathname.startsWith("/databases")
+								? "bg-zinc-800/60 text-zinc-100 font-medium shadow-inner"
+								: "text-zinc-400 hover:text-zinc-200 hover:bg-[#141417]",
+						)}
+					>
+						<Database className="h-4 w-4" />
+						Databases
+					</Link>
+					<Link
 						to="/settings"
 						className={cn(
 							"flex items-center gap-2.5 px-3 py-2 rounded-md text-xs transition-all duration-200",
@@ -131,24 +143,6 @@ export function SidebarNav({
 						>
 							<Globe className="h-4 w-4 text-zinc-400" />
 							Domains
-						</button>
-
-						<button
-							onClick={() =>
-								navigate({
-									to: `/project/${currentProjectId}`,
-									search: { tab: "databases" },
-								})
-							}
-							className={cn(
-								"w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs text-left transition-all duration-200",
-								isTabActive("databases")
-									? "bg-zinc-800/60 text-zinc-100 font-medium shadow-inner border-l-2 border-amber-500 pl-2.5"
-									: "text-zinc-400 hover:text-zinc-200 hover:bg-[#141417]",
-							)}
-						>
-							<Database className="h-4 w-4 text-zinc-400" />
-							Databases & Volumes
 						</button>
 
 						<button
