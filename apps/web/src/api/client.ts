@@ -261,6 +261,8 @@ export const deleteVolume = (id: string) =>
 	});
 
 // Databases
+export const listAllDatabases = () =>
+	apiFetch<Database[]>("/databases");
 export const listDatabases = (
 	projectId: string,
 ) =>
@@ -268,19 +270,24 @@ export const listDatabases = (
 		`/projects/${projectId}/databases`,
 	);
 export const createDatabase = (
-	projectId: string,
+	projectId: string | null,
 	type: string,
 	options?: {
+		name?: string;
 		version?: string;
 		cpuLimit?: number | null;
 		memoryLimitMb?: number | null;
+		storageLimitMb?: number | null;
+		publicAccess?: boolean;
+		allowPublicAccessFromAnywhere?: boolean;
+		allowedCidrs?: string[];
 	},
 ) =>
 	apiFetch<Database>(
-		`/projects/${projectId}/databases`,
+		projectId ? `/projects/${projectId}/databases` : "/databases",
 		{
 			method: "POST",
-			body: JSON.stringify({ type, ...options }),
+			body: JSON.stringify({ type, projectId, ...options }),
 		},
 	);
 export const getDatabase = (id: string) =>
@@ -290,6 +297,23 @@ export const deleteDatabase = (id: string) =>
 		`/databases/${id}`,
 		{ method: "DELETE" },
 	);
+export const getDatabaseCredentials = (id: string) =>
+	apiFetch<{
+		username: string;
+		password: string;
+		internalConnectionString: string;
+		externalConnectionString: string | null;
+		externalHost: string | null;
+		externalPort: number | null;
+	}>(`/databases/${id}/credentials`);
+export const startDatabase = (id: string) =>
+	apiFetch<Database>(`/databases/${id}/start`, { method: "POST" });
+export const stopDatabase = (id: string) =>
+	apiFetch<Database>(`/databases/${id}/stop`, { method: "POST" });
+export const restartDatabase = (id: string) =>
+	apiFetch<Database>(`/databases/${id}/restart`, { method: "POST" });
+export const retryDatabase = (id: string) =>
+	apiFetch<Database>(`/databases/${id}/retry`, { method: "POST" });
 
 // Domains
 export const listDomains = (projectId: string) =>

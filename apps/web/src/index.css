@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    color-scheme: dark;
     --background: 0 0% 4%;
     --foreground: 0 0% 95%;
     --card: 0 0% 6%;
@@ -25,11 +26,17 @@
     --ring: 24 95% 53%;
     --radius: 0.5rem;
   }
+
+  html {
+    color-scheme: dark;
+  }
 }
 
 @layer base {
   * {
     @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: #27272a transparent;
   }
 
   body {
