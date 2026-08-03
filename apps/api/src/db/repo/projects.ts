@@ -145,11 +145,11 @@ export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupIn
   const volumeDockerNames = volRows.filter(v => v.dockerVolumeName).map(v => v.dockerVolumeName!);
   db.delete(volumes).where(eq(volumes.projectId, id)).run();
 
-  const dbRows = db.select({ containerName: databases.containerName, id: databases.id })
+  const dbRows = db.select({ containerName: databases.containerName, volumeName: databases.volumeName })
     .from(databases).where(eq(databases.projectId, id)).all();
-  const databaseContainerNames = dbRows.filter(d => d.containerName).map(d => d.containerName!);
-  const databaseVolumeNames = dbRows.map(d => `db-${d.id.slice(0, 12)}`);
-  db.delete(databases).where(eq(databases.projectId, id)).run();
+  const databaseContainerNames: string[] = [];
+  const databaseVolumeNames: string[] = [];
+  db.update(databases).set({ projectId: null, updatedAt: now() }).where(eq(databases.projectId, id)).run();
 
   const domainRows = db.select({ domain: domains.domain }).from(domains).where(eq(domains.projectId, id)).all();
   const domainInfo = domainRows.map(d => ({ domain: d.domain, projectName: project.name ?? id }));
