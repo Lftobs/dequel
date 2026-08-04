@@ -74,6 +74,8 @@ export const projectsRoutes = new Elysia()
 				composePort: body.composePort ? Number(body.composePort) : null,
 				composeServices: body.composeServices ? (typeof body.composeServices === 'string' ? body.composeServices : JSON.stringify(body.composeServices)) : null,
 				buildCommand: body.buildCommand || undefined,
+				installCommand: body.installCommand || undefined,
+				outputDir: body.outputDir || undefined,
 				startCommand: body.startCommand || undefined,
 			});
 			return project;
@@ -96,13 +98,15 @@ export const projectsRoutes = new Elysia()
 				cpuLimit: body?.cpuLimit,
 				memoryLimitMb: body?.memoryLimitMb,
 				port: body?.port ? Number(body.port) : body?.port === null ? null : undefined,
-				sourceDir: body?.sourceDir ?? undefined,
+				sourceDir: "sourceDir" in (body ?? {}) ? (body.sourceDir || null) : undefined,
 				projectType: body?.projectType ?? undefined,
 				buildType: body?.buildType ?? undefined,
 				composeService: "composeService" in (body ?? {}) ? (body.composeService || null) : undefined,
 				composePort: "composePort" in (body ?? {}) ? (body.composePort ? Number(body.composePort) : null) : undefined,
 				composeServices: "composeServices" in (body ?? {}) ? (body.composeServices ? (typeof body.composeServices === 'string' ? body.composeServices : JSON.stringify(body.composeServices)) : null) : undefined,
 				buildCommand: "buildCommand" in (body ?? {}) ? (body.buildCommand ?? "") || null : undefined,
+				installCommand: "installCommand" in (body ?? {}) ? (body.installCommand ?? "") || null : undefined,
+				outputDir: "outputDir" in (body ?? {}) ? (body.outputDir ?? "") || null : undefined,
 				startCommand: "startCommand" in (body ?? {}) ? (body.startCommand ?? "") || null : undefined,
 			});
 			if (!project) {

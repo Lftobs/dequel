@@ -27,6 +27,8 @@ export const projects = sqliteTable("projects", {
   composePort: integer("compose_port"),
   composeServices: text("compose_services"),
   buildCommand: text("build_command"),
+  installCommand: text("install_command"),
+  outputDir: text("output_dir"),
   startCommand: text("start_command"),
   githubTokenEncrypted: text("github_token_encrypted"),
   githubTokenIv: text("github_token_iv"),

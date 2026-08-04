@@ -31,7 +31,33 @@ export const migrate = async () => {
 
   await addClearCacheColumn(db);
   await addFinishedAtColumn(db);
+  await addInstallCommandColumn(db);
+  await addOutputDirColumn(db);
   await seedFromConfig();
+};
+
+const addOutputDirColumn = async (db: ReturnType<typeof getDrizzle>) => {
+  try {
+    db.run(sql`ALTER TABLE projects ADD COLUMN output_dir text`);
+    console.log("[Migrate] Added output_dir column to projects table");
+  } catch (err) {
+    const cause = err instanceof Error && "cause" in err ? err.cause : err;
+    if (cause instanceof Error && cause.message.includes("duplicate column name")) return;
+    console.error("[Migrate] Failed to add output_dir column:", err);
+    throw err;
+  }
+};
+
+const addInstallCommandColumn = async (db: ReturnType<typeof getDrizzle>) => {
+  try {
+    db.run(sql`ALTER TABLE projects ADD COLUMN install_command text`);
+    console.log("[Migrate] Added install_command column to projects table");
+  } catch (err) {
+    const cause = err instanceof Error && "cause" in err ? err.cause : err;
+    if (cause instanceof Error && cause.message.includes("duplicate column name")) return;
+    console.error("[Migrate] Failed to add install_command column:", err);
+    throw err;
+  }
 };
 
 const addClearCacheColumn = async (db: ReturnType<typeof getDrizzle>) => {
