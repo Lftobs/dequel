@@ -1,4 +1,5 @@
-import { rm } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import {
 	appendLog,
 	deleteDeploymentAndLogs,
