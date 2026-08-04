@@ -87,19 +87,24 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 			const finalSvc = primarySvc?.serviceName.trim() || composeService.trim() || null;
 			const finalPrt = primarySvc?.port.trim() ? Number(primarySvc.port) || null : composePort.trim() ? Number(composePort) || null : null;
 
-			await updateProjectMutation.mutateAsync({
+			const payload: any = {
 				id: projectId,
 				projectType,
 				buildType,
-				composeService: finalSvc,
-				composePort: finalPrt,
-				composeServices: JSON.stringify(composeServicesList),
 				sourceDir: sourceDir.trim() || null,
 				buildCommand: buildCommand.trim() || null,
 				startCommand: startCommand.trim() || null,
 				port: port.trim() ? Number(port) || null : null,
 				description: description.trim() || null,
-			} as any);
+			};
+
+			if (buildType === "compose") {
+				payload.composeService = finalSvc;
+				payload.composePort = finalPrt;
+				payload.composeServices = JSON.stringify(composeServicesList);
+			}
+
+			await updateProjectMutation.mutateAsync(payload);
 
 			setSaveSuccess(true);
 			setTimeout(() => setSaveSuccess(false), 3000);

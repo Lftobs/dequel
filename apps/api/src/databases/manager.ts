@@ -178,6 +178,7 @@ const runProvision = async (dbRecord: Database): Promise<void> => {
 
     if (proxyContainerName) await ensureContainerRemoved(proxyContainerName).catch(() => {});
     await updateDatabaseStatus(dbRecord.id, 'failed', containerName);
+    throw new Error(`Database ${containerName} failed to become ready within 60 seconds`);
   } catch (err) {
     console.error(`[DB Provisioner] Error provisioning database ${dbRecord.id}:`, err);
     await deprovisionDatabase({ ...dbRecord, proxyContainerName: publicProxyName(dbRecord) }).catch(() => {});
