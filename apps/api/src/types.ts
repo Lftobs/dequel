@@ -28,6 +28,8 @@ export interface Project {
   composePort: number | null;
   composeServices: string | null;
   buildCommand: string | null;
+  installCommand: string | null;
+  outputDir: string | null;
   startCommand: string | null;
   githubTokenEncrypted: string | null;
   githubTokenIv: string | null;
@@ -62,6 +64,8 @@ export interface CreateProjectInput {
   composePort?: number | null;
   composeServices?: string | null;
   buildCommand?: string | null;
+  installCommand?: string | null;
+  outputDir?: string | null;
   startCommand?: string | null;
 }
 

@@ -32,6 +32,7 @@ import {
 import { ensureProjectDashboard } from "../utils/grafana";
 import { buildWithCompose, destroyComposeStack } from "./compose";
 import { deployComposeStack } from "./compose-deploy";
+import { summarizeDeploymentError } from "./deployment-errors";
 
 const now = () =>
 	new Date()
@@ -440,6 +441,8 @@ export class PipelineOrchestrator {
 						sourceDir: project?.sourceDir,
 						projectType: project?.projectType,
 						buildCommand: project?.buildCommand,
+						installCommand: project?.installCommand,
+						outputDir: project?.outputDir,
 						startCommand: project?.startCommand,
 						environmentVariables: filterBuildEnvVars(envVars),
 						signal: controller.signal,
@@ -690,10 +693,7 @@ export class PipelineOrchestrator {
 			if (error instanceof CancelledError) {
 				return true;
 			}
-			const message =
-				error instanceof Error
-					? error.message
-					: "Unknown deployment failure";
+			const message = summarizeDeploymentError(error);
 			console.error(
 				`[Orchestrator] Deployment ${deploymentId} failed:`,
 				error,
@@ -701,7 +701,7 @@ export class PipelineOrchestrator {
 			await emitLog(
 				deploymentId,
 				"system",
-				`CRITICAL FAILURE: ${message}`,
+				`Deployment failed: ${message}`,
 			);
 			await updateDeploymentStatus(
 				deploymentId,
@@ -936,10 +936,7 @@ export class PipelineOrchestrator {
 				"Rollback complete — deployment is running",
 			);
 		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: "Unknown rollback failure";
+			const message = summarizeDeploymentError(error);
 			console.error(
 				`[Orchestrator] Rollback of ${targetDeploymentId} failed:`,
 				error,
@@ -947,7 +944,7 @@ export class PipelineOrchestrator {
 			await emitLog(
 				targetDeploymentId,
 				"system",
-				`CRITICAL FAILURE: ${message}`,
+				`Rollback failed: ${message}`,
 			);
 			await updateDeploymentStatus(
 				targetDeploymentId,

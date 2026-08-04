@@ -34,6 +34,8 @@ const mapProject = (row: typeof projects.$inferSelect): Project => ({
   composePort: row.composePort ?? null,
   composeServices: row.composeServices ?? null,
   buildCommand: row.buildCommand ?? null,
+  installCommand: row.installCommand ?? null,
+  outputDir: row.outputDir ?? null,
   startCommand: row.startCommand ?? null,
   githubTokenEncrypted: row.githubTokenEncrypted ?? null,
   githubTokenIv: row.githubTokenIv ?? null,
@@ -64,6 +66,8 @@ export const createProject = async (input: CreateProjectInput): Promise<Project>
     composePort: input.composePort ?? null,
     composeServices: input.composeServices ?? null,
     buildCommand: input.buildCommand ?? null,
+    installCommand: input.installCommand ?? null,
+    outputDir: input.outputDir ?? null,
     startCommand: input.startCommand ?? null,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -108,6 +112,8 @@ export const updateProject = async (id: string, patch: Partial<CreateProjectInpu
   if (patch.composePort !== undefined) updates.composePort = patch.composePort;
   if (patch.composeServices !== undefined) updates.composeServices = patch.composeServices;
   if (patch.buildCommand !== undefined) updates.buildCommand = patch.buildCommand;
+  if (patch.installCommand !== undefined) updates.installCommand = patch.installCommand;
+  if (patch.outputDir !== undefined) updates.outputDir = patch.outputDir;
   if (patch.startCommand !== undefined) updates.startCommand = patch.startCommand;
   db.update(projects).set(updates).where(eq(projects.id, id)).run();
   return getProjectById(id);

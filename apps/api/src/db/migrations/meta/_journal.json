@@ -57,6 +57,13 @@
       "when": 1785596400000,
       "tag": "0007_standalone_databases",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1785816991600,
+      "tag": "0008_closed_whirlwind",
+      "breakpoints": true
     }
   ]
 }

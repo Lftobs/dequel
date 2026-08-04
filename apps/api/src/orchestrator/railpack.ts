@@ -280,6 +280,8 @@ export const buildWithRailpack = async (
 		sourceDir?: string | null;
 		projectType?: string | null;
 		buildCommand?: string | null;
+		installCommand?: string | null;
+		outputDir?: string | null;
 		startCommand?: string | null;
 		environmentVariables?: { key: string; value: string }[];
 		signal?: AbortSignal;
@@ -318,6 +320,8 @@ export const buildWithRailpack = async (
 		opts?.buildCommand ?? null,
 		opts?.startCommand ?? null,
 		onLog,
+		opts?.installCommand ?? null,
+		opts?.outputDir ?? null,
 	);
 
 	const args = [
