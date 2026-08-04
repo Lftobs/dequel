@@ -62,7 +62,7 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 						<h3 className="font-semibold text-zinc-100">{database.name}</h3>
 						<p className="mt-1 text-xs text-zinc-500">{project?.name ?? "Standalone"} · {database.databaseName}</p>
 					</div>
-					<Button variant="ghost" size="icon" aria-label={`Delete ${database.name}`} onClick={() => onDelete(database)} className="text-zinc-500 hover:text-red-400">
+					<Button variant="ghost" size="icon" disabled={isBusy} aria-label={`Delete ${database.name}`} onClick={() => onDelete(database)} className="text-zinc-500 hover:text-red-400">
 						<Trash2 className="h-4 w-4" />
 					</Button>
 				</div>

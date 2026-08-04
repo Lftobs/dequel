@@ -50,4 +50,32 @@ describe("database input validation", () => {
 		});
 		expect(result.ok).toBe(false);
 	});
+
+	it("rejects non-string names without crashing", () => {
+		const result = validateDatabaseCreate({
+			name: { evil: true },
+			type: "postgresql",
+			allowPublicAccessFromAnywhere: true,
+		} as never);
+		expect(result.ok).toBe(false);
+	});
+
+	it("rejects numeric versions without crashing", () => {
+		const result = validateDatabaseCreate({
+			name: "orders",
+			type: "postgresql",
+			version: 18,
+			allowPublicAccessFromAnywhere: true,
+		} as never);
+		expect(result.ok).toBe(false);
+	});
+
+	it("rejects numeric names without crashing", () => {
+		const result = validateDatabaseCreate({
+			name: 42,
+			type: "postgresql",
+			allowPublicAccessFromAnywhere: true,
+		} as never);
+		expect(result.ok).toBe(false);
+	});
 });

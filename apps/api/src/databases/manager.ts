@@ -2,8 +2,14 @@ import { spawn } from 'node:child_process';
 import { config } from '../utils/config';
 import { dockerBin } from '../utils/docker-bin';
 import { DEQUEL_DATABASE_LABEL } from '../utils/dequel-labels';
-import type { Database } from '../types';
-import { getDatabaseById, updateDatabaseRuntime, updateDatabaseStatus } from '../db/repo';
+import type { Database, DatabaseType } from '../types';
+import {
+  deleteDatabase,
+  getDatabaseById,
+  listAllDatabases,
+  updateDatabaseRuntime,
+  updateDatabaseStatus,
+} from '../db/repo';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -61,7 +67,57 @@ export const resolveDbImage = (type: string, versionInput?: string | null): stri
     const ver = versionInput || '8.0';
     return `mongo:${ver}`;
   }
-  return 'postgres:18-alpine';
+  throw new Error(`Unsupported database type: ${type}`);
+};
+
+type EngineRuntimeConfig = { volumeTarget: string; envVars: string[]; extraCmdArgs: string[] };
+
+const ENGINE_RUNTIME_CONFIGS: Record<DatabaseType, (dbRecord: Database) => EngineRuntimeConfig> = {
+  postgresql: (dbRecord) => {
+    const major = Number((dbRecord.version ?? '18').match(/^\d+/)?.[0]);
+    if (!Number.isInteger(major)) {
+      throw new Error(`PostgreSQL version ${dbRecord.version} must be a numeric major version`);
+    }
+    return {
+      volumeTarget: major >= 18 ? '/var/lib/postgresql' : '/var/lib/postgresql/data',
+      envVars: [
+        `POSTGRES_USER=${dbRecord.username}`,
+        `POSTGRES_PASSWORD=${dbRecord.password}`,
+        `POSTGRES_DB=${dbRecord.databaseName}`,
+      ],
+      extraCmdArgs: [],
+    };
+  },
+  mysql: (dbRecord) => ({
+    volumeTarget: '/var/lib/mysql',
+    envVars: [
+      `MYSQL_ROOT_PASSWORD=${dbRecord.password}`,
+      `MYSQL_DATABASE=${dbRecord.databaseName}`,
+      `MYSQL_USER=${dbRecord.username}`,
+      `MYSQL_PASSWORD=${dbRecord.password}`,
+    ],
+    extraCmdArgs: [],
+  }),
+  redis: (dbRecord) => ({
+    volumeTarget: '/data',
+    envVars: [],
+    extraCmdArgs: ['redis-server', '--requirepass', dbRecord.password],
+  }),
+  mongodb: (dbRecord) => ({
+    volumeTarget: '/data/db',
+    envVars: [
+      `MONGO_INITDB_ROOT_USERNAME=${dbRecord.username}`,
+      `MONGO_INITDB_ROOT_PASSWORD=${dbRecord.password}`,
+      `MONGO_INITDB_DATABASE=${dbRecord.databaseName}`,
+    ],
+    extraCmdArgs: [],
+  }),
+};
+
+const resolveEngineConfig = (dbRecord: Database): EngineRuntimeConfig => {
+  const resolver = ENGINE_RUNTIME_CONFIGS[dbRecord.type];
+  if (!resolver) throw new Error(`Unsupported database type: ${dbRecord.type}`);
+  return resolver(dbRecord);
 };
 
 const provisionInFlight = new Map<string, Promise<void>>();
@@ -88,6 +144,7 @@ const runProvision = async (dbRecord: Database): Promise<void> => {
     if (!(await stillProvisioning())) {
       if (createdVolume) await ensureVolumeRemoved(dbRecord.volumeName).catch(() => {});
       await ensureContainerRemoved(containerName).catch(() => {});
+      await ensureContainerRemoved(publicProxyName(dbRecord)).catch(() => {});
       return true;
     }
     return false;
@@ -95,6 +152,7 @@ const runProvision = async (dbRecord: Database): Promise<void> => {
 
   try {
     const image = resolveDbImage(dbRecord.type, dbRecord.version);
+    const { volumeTarget, envVars, extraCmdArgs } = resolveEngineConfig(dbRecord);
     await run(dockerBin, ['pull', image]);
     if (await abortIfDeleted()) return;
 
@@ -102,38 +160,6 @@ const runProvision = async (dbRecord: Database): Promise<void> => {
     createdVolume = true;
     await ensureContainerRemoved(containerName);
     if (await abortIfDeleted()) return;
-
-    let volumeTarget = '/var/lib/postgresql/data';
-    let envVars: string[] = [
-      `POSTGRES_USER=${dbRecord.username}`,
-      `POSTGRES_PASSWORD=${dbRecord.password}`,
-      `POSTGRES_DB=${dbRecord.databaseName}`,
-    ];
-    let extraCmdArgs: string[] = [];
-
-    if (dbRecord.type === 'postgresql') {
-      const major = Number((dbRecord.version ?? '18').match(/^\d+/)?.[0] ?? '18');
-      volumeTarget = major >= 18 ? '/var/lib/postgresql' : '/var/lib/postgresql/data';
-    } else if (dbRecord.type === 'mysql') {
-      volumeTarget = '/var/lib/mysql';
-      envVars = [
-        `MYSQL_ROOT_PASSWORD=${dbRecord.password}`,
-        `MYSQL_DATABASE=${dbRecord.databaseName}`,
-        `MYSQL_USER=${dbRecord.username}`,
-        `MYSQL_PASSWORD=${dbRecord.password}`,
-      ];
-    } else if (dbRecord.type === 'redis') {
-      volumeTarget = '/data';
-      envVars = [];
-      extraCmdArgs = ['redis-server', '--requirepass', dbRecord.password];
-    } else if (dbRecord.type === 'mongodb') {
-      volumeTarget = '/data/db';
-      envVars = [
-        `MONGO_INITDB_ROOT_USERNAME=${dbRecord.username}`,
-        `MONGO_INITDB_ROOT_PASSWORD=${dbRecord.password}`,
-        `MONGO_INITDB_DATABASE=${dbRecord.databaseName}`,
-      ];
-    }
 
     const args = [
       'run', '-d',
@@ -156,8 +182,7 @@ const runProvision = async (dbRecord: Database): Promise<void> => {
     let externalPort: number | null = null;
     let proxyContainerName: string | null = null;
     if (dbRecord.publicAccess) {
-      const backendHost = await resolveBackendHost(containerName);
-      const proxy = await provisionPublicProxy(dbRecord, backendHost);
+      const proxy = await provisionPublicProxy(dbRecord);
       externalPort = proxy.externalPort;
       proxyContainerName = proxy.containerName;
     }
@@ -168,8 +193,8 @@ const runProvision = async (dbRecord: Database): Promise<void> => {
       try {
         const status = await run(dockerBin, ['inspect', '-f', '{{.State.Status}}', containerName]);
         if (status.trim() === 'running') {
-          await updateDatabaseStatus(dbRecord.id, 'running', containerName);
           await updateDatabaseRuntime(dbRecord.id, { externalPort, proxyContainerName });
+          await updateDatabaseStatus(dbRecord.id, 'running', containerName);
           return;
         }
       } catch {}
@@ -187,15 +212,6 @@ const runProvision = async (dbRecord: Database): Promise<void> => {
   }
 };
 
-const resolveBackendHost = async (containerName: string): Promise<string> => {
-  const output = await run(dockerBin, [
-    'inspect', '-f', '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}', containerName,
-  ]);
-  const address = output.trim();
-  if (!address) throw new Error(`Database container ${containerName} has no network address`);
-  return address;
-};
-
 export const deprovisionDatabase = async (dbRecord: Database): Promise<void> => {
   await ensureContainerRemoved(dbRecord.proxyContainerName ?? publicProxyName(dbRecord));
   await ensureContainerRemoved(dbRecord.internalHost);
@@ -205,7 +221,7 @@ export const deprovisionDatabase = async (dbRecord: Database): Promise<void> => 
 export const publicProxyName = (dbRecord: Database): string =>
   `${dbRecord.internalHost}-public`;
 
-export const proxyConfig = (dbRecord: Database, port: number, backendHost: string): string => {
+export const proxyConfig = (dbRecord: Database, port: number): string => {
   const rules = dbRecord.allowPublicAccessFromAnywhere
     ? ''
     : `  acl allowed src ${dbRecord.allowedCidrs.join(' ')}\n  tcp-request connection reject if !allowed\n`;
@@ -221,30 +237,36 @@ export const proxyConfig = (dbRecord: Database, port: number, backendHost: strin
     rules,
     '  default_backend database',
     'backend database',
-    `  server database ${backendHost}:${dbRecord.internalPort} check`,
+    `  server database ${dbRecord.internalHost}:${dbRecord.internalPort} check`,
   ].join('\n') + '\n';
 };
 
 const PUBLIC_PORT_MIN = 20000;
 const PUBLIC_PORT_MAX = 40000;
 
-const provisionPublicProxy = async (dbRecord: Database, backendHost: string): Promise<{ containerName: string; externalPort: number }> => {
+const provisionPublicProxy = async (dbRecord: Database): Promise<{ containerName: string; externalPort: number }> => {
   const containerName = publicProxyName(dbRecord);
   await run(dockerBin, ['pull', 'haproxy:3.0-alpine']);
   for (let attempt = 0; attempt < 20; attempt++) {
     const externalPort = PUBLIC_PORT_MIN + Math.floor(Math.random() * (PUBLIC_PORT_MAX - PUBLIC_PORT_MIN));
-    const configText = proxyConfig(dbRecord, externalPort, backendHost);
+    const configText = proxyConfig(dbRecord, externalPort);
     await ensureContainerRemoved(containerName);
-    await run(dockerBin, [
-      'run', '-d',
-      '--name', containerName,
-      '--network', 'host',
-      '--restart', 'unless-stopped',
-      '-l', DEQUEL_DATABASE_LABEL,
-      '-e', `DEQUEL_HAPROXY_CONFIG=${configText}`,
-      'haproxy:3.0-alpine',
-      'sh', '-c', 'printf "%s" "$DEQUEL_HAPROXY_CONFIG" > /tmp/haproxy.cfg && exec haproxy -f /tmp/haproxy.cfg',
-    ]);
+    try {
+      await run(dockerBin, [
+        'run', '-d',
+        '--name', containerName,
+        '--network', config.dockerNetwork,
+        '-p', `${externalPort}:${externalPort}`,
+        '--restart', 'unless-stopped',
+        '-l', DEQUEL_DATABASE_LABEL,
+        '-e', `DEQUEL_HAPROXY_CONFIG=${configText}`,
+        'haproxy:3.0-alpine',
+        'sh', '-c', 'printf "%s" "$DEQUEL_HAPROXY_CONFIG" > /tmp/haproxy.cfg && exec haproxy -f /tmp/haproxy.cfg',
+      ]);
+    } catch {
+      await ensureContainerRemoved(containerName).catch(() => {});
+      continue;
+    }
     await sleep(1500);
     try {
       const status = await run(dockerBin, ['inspect', '-f', '{{.State.Status}}', containerName]);
@@ -286,10 +308,12 @@ export const measureDatabaseStorage = async (dbRecord: Database): Promise<number
   return usedMb;
 };
 
+const STORAGE_MEASURE_INTERVAL_MS = 10 * 60_000;
+const lastStorageMeasure = new Map<string, number>();
+
 const reconcileMissingContainer = async (dbRecord: Database) => {
   if (dbRecord.status === 'running' || dbRecord.status === 'restarting') {
-    const { updateDatabaseStatus: updateStatus } = await import('../db/repo');
-    await updateStatus(dbRecord.id, 'failed');
+    await updateDatabaseStatus(dbRecord.id, 'failed');
   }
 };
 
@@ -299,12 +323,10 @@ export const startDatabaseMonitoring = () => {
     if (checkInFlight) return;
     checkInFlight = true;
     try {
-      const { listAllDatabases, updateDatabaseRuntime, updateDatabaseStatus } = await import('../db/repo');
       for (const dbRecord of await listAllDatabases()) {
         if (dbRecord.status === 'deleting' || dbRecord.status === 'deletion_failed') {
           try {
             await deprovisionDatabase(dbRecord);
-            const { deleteDatabase } = await import('../db/repo');
             await deleteDatabase(dbRecord.id);
           } catch (error) {
             console.warn(`[Database] Cleanup retry failed for ${dbRecord.id}:`, error);
@@ -326,11 +348,15 @@ export const startDatabaseMonitoring = () => {
             await updateDatabaseStatus(dbRecord.id, running ? 'running' : 'failed');
           }
           if (running) {
-            const usedMb = await measureDatabaseStorage(dbRecord);
-            if (dbRecord.storageLimitMb && usedMb >= dbRecord.storageLimitMb) {
-              console.warn(`[Database] ${dbRecord.name} storage limit reached (${usedMb}/${dbRecord.storageLimitMb} MB)`);
-            } else if (dbRecord.storageLimitMb && usedMb >= dbRecord.storageLimitMb * 0.8) {
-              console.warn(`[Database] ${dbRecord.name} storage usage above 80% (${usedMb}/${dbRecord.storageLimitMb} MB)`);
+            const lastMeasured = lastStorageMeasure.get(dbRecord.id) ?? 0;
+            if (Date.now() - lastMeasured >= STORAGE_MEASURE_INTERVAL_MS) {
+              lastStorageMeasure.set(dbRecord.id, Date.now());
+              const usedMb = await measureDatabaseStorage(dbRecord);
+              if (dbRecord.storageLimitMb && usedMb >= dbRecord.storageLimitMb) {
+                console.warn(`[Database] ${dbRecord.name} storage limit reached (${usedMb}/${dbRecord.storageLimitMb} MB)`);
+              } else if (dbRecord.storageLimitMb && usedMb >= dbRecord.storageLimitMb * 0.8) {
+                console.warn(`[Database] ${dbRecord.name} storage usage above 80% (${usedMb}/${dbRecord.storageLimitMb} MB)`);
+              }
             }
           }
         } catch (error) {

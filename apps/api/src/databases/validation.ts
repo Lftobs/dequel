@@ -23,13 +23,13 @@ export const isValidCidr = (value: string): boolean => {
 export const validateDatabaseCreate = (
 	body: DatabaseCreateBody,
 ): { ok: true; input: Omit<CreateDatabaseInput, "projectId"> } | { ok: false; error: string } => {
-	if (!body.name?.trim() || body.name.trim().length > 80) {
+	if (typeof body.name !== "string" || !body.name.trim() || body.name.trim().length > 80) {
 		return { ok: false, error: "name is required and must be at most 80 characters" };
 	}
 	if (!body.type || !DATABASE_TYPES.includes(body.type as DatabaseType)) {
 		return { ok: false, error: "type must be postgresql, mysql, redis, or mongodb" };
 	}
-	if (body.version && !isSafeDatabaseVersion(body.version.trim())) {
+	if (body.version !== undefined && (typeof body.version !== "string" || !isSafeDatabaseVersion(body.version.trim()))) {
 		return { ok: false, error: "version must be a numeric image version or latest" };
 	}
 
