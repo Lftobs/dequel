@@ -177,15 +177,6 @@ export function CreateProjectDialog({
 					projectType,
 				});
 
-			if (zipFile && sourceType === "upload") {
-				setSubmittingStatus("creating_project");
-				const form = new FormData();
-				form.append("sourceType", "upload");
-				form.append("projectId", project.id);
-				form.append("archive", zipFile);
-				await api.createDeployment(form);
-			}
-
 			if (stagedEnvs.length > 0) {
 				setSubmittingStatus(
 					"creating_envs",
@@ -204,6 +195,15 @@ export function CreateProjectDialog({
 						),
 					),
 				);
+			}
+
+			if (zipFile && sourceType === "upload") {
+				setSubmittingStatus("creating_project");
+				const form = new FormData();
+				form.append("sourceType", "upload");
+				form.append("projectId", project.id);
+				form.append("archive", zipFile);
+				await api.createDeployment(form);
 			}
 
 			setSubmittingStatus("done");
