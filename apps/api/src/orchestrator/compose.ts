@@ -1,20 +1,120 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, join, resolve, sep } from "node:path";
 import { spawn } from "node:child_process";
 import { dockerBin } from "../utils/docker-bin";
+import { CancelledError } from "./railpack";
 
 export interface ComposeTarget {
 	serviceName: string;
 	port: number;
 }
 
+export const resolveComposeDir = (workspacePath: string, sourceDir?: string | null): string | null => {
+	let resolvedWorkspace: string;
+	try {
+		resolvedWorkspace = realpathSync(workspacePath);
+	} catch {
+		return null;
+	}
+	const candidate = sourceDir ? resolve(resolvedWorkspace, sourceDir.replace(/^\/+/, "")) : resolvedWorkspace;
+	if (candidate !== resolvedWorkspace && !candidate.startsWith(resolvedWorkspace + sep)) {
+		return null;
+	}
+	let realCandidate: string;
+	try {
+		realCandidate = realpathSync(candidate);
+	} catch {
+		return null;
+	}
+	if (realCandidate !== resolvedWorkspace && !realCandidate.startsWith(resolvedWorkspace + sep)) {
+		return null;
+	}
+	return realCandidate;
+};
+
 export const findComposeFilePath = (workspacePath: string, sourceDir?: string | null): string | null => {
-	const base = sourceDir ? join(workspacePath, sourceDir.replace(/^\//, "")) : workspacePath;
+	const base = resolveComposeDir(workspacePath, sourceDir);
+	if (!base) return null;
 	const ymlPath = join(base, "docker-compose.yml");
 	if (existsSync(ymlPath)) return ymlPath;
 	const yamlPath = join(base, "docker-compose.yaml");
 	if (existsSync(yamlPath)) return yamlPath;
 	return null;
+};
+
+import { parse as parseYaml } from "yaml";
+
+export interface ExtractedComposeService {
+	serviceName: string;
+	port: number | null;
+}
+
+export const parseContainerTargetPort = (entry: any): number | null => {
+	if (typeof entry === "number") {
+		return isNaN(entry) || entry <= 0 ? null : entry;
+	}
+	if (typeof entry === "object" && entry !== null) {
+		if ("target" in entry) {
+			const num = Number(entry.target);
+			return !isNaN(num) && num > 0 ? num : null;
+		}
+	}
+	if (typeof entry === "string") {
+		let str = entry.trim().replace(/^["']|["']$/g, "");
+		str = str.split("/")[0].trim();
+		if (!str) return null;
+		const parts = str.split(":");
+		const lastPart = parts[parts.length - 1]?.trim();
+		const num = Number(lastPart);
+		return !isNaN(num) && num > 0 ? num : null;
+	}
+	return null;
+};
+
+export const extractComposeServices = (
+	workspacePath: string,
+	sourceDir?: string | null,
+): ExtractedComposeService[] => {
+	const composeFile = findComposeFilePath(workspacePath, sourceDir);
+	if (!composeFile) return [];
+
+	const content = readFileSync(composeFile, "utf-8");
+	let parsed: any;
+	try {
+		parsed = parseYaml(content);
+	} catch {
+		return [];
+	}
+
+	if (!parsed || typeof parsed !== "object" || !parsed.services || typeof parsed.services !== "object") {
+		return [];
+	}
+
+	const result: ExtractedComposeService[] = [];
+	const serviceEntries = Object.entries(parsed.services);
+
+	for (const [serviceName, serviceConfig] of serviceEntries) {
+		if (!serviceName) continue;
+		let detectedPort: number | null = null;
+		const configObj = (serviceConfig && typeof serviceConfig === "object") ? serviceConfig : {};
+
+		if (Array.isArray((configObj as any).ports)) {
+			for (const portEntry of (configObj as any).ports) {
+				const portNum = parseContainerTargetPort(portEntry);
+				if (portNum !== null) {
+					detectedPort = portNum;
+					break;
+				}
+			}
+		}
+
+		result.push({
+			serviceName,
+			port: detectedPort,
+		});
+	}
+
+	return result;
 };
 
 export const parseComposeTarget = (
@@ -28,71 +128,15 @@ export const parseComposeTarget = (
 		throw new Error("No docker-compose.yml or docker-compose.yaml found in workspace.");
 	}
 
-	const content = readFileSync(composeFile, "utf-8");
-	const lines = content.split("\n");
+	const services = extractComposeServices(workspacePath, sourceDir);
+	if (services.length === 0) {
+		throw new Error("Could not detect any services in docker-compose.yml.");
+	}
 
-	let currentService = "";
-	const servicePorts: Record<string, number> = {};
-	const servicesList: string[] = [];
-
-	let inServicesBlock = false;
-	let inPortsBlock = false;
-
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		const trimmed = line.trim();
-		if (!trimmed || trimmed.startsWith("#")) continue;
-
-		// Check if entering services block
-		if (line.match(/^services:/)) {
-			inServicesBlock = true;
-			continue;
-		}
-
-		// Top level block exit
-		if (line.match(/^[a-zA-Z0-9_-]+:/) && !line.startsWith("services:")) {
-			inServicesBlock = false;
-			currentService = "";
-		}
-
-		if (!inServicesBlock) continue;
-
-		// Service declaration under services: (2 spaces indentation)
-		const serviceMatch = line.match(/^  ([a-zA-Z0-9_-]+):/);
-		if (serviceMatch) {
-			currentService = serviceMatch[1];
-			servicesList.push(currentService);
-			inPortsBlock = false;
-			continue;
-		}
-
-		if (currentService) {
-			// Check if entering ports block
-			if (line.match(/^\s+ports:/)) {
-				inPortsBlock = true;
-				// Inline array syntax: ports: ["8080:80"] or ports: [3000]
-				const inlineMatch = trimmed.match(/ports:\s*\[\s*["']?(\d+)(?::(\d+))?["']?\s*\]/i);
-				if (inlineMatch) {
-					const target = inlineMatch[2] || inlineMatch[1];
-					servicePorts[currentService] = Number(target);
-					inPortsBlock = false;
-				}
-				continue;
-			}
-
-			// Port item under ports block
-			if (inPortsBlock && line.match(/^\s+-\s*/)) {
-				const portMatch = trimmed.match(/-\s*["']?(\d+)(?::(\d+))?["']?/);
-				if (portMatch) {
-					const targetPort = portMatch[2] || portMatch[1];
-					if (!servicePorts[currentService]) {
-						servicePorts[currentService] = Number(targetPort);
-					}
-				}
-			} else if (line.match(/^\s+[a-zA-Z0-9_-]+:/)) {
-				inPortsBlock = false;
-			}
-		}
+	const serviceNames = services.map((s) => s.serviceName);
+	const servicePortMap: Record<string, number | null> = {};
+	for (const s of services) {
+		servicePortMap[s.serviceName] = s.port;
 	}
 
 	let targetService = preferredService?.trim() || "";
@@ -101,13 +145,13 @@ export const parseComposeTarget = (
 	if (!targetService) {
 		const commonNames = ["web", "frontend", "client", "app", "server", "api"];
 		for (const name of commonNames) {
-			if (servicesList.includes(name)) {
+			if (serviceNames.includes(name)) {
 				targetService = name;
 				break;
 			}
 		}
-		if (!targetService && servicesList.length > 0) {
-			targetService = servicesList[0];
+		if (!targetService && serviceNames.length > 0) {
+			targetService = serviceNames[0];
 		}
 	}
 
@@ -116,7 +160,7 @@ export const parseComposeTarget = (
 	}
 
 	if (!targetPort) {
-		targetPort = servicePorts[targetService] || 3000;
+		targetPort = servicePortMap[targetService] || 3000;
 	}
 
 	return {
@@ -138,86 +182,16 @@ export const parseAllComposeServices = (
 	preferredPort?: number | null,
 ): ComposeService[] => {
 	const primaryTarget = parseComposeTarget(workspacePath, sourceDir, preferredService, preferredPort);
-	const composeFile = findComposeFilePath(workspacePath, sourceDir);
-	if (!composeFile) return [{ ...primaryTarget, isPrimary: true }];
-
-	const content = readFileSync(composeFile, "utf-8");
-	const lines = content.split("\n");
-
-	let currentService = "";
-	const servicePorts: Record<string, number> = {};
-	const servicesList: string[] = [];
-
-	let inServicesBlock = false;
-	let inPortsBlock = false;
-
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		const trimmed = line.trim();
-		if (!trimmed || trimmed.startsWith("#")) continue;
-
-		if (line.match(/^services:/)) {
-			inServicesBlock = true;
-			continue;
-		}
-
-		if (line.match(/^[a-zA-Z0-9_-]+:/) && !line.startsWith("services:")) {
-			inServicesBlock = false;
-			currentService = "";
-		}
-
-		if (!inServicesBlock) continue;
-
-		const serviceMatch = line.match(/^  ([a-zA-Z0-9_-]+):/);
-		if (serviceMatch) {
-			currentService = serviceMatch[1];
-			servicesList.push(currentService);
-			inPortsBlock = false;
-			continue;
-		}
-
-		if (currentService) {
-			if (line.match(/^\s+ports:/)) {
-				inPortsBlock = true;
-				const inlineMatch = trimmed.match(/ports:\s*\[\s*["']?(\d+)(?::(\d+))?["']?\s*\]/i);
-				if (inlineMatch) {
-					const target = inlineMatch[2] || inlineMatch[1];
-					servicePorts[currentService] = Number(target);
-					inPortsBlock = false;
-				}
-				continue;
-			}
-
-			if (inPortsBlock && line.match(/^\s+-\s*/)) {
-				const portMatch = trimmed.match(/-\s*["']?(\d+)(?::(\d+))?["']?/);
-				if (portMatch) {
-					const targetPort = portMatch[2] || portMatch[1];
-					if (!servicePorts[currentService]) {
-						servicePorts[currentService] = Number(targetPort);
-					}
-				}
-			} else if (line.match(/^\s+[a-zA-Z0-9_-]+:/)) {
-				inPortsBlock = false;
-			}
-		}
+	const services = extractComposeServices(workspacePath, sourceDir);
+	if (services.length === 0) {
+		return [{ ...primaryTarget, isPrimary: true }];
 	}
 
-	const results: ComposeService[] = [];
-	for (const service of servicesList) {
-		const isPrimary = service === primaryTarget.serviceName;
-		const port = isPrimary ? primaryTarget.port : (servicePorts[service] || 3000);
-		results.push({
-			serviceName: service,
-			port,
-			isPrimary,
-		});
-	}
-
-	if (results.length === 0) {
-		results.push({ ...primaryTarget, isPrimary: true });
-	}
-
-	return results;
+	return services.map((s) => ({
+		serviceName: s.serviceName,
+		port: s.serviceName === primaryTarget.serviceName ? primaryTarget.port : (s.port || 3000),
+		isPrimary: s.serviceName === primaryTarget.serviceName,
+	}));
 };
 
 const spawnComposeCommand = (
@@ -225,6 +199,7 @@ const spawnComposeCommand = (
 	cwd: string,
 	envVars?: Record<string, string>,
 	onLog?: (line: string) => Promise<void>,
+	signal?: AbortSignal,
 ): Promise<{ code: number; stdout: string; stderr: string }> => {
 	return new Promise((resolve, reject) => {
 		const child = spawn(dockerBin, ["compose", ...args], {
@@ -235,6 +210,33 @@ const spawnComposeCommand = (
 
 		let stdout = "";
 		let stderr = "";
+		let settled = false;
+
+		const finish = (result?: { code: number; stdout: string; stderr: string }, error?: Error) => {
+			if (settled) return;
+			settled = true;
+			if (signal) {
+				signal.removeEventListener("abort", onAbort);
+			}
+			if (error) {
+				reject(error);
+				return;
+			}
+			resolve(result!);
+		};
+
+		const onAbort = () => {
+			child.kill("SIGTERM");
+			finish(undefined, new CancelledError());
+		};
+
+		if (signal) {
+			if (signal.aborted) {
+				onAbort();
+			} else {
+				signal.addEventListener("abort", onAbort, { once: true });
+			}
+		}
 
 		child.stdout.on("data", (chunk) => {
 			const str = String(chunk);
@@ -256,9 +258,9 @@ const spawnComposeCommand = (
 			}
 		});
 
-		child.on("error", reject);
+		child.on("error", (err) => finish(undefined, err));
 		child.on("close", (code) => {
-			resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });
+			finish({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });
 		});
 	});
 };
@@ -269,16 +271,17 @@ export const buildWithCompose = async (
 	onLog: (line: string) => Promise<void>,
 	sourceDir?: string | null,
 	envVars?: Record<string, string>,
+	signal?: AbortSignal,
 ): Promise<void> => {
 	const composeFile = findComposeFilePath(workspacePath, sourceDir);
 	if (!composeFile) {
 		throw new Error("No docker-compose.yml found in workspace.");
 	}
 
-	const cwd = sourceDir ? join(workspacePath, sourceDir.replace(/^\//, "")) : workspacePath;
+	const cwd = dirname(composeFile);
 	await onLog(`Starting Docker Compose build (project: ${projectName})...`);
 
-	const res = await spawnComposeCommand(["-f", composeFile, "-p", projectName, "build"], cwd, envVars, onLog);
+	const res = await spawnComposeCommand(["-f", composeFile, "-p", projectName, "build"], cwd, envVars, onLog, signal);
 	if (res.code !== 0) {
 		throw new Error(`docker compose build failed: ${res.stderr || res.stdout}`);
 	}
@@ -292,16 +295,17 @@ export const deployWithCompose = async (
 	onLog: (line: string) => Promise<void>,
 	sourceDir?: string | null,
 	envVars?: Record<string, string>,
+	signal?: AbortSignal,
 ): Promise<void> => {
 	const composeFile = findComposeFilePath(workspacePath, sourceDir);
 	if (!composeFile) {
 		throw new Error("No docker-compose.yml found in workspace.");
 	}
 
-	const cwd = sourceDir ? join(workspacePath, sourceDir.replace(/^\//, "")) : workspacePath;
+	const cwd = dirname(composeFile);
 	await onLog(`Starting Docker Compose services (project: ${projectName})...`);
 
-	const res = await spawnComposeCommand(["-f", composeFile, "-p", projectName, "up", "-d"], cwd, envVars, onLog);
+	const res = await spawnComposeCommand(["-f", composeFile, "-p", projectName, "up", "-d"], cwd, envVars, onLog, signal);
 	if (res.code !== 0) {
 		throw new Error(`docker compose up failed: ${res.stderr || res.stdout}`);
 	}

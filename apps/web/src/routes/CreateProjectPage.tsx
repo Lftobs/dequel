@@ -69,8 +69,6 @@ export function CreateProjectPage() {
   const [memoryLimitMb, setMemoryLimitMb] = useState('');
 
   // Docker Compose Settings
-  const [composeService, setComposeService] = useState('');
-  const [composePort, setComposePort] = useState('');
   const [composeServicesList, setComposeServicesList] = useState<{ id: string; serviceName: string; port: string; subdomain: string }[]>([
     { id: '1', serviceName: '', port: '', subdomain: '' }
   ]);
@@ -240,7 +238,7 @@ export function CreateProjectPage() {
     let project: any = null;
 
     try {
-      project = await createProject.mutateAsync({
+      const payload: any = {
         name: name.trim(),
         description: description.trim() || undefined,
         baseDomain: baseDomain.trim() || undefined,
@@ -251,14 +249,19 @@ export function CreateProjectPage() {
         sourceType,
         projectType,
         buildType,
-        composeService: composeServicesList[0]?.serviceName.trim() || composeService.trim() || undefined,
-        composePort: composeServicesList[0]?.port.trim() ? Number(composeServicesList[0].port) || null : composePort.trim() ? Number(composePort) || null : undefined,
-        composeServices: JSON.stringify(composeServicesList),
         buildCommand: buildCommand.trim() || undefined,
         startCommand: startCommand.trim() || undefined,
         cpuLimit: cpuLimit.trim() ? Number(cpuLimit) || null : undefined,
         memoryLimitMb: memoryLimitMb.trim() ? Number(memoryLimitMb) || null : undefined,
-      });
+      };
+
+      if (buildType === 'compose') {
+        payload.composeService = composeServicesList[0]?.serviceName.trim() || undefined;
+        payload.composePort = composeServicesList[0]?.port.trim() ? Number(composeServicesList[0].port) || null : undefined;
+        payload.composeServices = JSON.stringify(composeServicesList);
+      }
+
+      project = await createProject.mutateAsync(payload);
 
       if (zipFile && sourceType === 'upload') {
         const form = new FormData();
@@ -1009,7 +1012,7 @@ export function CreateProjectPage() {
                     <div className="flex justify-between py-1 border-b border-[#1c1c21]">
                       <span className="text-zinc-500">Compose Ingress:</span>
                       <span className="font-mono text-zinc-300">
-                        {composeService || 'Auto-detect'} : {composePort || 'Auto-detect'}
+                        {composeServicesList[0]?.serviceName.trim() || 'Auto-detect'} : {composeServicesList[0]?.port.trim() || 'Auto-detect'}
                       </span>
                     </div>
                   )}
@@ -1091,7 +1094,7 @@ export function CreateProjectPage() {
                   <div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
                     <div className="text-[10px] text-zinc-500 font-bold uppercase">Compose Gateway</div>
                     <div className="text-zinc-300 font-mono text-[11px]">
-                      {composeService || 'Auto-detect'} {composePort ? `:${composePort}` : ''}
+                      {composeServicesList[0]?.serviceName.trim() || 'Auto-detect'} {composeServicesList[0]?.port.trim() ? `:${composeServicesList[0].port.trim()}` : ''}
                     </div>
                   </div>
                 ) : (

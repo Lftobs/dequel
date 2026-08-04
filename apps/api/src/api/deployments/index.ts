@@ -158,6 +158,13 @@ export const deploymentsRoutes = new Elysia()
 					error: "Cannot rollback to a deployment that is still in progress",
 				};
 			}
+			const project = target.projectId ? await getProjectById(target.projectId) : null;
+			if (project?.buildType === "compose") {
+				set.status = 400;
+				return {
+					error: "Rollback is not supported for Docker Compose deployments",
+				};
+			}
 			try {
 				await orchestrator.rollbackTo(id);
 				const updated = await getDeploymentById(id);

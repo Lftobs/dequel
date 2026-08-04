@@ -76,6 +76,7 @@ export const provisionDatabase = async (dbRecord: Database): Promise<void> => {
     }
 
     await updateDatabaseStatus(dbRecord.id, 'failed', containerName);
+    throw new Error(`Database ${containerName} failed to become ready within 60 seconds`);
   } catch (err) {
     console.error(`[DB Provisioner] Error provisioning database ${dbRecord.id}:`, err);
     await updateDatabaseStatus(dbRecord.id, 'failed', containerName).catch(() => {});

@@ -1,5 +1,4 @@
-import { rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { rm } from "node:fs/promises";
 import {
 	appendLog,
 	deleteDeploymentAndLogs,
@@ -30,10 +29,8 @@ import {
 	tryRun,
 } from "./runtime";
 import { ensureProjectDashboard } from "../utils/grafana";
-import { buildWithCompose, deployWithCompose, parseComposeTarget, parseAllComposeServices, destroyComposeStack, getComposeContainerNames } from "./compose";
-import { buildCaddySnippet } from "../utils/domain-verifier";
-import { dockerBin } from "../utils/docker-bin";
-import { config } from "../utils/config";
+import { buildWithCompose, destroyComposeStack } from "./compose";
+import { deployComposeStack } from "./compose-deploy";
 
 const now = () =>
 	new Date()
@@ -424,6 +421,7 @@ export class PipelineOrchestrator {
 					},
 					project?.sourceDir,
 					envMap,
+					controller.signal,
 				);
 			} else {
 				await buildWithRailpack(
@@ -573,104 +571,24 @@ export class PipelineOrchestrator {
 			let runtimeLiveUrl = "";
 
 			if (project?.buildType === "compose") {
-				if (oldDeploymentId) {
-					await emitLog(
-						deploymentId,
-						"deploy",
-						`Stopping previous compose stack deploy-${oldDeploymentId}`,
-					);
-					await destroyComposeStack(
-						`deploy-${oldDeploymentId}`,
-					);
-				}
-
-				await deployWithCompose(
+				const composeRuntime = await deployComposeStack({
 					workspacePath,
-					`deploy-${deploymentId}`,
-					async (line) => {
-						await emitLog(
-							deploymentId,
-							"deploy",
-							line,
-						);
-					},
-					project?.sourceDir,
+					deploymentId,
+					projectId: project.id,
+					projectName: project.name,
+					sourceDir: project.sourceDir,
+					composeService: project.composeService,
+					composePort: project.composePort,
+					composeServicesJson: (project as any).composeServices,
+					oldDeploymentId,
 					envVars,
-				);
-
-				const allServices = parseAllComposeServices(
-					workspacePath,
-					project?.sourceDir,
-					project?.composeService,
-					project?.composePort,
-				);
-
-				const composeContainers = await getComposeContainerNames(
-					`deploy-${deploymentId}`,
-				);
-				const containerFor = (serviceName: string) =>
-					composeContainers.get(serviceName) || `deploy-${deploymentId}-${serviceName}-1`;
-
-				for (const s of allServices) {
-					const cName = containerFor(s.serviceName);
-					await tryRun(dockerBin, ["network", "connect", config.dockerNetwork, cName]);
-				}
-
-				const target = allServices.find((s) => s.isPrimary) || allServices[0];
-				const containerName = containerFor(target.serviceName);
-
-				const slug = project.name
-					? project.name.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 63)
-					: project.id;
-
-				let snippet = await buildCaddySnippet(
-					slug,
-					containerName,
-					project.id,
-					undefined,
-					target.port,
-				);
-
-				const rawBaseDomain = config.caddyBaseDomain || 'localhost';
-				const baseDomainForCaddy = rawBaseDomain === 'localhost' ? `${rawBaseDomain}:80` : rawBaseDomain;
-				let customMappings: { serviceName: string; port: number | string; subdomain?: string }[] = [];
-				if ((project as any).composeServices) {
-					try {
-						customMappings = typeof (project as any).composeServices === 'string'
-							? JSON.parse((project as any).composeServices)
-							: (project as any).composeServices;
-					} catch (e) {}
-				}
-
-				for (const s of allServices) {
-					if (s.isPrimary) continue;
-					const sContainer = containerFor(s.serviceName);
-					const customMatch = customMappings.find((c) => c.serviceName === s.serviceName);
-					const domains: string[] = [];
-					if (customMatch?.subdomain?.trim()) {
-						domains.push(`${customMatch.subdomain.trim()}.${slug}.${baseDomainForCaddy}`);
-					} else {
-						domains.push(`${s.serviceName}.${slug}.${baseDomainForCaddy}`);
-						if (s.serviceName === "server" && !domains.includes(`api.${slug}.${baseDomainForCaddy}`)) {
-							domains.push(`api.${slug}.${baseDomainForCaddy}`);
-						}
-					}
-					const targetPort = customMatch?.port ? Number(customMatch.port) : s.port;
-					snippet += `\n${domains.join(", ")} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${sContainer}:${targetPort} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
-				}
-
-				const caddyRouteFile = join(config.caddyRoutesDir, `${slug}.caddy`);
-				await writeFile(caddyRouteFile, snippet, "utf8");
-				try {
-					await reloadCaddy();
-				} catch {
-					console.warn(
-						"[Pipeline] Caddy not ready for reload after compose deploy",
-					);
-				}
-
-				runtimeContainerName = containerName;
-				runtimeLiveUrl = rawBaseDomain === 'localhost' ? `http://${slug}.localhost` : `https://${slug}.${rawBaseDomain}`;
+					signal: controller.signal,
+					onLog: async (line) => {
+						await emitLog(deploymentId, "deploy", line);
+					},
+				});
+				runtimeContainerName = composeRuntime.containerName;
+				runtimeLiveUrl = composeRuntime.liveUrl;
 			} else {
 				const runtime = await deployContainer(
 					deploymentId,
@@ -878,6 +796,11 @@ export class PipelineOrchestrator {
 		const proj = await getProjectById(
 			target.projectId,
 		);
+		if (proj?.buildType === "compose") {
+			throw new Error(
+				"Rollback is not supported for Docker Compose deployments",
+			);
+		}
 		const slug = proj
 			? this.slugify(proj.name)
 			: target.id;
