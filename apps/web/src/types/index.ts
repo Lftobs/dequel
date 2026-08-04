@@ -27,6 +27,8 @@ export interface Project {
   composePort?: number | null;
   composeServices?: string | null;
   buildCommand: string | null;
+  installCommand?: string | null;
+  outputDir?: string | null;
   startCommand: string | null;
   createdAt: string;
   updatedAt: string;

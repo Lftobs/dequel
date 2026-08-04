@@ -12,6 +12,8 @@ import { getGithubAuthUrl } from "../../../api/client";
 import { RepoPicker } from "../../github/RepoPicker";
 import type { GithubRepo } from "../../../types";
 import { cn } from "../../../lib/utils";
+import { FrameworkSelect } from "../../ui/FrameworkSelect";
+import { FRAMEWORK_PRESETS } from "../../../utils/presets";
 
 interface StepBasicsProps {
 	name: string;
@@ -177,6 +179,19 @@ export function StepBasics({
 							}
 						/>
 					</div>
+
+					<div className="grid gap-1.5 sm:col-span-2">
+						<label className="font-semibold text-zinc-400">
+							Application Framework Preset
+						</label>
+						<FrameworkSelect
+							selectedPresetId={projectType === "static" ? "vite-react" : "nextjs-web"}
+							onSelectPreset={(preset) => {
+								setProjectType(preset.projectType);
+							}}
+						/>
+					</div>
+
 					<div className="grid gap-1.5 sm:col-span-2">
 						<label className="font-semibold text-zinc-400">
 							Project Type

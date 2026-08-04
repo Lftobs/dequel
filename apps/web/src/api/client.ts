@@ -571,3 +571,15 @@ export const removeRepoHook = (owner: string, repo: string) =>
 	apiFetch<{ ok: boolean; removed: boolean }>(`/github/repos/${owner}/${repo}/hook`, {
 		method: "DELETE",
 	});
+
+export const setEnvVar = (projectId: string, key: string, value: string, environment?: string) =>
+	createEnvVar(projectId, key, value, environment);
+
+export const uploadSourceZip = (file: File) => {
+	const formData = new FormData();
+	formData.append("file", file);
+	return apiFetch<{ filePath: string }>("/upload", {
+		method: "POST",
+		body: formData,
+	});
+};
