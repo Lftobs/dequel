@@ -8,9 +8,9 @@ interface Props {
 
 const {
   tag = "Self-Hosted PaaS Platform • Open Source v1.0",
-  titleNormal = "Deploy apps from Git, ZIP, or Docker Compose",
-  titleItalic = "yours by default.",
-  subText = "The all-in-one self-hosted Platform as a Service (PaaS). Build container images via Railpack, route with dynamic Caddy auto-SSL, scale workloads, and monitor metrics — all on your own servers with zero vendor lock-in.",
+  titleNormal = "Deploy your way.",
+  titleItalic = "Own it all.",
+  subText = "Ship apps from Git, ZIP, or Docker Compose in seconds — with automatic SSL, scaling, and monitoring built in, running entirely on servers that are actually yours. Zero lock-in, ever",
 } = Astro.props;
 ---
 
@@ -30,8 +30,8 @@ const {
 
     <!-- Main Headline -->
     <h1 class="text-4xl md:text-6xl font-bold tracking-tight leading-[1.08] max-w-4xl mb-6 z-10 text-white">
-      Deploy apps from Git, ZIP, or Docker Compose — <br class="hidden md:inline" />
-      <span class="underline decoration-amber-300/40 underline-offset-8">yours by default.</span>
+      {titleNormal}<br class="hidden md:inline" />
+      <span class="underline decoration-amber-300/40 underline-offset-8">{titleItalic}</span>
     </h1>
 
     <!-- Subtitle -->
@@ -44,9 +44,6 @@ const {
       <a href="/docs/installation" class="cf-pill-btn-white group">
         <span>Get Started in 1 Command</span>
         <span class="transition-transform group-hover:translate-x-1">→</span>
-      </a>
-      <a href="/docs" class="cf-pill-btn-glass">
-        <span>Documentation</span>
       </a>
       <a
         href="https://github.com/Lftobs/dequel"

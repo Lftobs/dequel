@@ -264,6 +264,19 @@ export function CreateProjectPage() {
 
       project = await createProject.mutateAsync(payload);
 
+      if (stagedEnvs.length > 0) {
+        setSubmittingStatus('creating_envs');
+        await Promise.all(
+          stagedEnvs.map((env) =>
+            api.createEnvVar(project.id, {
+              key: env.key.trim(),
+              value: env.value.trim(),
+              environment: env.environment || 'production',
+            })
+          )
+        );
+      }
+
       if (zipFile && sourceType === 'upload') {
         const form = new FormData();
         form.append('sourceType', 'upload');
@@ -277,19 +290,6 @@ export function CreateProjectPage() {
         form.append('gitUrl', repoUrl.trim());
         if (repoBranch.trim()) form.append('branch', repoBranch.trim());
         await api.createDeployment(form);
-      }
-
-      if (stagedEnvs.length > 0) {
-        setSubmittingStatus('creating_envs');
-        await Promise.all(
-          stagedEnvs.map((env) =>
-            api.createEnvVar(project.id, {
-              key: env.key.trim(),
-              value: env.value.trim(),
-              environment: env.environment || 'production',
-            })
-          )
-        );
       }
 
       setSubmittingStatus('done');
