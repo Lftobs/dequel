@@ -5,13 +5,11 @@ import { homedir } from "node:os";
 const XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME || `${homedir()}/.config`;
 
 export interface FileConfig {
-  port?: number;
   databasePath?: string;
   workspaceRoot?: string;
   caddyRoutesDir?: string;
   caddyBaseDomain?: string;
   dockerNetwork?: string;
-  appInternalPort?: number;
   buildkitHost?: string;
   envEncryptionKey?: string;
   redisUrl?: string;

@@ -113,7 +113,7 @@ The `dequel` command manages the platform lifecycle:
 | `dequel stop` | Stop all services |
 | `dequel status` | Show service status |
 | `dequel logs` | Follow service logs |
-| `dequel update` | Pull latest images and restart |
+| `dequel update` | Pull latest images and roll services (zero-downtime) |
 | `dequel restart` | Restart all services |
 | `dequel --help` | Show all commands |
 
@@ -148,7 +148,7 @@ export DATABASE_PATH=./data/dequel.db \
        CADDY_ROUTES_DIR=./infra/caddy/routes \
        CADDY_BASE_DOMAIN=localhost \
        DOCKER_NETWORK=dequel_net \
-       APP_INTERNAL_PORT=3000
+       APP_INTERNAL_PORT=17476
 bun apps/api/src/index.ts
 
 # Terminal 2 — Web
@@ -161,5 +161,8 @@ bun apps/web/src/main.tsx
 dequel update
 ```
 
-This pulls the latest images from GitHub Container Registry and recreates the services.
+This pulls the latest images from GitHub Container Registry and rolls the API and web services with a
+zero-downtime blue-green swap. Caddy (the reverse proxy) is reloaded gracefully and never restarts, so
+deployed apps and the dashboard keep serving throughout the update. Support services (monitoring,
+BuildKit, Redis) are updated in a separate phase without affecting traffic.
 

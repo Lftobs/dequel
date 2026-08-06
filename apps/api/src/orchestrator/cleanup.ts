@@ -3,6 +3,7 @@ import { config } from '../utils/config';
 import { dockerBin } from '../utils/docker-bin';
 import { tryRun } from './runtime';
 import { DEQUEL_MANAGED_LABEL } from '../utils/dequel-labels';
+import { leader } from '../utils/leader';
 
 const DLQ_KEY = 'dequel:deploy:dlq';
 const GC_INTERVAL_MS = 1_800_000;
@@ -38,6 +39,7 @@ export const startBuildCleanup = () => {
   if (interval) return;
   console.log('[Cleanup] Docker garbage collector started (every 30min)');
   interval = setInterval(async () => {
+    if (!leader.isLeader) return;
     await pruneDocker().catch(e => console.warn('[Cleanup] Docker prune failed:', e));
     await pruneDlq().catch(e => console.warn('[Cleanup] DLQ prune failed:', e));
   }, GC_INTERVAL_MS);

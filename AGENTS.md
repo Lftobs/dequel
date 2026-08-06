@@ -5,8 +5,8 @@ Self-hosted deployment platform. Deploy apps from Git, ZIP, or Docker Compose wi
 ## Tech Stack
 
 - **Runtime**: Bun
-- **Backend**: ElysiaJS (`apps/api/`) — TypeScript, port 3001
-- **Frontend**: React 18 + Vite + TanStack Router + TanStack Query (`apps/web/`) — port 3000
+- **Backend**: ElysiaJS (`apps/api/`) — TypeScript, port 17474 (fixed)
+- **Frontend**: React 18 + Vite + TanStack Router + TanStack Query (`apps/web/`) — port 17476 (fixed)
 - **Docs**: Astro 4 + Tailwind CSS (`apps/docs/`) — deployed to Vercel
 - **Database**: SQLite (`data/dequel.db`) — raw SQL
 - **Queue**: Redis (`ioredis`) for async job queue
@@ -175,7 +175,7 @@ Requires secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `3001` | API listen port |
+| `PORT` | `17474` | API listen port (fixed — must match `infra/caddy/upstreams/api.caddy`) |
 | `DATABASE_PATH` | `./data/dequel.db` | SQLite database |
 | `WORKSPACE_ROOT` | `./workspace` | Build staging |
 | `CADDY_ROUTES_DIR` | `./infra/caddy/routes` | Caddy route output |

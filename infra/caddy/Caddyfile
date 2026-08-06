@@ -13,9 +13,7 @@ import /etc/caddy/routes/*.caddy
   encode zstd gzip
 
   handle /api/* {
-    reverse_proxy api:3001 {
-      trusted_proxies private_ranges
-    }
+    import /etc/caddy/routes/upstreams/api.caddy
   }
 
   handle /metrics* {
@@ -29,7 +27,7 @@ import /etc/caddy/routes/*.caddy
   }
 
   handle {
-    reverse_proxy web:3000
+    import /etc/caddy/routes/upstreams/web.caddy
   }
 }
 
@@ -42,9 +40,7 @@ import /etc/caddy/routes/*.caddy
   encode zstd gzip
 
   handle /api/* {
-    reverse_proxy api:3001 {
-      trusted_proxies private_ranges
-    }
+    import /etc/caddy/routes/upstreams/api.caddy
   }
 
   handle /metrics* {
@@ -58,6 +54,6 @@ import /etc/caddy/routes/*.caddy
   }
 
   handle {
-    reverse_proxy web:3000
+    import /etc/caddy/routes/upstreams/web.caddy
   }
 }

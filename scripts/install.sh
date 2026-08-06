@@ -68,7 +68,7 @@ check_prerequisites() {
 
 setup_directories() {
 	header "Setting up installation directory"
-	mkdir -p "$INSTALL_DIR/data" "$INSTALL_DIR/workspace" "$INSTALL_DIR/infra/caddy/routes" "$INSTALL_DIR/infra/monitoring/grafana/datasources" "$INSTALL_DIR/infra/monitoring/grafana/dashboards" "$INSTALL_DIR/scripts/auth"
+	mkdir -p "$INSTALL_DIR/data" "$INSTALL_DIR/workspace" "$INSTALL_DIR/infra/caddy/routes" "$INSTALL_DIR/infra/caddy/upstreams" "$INSTALL_DIR/infra/monitoring/grafana/datasources" "$INSTALL_DIR/infra/monitoring/grafana/dashboards" "$INSTALL_DIR/scripts/auth"
 	info "Installing to: $INSTALL_DIR"
 }
 
@@ -118,6 +118,8 @@ download_configs() {
 
 	download_if_missing "$BASE_URL/docker-compose.yml" "$INSTALL_DIR/docker-compose.yml"
 	download_if_missing "$BASE_URL/infra/caddy/Caddyfile" "$INSTALL_DIR/infra/caddy/Caddyfile"
+	download_if_missing "$BASE_URL/infra/caddy/upstreams/api.caddy" "$INSTALL_DIR/infra/caddy/upstreams/api.caddy"
+	download_if_missing "$BASE_URL/infra/caddy/upstreams/web.caddy" "$INSTALL_DIR/infra/caddy/upstreams/web.caddy"
 	download_if_missing "$BASE_URL/scripts/dequel" "$INSTALL_DIR/dequel"
 	download_if_missing "$BASE_URL/scripts/auth/pam-server.py" "$INSTALL_DIR/scripts/auth/pam-server.py"
 

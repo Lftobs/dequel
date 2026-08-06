@@ -99,7 +99,7 @@ export DATABASE_PATH=./data/dequel.db \
        WORKSPACE_ROOT=./workspace \
        CADDY_ROUTES_DIR=./infra/caddy/routes \
        DOCKER_NETWORK=dequel_net \
-       APP_INTERNAL_PORT=3000
+       APP_INTERNAL_PORT=17476
 bun apps/api/src/index.ts
 
 # Terminal 2 - Web
@@ -144,7 +144,7 @@ Key environment variables for the API service:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `3001` | API listen port |
+| `PORT` | `17474` | API listen port (fixed — must match `infra/caddy/upstreams/api.caddy`) |
 | `DATABASE_PATH` | `./data/dequel.db` | SQLite database location |
 | `WORKSPACE_ROOT` | `./workspace` | Build staging directory |
 | `CADDY_ROUTES_DIR` | `./infra/caddy/routes` | Caddy route output |

@@ -5,6 +5,7 @@ import { validateDomain, resolveServerIp } from './dns';
 import { getDb } from '../db/client';
 import { getProjectById, listDomains, updateDomainValidation, listEnvironmentVariablesForDeploy } from '../db/repo';
 import { reloadCaddy } from '../orchestrator/runtime';
+import { leader } from './leader';
 
 const POLL_INTERVAL = 30_000;
 
@@ -44,6 +45,7 @@ const reconcileVerifiedDomains = async () => {
 };
 
 const poll = async () => {
+  if (!leader.isLeader) return;
   try {
     const db = await getDb();
     const rows = db.query(

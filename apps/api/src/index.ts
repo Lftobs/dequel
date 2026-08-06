@@ -15,6 +15,51 @@ import { loadOrCreateJwtSecret } from './utils/secrets';
 import { initAuth, cleanupExpiredTokens } from './utils/auth';
 import { startBuildCleanup } from './orchestrator/cleanup';
 import { startDatabaseMonitoring } from './databases/manager';
+import { leader } from './utils/leader';
+
+let enginesStarted = false;
+let shuttingDown = false;
+let reconciled = false;
+
+const startLeaderEngines = async () => {
+  if (enginesStarted || !leader.isLeader) return;
+  enginesStarted = true;
+  if (!reconciled) {
+    reconciled = true;
+    await orchestrator.reconcileState().catch((error) =>
+      console.error('[API] Reconcile failed', error),
+    );
+  }
+  console.log('[API] Leadership acquired, starting background engines');
+  scalingEngine.start();
+  serverManager.start();
+  startDomainPolling();
+  alertEvaluator.start();
+  startBuildCleanup();
+  startDatabaseMonitoring();
+  setInterval(() => {
+    if (!leader.isLeader) return;
+    cleanupExpiredTokens().catch(() => {});
+  }, 60_000);
+};
+
+const shutdown = async (signal: string) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[API] ${signal} received, draining deployments and releasing leadership`);
+  const force = setTimeout(() => process.exit(1), 180_000);
+  force.unref();
+  await Promise.allSettled([
+    orchestrator.stopWorker(),
+    leader.stop(),
+  ]);
+  console.log('[API] Drained, shutting down');
+  clearTimeout(force);
+  process.exit(0);
+};
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
+
 const bootstrap = async () => {
   await mkdir(dirname(config.databasePath), { recursive: true });
   await mkdir(config.workspaceRoot, { recursive: true });
@@ -24,15 +69,10 @@ const bootstrap = async () => {
   initAuth(jwtSecret);
 
   await migrate();
-  await orchestrator.reconcileState();
+  await leader.start();
+  void startLeaderEngines();
+  setInterval(() => void startLeaderEngines(), 2_000);
   orchestrator.startWorker();
-  scalingEngine.start();
-  serverManager.start();
-  startDomainPolling();
-  alertEvaluator.start();
-  startBuildCleanup();
-  startDatabaseMonitoring();
-  setInterval(() => { cleanupExpiredTokens().catch(() => {}); }, 60_000);
 
   const metrics = {
     requestsTotal: 0,

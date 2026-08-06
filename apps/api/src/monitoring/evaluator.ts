@@ -5,6 +5,7 @@ import { listDeployments, getProjectById } from '../db/repo';
 import { sendNotification } from './notifier';
 import { dockerBin } from '../utils/docker-bin';
 import { run } from '../orchestrator/runtime';
+import { leader } from '../utils/leader';
 
 const NOTIFICATION_KEY = 'dequel:alert:notified';
 const NOTIFICATION_COOLDOWN_MS = 300_000; // 5 min between same alert
@@ -83,6 +84,7 @@ class AlertEvaluator {
   }
 
   private async tick() {
+    if (!leader.isLeader) return;
     try {
       const db = await getDb();
       const alertRows = db.query('SELECT * FROM alerts WHERE enabled = 1').all() as any[];
