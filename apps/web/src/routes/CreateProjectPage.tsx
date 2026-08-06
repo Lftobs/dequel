@@ -256,6 +256,22 @@ export function CreateProjectPage() {
         memoryLimitMb: memoryLimitMb.trim() ? Number(memoryLimitMb) || null : undefined,
       };
 
+      if (buildType === 'compose') {
+        const first = composeServicesList[0];
+        payload.composeService = first.serviceName.trim() || undefined;
+        payload.composePort = first.port.trim() ? Number(first.port) || null : undefined;
+        const mappings = composeServicesList
+          .filter((item) => item.serviceName.trim())
+          .map((item) => ({
+            serviceName: item.serviceName.trim(),
+            port: item.port.trim() ? Number(item.port) || 0 : undefined,
+            subdomain: item.subdomain.trim() || undefined,
+          }));
+        payload.composeServices = mappings.length ? JSON.stringify(mappings) : undefined;
+      }
+
+      project = await createProject.mutateAsync(payload);
+
       if (stagedEnvs.length > 0) {
         setSubmittingStatus('creating_envs');
         await Promise.all(
