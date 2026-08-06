@@ -7,59 +7,62 @@ interface Props {
 }
 
 const {
-  tag = "Private Beta",
-  titleNormal = "Deploy anything.",
-  titleItalic = "Scale everything.",
-  subText = "The self-hosted cloud platform for developers who want Railway-grade deployment workflows on their own infrastructure. Container orchestration, observability, and scaling — all from one dashboard.",
+  tag = "Self-Hosted PaaS Platform • Open Source v1.0",
+  titleNormal = "Deploy your way.",
+  titleItalic = "Own it all.",
+  subText = "Ship apps from Git, ZIP, or Docker Compose in seconds — with automatic SSL, scaling, and monitoring built in, running entirely on servers that are actually yours. Zero lock-in, ever",
 } = Astro.props;
 ---
 
-<section class="dq-hero dq-grid-texture dq-reveal" id="hero">
-  <div class="dq-hero-tag">
-    <span class="dq-hero-tag-dot"></span>
-    {tag}
-  </div>
+<section class="max-w-[1150px] mx-auto px-4 pt-24 pb-12 dq-reveal" id="hero">
+  <div class="cf-hero-card text-center flex flex-col items-center">
+    <!-- Background bottom light glow -->
+    <div class="cf-hero-card-glow"></div>
 
-  <h1 class="dq-hero-title">
-    {titleNormal}<br />
-    <em>{titleItalic}</em>
-  </h1>
+    <!-- Announcement Pill -->
+    <!-- <div class="mb-8 z-10">
+      <a href="#features" class="cf-announcement-pill">
+        <span class="w-2 h-2 rounded-full bg-amber-300 animate-pulse"></span>
+        <span>{tag}</span>
+        <span class="opacity-70 ml-1">→</span>
+      </a>
+    </div> -->
 
-  <p class="dq-hero-sub">
-    {subText}
-  </p>
+    <!-- Main Headline -->
+    <h1 class="text-4xl md:text-6xl font-bold tracking-tight leading-[1.08] max-w-4xl mb-6 z-10 text-white">
+      {titleNormal}<br class="hidden md:inline" />
+      <span class="underline decoration-amber-300/40 underline-offset-8">{titleItalic}</span>
+    </h1>
 
-  <div class="dq-hero-actions">
-    <a href="/docs" class="dq-btn dq-btn--primary">
-      Read the docs <span class="dq-btn-arrow">→</span>
-    </a>
-    <a
-      href="https://github.com/Lftobs/dequel"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="dq-btn dq-btn--outline flex items-center gap-2"
-    >
-      <svg
-        class="dq-btn-icon"
-        viewBox="0 0 16 16"
-        fill="currentColor"
-        width="14"
-        height="14"
-        aria-hidden="true"
-        style="vertical-align: -2px;"
+    <!-- Subtitle -->
+    <p class="text-base md:text-lg text-orange-100/90 max-w-2xl leading-relaxed mb-10 z-10 font-normal">
+      {subText}
+    </p>
+
+    <!-- Pill Action Buttons -->
+    <div class="flex flex-wrap items-center justify-center gap-4 z-10">
+      <a href="/docs/installation" class="cf-pill-btn-white group">
+        <span>Get Started in 1 Command</span>
+        <span class="transition-transform group-hover:translate-x-1">→</span>
+      </a>
+      <a
+        href="https://github.com/Lftobs/dequel"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="cf-pill-btn-glass flex items-center gap-2"
       >
-        <path
-          d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.35 3.12.88.01.47.01.92.01 1.07 0 .21-.15.46-.55.38A8.013 8.013 0 0 1 0 8c0-4.42 3.58-8 8-8z"
-        ></path>
-      </svg>
-      Star on GitHub
-    </a>
-    <a href="#demo" class="dq-btn dq-btn--ghost"> See it in action </a>
-  </div>
-
-  <!-- Decorative thick rule with square punctuation -->
-  <div class="dq-hero-deco">
-    <div class="dq-hero-deco-line"></div>
-    <div class="dq-hero-deco-box"></div>
+        <svg
+          class="w-4 h-4 text-white"
+          viewBox="0 0 16 16"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.35 3.12.88.01.47.01.92.01 1.07 0 .21-.15.46-.55.38A8.013 8.013 0 0 1 0 8c0-4.42 3.58-8 8-8z"
+          ></path>
+        </svg>
+        <span>Star on GitHub</span>
+      </a>
+    </div>
   </div>
 </section>

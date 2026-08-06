@@ -14,7 +14,6 @@ import { ArrowLeft, FolderKanban } from "lucide-react";
 import { DeploymentsTab } from "../components/project/deployments/DeploymentsTab";
 import { EnvVarsTab } from "../components/project/envtab/EnvVarsTab";
 import { VolumesTab } from "../components/project/volumes/VolumesTab";
-import { DatabasesTab } from "../components/project/databases/DatabasesTab";
 import { DomainsTab } from "../components/project/domains/DomainsTab";
 import { ScalingTab } from "../components/project/scaling/ScalingTab";
 import { AlertsTab } from "../components/project/alerts/AlertsTab";
@@ -128,9 +127,6 @@ export function ProjectDetail({
 					<TabsTrigger value="volumes" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Volumes
 					</TabsTrigger>
-					<TabsTrigger value="databases" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
-						Databases
-					</TabsTrigger>
 					<TabsTrigger value="domains" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Domains
 					</TabsTrigger>
@@ -163,11 +159,6 @@ export function ProjectDetail({
 				</TabsContent>
 				<TabsContent value="volumes">
 					<VolumesTab
-						projectId={projectId}
-					/>
-				</TabsContent>
-				<TabsContent value="databases">
-					<DatabasesTab
 						projectId={projectId}
 					/>
 				</TabsContent>

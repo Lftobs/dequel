@@ -61,8 +61,9 @@ export function DomainsTab({
 	const [copiedTarget, setCopiedTarget] =
 		useState(false);
 	const [domain, setDomain] = useState("");
-	const [isAdding, setIsAdding] =
-		useState(false);
+	const [targetService, setTargetService] = useState("");
+	const [targetPort, setTargetPort] = useState("");
+	const [isAdding, setIsAdding] = useState(false);
 
 	const add = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -72,9 +73,14 @@ export function DomainsTab({
 			await api.createDomain(
 				projectId,
 				domain.trim(),
+				"custom",
+				targetService.trim() || undefined,
+				targetPort.trim() ? Number(targetPort) : undefined,
 			);
 			setLastAdded(domain.trim());
 			setDomain("");
+			setTargetService("");
+			setTargetPort("");
 			setIsAddOpen(false);
 			refetch();
 		} finally {
@@ -485,6 +491,34 @@ export function DomainsTab({
 								required
 							/>
 						</div>
+
+						{(project as any)?.buildType === "compose" && (
+							<div className="grid grid-cols-2 gap-3 pt-1">
+								<div className="grid gap-1.5">
+									<label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+										Service Name
+									</label>
+									<Input
+										placeholder="e.g. api or web"
+										value={targetService}
+										onChange={(e) => setTargetService(e.target.value)}
+										className="h-9 bg-[#0d0d11] border-input text-xs font-mono rounded-lg"
+									/>
+								</div>
+								<div className="grid gap-1.5">
+									<label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+										Service Port
+									</label>
+									<Input
+										placeholder="e.g. 8080"
+										type="number"
+										value={targetPort}
+										onChange={(e) => setTargetPort(e.target.value)}
+										className="h-9 bg-[#0d0d11] border-input text-xs font-mono rounded-lg"
+									/>
+								</div>
+							</div>
+						)}
 
 						<div className="flex justify-end gap-2 pt-2 border-t border-border/40">
 							<Button

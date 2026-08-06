@@ -1,4 +1,5 @@
-import { rm } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import {
 	appendLog,
 	deleteDeploymentAndLogs,
@@ -29,6 +30,9 @@ import {
 	tryRun,
 } from "./runtime";
 import { ensureProjectDashboard } from "../utils/grafana";
+import { buildWithCompose, destroyComposeStack } from "./compose";
+import { deployComposeStack } from "./compose-deploy";
+import { summarizeDeploymentError } from "./deployment-errors";
 
 const now = () =>
 	new Date()
@@ -146,22 +150,37 @@ export class PipelineOrchestrator {
 
 		await this.queue.remove(deploymentId);
 
-		if (deployment.containerName) {
-			await tryRun("docker", [
-				"stop",
-				"-t",
-				"5",
-				deployment.containerName,
-			]);
-			await tryRun("docker", [
-				"rm",
-				"-f",
-				deployment.containerName,
-			]);
-		}
+		const project = deployment.projectId
+			? await getProjectById(deployment.projectId)
+			: null;
 
-		if (deployment.imageTag && deployment.sourceType !== "image") {
-			await tryRun("docker", ["rmi", "-f", deployment.imageTag]);
+		if (project?.buildType === "compose") {
+			await destroyComposeStack(
+				`deploy-${deploymentId}`,
+			).catch((e) =>
+				console.warn(
+					`[Pipeline] Compose teardown failed for ${deploymentId}:`,
+					e,
+				),
+			);
+		} else {
+			if (deployment.containerName) {
+				await tryRun("docker", [
+					"stop",
+					"-t",
+					"5",
+					deployment.containerName,
+				]);
+				await tryRun("docker", [
+					"rm",
+					"-f",
+					deployment.containerName,
+				]);
+			}
+
+			if (deployment.imageTag && deployment.sourceType !== "image") {
+				await tryRun("docker", ["rmi", "-f", deployment.imageTag]);
+			}
 		}
 
 		await deleteDeploymentAndLogs(
@@ -389,27 +408,48 @@ export class PipelineOrchestrator {
 					deployment.projectId ||
 					deploymentId;
 			const envVars = deployment.projectId ? await listEnvironmentVariablesForDeploy(deployment.projectId, "production") : [];
-			await buildWithRailpack(
-				workspacePath,
-				imageTag,
-				async (line) => {
-					await emitLog(
-						deploymentId,
-						"build",
-						line,
-					);
-				},
-				{
-					cacheKey,
-					sourceDir: project?.sourceDir,
-					projectType: project?.projectType,
-					buildCommand: project?.buildCommand,
-					startCommand: project?.startCommand,
-					environmentVariables: filterBuildEnvVars(envVars),
-					signal: controller.signal,
-					clearCache: deployment.clearCache
-				},
-			);
+			if (project?.buildType === "compose") {
+				const envMap: Record<string, string> = {};
+				for (const v of envVars) envMap[v.key] = v.value;
+				await buildWithCompose(
+					workspacePath,
+					`deploy-${deploymentId}`,
+					async (line) => {
+						await emitLog(
+							deploymentId,
+							"build",
+							line,
+						);
+					},
+					project?.sourceDir,
+					envMap,
+					controller.signal,
+				);
+			} else {
+				await buildWithRailpack(
+					workspacePath,
+					imageTag,
+					async (line) => {
+						await emitLog(
+							deploymentId,
+							"build",
+							line,
+						);
+					},
+					{
+						cacheKey,
+						sourceDir: project?.sourceDir,
+						projectType: project?.projectType,
+						buildCommand: project?.buildCommand,
+						installCommand: project?.installCommand,
+						outputDir: project?.outputDir,
+						startCommand: project?.startCommand,
+						environmentVariables: filterBuildEnvVars(envVars),
+						signal: controller.signal,
+						clearCache: deployment.clearCache
+					},
+				);
+			}
 			} else {
 				await emitLog(
 					deploymentId,
@@ -483,6 +523,9 @@ export class PipelineOrchestrator {
 			let oldContainerName:
 				| string
 				| undefined;
+			let oldDeploymentId:
+				| string
+				| undefined;
 			if (deployment.projectId) {
 				const all = await listDeployments(
 					deployment.projectId,
@@ -497,6 +540,7 @@ export class PipelineOrchestrator {
 				if (prev?.containerName) {
 					oldContainerName =
 						prev.containerName;
+					oldDeploymentId = prev.id;
 					await emitLog(
 						deploymentId,
 						"deploy",
@@ -527,29 +571,55 @@ export class PipelineOrchestrator {
 				appPort = project.port;
 			}
 
-			const runtime = await deployContainer(
-				deploymentId,
-				imageTag,
-				async (line) => {
-					await emitLog(
-						deploymentId,
-						"deploy",
-						line,
-					);
-				},
-				{
-					projectId:
-						deployment.projectId ||
-						undefined,
-					projectName,
-					oldContainerName,
+			let runtimeContainerName = "";
+			let runtimeLiveUrl = "";
+
+			if (project?.buildType === "compose") {
+				const composeRuntime = await deployComposeStack({
+					workspacePath,
+					deploymentId,
+					projectId: project.id,
+					projectName: project.name,
+					sourceDir: project.sourceDir,
+					composeService: project.composeService,
+					composePort: project.composePort,
+					composeServicesJson: (project as any).composeServices,
+					oldDeploymentId,
 					envVars,
-					volumes,
-					cpuLimit,
-					memoryLimitMb,
-					appPort: appPort ?? undefined,
-				},
-			);
+					signal: controller.signal,
+					onLog: async (line) => {
+						await emitLog(deploymentId, "deploy", line);
+					},
+				});
+				runtimeContainerName = composeRuntime.containerName;
+				runtimeLiveUrl = composeRuntime.liveUrl;
+			} else {
+				const runtime = await deployContainer(
+					deploymentId,
+					imageTag,
+					async (line) => {
+						await emitLog(
+							deploymentId,
+							"deploy",
+							line,
+						);
+					},
+					{
+						projectId:
+							deployment.projectId ||
+							undefined,
+						projectName,
+						oldContainerName,
+						envVars,
+						volumes,
+						cpuLimit,
+						memoryLimitMb,
+						appPort: appPort ?? undefined,
+					},
+				);
+				runtimeContainerName = runtime.containerName;
+				runtimeLiveUrl = runtime.liveUrl;
+			}
 
 			deployed = true;
 
@@ -558,9 +628,8 @@ export class PipelineOrchestrator {
 				"running",
 				{
 					imageTag,
-					containerName:
-						runtime.containerName,
-					liveUrl: runtime.liveUrl,
+					containerName: runtimeContainerName,
+					liveUrl: runtimeLiveUrl,
 					failureReason: null,
 				},
 			);
@@ -624,10 +693,7 @@ export class PipelineOrchestrator {
 			if (error instanceof CancelledError) {
 				return true;
 			}
-			const message =
-				error instanceof Error
-					? error.message
-					: "Unknown deployment failure";
+			const message = summarizeDeploymentError(error);
 			console.error(
 				`[Orchestrator] Deployment ${deploymentId} failed:`,
 				error,
@@ -635,7 +701,7 @@ export class PipelineOrchestrator {
 			await emitLog(
 				deploymentId,
 				"system",
-				`CRITICAL FAILURE: ${message}`,
+				`Deployment failed: ${message}`,
 			);
 			await updateDeploymentStatus(
 				deploymentId,
@@ -649,14 +715,22 @@ export class PipelineOrchestrator {
 					"system",
 					"Cleaning up Docker resources from failed deployment",
 				);
-				await cleanupFailedDeployment(
-					deploymentId,
-					deployment.sourceType === "image" ? undefined : imageTag,
-					projectName,
-					deployment.projectId,
-				).catch(e =>
-					console.warn(`[Cleanup] Failed to clean deployment ${deploymentId}:`, e),
-				);
+				if (project?.buildType === "compose") {
+					await destroyComposeStack(
+						`deploy-${deploymentId}`,
+					).catch((e) =>
+						console.warn(`[Cleanup] Failed to tear down compose stack for ${deploymentId}:`, e),
+					);
+				} else {
+					await cleanupFailedDeployment(
+						deploymentId,
+						deployment.sourceType === "image" ? undefined : imageTag,
+						projectName,
+						deployment.projectId,
+					).catch(e =>
+						console.warn(`[Cleanup] Failed to clean deployment ${deploymentId}:`, e),
+					);
+				}
 			}
 
 			if (deployment.projectId) {
@@ -723,6 +797,11 @@ export class PipelineOrchestrator {
 		const proj = await getProjectById(
 			target.projectId,
 		);
+		if (proj?.buildType === "compose") {
+			throw new Error(
+				"Rollback is not supported for Docker Compose deployments",
+			);
+		}
 		const slug = proj
 			? this.slugify(proj.name)
 			: target.id;
@@ -857,10 +936,7 @@ export class PipelineOrchestrator {
 				"Rollback complete — deployment is running",
 			);
 		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: "Unknown rollback failure";
+			const message = summarizeDeploymentError(error);
 			console.error(
 				`[Orchestrator] Rollback of ${targetDeploymentId} failed:`,
 				error,
@@ -868,7 +944,7 @@ export class PipelineOrchestrator {
 			await emitLog(
 				targetDeploymentId,
 				"system",
-				`CRITICAL FAILURE: ${message}`,
+				`Rollback failed: ${message}`,
 			);
 			await updateDeploymentStatus(
 				targetDeploymentId,

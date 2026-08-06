@@ -85,6 +85,23 @@ export const rewriteLocalhostBinding = async (
 	}
 };
 
+const fixPnpmWorkspaceIfNeeded = async (workspacePath: string, onLog: (line: string) => Promise<void>) => {
+	try {
+		const workspaceFilePath = join(workspacePath, "pnpm-workspace.yaml");
+		const file = Bun.file(workspaceFilePath);
+		if (await file.exists()) {
+			const content = await file.text();
+			if (!content.includes("packages:")) {
+				await onLog("Auto-repairing invalid pnpm-workspace.yaml (missing packages entry)...");
+				const updated = `${content.trim()}\n\npackages:\n  - '.'\n`;
+				await Bun.write(workspaceFilePath, updated);
+			}
+		}
+	} catch {
+		// Ignore workspace repair errors
+	}
+};
+
 export const generateDynamicRailpackJson = async (
 	workspace: string,
 	sourceDir: string | null,
@@ -92,9 +109,14 @@ export const generateDynamicRailpackJson = async (
 	buildCommandOverride: string | null,
 	startCommandOverride: string | null,
 	onLog: (line: string) => Promise<void>,
+	installCommandOverride?: string | null,
+	outputDirOverride?: string | null,
 ): Promise<void> => {
 	const cleanSourceDir = sourceDir
 		? sourceDir.replace(/^\//, "")
+		: "";
+	const cleanOutputDir = outputDirOverride
+		? outputDirOverride.replace(/^\//, "")
 		: "";
 	const buildDir = cleanSourceDir
 		? join(workspace, cleanSourceDir)
@@ -103,6 +125,7 @@ export const generateDynamicRailpackJson = async (
 		buildDir,
 		onLog,
 	);
+	await fixPnpmWorkspaceIfNeeded(workspace, onLog);
 	const configPath = join(
 		workspace,
 		"railpack.json",
@@ -117,9 +140,18 @@ export const generateDynamicRailpackJson = async (
 
 	let configured = false;
 
-	// 1. Check if user provided manual build / start command overrides
-	if (buildCommandOverride || startCommandOverride) {
-		await onLog("Applying custom build/start settings");
+	// 1. Check if user provided manual build / start / install command overrides
+	if (buildCommandOverride || startCommandOverride || installCommandOverride) {
+		await onLog("Applying custom build/start/install settings");
+		if (installCommandOverride) {
+			config.steps.install = {
+				commands: [
+					cleanSourceDir
+						? `cd ${cleanSourceDir} && ${installCommandOverride}`
+						: installCommandOverride,
+				],
+			};
+		}
 		if (buildCommandOverride) {
 			config.steps.build = {
 				commands: [
@@ -237,15 +269,21 @@ const fs = require("fs");
 const path = require("path");
 const PORT = Number(process.env.PORT || 3000);
 const cleanSourceDir = "${cleanSourceDir}";
+const cleanOutputDir = "${cleanOutputDir}";
 let staticDir = ".";
 const candidates = [
+  ...(cleanOutputDir ? [path.join(cleanSourceDir, cleanOutputDir), cleanOutputDir] : []),
   path.join(cleanSourceDir, "dist"),
   path.join(cleanSourceDir, "build"),
   path.join(cleanSourceDir, "out"),
+  path.join(cleanSourceDir, ".next/server/app"),
+  path.join(cleanSourceDir, ".next/server/pages"),
   path.join(cleanSourceDir, "public"),
   "dist",
   "build",
   "out",
+  ".next/server/app",
+  ".next/server/pages",
   "public",
   "."
 ];

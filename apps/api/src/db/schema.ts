@@ -22,7 +22,13 @@ export const projects = sqliteTable("projects", {
   sourceDir: text("source_dir"),
   sourceType: text("source_type").default("git").notNull(),
   projectType: text("project_type").default("web").notNull(),
+  buildType: text("build_type").default("railpack").notNull(),
+  composeService: text("compose_service"),
+  composePort: integer("compose_port"),
+  composeServices: text("compose_services"),
   buildCommand: text("build_command"),
+  installCommand: text("install_command"),
+  outputDir: text("output_dir"),
   startCommand: text("start_command"),
   githubTokenEncrypted: text("github_token_encrypted"),
   githubTokenIv: text("github_token_iv"),
@@ -93,7 +99,8 @@ export const volumes = sqliteTable("volumes", {
 
 export const databases = sqliteTable("databases", {
   id: text().primaryKey(),
-  projectId: text("project_id").notNull(),
+  projectId: text("project_id"),
+  name: text().notNull(),
   type: text().notNull(),
   version: text(),
   databaseName: text("database_name").notNull(),
@@ -103,13 +110,21 @@ export const databases = sqliteTable("databases", {
   internalPort: integer("internal_port").notNull(),
   cpuLimit: real("cpu_limit"),
   memoryLimitMb: integer("memory_limit_mb"),
+  storageLimitMb: integer("storage_limit_mb"),
+  storageUsedMb: integer("storage_used_mb").notNull().default(0),
+  publicAccess: integer("public_access").notNull().default(1),
+  allowPublicAccessFromAnywhere: integer("allow_public_access_from_anywhere").notNull().default(0),
+  allowedCidrs: text("allowed_cidrs").notNull().default("[]"),
+  externalPort: integer("external_port"),
+  proxyContainerName: text("proxy_container_name"),
+  volumeName: text("volume_name").notNull(),
   connectionString: text("connection_string").notNull(),
   status: text().notNull().default("provisioning"),
   containerName: text("container_name"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (table) => [
-  foreignKey({ columns: [table.projectId], foreignColumns: [projects.id], onDelete: "cascade" }),
+  foreignKey({ columns: [table.projectId], foreignColumns: [projects.id], onDelete: "set null" }),
 ]);
 
 export const domains = sqliteTable("domains", {
@@ -119,6 +134,8 @@ export const domains = sqliteTable("domains", {
   type: text().notNull().default("custom"),
   validationStatus: text("validation_status").notNull().default("pending"),
   sslStatus: text("ssl_status").notNull().default("pending"),
+  targetService: text("target_service"),
+  targetPort: integer("target_port"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (table) => [

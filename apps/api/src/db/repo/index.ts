@@ -20,7 +20,7 @@ export { createVolume, listVolumes, getVolumeById, deleteVolume } from "./volume
 
 export {
   createDatabase, listAllDatabases, listDatabases, getDatabaseById,
-  updateDatabaseStatus, deleteDatabase,
+  updateDatabaseStatus, updateDatabaseRuntime, deleteDatabase,
 } from "./databases";
 
 export {

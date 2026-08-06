@@ -36,7 +36,7 @@
     --dq-text: #e2e2e8;
     --dq-text-muted: #7f7f8a;
     --dq-text-faint: #4b4b54;
-    
+
     /* Brand Color Mix (Orange base + Amber + Pink) */
     --dq-orange: #ea580c;
     --dq-amber: #f59e0b;
@@ -65,14 +65,16 @@
     color: var(--dq-orange);
   }
 
-  * {
-    border-radius: 0px !important;
+  ::selection {
+    background: rgba(234, 88, 12, 0.35);
+    color: #ffffff;
   }
 
-  ::selection {
-    background: rgba(234, 88, 12, 0.25);
-    color: var(--dq-orange);
+  .cf-compare-card--orange ::selection {
+    background: #ffffff;
+    color: #ea580c;
   }
+
 
   /* Prose adjustments for Docs consistency */
   .prose h1 {
@@ -848,4 +850,155 @@
   .dq-nav-links { display: none; }
   .dq-footer-inner { flex-direction: column; gap: 1rem; text-align: center; }
   .dq-hero-deco { display: none; }
+}
+/* Signature Cloudflare Hero Card */
+.cf-hero-card {
+  position: relative;
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 40%, #c2410c 100%);
+  color: #ffffff;
+  padding: 4.5rem 2.5rem 5.5rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(234, 88, 12, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.cf-hero-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.cf-hero-card-glow {
+  position: absolute;
+  bottom: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 75%;
+  height: 180px;
+  background: radial-gradient(ellipse at center, rgba(254, 240, 138, 0.45) 0%, rgba(245, 158, 11, 0) 70%);
+  pointer-events: none;
+  filter: blur(20px);
+}
+
+/* Cloudflare Pill Buttons */
+.cf-pill-btn-white {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ffffff;
+  color: #0f172a;
+  font-family: 'Play', sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.75rem 1.75rem;
+  border-radius: 9999px;
+  text-decoration: none;
+  transition: all 150ms ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid transparent;
+}
+.cf-pill-btn-white:hover {
+  background: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.cf-pill-btn-glass {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-family: 'Play', sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.75rem 1.75rem;
+  border-radius: 9999px;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 150ms ease;
+}
+.cf-pill-btn-glass:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.cf-announcement-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 9999px;
+  padding: 0.4rem 1.1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(10px);
+  transition: all 150ms ease;
+}
+.cf-announcement-pill:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Cloudflare Capability Tab Navigation */
+.cf-tab-bar {
+  display: inline-flex;
+  background: #111114;
+  border: 1px solid #222228;
+  padding: 0.35rem;
+  border-radius: 9999px;
+  gap: 0.35rem;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.cf-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.4rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #7f7f8a;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 150ms ease;
+}
+.cf-tab-btn:hover {
+  color: #e2e2e8;
+}
+.cf-tab-btn.active {
+  background: #ea580c;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+}
+
+/* Split Comparison Card */
+.cf-compare-card {
+  border-radius: 1.25rem;
+  padding: 2.25rem;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.cf-compare-card--dark {
+  background: #111114;
+  border: 1px solid #222228;
+}
+.cf-compare-card--orange {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 20px 40px -15px rgba(234, 88, 12, 0.3);
 }

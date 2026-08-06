@@ -14,7 +14,7 @@ import { cn } from "../../../lib/utils";
 import { Plus } from "lucide-react";
 import * as api from "../../../api/client";
 import { getGithubIntegration } from "../../../api/client";
-import type { GithubRepo } from "../../../types";
+import type { GithubRepo, DatabaseType } from "../../../types";
 
 import { StepBasics } from "./StepBasics";
 import { StepEnvironment } from "./StepEnvironment";
@@ -70,11 +70,9 @@ export function CreateProjectDialog({
 	const [port, setPort] = useState("");
 	const [sourceDir, setSourceDir] =
 		useState("");
-	const [provisionDb, setProvisionDb] =
-		useState(false);
-	const [dbType, setDbType] = useState<
-		"postgresql" | "mysql"
-	>("postgresql");
+	const provisionDb = false;
+	const setProvisionDb = (_value: boolean) => {};
+	const [dbType, setDbType] = useState<DatabaseType>("postgresql");
 	const [dbVersion, setDbVersion] =
 		useState("");
 	const [dbCpu, setDbCpu] = useState("");
@@ -179,15 +177,6 @@ export function CreateProjectDialog({
 					projectType,
 				});
 
-			if (zipFile && sourceType === "upload") {
-				setSubmittingStatus("creating_project");
-				const form = new FormData();
-				form.append("sourceType", "upload");
-				form.append("projectId", project.id);
-				form.append("archive", zipFile);
-				await api.createDeployment(form);
-			}
-
 			if (stagedEnvs.length > 0) {
 				setSubmittingStatus(
 					"creating_envs",
@@ -208,26 +197,13 @@ export function CreateProjectDialog({
 				);
 			}
 
-			if (provisionDb) {
-				setSubmittingStatus(
-					"creating_db",
-				);
-				await api.createDatabase(
-					project.id,
-					dbType,
-					{
-						version:
-							dbVersion.trim() ||
-							undefined,
-						cpuLimit: dbCpu.trim()
-							? Number(dbCpu)
-							: null,
-						memoryLimitMb:
-							dbMemory.trim()
-								? Number(dbMemory)
-								: null,
-					},
-				);
+			if (zipFile && sourceType === "upload") {
+				setSubmittingStatus("creating_project");
+				const form = new FormData();
+				form.append("sourceType", "upload");
+				form.append("projectId", project.id);
+				form.append("archive", zipFile);
+				await api.createDeployment(form);
 			}
 
 			setSubmittingStatus("done");

@@ -14,6 +14,7 @@ import { alertEvaluator } from './monitoring/evaluator';
 import { loadOrCreateJwtSecret } from './utils/secrets';
 import { initAuth, cleanupExpiredTokens } from './utils/auth';
 import { startBuildCleanup } from './orchestrator/cleanup';
+import { startDatabaseMonitoring } from './databases/manager';
 const bootstrap = async () => {
   await mkdir(dirname(config.databasePath), { recursive: true });
   await mkdir(config.workspaceRoot, { recursive: true });
@@ -30,6 +31,7 @@ const bootstrap = async () => {
   startDomainPolling();
   alertEvaluator.start();
   startBuildCleanup();
+  startDatabaseMonitoring();
   setInterval(() => { cleanupExpiredTokens().catch(() => {}); }, 60_000);
 
   const metrics = {

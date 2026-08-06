@@ -4,6 +4,8 @@ import { Dashboard } from './Dashboard';
 import { Login } from './Login';
 import { Settings } from './Settings';
 import { ProjectDetail } from './ProjectDetail';
+import { CreateProjectPage } from './CreateProjectPage';
+import { Databases } from './Databases';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -31,6 +33,18 @@ const settingsRoute = createRoute({
   component: Settings,
 });
 
+const createProjectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/projects/new',
+  component: CreateProjectPage,
+});
+
+const databasesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/databases',
+  component: Databases,
+});
+
 const ProjectPage = () => {
   const { projectId } = projectRoute.useParams();
   return <ProjectDetail projectId={projectId} />;
@@ -45,7 +59,7 @@ const projectRoute = createRoute({
   }),
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute, settingsRoute, projectRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, loginRoute, settingsRoute, databasesRoute, projectRoute, createProjectRoute]);
 
 export const router = createRouter({ routeTree });
 

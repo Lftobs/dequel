@@ -14,7 +14,8 @@
     "drizzle-orm": "^0.45.2",
     "elysia": "^1.1.26",
     "ioredis": "^5.4.1",
-    "nodemailer": "^8.0.10"
+    "nodemailer": "^8.0.10",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/nodemailer": "^8.0.0",

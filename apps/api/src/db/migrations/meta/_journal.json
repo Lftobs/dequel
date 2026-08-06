@@ -29,6 +29,41 @@
       "when": 1784681960309,
       "tag": "0003_aberrant_viper",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1785247979558,
+      "tag": "0004_early_sunfire",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1785254008342,
+      "tag": "0005_famous_grandmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1785409331053,
+      "tag": "0006_cheerful_vance_astro",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1785596400000,
+      "tag": "0007_standalone_databases",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1785816991600,
+      "tag": "0008_closed_whirlwind",
+      "breakpoints": true
     }
   ]
 }

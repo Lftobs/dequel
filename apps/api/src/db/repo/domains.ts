@@ -12,6 +12,8 @@ const mapDomain = (row: typeof domains.$inferSelect): Domain => ({
   type: row.type as Domain["type"],
   validationStatus: row.validationStatus as DomainValidationStatus,
   sslStatus: row.sslStatus as SslStatus,
+  targetService: row.targetService ?? null,
+  targetPort: row.targetPort ?? null,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 });
@@ -27,6 +29,8 @@ export const createDomain = async (input: CreateDomainInput): Promise<Domain> =>
     type: input.type,
     validationStatus: "pending",
     sslStatus: "pending",
+    targetService: input.targetService ?? null,
+    targetPort: input.targetPort ?? null,
     createdAt: timestamp,
     updatedAt: timestamp,
   }).run();

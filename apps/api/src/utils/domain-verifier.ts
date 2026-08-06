@@ -119,21 +119,35 @@ export const buildCaddySnippet = async (
   appPort?: number,
 ): Promise<string> => {
   const baseDomain = config.caddyBaseDomain === 'localhost' ? `${config.caddyBaseDomain}:80` : config.caddyBaseDomain;
-  let domains = [`${slug}.${baseDomain}`];
+  let defaultDomains = [`${slug}.${baseDomain}`];
   let port = appPort ?? config.appInternalPort;
+  const customBlocks: string[] = [];
 
   if (projectId) {
     const projectDomains = await listDomainsFn(projectId);
     const verified = projectDomains.filter(d => d.validationStatus === 'verified');
     for (const d of verified) {
       const withPort = `${d.domain}:80`;
-      if (!domains.includes(withPort)) domains.push(withPort);
+      if (d.targetService || d.targetPort) {
+        let targetContainer = containerName;
+        if (d.targetService) {
+          const parts = containerName.split('-');
+          if (parts.length >= 3) {
+            parts[parts.length - 2] = d.targetService;
+            targetContainer = parts.join('-');
+          }
+        }
+        const tPort = d.targetPort || port;
+        customBlocks.push(`${withPort} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${targetContainer}:${tPort} {\n    header_up Host {upstream_hostport}\n  }\n}\n`);
+      } else {
+        if (!defaultDomains.includes(withPort)) defaultDomains.push(withPort);
+      }
     }
 
     try {
       const envVars = await listEnvironmentVariablesForDeploy(projectId);
       const portVar = envVars.find(v => v.key === 'PORT');
-      if (portVar && portVar.value) {
+      if (portVar && portVar.value && !appPort) {
         const parsedPort = Number(portVar.value);
         if (!isNaN(parsedPort) && parsedPort > 0) {
           port = parsedPort;
@@ -144,5 +158,7 @@ export const buildCaddySnippet = async (
     }
   }
 
-  return `${domains.join(', ')} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${containerName}:${port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+  const primaryBlock = `${defaultDomains.join(', ')} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${containerName}:${port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+
+  return [primaryBlock, ...customBlocks].join('\n');
 };

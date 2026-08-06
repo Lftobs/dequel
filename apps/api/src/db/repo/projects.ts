@@ -29,7 +29,13 @@ const mapProject = (row: typeof projects.$inferSelect): Project => ({
   sourceDir: row.sourceDir ?? null,
   sourceType: row.sourceType,
   projectType: row.projectType,
+  buildType: row.buildType,
+  composeService: row.composeService ?? null,
+  composePort: row.composePort ?? null,
+  composeServices: row.composeServices ?? null,
   buildCommand: row.buildCommand ?? null,
+  installCommand: row.installCommand ?? null,
+  outputDir: row.outputDir ?? null,
   startCommand: row.startCommand ?? null,
   githubTokenEncrypted: row.githubTokenEncrypted ?? null,
   githubTokenIv: row.githubTokenIv ?? null,
@@ -55,7 +61,13 @@ export const createProject = async (input: CreateProjectInput): Promise<Project>
     sourceDir: input.sourceDir ?? null,
     sourceType: input.sourceType ?? "git",
     projectType: input.projectType ?? "web",
+    buildType: input.buildType ?? "railpack",
+    composeService: input.composeService ?? null,
+    composePort: input.composePort ?? null,
+    composeServices: input.composeServices ?? null,
     buildCommand: input.buildCommand ?? null,
+    installCommand: input.installCommand ?? null,
+    outputDir: input.outputDir ?? null,
     startCommand: input.startCommand ?? null,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -95,7 +107,13 @@ export const updateProject = async (id: string, patch: Partial<CreateProjectInpu
   if (patch.port !== undefined) updates.port = patch.port;
   if (patch.sourceDir !== undefined) updates.sourceDir = patch.sourceDir;
   if (patch.projectType !== undefined) updates.projectType = patch.projectType;
+  if (patch.buildType !== undefined) updates.buildType = patch.buildType;
+  if (patch.composeService !== undefined) updates.composeService = patch.composeService;
+  if (patch.composePort !== undefined) updates.composePort = patch.composePort;
+  if (patch.composeServices !== undefined) updates.composeServices = patch.composeServices;
   if (patch.buildCommand !== undefined) updates.buildCommand = patch.buildCommand;
+  if (patch.installCommand !== undefined) updates.installCommand = patch.installCommand;
+  if (patch.outputDir !== undefined) updates.outputDir = patch.outputDir;
   if (patch.startCommand !== undefined) updates.startCommand = patch.startCommand;
   db.update(projects).set(updates).where(eq(projects.id, id)).run();
   return getProjectById(id);
@@ -133,11 +151,11 @@ export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupIn
   const volumeDockerNames = volRows.filter(v => v.dockerVolumeName).map(v => v.dockerVolumeName!);
   db.delete(volumes).where(eq(volumes.projectId, id)).run();
 
-  const dbRows = db.select({ containerName: databases.containerName, id: databases.id })
+  const dbRows = db.select({ containerName: databases.containerName, volumeName: databases.volumeName })
     .from(databases).where(eq(databases.projectId, id)).all();
-  const databaseContainerNames = dbRows.filter(d => d.containerName).map(d => d.containerName!);
-  const databaseVolumeNames = dbRows.map(d => `db-${d.id.slice(0, 12)}`);
-  db.delete(databases).where(eq(databases.projectId, id)).run();
+  const databaseContainerNames: string[] = [];
+  const databaseVolumeNames: string[] = [];
+  db.update(databases).set({ projectId: null, updatedAt: now() }).where(eq(databases.projectId, id)).run();
 
   const domainRows = db.select({ domain: domains.domain }).from(domains).where(eq(domains.projectId, id)).all();
   const domainInfo = domainRows.map(d => ({ domain: d.domain, projectName: project.name ?? id }));

@@ -261,6 +261,8 @@ export const deleteVolume = (id: string) =>
 	});
 
 // Databases
+export const listAllDatabases = () =>
+	apiFetch<Database[]>("/databases");
 export const listDatabases = (
 	projectId: string,
 ) =>
@@ -268,19 +270,24 @@ export const listDatabases = (
 		`/projects/${projectId}/databases`,
 	);
 export const createDatabase = (
-	projectId: string,
+	projectId: string | null,
 	type: string,
 	options?: {
+		name?: string;
 		version?: string;
 		cpuLimit?: number | null;
 		memoryLimitMb?: number | null;
+		storageLimitMb?: number | null;
+		publicAccess?: boolean;
+		allowPublicAccessFromAnywhere?: boolean;
+		allowedCidrs?: string[];
 	},
 ) =>
 	apiFetch<Database>(
-		`/projects/${projectId}/databases`,
+		projectId ? `/projects/${projectId}/databases` : "/databases",
 		{
 			method: "POST",
-			body: JSON.stringify({ type, ...options }),
+			body: JSON.stringify({ type, projectId, ...options }),
 		},
 	);
 export const getDatabase = (id: string) =>
@@ -290,6 +297,23 @@ export const deleteDatabase = (id: string) =>
 		`/databases/${id}`,
 		{ method: "DELETE" },
 	);
+export const getDatabaseCredentials = (id: string) =>
+	apiFetch<{
+		username: string;
+		password: string;
+		internalConnectionString: string;
+		externalConnectionString: string | null;
+		externalHost: string | null;
+		externalPort: number | null;
+	}>(`/databases/${id}/credentials`);
+export const startDatabase = (id: string) =>
+	apiFetch<Database>(`/databases/${id}/start`, { method: "POST" });
+export const stopDatabase = (id: string) =>
+	apiFetch<Database>(`/databases/${id}/stop`, { method: "POST" });
+export const restartDatabase = (id: string) =>
+	apiFetch<Database>(`/databases/${id}/restart`, { method: "POST" });
+export const retryDatabase = (id: string) =>
+	apiFetch<Database>(`/databases/${id}/retry`, { method: "POST" });
 
 // Domains
 export const listDomains = (projectId: string) =>
@@ -300,6 +324,8 @@ export const createDomain = (
 	projectId: string,
 	domain: string,
 	type?: string,
+	targetService?: string,
+	targetPort?: number,
 ) =>
 	apiFetch<Domain>(
 		`/projects/${projectId}/domains`,
@@ -308,6 +334,8 @@ export const createDomain = (
 			body: JSON.stringify({
 				domain,
 				type,
+				targetService,
+				targetPort,
 			}),
 		},
 	);
@@ -361,8 +389,16 @@ export const logout = () =>
 export const refreshSession = () =>
 	apiFetch<{ ok: boolean; username: string }>("/auth/refresh", { method: "POST" });
 
-export const getMe = () =>
-	apiFetch<{ authenticated: boolean; username?: string }>("/auth/me");
+export const getMe = async () => {
+	const res = await apiFetch<{ authenticated: boolean; username?: string }>("/auth/me");
+	if (!res.authenticated) {
+		const refreshed = await apiFetch<{ ok: boolean }>("/auth/refresh", { method: "POST" }).catch(() => ({ ok: false }));
+		if (refreshed.ok) {
+			return apiFetch<{ authenticated: boolean; username?: string }>("/auth/me");
+		}
+	}
+	return res;
+};
 
 // Prometheus
 export const queryPrometheus = (query: string) =>

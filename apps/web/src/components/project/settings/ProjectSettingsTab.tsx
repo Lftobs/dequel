@@ -3,7 +3,7 @@ import { useProject, useUpdateProject } from "../../../hooks/useProjects";
 import { Card, CardContent } from "../../ui/card";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
-import { Box, Globe, Save, CheckCircle } from "lucide-react";
+import { Box, Globe, Save, CheckCircle, Plus, Trash2 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 
 interface ProjectSettingsTabProps {
@@ -15,6 +15,9 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 	const updateProjectMutation = useUpdateProject();
 
 	const [projectType, setProjectType] = useState("web");
+	const [buildType, setBuildType] = useState("railpack");
+	const [composeService, setComposeService] = useState("");
+	const [composePort, setComposePort] = useState("");
 	const [sourceDir, setSourceDir] = useState("");
 	const [buildCommand, setBuildCommand] = useState("");
 	const [startCommand, setStartCommand] = useState("");
@@ -23,29 +26,85 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 
 	const [saveSuccess, setSaveSuccess] = useState(false);
 
+	const [composeServicesList, setComposeServicesList] = useState<{ id: string; serviceName: string; port: string; subdomain: string }[]>([
+		{ id: '1', serviceName: '', port: '', subdomain: '' }
+	]);
+
 	useEffect(() => {
 		if (project) {
 			setProjectType(project.projectType || "web");
+			setBuildType((project as any).buildType || "railpack");
+			const svc = (project as any).composeService || "";
+			const prt = (project as any).composePort ? String((project as any).composePort) : "";
+			setComposeService(svc);
+			setComposePort(prt);
 			setSourceDir(project.sourceDir || "");
 			setBuildCommand(project.buildCommand || "");
 			setStartCommand(project.startCommand || "");
 			setPort(project.port ? String(project.port) : "");
 			setDescription(project.description || "");
+
+			const rawServices = (project as any).composeServices;
+			if (rawServices) {
+				try {
+					const parsed = typeof rawServices === 'string' ? JSON.parse(rawServices) : rawServices;
+					if (Array.isArray(parsed) && parsed.length > 0) {
+						setComposeServicesList(parsed);
+					} else {
+						setComposeServicesList([{ id: '1', serviceName: svc, port: prt, subdomain: '' }]);
+					}
+				} catch (e) {
+					setComposeServicesList([{ id: '1', serviceName: svc, port: prt, subdomain: '' }]);
+				}
+			} else {
+				setComposeServicesList([{ id: '1', serviceName: svc, port: prt, subdomain: '' }]);
+			}
 		}
-	}, [project]);
+	}, [project, projectId]);
+
+	const addComposeServiceRow = () => {
+		setComposeServicesList((prev) => [
+			...prev,
+			{ id: String(Date.now()), serviceName: '', port: '', subdomain: '' }
+		]);
+	};
+
+	const removeComposeServiceRow = (id: string) => {
+		if (composeServicesList.length <= 1) return;
+		setComposeServicesList((prev) => prev.filter((item) => item.id !== id));
+	};
+
+	const updateComposeServiceRow = (id: string, field: 'serviceName' | 'port' | 'subdomain', value: string) => {
+		setComposeServicesList((prev) =>
+			prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+		);
+	};
 
 	const handleSave = async (e: React.FormEvent) => {
 		e.preventDefault();
 		try {
-			await updateProjectMutation.mutateAsync({
+			const primarySvc = composeServicesList[0];
+			const finalSvc = primarySvc?.serviceName.trim() || composeService.trim() || null;
+			const finalPrt = primarySvc?.port.trim() ? Number(primarySvc.port) || null : composePort.trim() ? Number(composePort) || null : null;
+
+			const payload: any = {
 				id: projectId,
 				projectType,
+				buildType,
 				sourceDir: sourceDir.trim() || null,
 				buildCommand: buildCommand.trim() || null,
 				startCommand: startCommand.trim() || null,
 				port: port.trim() ? Number(port) || null : null,
 				description: description.trim() || null,
-			} as any);
+			};
+
+			if (buildType === "compose") {
+				payload.composeService = finalSvc;
+				payload.composePort = finalPrt;
+				payload.composeServices = JSON.stringify(composeServicesList);
+			}
+
+			await updateProjectMutation.mutateAsync(payload);
 
 			setSaveSuccess(true);
 			setTimeout(() => setSaveSuccess(false), 3000);
@@ -78,7 +137,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								<Button
 									type="submit"
 									disabled={updateProjectMutation.isPending}
-									className="bg-amber-500 hover:bg-amber-600 disabled:bg-amber-500/50 text-black font-semibold text-xs h-9 px-4 rounded-lg flex items-center gap-1.5 transition-all shadow-md active:scale-95"
+									className="bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/50 text-white font-semibold text-xs h-9 px-4 rounded-lg flex items-center gap-1.5 transition-all shadow-md active:scale-95"
 								>
 									<Save className="h-3.5 w-3.5" />
 									{updateProjectMutation.isPending ? "Saving..." : "Save Settings"}
@@ -86,50 +145,140 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 							</div>
 						</div>
 
-						{/* Project Type */}
+						{/* Build Strategy */}
 						<div className="space-y-2.5">
 							<label className="font-semibold text-xs text-zinc-400">
-								Project Type
+								Build Strategy
 							</label>
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 								<button
 									type="button"
-									onClick={() => setProjectType("web")}
+									onClick={() => setBuildType("railpack")}
 									className={cn(
 										"flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all select-none active:scale-[0.98]",
-										projectType === "web"
-											? "border-amber-500/30 bg-amber-500/5 text-zinc-200"
+										buildType === "railpack"
+											? "border-orange-500/30 bg-orange-500/5 text-zinc-200"
 											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
 									)}
 								>
 									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-250">
-										<Box className="h-4 w-4 text-amber-500" />
-										Web Application
+										<Box className="h-4 w-4 text-orange-500" />
+										Railpack Auto-Detection
 									</div>
 									<span className="text-[10px] text-zinc-500 leading-relaxed">
-										Build and launch standard persistent backend engines or databases (Node.js, Rust, Go, Python, APIs).
+										Build and launch single container app (Node.js, Go, Python, Rust, Astro, etc.).
 									</span>
 								</button>
 								<button
 									type="button"
-									onClick={() => setProjectType("static")}
+									onClick={() => setBuildType("compose")}
 									className={cn(
 										"flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all select-none active:scale-[0.98]",
-										projectType === "static"
-											? "border-amber-500/30 bg-amber-500/5 text-zinc-200"
+										buildType === "compose"
+											? "border-orange-500/30 bg-orange-500/5 text-zinc-200"
 											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
 									)}
 								>
 									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-250">
-										<Globe className="h-4 w-4 text-amber-500" />
-										Static Site
+										<Globe className="h-4 w-4 text-orange-500" />
+										Docker Compose Stack
 									</div>
 									<span className="text-[10px] text-zinc-500 leading-relaxed">
-										Generate static client bundles (Vite, Astro, Vue) served automatically by Dequel's SPA static web server.
+										Build and run multi-service applications using a docker-compose.yml file.
 									</span>
 								</button>
 							</div>
 						</div>
+
+						{buildType === "compose" && (
+							<div className="p-4 rounded-xl bg-[#141418] border border-[#222227] space-y-4">
+								<div className="text-xs font-bold text-zinc-200">Docker Compose Services</div>
+								<p className="text-xs text-zinc-400">
+									Configure your services and bind subdomains (e.g. Service: <code className="text-orange-400">server</code>, Port: <code className="text-orange-400">3001</code>, Subdomain: <code className="text-orange-400">api</code> points <code className="text-orange-400">api.&lt;projectliveurl&gt;</code> to <code className="text-orange-400">server:3001</code>).
+								</p>
+								<div className="space-y-3">
+									{composeServicesList.map((item, index) => (
+										<div key={item.id} className="p-3.5 rounded-xl bg-[#0c0c0e] border border-[#222227] space-y-3">
+											<div className="flex items-center justify-between">
+												<div className="flex items-center gap-2">
+													<span className="text-[11px] font-bold text-orange-500 uppercase tracking-wider">
+														Service #{index + 1}
+													</span>
+													{index === 0 && (
+														<span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/40 uppercase tracking-wider flex items-center gap-1">
+															ENTRY
+														</span>
+													)}
+												</div>
+												{composeServicesList.length > 1 && index > 0 && (
+													<Button
+														type="button"
+														variant="ghost"
+														size="sm"
+														onClick={() => removeComposeServiceRow(item.id)}
+														className="h-7 text-xs text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 px-2 rounded-lg"
+													>
+														<Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+													</Button>
+												)}
+											</div>
+											<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+												<div>
+													<label className="block text-[11px] font-semibold text-zinc-400 mb-1">
+														Service Name
+													</label>
+													<Input
+														placeholder="e.g. server or web"
+														value={item.serviceName}
+														onChange={(e) => updateComposeServiceRow(item.id, "serviceName", e.target.value)}
+														className="bg-[#141418] border-[#222227] text-zinc-200 text-xs h-9 font-mono focus:border-orange-500"
+													/>
+												</div>
+												<div>
+													<label className="block text-[11px] font-semibold text-zinc-400 mb-1">
+														Service Port
+													</label>
+													<Input
+														placeholder="e.g. 3001 or 8080"
+														type="number"
+														value={item.port}
+														onChange={(e) => updateComposeServiceRow(item.id, "port", e.target.value)}
+														className="bg-[#141418] border-[#222227] text-zinc-200 text-xs h-9 font-mono focus:border-orange-500"
+													/>
+												</div>
+												<div>
+													<label className="block text-[11px] font-semibold text-zinc-400 mb-1">
+														Preferred Subdomain
+													</label>
+													{index === 0 ? (
+														<div className="flex items-center gap-1.5 h-9 px-3 bg-[#141418]/80 border border-[#222227] rounded-lg text-xs text-zinc-400 font-mono">
+															<span className="px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[10px] font-bold">ENTRY</span>
+															<span className="text-zinc-500 text-[11px]">Primary Project Domain</span>
+														</div>
+													) : (
+														<Input
+															placeholder="e.g. api"
+															value={item.subdomain}
+															onChange={(e) => updateComposeServiceRow(item.id, "subdomain", e.target.value)}
+															className="bg-[#141418] border-[#222227] text-zinc-200 text-xs h-9 font-mono focus:border-orange-500"
+														/>
+													)}
+												</div>
+											</div>
+										</div>
+									))}
+
+									<Button
+										type="button"
+										onClick={addComposeServiceRow}
+										variant="outline"
+										className="w-full bg-[#0c0c0e] border-dashed border-[#222227] hover:border-orange-500/50 text-xs text-zinc-400 hover:text-zinc-200 font-semibold flex items-center justify-center gap-1.5 h-9 rounded-xl transition-all"
+									>
+										<Plus className="h-3.5 w-3.5 text-orange-500" /> Add Another Service Mapping
+									</Button>
+								</div>
+							</div>
+						)}
 
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 							{/* Root Directory / Source Dir */}

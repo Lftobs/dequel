@@ -104,7 +104,7 @@ describe('resolveServerIp', () => {
 
   it('returns IP from api.ipify.org', async () => {
     globalThis.fetch = mock(() =>
-      Promise.resolve({ text: () => Promise.resolve('203.0.113.42') })
+      Promise.resolve({ ok: true, text: () => Promise.resolve('203.0.113.42') })
     ) as typeof fetch;
     const ip = await resolveServerIp();
     expect(ip).toBe('203.0.113.42');

@@ -3,7 +3,8 @@ import { config } from './config';
 
 export const resolveServerIp = async (): Promise<string> => {
   try {
-    const resp = await fetch('https://api.ipify.org');
+    const resp = await fetch('https://api.ipify.org', { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) return '127.0.0.1';
     return (await resp.text()).trim();
   } catch {
     return '127.0.0.1';
