@@ -1,21 +1,41 @@
 import Redis from "ioredis";
+import { randomUUID } from "node:crypto";
 import { config } from "./config";
 
 const LEADER_KEY = "dequel:leader";
 const LEADER_TTL_MS = 10_000;
 const RENEW_INTERVAL_MS = 3_000;
 
-class LeaderElection {
-  private redis: Redis;
+const RELEASE_SCRIPT = `
+if redis.call('get', KEYS[1]) == ARGV[1] then
+  return redis.call('del', KEYS[1])
+else
+  return 0
+end
+`;
+
+const createClient = () =>
+  new Redis(config.redisUrl, {
+    maxRetriesPerRequest: null,
+    enableOfflineQueue: false,
+  });
+
+export class LeaderElection {
+  private redis: Redis | null;
   private timer: ReturnType<typeof setInterval> | null = null;
+  private token: string | null = null;
   private leadership = false;
   private stopped = false;
 
-  constructor() {
-    this.redis = new Redis(config.redisUrl, {
-      maxRetriesPerRequest: null,
-      enableOfflineQueue: false,
-    });
+  constructor(redis?: Redis) {
+    this.redis = redis ?? null;
+  }
+
+  private client() {
+    if (!this.redis) {
+      this.redis = createClient();
+    }
+    return this.redis;
   }
 
   async start() {
@@ -33,12 +53,17 @@ class LeaderElection {
       this.timer = null;
     }
     await this.release();
-    await this.redis.quit().catch(() => {});
+    await this.client().quit().catch(() => {});
   }
 
   async release() {
-    await this.redis.del(LEADER_KEY).catch(() => {});
+    if (!this.token) return;
+    const token = this.token;
+    this.token = null;
     this.leadership = false;
+    await this.client()
+      .eval(RELEASE_SCRIPT, 1, LEADER_KEY, token)
+      .catch(() => {});
   }
 
   get isLeader() {
@@ -48,13 +73,21 @@ class LeaderElection {
   private async acquire() {
     if (this.stopped) return;
     try {
-      const acquired = await this.redis.set(LEADER_KEY, "1", "PX", LEADER_TTL_MS, "NX");
+      if (this.token) {
+        const renewed = await this.client().pexpire(LEADER_KEY, LEADER_TTL_MS);
+        this.leadership = renewed === 1;
+        if (!this.leadership) this.token = null;
+        return;
+      }
+      const token = randomUUID();
+      const acquired = await this.client().set(LEADER_KEY, token, "PX", LEADER_TTL_MS, "NX");
       this.leadership = acquired === "OK";
       if (this.leadership) {
-        await this.redis.pexpire(LEADER_KEY, LEADER_TTL_MS).catch(() => {});
+        this.token = token;
       }
     } catch {
       this.leadership = false;
+      this.token = null;
     }
   }
 }
