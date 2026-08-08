@@ -10,5 +10,5 @@ scrape_configs:
 
   - job_name: 'dequel-api'
     static_configs:
-      - targets: ['api:3001']
+      - targets: ['api:17474']
     metrics_path: /metrics

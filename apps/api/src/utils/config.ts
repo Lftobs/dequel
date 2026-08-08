@@ -34,20 +34,12 @@ export const config = {
 	databasePath: withFile<string>("DATABASE_PATH", "/app/data/dequel.db"),
 	workspaceRoot: withFile<string>("WORKSPACE_ROOT", "/app/workspace"),
 	caddyRoutesDir: withFile<string>("CADDY_ROUTES_DIR", "/caddy/routes"),
-	port: withFile<number>(
-		"PORT",
-		"17474",
-		Number,
-	),
+	port: 17474,
 	caddyBaseDomain: withFile<string>(
 		"CADDY_BASE_DOMAIN",
 		"localhost",
 	),
-	appInternalPort: withFile<number>(
-		"APP_INTERNAL_PORT",
-		"17476",
-		Number,
-	),
+	appInternalPort: 17476,
 	envEncryptionKey: withFile<string>(
 		"ENV_ENCRYPTION_KEY",
 		"dev-env-key-change-me",

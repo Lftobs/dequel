@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { config } from '../utils/config';
 import { dockerBin } from '../utils/docker-bin';
 import { DEQUEL_DATABASE_LABEL } from '../utils/dequel-labels';
+import { leader } from '../utils/leader';
 import type { Database, DatabaseType } from '../types';
 import {
   deleteDatabase,
@@ -320,6 +321,7 @@ const reconcileMissingContainer = async (dbRecord: Database) => {
 export const startDatabaseMonitoring = () => {
   let checkInFlight = false;
   const check = async () => {
+    if (!leader.isLeader) return;
     if (checkInFlight) return;
     checkInFlight = true;
     try {

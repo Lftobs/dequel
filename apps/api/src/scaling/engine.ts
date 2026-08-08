@@ -6,6 +6,7 @@ import { dockerBin } from '../utils/docker-bin';
 import { DEQUEL_MANAGED_LABEL } from '../utils/dequel-labels';
 import { run, tryRun } from './docker-utils';
 import { getScalingPolicy, listDeployments, updateDeploymentStatus, listEnvironmentVariablesForDeploy, getProjectById } from '../db/repo';
+import { leader } from '../utils/leader';
 
 interface ContainerStats {
   containerName: string;
@@ -41,6 +42,7 @@ class ScalingEngine {
   }
 
   private async tick() {
+    if (!leader.isLeader) return;
     try {
       const deployments = await listDeployments();
       const running = deployments.filter(d => d.status === 'running' && d.projectId);

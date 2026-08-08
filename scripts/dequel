@@ -29,6 +29,7 @@ cmd() {
 }
 
 cmd_start() {
+	ensure_upstreams
 	header "Starting Dequel"
 	cmd up -d
 	local domain="${CADDY_BASE_DOMAIN:-localhost}"
@@ -41,12 +42,14 @@ cmd_start() {
 
 cmd_stop() {
 	header "Stopping Dequel"
+	cleanup_greens
 	cmd down
 	success "Dequel stopped."
 }
 
 cmd_restart() {
 	header "Restarting Dequel"
+	cleanup_greens
 	cmd restart
 	success "Dequel restarted."
 }
@@ -60,8 +63,194 @@ cmd_logs() {
 	cmd logs -f "$@"
 }
 
+ensure_upstreams() {
+	local src_dir="$DEQUEL_HOME/infra/caddy/upstreams"
+	local dir="$DEQUEL_HOME/infra/caddy/routes/upstreams"
+	mkdir -p "$dir"
+	for f in api web; do
+		if [ ! -f "$dir/$f.caddy" ]; then
+			if [ -f "$src_dir/$f.caddy" ]; then
+				cp "$src_dir/$f.caddy" "$dir/$f.caddy"
+			else
+				write_upstream "$f" "$f"
+			fi
+			info "Initialized upstream $f"
+		fi
+	done
+}
+
+write_upstream() {
+	local svc="$1" target="$2"
+	local port=17476
+	[ "$svc" = "api" ] && port=17474
+	local file="$DEQUEL_HOME/infra/caddy/routes/upstreams/$svc.caddy"
+	if [ "$svc" = "api" ]; then
+		printf 'reverse_proxy %s:%s {\n  trusted_proxies private_ranges\n}\n' "$target" "$port" > "$file.tmp"
+	else
+		printf 'reverse_proxy %s:%s\n' "$target" "$port" > "$file.tmp"
+	fi
+	mv "$file.tmp" "$file"
+}
+
+caddy_container_id() {
+	docker ps -q --filter "label=com.docker.compose.service=caddy" --filter "network=dequel_net" 2>/dev/null | head -1
+}
+
+caddy_reload() {
+	local caddy_id
+	caddy_id=$(caddy_container_id)
+	if [ -n "$caddy_id" ]; then
+		if ! docker exec "$caddy_id" caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1; then
+			fail "Caddy reload failed - old containers still running, update aborted"
+		fi
+	else
+		warn "Caddy container not found, skipping reload"
+	fi
+}
+
+compose_container_id() {
+	local svc="$1"
+	cmd ps -q "$svc" 2>/dev/null | head -1
+}
+
+service_image() {
+	local svc="$1"
+	local image
+	image=$(docker compose -f "$COMPOSE_FILE" config --format json 2>/dev/null \
+		| python3 -c "import json,sys; print(json.load(sys.stdin)['services']['$svc'].get('image',''))" 2>/dev/null) || true
+	if [ -z "$image" ]; then
+		local cid
+		cid=$(compose_container_id "$svc")
+		[ -n "$cid" ] && image=$(docker inspect -f '{{.Config.Image}}' "$cid" 2>/dev/null || true)
+	fi
+	printf '%s' "$image"
+}
+
+green_run_args() {
+	local svc="$1"
+	COMPOSE_FILE="$COMPOSE_FILE" python3 - "$svc" <<'PY'
+import json, subprocess, sys, os
+svc = sys.argv[1]
+cfg = json.loads(subprocess.check_output(
+    ["docker", "compose", "-f", os.environ["COMPOSE_FILE"], "config", "--format", "json"],
+    text=True))
+s = cfg["services"][svc]
+args = []
+for k, v in (s.get("environment") or {}).items():
+    args += ["-e", f"{k}={v}"]
+base_dir = os.path.dirname(os.path.abspath(os.environ["COMPOSE_FILE"]))
+for vol in s.get("volumes") or []:
+    src = vol.get("source", "")
+    if vol.get("type") == "bind":
+        src = src if os.path.isabs(src) else os.path.join(base_dir, src)
+    dest = vol.get("target", "")
+    if vol.get("type") == "bind" and not src:
+        continue
+    opts = "ro" if vol.get("read_only") else None
+    args += ["-v", f"{src}:{dest}" + (f":{opts}" if opts else "")]
+net = next(iter(s.get("networks") or {}), None)
+if net is None:
+    net = "dequel_net"
+else:
+    net = cfg.get("networks", {}).get(net, {}).get("name", net)
+print(json.dumps({"args": args, "network": net}))
+PY
+}
+
+wait_healthy() {
+	local name="$1" svc="$2" timeout="$3" elapsed=0
+	while [ "$elapsed" -lt "$timeout" ]; do
+		if [ "$svc" = "api" ]; then
+			if docker exec "$name" curl -fsS http://localhost:17474/api/health >/dev/null 2>&1; then
+				return 0
+			fi
+		else
+			if docker exec "$name" sh -c "bun -e \"fetch('http://localhost:17476/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"" >/dev/null 2>&1; then
+				return 0
+			fi
+		fi
+		sleep 3
+		elapsed=$((elapsed + 3))
+	done
+	return 1
+}
+
+green_start() {
+	local svc="$1" image="$2" green="${svc}-green"
+	if [ -z "$image" ]; then
+		warn "No image resolved for $svc; will recreate via compose instead"
+		return 1
+	fi
+
+	local spec net args
+	spec=$(green_run_args "$svc")
+	net=$(printf '%s' "$spec" | python3 -c "import json,sys; print(json.load(sys.stdin)['network'])")
+	args=$(printf '%s' "$spec" | python3 -c "import json,sys; print(' '.join(json.load(sys.stdin)['args']))")
+
+	info "Starting $green from new image"
+	docker rm -f "$green" >/dev/null 2>&1 || true
+	# shellcheck disable=SC2086
+	if ! docker run -d --name "$green" --restart unless-stopped \
+		--network "$net" --network-alias "$green" \
+		$args \
+		"$image" >/dev/null 2>&1; then
+		warn "Failed to start $green"
+		return 1
+	fi
+
+	if ! wait_healthy "$green" "$svc" 150; then
+		warn "$svc green container failed health check"
+		docker rm -f "$green" >/dev/null 2>&1 || true
+		return 1
+	fi
+	success "$green healthy"
+	return 0
+}
+
+green_flip() {
+	local svc="$1" green="${svc}-green" old
+	old=$(compose_container_id "$svc")
+	if [ -z "$old" ]; then
+		warn "No compose-managed $svc container found; leaving $green in service"
+		return 1
+	fi
+
+	info "Switching Caddy to $green"
+	write_upstream "$svc" "$green"
+	caddy_reload
+
+	info "Stopping old $svc (draining in-flight work)"
+	docker stop -t 120 "$old" >/dev/null 2>&1 || true
+	docker rm -f "$old" >/dev/null 2>&1 || true
+
+	info "Recreating compose-managed $svc"
+	cmd up -d --no-deps "$svc"
+	local new
+	new=$(compose_container_id "$svc")
+	if [ -n "$new" ] && wait_healthy "$new" "$svc" 150; then
+		info "Switching Caddy back to compose-managed $svc"
+		write_upstream "$svc" "$svc"
+		caddy_reload
+		docker stop -t 30 "$green" >/dev/null 2>&1 || true
+		docker rm -f "$green" >/dev/null 2>&1 || true
+		success "$svc updated"
+	else
+		warn "Compose-managed $svc not healthy; keeping $green in service"
+	fi
+}
+
+cleanup_greens() {
+	for g in web api; do
+		if docker inspect "$g-green" >/dev/null 2>&1; then
+			docker stop -t 30 "$g-green" >/dev/null 2>&1 || true
+			docker rm -f "$g-green" >/dev/null 2>&1 || true
+			info "Removed leftover $g-green"
+		fi
+	done
+}
+
 cmd_update() {
-	header "Updating Dequel"
+	header "Updating Dequel (zero-downtime)"
 
 	local repo="Lftobs/dequel"
 	local tag=""
@@ -89,6 +278,8 @@ cmd_update() {
 	curl -fsSL "$base_url/infra/caddy/Caddyfile" -o "$tmp_dir/Caddyfile"
 	curl -fsSL "$base_url/scripts/dequel" -o "$tmp_dir/dequel"
 	curl -fsSL "$base_url/VERSION" -o "$tmp_dir/VERSION"
+	curl -fsSL "$base_url/infra/caddy/upstreams/api.caddy" -o "$tmp_dir/api-upstream.caddy"
+	curl -fsSL "$base_url/infra/caddy/upstreams/web.caddy" -o "$tmp_dir/web-upstream.caddy"
 
 	mkdir -p "$tmp_dir/infra/monitoring/grafana/datasources" \
 		"$tmp_dir/infra/monitoring/grafana/dashboards" \
@@ -122,13 +313,17 @@ with open('$tmp_dir/docker-compose.yml', 'w') as f:
     f.write(content)
 " 2>/dev/null || true
 
-	mkdir -p "$DEQUEL_HOME/infra/caddy" \
+	ensure_upstreams
+
+	mkdir -p "$DEQUEL_HOME/infra/caddy/upstreams" \
+		"$DEQUEL_HOME/infra/caddy" \
 		"$DEQUEL_HOME/infra/monitoring/grafana/datasources" \
 		"$DEQUEL_HOME/infra/monitoring/grafana/dashboards" \
 		"$DEQUEL_HOME/scripts/auth"
 
 	mv "$tmp_dir/docker-compose.yml" "$DEQUEL_HOME/docker-compose.yml"
-	mv "$tmp_dir/Caddyfile" "$DEQUEL_HOME/infra/caddy/Caddyfile"
+	mv "$tmp_dir/api-upstream.caddy" "$DEQUEL_HOME/infra/caddy/upstreams/api.caddy"
+	mv "$tmp_dir/web-upstream.caddy" "$DEQUEL_HOME/infra/caddy/upstreams/web.caddy"
 
 	for f in prometheus.yml loki-config.yml promtail-config.yml; do
 		mv "$tmp_dir/infra/monitoring/$f" "$DEQUEL_HOME/infra/monitoring/$f"
@@ -152,10 +347,54 @@ with open('$tmp_dir/docker-compose.yml', 'w') as f:
 	header "Pulling Docker images"
 	cmd pull
 
-	header "Recreating services"
-	cmd up -d
+	header "Updating support services"
+	cmd up -d --no-deps buildkit redis pam-auth cadvisor prometheus loki promtail grafana || true
 
-	success "Dequel updated to ${tag:-main}"
+	local web_ready=0 api_ready=0
+	header "Starting green containers (current traffic unaffected)"
+	if green_start web "$(service_image web)"; then
+		web_ready=1
+	else
+		warn "Web green unavailable; will recreate web in place"
+	fi
+	if green_start api "$(service_image api)"; then
+		api_ready=1
+	else
+		warn "API green unavailable; will recreate api in place"
+	fi
+
+	local web_target=web api_target=api
+	[ "$web_ready" = 1 ] && web_target=web-green
+	[ "$api_ready" = 1 ] && api_target=api-green
+
+	if [ "$web_ready" = 0 ]; then
+		header "Recreating web in place"
+		cmd up -d --no-deps web || true
+	fi
+	if [ "$api_ready" = 0 ]; then
+		header "Recreating api in place"
+		cmd up -d --no-deps api || true
+	fi
+
+	header "Activating new Caddy configuration"
+	write_upstream web "$web_target"
+	write_upstream api "$api_target"
+	mv "$tmp_dir/Caddyfile" "$DEQUEL_HOME/infra/caddy/Caddyfile"
+	caddy_reload
+
+	if [ "$web_ready" = 1 ]; then
+		header "Finishing web roll"
+		green_flip web
+	fi
+	if [ "$api_ready" = 1 ]; then
+		header "Finishing api roll"
+		green_flip api
+	fi
+
+	header "Reconciling stack"
+	cmd up -d --no-recreate || true
+
+	success "Dequel updated to ${tag:-main} (zero-downtime)"
 }
 
 cmd_uninstall() {
@@ -224,7 +463,7 @@ cmd_help() {
 	echo "  restart    Restart all Dequel services"
 	echo "  status     Show service status"
 	echo "  logs       Follow service logs"
-	echo "  update     Download latest config, pull images, and recreate services"
+	echo "  update     Download latest config, pull images, and roll services (zero-downtime)"
 	echo "  uninstall  Remove Dequel completely (config, images, volumes)"
 	echo "  --version  Show version"
 	echo "  --help     Show this help"

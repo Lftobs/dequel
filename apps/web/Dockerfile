@@ -19,5 +19,5 @@ RUN bun run build
 FROM oven/bun:1
 WORKDIR /app
 COPY --from=build /app/dist ./dist
-EXPOSE 3000
-CMD ["bun", "x", "serve", "-s", "dist", "-l", "3000"]
+EXPOSE 17476
+CMD ["bun", "x", "serve", "-s", "dist", "-l", "17476"]

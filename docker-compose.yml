@@ -34,13 +34,13 @@ services:
         #     context: ./apps/api
         #     dockerfile: Dockerfile
         environment:
-            PORT: 3001
+            PORT: 17474
             DATABASE_PATH: /app/data/dequel.db
             WORKSPACE_ROOT: /app/workspace
             CADDY_ROUTES_DIR: /caddy/routes
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
             DOCKER_NETWORK: dequel_net
-            APP_INTERNAL_PORT: 3000
+            APP_INTERNAL_PORT: 17476
             BUILDKIT_HOST: tcp://buildkit:1234
             DOCKER_BIN: /usr/bin/docker
             RAILPACK_VERBOSE: "1"
@@ -63,7 +63,7 @@ services:
                     "CMD",
                     "curl",
                     "-fsS",
-                    "http://localhost:3001/api/health",
+                    "http://localhost:17474/api/health",
                 ]
             interval: 50s
             timeout: 3s
@@ -118,7 +118,7 @@ services:
                     "CMD",
                     "bun",
                     "-e",
-                    "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+                    "fetch('http://localhost:17476/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
                 ]
             interval: 5s
             timeout: 3s

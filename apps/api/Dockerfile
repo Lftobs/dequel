@@ -39,6 +39,6 @@ COPY src ./src
 
 RUN mkdir -p /app/data /app/workspace /caddy/routes
 
-EXPOSE 3001
+EXPOSE 17474
 
 CMD ["bun", "src/index.ts"]

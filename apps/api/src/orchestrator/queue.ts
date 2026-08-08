@@ -27,6 +27,7 @@ const createRedis = () => new Redis(config.redisUrl, { maxRetriesPerRequest: nul
 export class DeploymentQueue {
   private redis: Redis;
   private shuttingDown = false;
+  private workers: Promise<void>[] = [];
 
   constructor() {
     this.redis = createRedis();
@@ -49,13 +50,17 @@ export class DeploymentQueue {
   }
 
   async start(handler: (deploymentId: string) => Promise<boolean>) {
-    const workers = Array.from({ length: config.queueConcurrency }, (_, i) => this.runWorker(i, handler));
-    await Promise.all(workers);
+    this.workers = Array.from({ length: config.queueConcurrency }, (_, i) => this.runWorker(i, handler));
+    await Promise.all(this.workers);
   }
 
   async stop() {
     this.shuttingDown = true;
-    await this.redis.quit();
+    this.redis.quit().catch(() => {});
+  }
+
+  async drain() {
+    await Promise.allSettled(this.workers);
   }
 
   private async runWorker(workerId: number, handler: (deploymentId: string) => Promise<boolean>) {

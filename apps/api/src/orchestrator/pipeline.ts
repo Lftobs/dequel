@@ -93,6 +93,13 @@ export class PipelineOrchestrator {
 			);
 	}
 
+	async stopWorker() {
+		if (!this.started) return;
+		this.started = false;
+		this.queue.stop();
+		await this.queue.drain();
+	}
+
 	enqueue(deploymentId: string) {
 		this.queue
 			.enqueue(deploymentId)
