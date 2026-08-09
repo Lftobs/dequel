@@ -21,6 +21,7 @@ interface SourceSelectionSectionProps {
   zipFile: File | null;
   setZipFile: (f: File | null) => void;
   onConnectGithub: () => void;
+  onDisconnectGithub: () => void;
 }
 
 export function SourceSelectionSection({
@@ -39,6 +40,7 @@ export function SourceSelectionSection({
   zipFile,
   setZipFile,
   onConnectGithub,
+  onDisconnectGithub,
 }: SourceSelectionSectionProps) {
   return (
     <div className="space-y-6 bg-[#0d0d10] border border-[#1f1f26] p-5 sm:p-6 rounded-2xl shadow-lg">
@@ -102,31 +104,45 @@ export function SourceSelectionSection({
       {/* Git Source Options */}
       {sourceType === 'git' && (
         <div className="space-y-4 pt-4 border-t border-[#1a1a22]">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-zinc-300">Repository Details</label>
-            <button
-              type="button"
-              onClick={() => setShowManualGit(!showManualGit)}
-              className="text-xs text-orange-400 hover:underline flex items-center gap-1 font-medium"
-            >
-              <Link2 className="h-3.5 w-3.5" />
-              {showManualGit ? 'Use GitHub Integration' : 'Enter Manual Git URL'}
-            </button>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <label className="text-xs font-semibold text-zinc-300">Repository Import Mode</label>
+            <div className="flex items-center gap-1 bg-[#121215] p-1 rounded-xl border border-[#22222a] shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowManualGit(false)}
+                className={cn(
+                  'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5',
+                  !showManualGit
+                    ? 'bg-orange-500 text-white shadow-sm font-bold'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                )}
+              >
+                <FolderGit2 className="h-3.5 w-3.5" />
+                GitHub Account
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowManualGit(true)}
+                className={cn(
+                  'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5',
+                  showManualGit
+                    ? 'bg-orange-500 text-white shadow-sm font-bold'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                )}
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                Manual Git URL
+              </button>
+            </div>
           </div>
 
-          {!showManualGit && (
+          {!showManualGit ? (
             <RepoPicker
-              selectedRepo={selectedRepo}
-              onSelectRepo={onSelectRepo}
-              githubConnected={githubConnected}
-              githubConfigured={githubConfigured}
-              manualGitUrl={repoUrl}
-              onManualGitUrlChange={setRepoUrl}
-              onConnectGithub={onConnectGithub}
+              selected={selectedRepo}
+              onSelect={onSelectRepo}
+              onDisconnect={onDisconnectGithub}
             />
-          )}
-
-          {(showManualGit || !githubConnected) && (
+          ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-[#121215] border border-[#22222a]">
               <div className="sm:col-span-2 space-y-1.5">
                 <label className="block text-xs font-semibold text-zinc-300">Git Clone URL *</label>
@@ -138,7 +154,7 @@ export function SourceSelectionSection({
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-zinc-300">Branch</label>
+                <label className="block text-xs font-semibold text-zinc-300">Branch (Optional)</label>
                 <Input
                   placeholder="main"
                   value={repoBranch}

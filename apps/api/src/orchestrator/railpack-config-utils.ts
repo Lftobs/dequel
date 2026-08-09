@@ -359,6 +359,25 @@ Bun.serve({
 		}
 	}
 
+	const hasIndexHtmlInSourceDir =
+		cleanSourceDir &&
+		(await Bun.file(
+			join(buildDir, "index.html"),
+		).exists());
+	if (hasIndexHtmlInSourceDir && !configured) {
+		const staticfilePath = join(workspace, "Staticfile");
+		if (!(await Bun.file(staticfilePath).exists())) {
+			await onLog(
+				`Detected static site in ${cleanSourceDir}, configuring Staticfile provider`,
+			);
+			await Bun.write(
+				staticfilePath,
+				`root: ${cleanSourceDir}\n`,
+			);
+			configured = true;
+		}
+	}
+
 	const hasCargoToml = await Bun.file(
 		join(buildDir, "Cargo.toml"),
 	).exists();

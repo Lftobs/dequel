@@ -573,7 +573,7 @@ export const removeRepoHook = (owner: string, repo: string) =>
 	});
 
 export const setEnvVar = (projectId: string, key: string, value: string, environment?: string) =>
-	createEnvVar(projectId, key, value, environment);
+	createEnvVar(projectId, { key, value, environment });
 
 export const uploadSourceZip = (file: File) => {
 	const formData = new FormData();

@@ -30,18 +30,17 @@ export function CreateProjectPage() {
   // Form State
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [baseDomain, setBaseDomain] = useState('');
 
   // Build & Runtime Strategy State
   const [buildType, setBuildType] = useState<'railpack' | 'compose'>('railpack');
   const [projectType, setProjectType] = useState('web');
-  const [selectedPresetId, setSelectedPresetId] = useState('nextjs-web');
-  const [port, setPort] = useState('3000');
+  const [selectedPresetId, setSelectedPresetId] = useState('');
+  const [port, setPort] = useState('');
   const [sourceDir, setSourceDir] = useState('');
-  const [buildCommand, setBuildCommand] = useState('npm run build');
-  const [installCommand, setInstallCommand] = useState('npm install');
-  const [outputDir, setOutputDir] = useState('.next');
-  const [startCommand, setStartCommand] = useState('npm run start');
+  const [buildCommand, setBuildCommand] = useState('');
+  const [installCommand, setInstallCommand] = useState('');
+  const [outputDir, setOutputDir] = useState('');
+  const [startCommand, setStartCommand] = useState('');
 
   // Docker Compose Gateway Mapping
   const [composeServicesList, setComposeServicesList] = useState<ComposeServiceRow[]>([
@@ -82,13 +81,17 @@ export function CreateProjectPage() {
           setGithubConfigured(true);
           api
             .getGithubUser()
-            .then(() => setGithubConnected(true))
-            .catch(() => {});
+            .then(() => {
+              setGithubConnected(true);
+              setShowManualGit(false);
+            })
+            .catch(() => setShowManualGit(true));
         } else {
           setGithubConfigured(false);
+          setShowManualGit(true);
         }
       })
-      .catch(() => {});
+      .catch(() => setShowManualGit(true));
   }, []);
 
   const handleSelectPreset = (preset: FrameworkPreset) => {
@@ -110,6 +113,11 @@ export function CreateProjectPage() {
         setName(repo.name.toLowerCase().replace(/[^a-z0-9-]/g, '-'));
       }
     }
+  };
+
+  const handleRetry = () => {
+    setSubmittingStatus('idle');
+    setErrorMessage('');
   };
 
   const handleSubmit = async () => {
@@ -140,7 +148,6 @@ export function CreateProjectPage() {
       const projectPayload: any = {
         name: name.trim(),
         description: description.trim() || undefined,
-        baseDomain: baseDomain.trim() || undefined,
         sourceType,
         repoUrl: finalRepoUrl,
         repoBranch: repoBranch.trim() || undefined,
@@ -166,7 +173,7 @@ export function CreateProjectPage() {
 
       setSubmittingStatus('done');
       setTimeout(() => {
-        navigate({ to: '/projects/$id', params: { id: project.id } });
+        navigate({ to: '/project/$projectId', params: { projectId: project.id }, search: { tab: 'deployments' } });
       }, 1000);
     } catch (err: any) {
       setSubmittingStatus('error');
@@ -216,16 +223,18 @@ export function CreateProjectPage() {
               const res = await api.getGithubAuthUrl();
               window.location.href = res.url;
             }}
+            onDisconnectGithub={() => {
+              setGithubConnected(false);
+              setSelectedRepo(null);
+            }}
           />
 
-          {/* Project Details & Ingress Domain */}
+          {/* Project Details */}
           <ProjectNameSection
             name={name}
             setName={setName}
             description={description}
             setDescription={setDescription}
-            baseDomain={baseDomain}
-            setBaseDomain={setBaseDomain}
           />
 
           {/* Build Strategy & Application Preset (with SVG logos) */}
@@ -283,13 +292,6 @@ export function CreateProjectPage() {
                 <div className="font-bold text-zinc-100 font-mono">{name || '—'}</div>
               </div>
 
-              {baseDomain && (
-                <div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-                  <div className="text-[10px] text-zinc-400 font-bold uppercase">Base Ingress Domain</div>
-                  <div className="font-bold text-orange-400 font-mono text-[11px] truncate">{baseDomain}</div>
-                </div>
-              )}
-
               <div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
                 <div className="text-[10px] text-zinc-400 font-bold uppercase">Code Provider</div>
                 <div className="font-bold text-emerald-400 uppercase">{sourceType}</div>
@@ -336,7 +338,14 @@ export function CreateProjectPage() {
         </div>
       </div>
 
-      <CreationStatusOverlay status={submittingStatus} errorMessage={errorMessage} />
+      <CreationStatusOverlay
+        submittingStatus={submittingStatus}
+        errorMessage={errorMessage}
+        hasEnvs={stagedEnvs.length > 0}
+        hasDb={false}
+        dbType="postgresql"
+        onRetry={handleRetry}
+      />
     </div>
   );
 }
