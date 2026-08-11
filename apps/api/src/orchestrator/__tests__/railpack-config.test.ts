@@ -11,7 +11,7 @@ const setupWorkspace = () => {
 };
 
 describe("generateDynamicRailpackJson static subdirectory detection", () => {
-	test("writes Staticfile pointing at source dir when index.html exists without package.json", async () => {
+	test("configures dequel-serve.js when index.html exists without package.json", async () => {
 		const { dir, cleanup } = setupWorkspace();
 		try {
 			writeFileSync(join(dir, "client", "index.html"), "<html></html>");
@@ -19,16 +19,17 @@ describe("generateDynamicRailpackJson static subdirectory detection", () => {
 			await generateDynamicRailpackJson(
 				dir,
 				"client",
-				"railpack",
+				"static",
 				null,
 				null,
 				async (line) => logs.push(line),
 			);
-			const staticfile = join(dir, "Staticfile");
-			expect(existsSync(staticfile)).toBe(true);
-			expect(readFileSync(staticfile, "utf8")).toBe("root: client\n");
-			expect(existsSync(join(dir, "railpack.json"))).toBe(true);
-			expect(logs.some((l) => l.includes("Detected static site in client"))).toBe(true);
+			const serveScript = join(dir, "dequel-serve.js");
+			const railpackJson = join(dir, "railpack.json");
+			expect(existsSync(serveScript)).toBe(true);
+			expect(existsSync(railpackJson)).toBe(true);
+			const parsedConfig = JSON.parse(readFileSync(railpackJson, "utf8"));
+			expect(parsedConfig.deploy?.startCommand).toBe("bun dequel-serve.js");
 		} finally {
 			cleanup();
 		}

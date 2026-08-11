@@ -140,39 +140,21 @@ export const generateDynamicRailpackJson = async (
 
 	let configured = false;
 
-	// 1. Check if user provided manual build / start / install command overrides
-	if (buildCommandOverride || startCommandOverride || installCommandOverride) {
-		await onLog("Applying custom build/start/install settings");
-		if (installCommandOverride) {
-			config.steps.install = {
-				commands: [
-					cleanSourceDir
-						? `cd ${cleanSourceDir} && ${installCommandOverride}`
-						: installCommandOverride,
-				],
-			};
+	if (cleanSourceDir && !(await Bun.file(join(workspace, "package.json")).exists())) {
+		const sourcePkgExists = await Bun.file(join(workspace, cleanSourceDir, "package.json")).exists();
+		if (sourcePkgExists) {
+			await Bun.write(join(workspace, "package.json"), JSON.stringify({
+				name: "dequel-monorepo-root",
+				private: true,
+				workspaces: [cleanSourceDir]
+			}, null, 2));
 		}
-		if (buildCommandOverride) {
-			config.steps.build = {
-				commands: [
-					cleanSourceDir
-						? `cd ${cleanSourceDir} && ${buildCommandOverride}`
-						: buildCommandOverride,
-				],
-			};
-		}
-		if (startCommandOverride) {
-			config.deploy.startCommand = cleanSourceDir
-				? `cd ${cleanSourceDir} && ${startCommandOverride}`
-				: startCommandOverride;
-		}
-		configured = true;
 	}
 
 	const hasPackageJson = await Bun.file(
 		join(buildDir, "package.json"),
 	).exists();
-	if (hasPackageJson && !configured) {
+	if (hasPackageJson) {
 		try {
 			const packageJson = await Bun.file(
 				join(buildDir, "package.json"),
@@ -238,7 +220,7 @@ export const generateDynamicRailpackJson = async (
 			if (scripts.build) {
 				const buildCmds = [
 					cleanSourceDir
-						? `cd ${cleanSourceDir} && ${pm} run build`
+						? `[ -d "${cleanSourceDir}" ] && cd ${cleanSourceDir}; ${pm} run build`
 						: `${pm} run build`,
 				];
 				if (hasNext) {
@@ -260,81 +242,7 @@ export const generateDynamicRailpackJson = async (
 				}
 			}
 
-			const hasServerScript = !!scripts.server;
-			const isStatic = projectType === "static" || (!scripts.start && !hasServerScript && (scripts.build || hasPackageJson));
-
-			if (isStatic) {
-				const serveScript = `
-const fs = require("fs");
-const path = require("path");
-const PORT = Number(process.env.PORT || 3000);
-const cleanSourceDir = "${cleanSourceDir}";
-const cleanOutputDir = "${cleanOutputDir}";
-let staticDir = ".";
-const candidates = [
-  ...(cleanOutputDir ? [path.join(cleanSourceDir, cleanOutputDir), cleanOutputDir] : []),
-  path.join(cleanSourceDir, "dist"),
-  path.join(cleanSourceDir, "build"),
-  path.join(cleanSourceDir, "out"),
-  path.join(cleanSourceDir, ".next/server/app"),
-  path.join(cleanSourceDir, ".next/server/pages"),
-  path.join(cleanSourceDir, "public"),
-  "dist",
-  "build",
-  "out",
-  ".next/server/app",
-  ".next/server/pages",
-  "public",
-  "."
-];
-for (const dir of candidates) {
-  const fullPath = path.join(process.cwd(), dir);
-  if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
-    if (fs.existsSync(path.join(fullPath, "index.html"))) {
-      staticDir = dir;
-      break;
-    }
-  }
-}
-console.log("Serving static directory:", staticDir, "on port", PORT);
-Bun.serve({
-  port: PORT,
-  async fetch(req) {
-    const url = new URL(req.url);
-    let decodedPathname = "/";
-    try {
-      decodedPathname = decodeURIComponent(url.pathname);
-    } catch {
-      decodedPathname = url.pathname;
-    }
-    let filePath = path.join(staticDir, decodedPathname);
-    if (decodedPathname.endsWith("/")) {
-      filePath = path.join(filePath, "index.html");
-    }
-    let file = Bun.file(filePath);
-    if (await file.exists()) {
-      return new Response(file, {
-        headers: {
-          "content-type": file.type || "application/octet-stream"
-        }
-      });
-    }
-    const fallbackPath = path.join(staticDir, "index.html");
-    const fallbackFile = Bun.file(fallbackPath);
-    if (await fallbackFile.exists()) {
-      return new Response(fallbackFile, {
-        headers: {
-          "content-type": fallbackFile.type || "text/html"
-        }
-      });
-    }
-    return new Response("Not Found", { status: 404 });
-  }
-});
-`;
-				await Bun.write(join(workspace, "dequel-serve.js"), serveScript);
-				config.deploy.startCommand = "bun dequel-serve.js";
-			} else if (scripts.start) {
+			if (scripts.start) {
 				config.deploy.startCommand =
 					cleanSourceDir
 						? `cd ${cleanSourceDir} && ${pm} run start`
@@ -359,24 +267,7 @@ Bun.serve({
 		}
 	}
 
-	const hasIndexHtmlInSourceDir =
-		cleanSourceDir &&
-		(await Bun.file(
-			join(buildDir, "index.html"),
-		).exists());
-	if (hasIndexHtmlInSourceDir && !configured) {
-		const staticfilePath = join(workspace, "Staticfile");
-		if (!(await Bun.file(staticfilePath).exists())) {
-			await onLog(
-				`Detected static site in ${cleanSourceDir}, configuring Staticfile provider`,
-			);
-			await Bun.write(
-				staticfilePath,
-				`root: ${cleanSourceDir}\n`,
-			);
-			configured = true;
-		}
-	}
+
 
 	const hasCargoToml = await Bun.file(
 		join(buildDir, "Cargo.toml"),
@@ -625,18 +516,23 @@ Bun.serve({
 		configured = true;
 	}
 
-	if (!configured && projectType === "static") {
+	if (!configured && (projectType === "static" || (await Bun.file(join(buildDir, "index.html")).exists()) || (await Bun.file(join(workspace, "index.html")).exists()))) {
 		const serveScript = `
 const fs = require("fs");
 const path = require("path");
 const PORT = Number(process.env.PORT || 3000);
 const cleanSourceDir = "${cleanSourceDir}";
+const cleanOutputDir = "${cleanOutputDir}";
 let staticDir = ".";
 const candidates = [
+  ...(cleanOutputDir ? [path.join(cleanSourceDir, cleanOutputDir), cleanOutputDir] : []),
   path.join(cleanSourceDir, "dist"),
   path.join(cleanSourceDir, "build"),
   path.join(cleanSourceDir, "out"),
+  path.join(cleanSourceDir, ".next/server/app"),
+  path.join(cleanSourceDir, ".next/server/pages"),
   path.join(cleanSourceDir, "public"),
+  cleanSourceDir || ".",
   "dist",
   "build",
   "out",
@@ -689,6 +585,17 @@ Bun.serve({
 });
 `;
 		await Bun.write(join(workspace, "dequel-serve.js"), serveScript);
+		const rootPkgPath = join(workspace, "package.json");
+		if (!(await Bun.file(rootPkgPath).exists())) {
+			await Bun.write(rootPkgPath, JSON.stringify({
+				name: "dequel-static-app",
+				private: true,
+				scripts: {
+					start: "bun dequel-serve.js"
+				}
+			}, null, 2));
+		}
+		config.steps.build = config.steps.build || { commands: [] };
 		config.deploy.startCommand = "bun dequel-serve.js";
 		configured = true;
 	}
@@ -697,6 +604,30 @@ Bun.serve({
 		await onLog(
 			`Relying on default Railpack language auto-detection`,
 		);
+	}
+
+	if (buildCommandOverride || startCommandOverride || installCommandOverride) {
+		await onLog("Applying custom build/start/install settings");
+		if (installCommandOverride) {
+			const hasCustomInstall = installCommandOverride !== "npm install" && installCommandOverride !== "npm ci" && installCommandOverride !== "pnpm install" && installCommandOverride !== "yarn install" && installCommandOverride !== "bun install";
+			if (hasCustomInstall) {
+				config.steps.install = config.steps.install || {};
+				config.steps.install.commands = [installCommandOverride];
+			}
+		}
+		if (buildCommandOverride) {
+			config.steps.build = config.steps.build || {};
+			config.steps.build.commands = [
+				cleanSourceDir
+					? `cd ${cleanSourceDir} && ${buildCommandOverride}`
+					: buildCommandOverride,
+			];
+		}
+		if (startCommandOverride) {
+			config.deploy.startCommand = cleanSourceDir
+				? `cd ${cleanSourceDir} && ${startCommandOverride}`
+				: startCommandOverride;
+		}
 	}
 
 	await Bun.write(

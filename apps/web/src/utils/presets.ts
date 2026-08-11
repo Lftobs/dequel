@@ -35,6 +35,7 @@ export const FRAMEWORK_PRESETS: FrameworkPreset[] = [
     installCommand: 'npm install',
     startCommand: '',
     outputDir: 'dist',
+    defaultPort: '5173',
     description: 'Fast React Single Page Application compiled to static assets.',
     category: 'popular'
   },
@@ -47,6 +48,7 @@ export const FRAMEWORK_PRESETS: FrameworkPreset[] = [
     installCommand: 'npm install',
     startCommand: '',
     outputDir: 'dist',
+    defaultPort: '5173',
     description: 'Vue 3 Single Page Application bundled with Vite.',
     category: 'frontend'
   },
@@ -72,6 +74,7 @@ export const FRAMEWORK_PRESETS: FrameworkPreset[] = [
     installCommand: 'npm install',
     startCommand: '',
     outputDir: 'dist',
+    defaultPort: '4321',
     description: 'Content-driven website framework optimized for speed.',
     category: 'popular'
   },
@@ -84,6 +87,7 @@ export const FRAMEWORK_PRESETS: FrameworkPreset[] = [
     installCommand: 'npm install',
     startCommand: '',
     outputDir: 'dist',
+    defaultPort: '4200',
     description: 'Enterprise TypeScript web application framework.',
     category: 'frontend'
   },
@@ -122,7 +126,7 @@ export const FRAMEWORK_PRESETS: FrameworkPreset[] = [
     installCommand: 'npm install',
     startCommand: 'node dist/index.js',
     outputDir: 'dist',
-    defaultPort: '3001',
+    defaultPort: '3000',
     description: 'Node.js backend service running compiled server bundle.',
     category: 'backend'
   },
