@@ -5,13 +5,14 @@ import { Button } from '../components/ui/button';
 import * as api from '../api/client';
 import { getGithubIntegration } from '../api/client';
 import { FRAMEWORK_PRESETS, type FrameworkPreset } from '../utils/presets';
+import { slugifyProjectName } from '../utils/slugify';
 import { CreationStatusOverlay } from '../components/project/create/CreationStatusOverlay';
 import { SourceSelectionSection } from '../components/project/create/SourceSelectionSection';
 import { ProjectNameSection } from '../components/project/create/ProjectNameSection';
 import { BuildStrategySection, ComposeServiceRow } from '../components/project/create/BuildStrategySection';
 import { EnvVarsSection, StagedEnv } from '../components/project/create/EnvVarsSection';
 import { ArrowLeft, Rocket, Server, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
-import type { GithubRepo } from '../types';
+import type { GithubRepo, CreateProjectInput } from '../types';
 
 export function CreateProjectPage() {
   const navigate = useNavigate();
@@ -110,7 +111,7 @@ export function CreateProjectPage() {
       setRepoUrl(repo.cloneUrl);
       setRepoBranch(repo.defaultBranch);
       if (!name) {
-        setName(repo.name.toLowerCase().replace(/[^a-z0-9-]/g, '-'));
+        setName(slugifyProjectName(repo.name));
       }
     }
   };
@@ -123,6 +124,16 @@ export function CreateProjectPage() {
   const handleSubmit = async () => {
     if (!name.trim()) {
       setErrorMessage('Please enter a project name.');
+      return;
+    }
+
+    if (sourceType === 'git' && !repoUrl.trim()) {
+      setErrorMessage('Please select a repository or enter a Git clone URL.');
+      return;
+    }
+
+    if (sourceType === 'upload' && !zipFile) {
+      setErrorMessage('Please select a source ZIP archive.');
       return;
     }
 
@@ -145,14 +156,14 @@ export function CreateProjectPage() {
         }
       }
 
-      const projectPayload: any = {
+      const projectPayload: CreateProjectInput = {
         name: name.trim(),
         description: description.trim() || undefined,
         sourceType,
         repoUrl: finalRepoUrl,
         repoBranch: repoBranch.trim() || undefined,
         buildType,
-        projectType: buildType === 'railpack' ? projectType : 'web',
+        projectType,
         sourceDir: sourceDir.trim() || undefined,
         buildCommand: buildType === 'railpack' ? buildCommand.trim() || undefined : undefined,
         installCommand: buildType === 'railpack' ? installCommand.trim() || undefined : undefined,
@@ -166,8 +177,17 @@ export function CreateProjectPage() {
 
       if (stagedEnvs.length > 0) {
         setSubmittingStatus('creating_envs');
-        for (const env of stagedEnvs) {
-          await api.setEnvVar(project.id, env.key, env.value, env.environment);
+        try {
+          for (const env of stagedEnvs) {
+            await api.setEnvVar(project.id, env.key, env.value, env.environment);
+          }
+        } catch (envErr: any) {
+          try { await api.deleteProject(project.id); } catch {}
+          setSubmittingStatus('error');
+          setErrorMessage(
+            `Failed to set environment variable "${stagedEnvs.find((e) => !e.key)?.key || stagedEnvs[0]?.key}": ${envErr.message || 'Unknown error'}. Created project was cleaned up.`,
+          );
+          return;
         }
       }
 

@@ -151,6 +151,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 							</div>
 						</div>
 
+						{buildType !== "compose" && (
 						<div className="space-y-2.5">
 							<label className="font-semibold text-xs text-zinc-400">
 								Project Type
@@ -159,6 +160,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								<button
 									type="button"
 									onClick={() => setProjectType("web")}
+									aria-pressed={projectType === "web"}
 									className={cn(
 										"flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all select-none active:scale-[0.98]",
 										projectType === "web"
@@ -166,7 +168,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
 									)}
 								>
-									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-250">
+									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
 										<Globe className="h-4 w-4 text-orange-500" />
 										Web Service
 									</div>
@@ -177,6 +179,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								<button
 									type="button"
 									onClick={() => setProjectType("static")}
+									aria-pressed={projectType === "static"}
 									className={cn(
 										"flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all select-none active:scale-[0.98]",
 										projectType === "static"
@@ -184,7 +187,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
 									)}
 								>
-									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-250">
+									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
 										<Box className="h-4 w-4 text-emerald-500" />
 										Static Site / SPA
 									</div>
@@ -194,6 +197,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								</button>
 							</div>
 						</div>
+						)}
 
 						{/* Build Strategy */}
 						<div className="space-y-2.5">
@@ -211,7 +215,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
 									)}
 								>
-									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-250">
+									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
 										<Box className="h-4 w-4 text-orange-500" />
 										Railpack Auto-Detection
 									</div>
@@ -229,7 +233,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
 									)}
 								>
-									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-250">
+									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
 										<Globe className="h-4 w-4 text-orange-500" />
 										Docker Compose Stack
 									</div>
@@ -331,7 +335,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 						)}
 
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-							{/* Root Directory / Source Dir */}
 							<div className="space-y-2">
 								<label htmlFor="sourceDir" className="font-semibold text-xs text-zinc-400">
 									Root Directory
@@ -348,7 +351,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								</p>
 							</div>
 
-							{/* Internal Port */}
 							<div className="space-y-2">
 								<label htmlFor="port" className="font-semibold text-xs text-zinc-400">
 									Port
@@ -366,7 +368,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								</p>
 							</div>
 
-							{/* Install Command Override */}
 							<div className="space-y-2">
 								<label htmlFor="installCommand" className="font-semibold text-xs text-zinc-400">
 									Install Command
@@ -383,7 +384,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								</p>
 							</div>
 
-							{/* Build Command Override */}
 							<div className="space-y-2">
 								<label htmlFor="buildCommand" className="font-semibold text-xs text-zinc-400">
 									Build Command
@@ -400,7 +400,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								</p>
 							</div>
 
-							{/* Output Directory */}
 							<div className="space-y-2">
 								<label htmlFor="outputDir" className="font-semibold text-xs text-zinc-400">
 									Output Directory
@@ -417,7 +416,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								</p>
 							</div>
 
-							{/* Start Command Override */}
 							<div className="space-y-2 md:col-span-2">
 								<label htmlFor="startCommand" className="font-semibold text-xs text-zinc-400">
 									Start Command
@@ -434,7 +432,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								</p>
 							</div>
 
-							{/* Description */}
 							<div className="space-y-2 md:col-span-2">
 								<label htmlFor="description" className="font-semibold text-xs text-zinc-400">
 									Project Description

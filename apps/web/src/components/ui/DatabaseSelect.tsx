@@ -48,9 +48,10 @@ interface DatabaseSelectProps {
   value: DatabaseType;
   onValueChange: (value: DatabaseType) => void;
   className?: string;
+  id?: string;
 }
 
-export function DatabaseSelect({ value, onValueChange, className }: DatabaseSelectProps) {
+export function DatabaseSelect({ value, onValueChange, className, id }: DatabaseSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +72,7 @@ export function DatabaseSelect({ value, onValueChange, className }: DatabaseSele
     <div className={cn('relative w-full', className)} ref={containerRef}>
       <button
         type="button"
+        id={id}
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           'w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl',
@@ -138,7 +140,7 @@ export function DatabaseSelect({ value, onValueChange, className }: DatabaseSele
                         >
                           {engine.name}
                         </span>
-                        <span className="text-[10px] text-zinc-400 bg-zinc-800/60 px-1.5 py-0.2 rounded border border-zinc-700/30">
+                        <span className="text-[10px] text-zinc-400 bg-zinc-800/60 px-1.5 py-0.5 rounded border border-zinc-700/30">
                           v{engine.defaultVersion}
                         </span>
                       </div>

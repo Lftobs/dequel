@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
-import { DatabaseSelect } from "../ui/DatabaseSelect";
+import { DatabaseSelect, DATABASE_ENGINES } from "../ui/DatabaseSelect";
 
 interface CreateDatabaseDialogProps {
 	open: boolean;
@@ -30,7 +30,8 @@ export function CreateDatabaseDialog({ open, onOpenChange, projects, defaultProj
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-		setVersion(type === "postgresql" ? "16" : type === "mysql" ? "8.4" : type === "redis" ? "7.4" : type === "mongodb" ? "7.0" : "11.4");
+		const engine = DATABASE_ENGINES.find((item) => item.type === type);
+		if (engine) setVersion(engine.defaultVersion);
 	}, [type]);
 
 	const create = async () => {
@@ -67,8 +68,8 @@ export function CreateDatabaseDialog({ open, onOpenChange, projects, defaultProj
 				<div className="space-y-5 pt-2">
 					<div className="grid gap-2"><label htmlFor="database-name" className="text-xs font-medium text-zinc-400">Name</label><Input id="database-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Production Database" /></div>
 					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-						<div className="grid gap-2"><label className="text-xs font-medium text-zinc-400">Attach to project</label><Select value={projectId} onValueChange={setProjectId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="standalone">No project</SelectItem>{projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</SelectContent></Select></div>
-						<div className="grid gap-2"><label className="text-xs font-medium text-zinc-400">Database Engine</label><DatabaseSelect value={type} onValueChange={(val) => setType(val)} /></div>
+						<div className="grid gap-2"><label htmlFor="database-project" className="text-xs font-medium text-zinc-400">Attach to project</label><Select value={projectId} onValueChange={setProjectId}><SelectTrigger id="database-project"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="standalone">No project</SelectItem>{projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</SelectContent></Select></div>
+						<div className="grid gap-2"><label htmlFor="database-engine" className="text-xs font-medium text-zinc-400">Database Engine</label><DatabaseSelect id="database-engine" value={type} onValueChange={(val) => setType(val)} /></div>
 					</div>
 					<div className="grid gap-2"><label htmlFor="database-version" className="text-xs font-medium text-zinc-400">Version</label><Input id="database-version" value={version} onChange={(event) => setVersion(event.target.value)} /></div>
 					<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

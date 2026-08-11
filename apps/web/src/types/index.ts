@@ -34,6 +34,28 @@ export interface Project {
   updatedAt: string;
 }
 
+export interface CreateProjectInput {
+  name: string;
+  description?: string;
+  baseDomain?: string;
+  repoUrl?: string;
+  repoBranch?: string;
+  cpuLimit?: number;
+  memoryLimitMb?: number;
+  port?: number | null;
+  sourceDir?: string;
+  sourceType?: string;
+  projectType?: string;
+  buildType?: string;
+  buildCommand?: string | null;
+  installCommand?: string | null;
+  outputDir?: string | null;
+  startCommand?: string | null;
+  composeService?: string | null;
+  composePort?: number | null;
+  composeServices?: string | null;
+}
+
 export interface Deployment {
   id: string;
   projectId: string | null;

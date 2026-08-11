@@ -1,6 +1,7 @@
 import type {
 	Project,
 	Deployment,
+	CreateProjectInput,
 	EnvironmentVariable,
 	Volume,
 	Database,
@@ -76,21 +77,7 @@ export const listProjects = () =>
 	apiFetch<Project[]>("/projects");
 export const getProject = (id: string) =>
 	apiFetch<Project>(`/projects/${id}`);
-export const createProject = (data: {
-	name: string;
-	description?: string;
-	baseDomain?: string;
-	repoUrl?: string;
-	repoBranch?: string;
-	cpuLimit?: number;
-	memoryLimitMb?: number;
-	port?: number;
-	sourceDir?: string;
-	sourceType?: string;
-	projectType?: string;
-	buildCommand?: string;
-	startCommand?: string;
-}) =>
+export const createProject = (data: CreateProjectInput) =>
 	apiFetch<Project>("/projects", {
 		method: "POST",
 		body: JSON.stringify(data),

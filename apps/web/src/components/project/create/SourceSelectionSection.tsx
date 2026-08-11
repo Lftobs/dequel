@@ -42,6 +42,17 @@ export function SourceSelectionSection({
   onConnectGithub,
   onDisconnectGithub,
 }: SourceSelectionSectionProps) {
+  const handleSourceTypeChange = (type: 'git' | 'upload') => {
+    setSourceType(type);
+    if (type === 'upload') {
+      onSelectRepo(null);
+      setRepoUrl('');
+      setRepoBranch('');
+    } else {
+      setZipFile(null);
+    }
+  };
+
   return (
     <div className="space-y-6 bg-[#0d0d10] border border-[#1f1f26] p-5 sm:p-6 rounded-2xl shadow-lg">
       <div>
@@ -54,11 +65,10 @@ export function SourceSelectionSection({
         </p>
       </div>
 
-      {/* Source Type Selector Cards (Git vs ZIP Upload) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
           type="button"
-          onClick={() => setSourceType('git')}
+          onClick={() => handleSourceTypeChange('git')}
           className={cn(
             'p-4 rounded-xl border text-left transition-all space-y-1.5',
             sourceType === 'git'
@@ -80,7 +90,7 @@ export function SourceSelectionSection({
 
         <button
           type="button"
-          onClick={() => setSourceType('upload')}
+          onClick={() => handleSourceTypeChange('upload')}
           className={cn(
             'p-4 rounded-xl border text-left transition-all space-y-1.5',
             sourceType === 'upload'
@@ -101,7 +111,6 @@ export function SourceSelectionSection({
         </button>
       </div>
 
-      {/* Git Source Options */}
       {sourceType === 'git' && (
         <div className="space-y-4 pt-4 border-t border-[#1a1a22]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -167,7 +176,6 @@ export function SourceSelectionSection({
         </div>
       )}
 
-      {/* ZIP Upload Option */}
       {sourceType === 'upload' && (
         <div className="space-y-4 pt-4 border-t border-[#1a1a22]">
           <div className="p-6 border border-dashed border-[#2b2b36] rounded-xl bg-[#121215] text-center space-y-3">

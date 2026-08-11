@@ -15,6 +15,7 @@ import { Plus } from "lucide-react";
 import * as api from "../../../api/client";
 import { getGithubIntegration } from "../../../api/client";
 import type { GithubRepo, DatabaseType } from "../../../types";
+import type { FrameworkPreset } from "../../../utils/presets";
 
 import { StepBasics } from "./StepBasics";
 import { StepEnvironment } from "./StepEnvironment";
@@ -62,6 +63,8 @@ export function CreateProjectDialog({
 		useState("git");
 	const [projectType, setProjectType] =
 		useState("web");
+	const [selectedPresetId, setSelectedPresetId] =
+		useState("");
 	const [zipFile, setZipFile] =
 		useState<File | null>(null);
 	const [cpuLimit, setCpuLimit] = useState("");
@@ -116,6 +119,13 @@ export function CreateProjectDialog({
 			.catch(() => { });
 	}, [open]);
 
+	const handleSelectPreset = (
+		preset: FrameworkPreset,
+	) => {
+		setSelectedPresetId(preset.id);
+		setProjectType(preset.projectType);
+	};
+
 	const handleOpenChange = (
 		isOpen: boolean,
 	) => {
@@ -130,6 +140,7 @@ export function CreateProjectDialog({
 			setSourceDir("");
 			setSelectedRepo(null);
 			setSourceType("git");
+			setSelectedPresetId("");
 			setPort("");
 			setZipFile(null);
 		}
@@ -413,9 +424,11 @@ export function CreateProjectDialog({
 								}
 							port={port}
 							setPort={setPort}
-							zipFile={zipFile}
-							setZipFile={setZipFile}
-						/>
+						zipFile={zipFile}
+						setZipFile={setZipFile}
+						selectedPresetId={selectedPresetId}
+						onSelectPreset={handleSelectPreset}
+					/>
 						)}
 
 						{step === 2 && (
