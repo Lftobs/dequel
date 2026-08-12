@@ -177,15 +177,17 @@ export function CreateProjectPage() {
 
       if (stagedEnvs.length > 0) {
         setSubmittingStatus('creating_envs');
+        let failedEnvKey = '';
         try {
           for (const env of stagedEnvs) {
+            failedEnvKey = env.key;
             await api.setEnvVar(project.id, env.key, env.value, env.environment);
           }
         } catch (envErr: any) {
           try { await api.deleteProject(project.id); } catch {}
           setSubmittingStatus('error');
           setErrorMessage(
-            `Failed to set environment variable "${stagedEnvs.find((e) => !e.key)?.key || stagedEnvs[0]?.key}": ${envErr.message || 'Unknown error'}. Created project was cleaned up.`,
+            `Failed to set environment variable "${failedEnvKey}": ${envErr.message || 'Unknown error'}. Created project was cleaned up.`,
           );
           return;
         }
@@ -348,11 +350,11 @@ export function CreateProjectPage() {
             <Button
               type="button"
               onClick={handleSubmit}
-              disabled={!name.trim() || submittingStatus !== 'idle'}
+              disabled={!name.trim() || (submittingStatus !== 'idle' && submittingStatus !== 'error')}
               className="w-full bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-bold h-11 text-xs rounded-xl shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 mt-4"
             >
               <Rocket className="h-4 w-4" />
-              {submittingStatus === 'idle' ? 'Launch Deployment' : 'Deploying...'}
+              {submittingStatus === 'error' ? 'Retry Deployment' : submittingStatus === 'idle' ? 'Launch Deployment' : 'Deploying...'}
             </Button>
           </div>
         </div>
@@ -362,8 +364,6 @@ export function CreateProjectPage() {
         submittingStatus={submittingStatus}
         errorMessage={errorMessage}
         hasEnvs={stagedEnvs.length > 0}
-        hasDb={false}
-        dbType="postgresql"
         onRetry={handleRetry}
       />
     </div>

@@ -5,8 +5,6 @@ interface CreationStatusOverlayProps {
   submittingStatus: 'idle' | 'creating_project' | 'creating_envs' | 'creating_db' | 'done' | 'error';
   errorMessage: string;
   hasEnvs: boolean;
-  hasDb: boolean;
-  dbType: 'postgresql' | 'mysql';
   onRetry: () => void;
 }
 
@@ -14,8 +12,6 @@ export function CreationStatusOverlay({
   submittingStatus,
   errorMessage,
   hasEnvs,
-  hasDb,
-  dbType,
   onRetry
 }: CreationStatusOverlayProps) {
   if (submittingStatus === 'idle') return null;
@@ -53,23 +49,6 @@ export function CreationStatusOverlay({
               <XCircle className="h-4 w-4 text-red-500" />
             ) : (
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            )}
-          </div>
-        )}
-
-        {hasDb && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-zinc-400">3. Provision dedicated {dbType} database instance</span>
-            {(submittingStatus === 'creating_project' || submittingStatus === 'creating_envs') ? (
-              <div className="h-2.5 w-2.5 rounded-full bg-zinc-800" />
-            ) : submittingStatus === 'creating_db' ? (
-              <Loader2 className="h-4 w-4 text-amber-500 animate-spin" />
-            ) : submittingStatus === 'error' && errorMessage.includes('database') ? (
-              <XCircle className="h-4 w-4 text-red-500" />
-            ) : submittingStatus === 'done' ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            ) : (
-              <div className="h-2.5 w-2.5 rounded-full bg-zinc-800" />
             )}
           </div>
         )}

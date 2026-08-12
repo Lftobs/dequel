@@ -73,6 +73,14 @@ export function CreateProjectDialog({
 	const [port, setPort] = useState("");
 	const [sourceDir, setSourceDir] =
 		useState("");
+	const [buildCommand, setBuildCommand] =
+		useState("");
+	const [installCommand, setInstallCommand] =
+		useState("");
+	const [startCommand, setStartCommand] =
+		useState("");
+	const [outputDir, setOutputDir] =
+		useState("");
 	const provisionDb = false;
 	const setProvisionDb = (_value: boolean) => {};
 	const [dbType, setDbType] = useState<DatabaseType>("postgresql");
@@ -124,6 +132,11 @@ export function CreateProjectDialog({
 	) => {
 		setSelectedPresetId(preset.id);
 		setProjectType(preset.projectType);
+		setBuildCommand(preset.buildCommand || "");
+		setInstallCommand(preset.installCommand || "");
+		setStartCommand(preset.startCommand || "");
+		setOutputDir(preset.outputDir || "");
+		if (preset.defaultPort) setPort(String(preset.defaultPort));
 	};
 
 	const handleOpenChange = (
@@ -141,6 +154,10 @@ export function CreateProjectDialog({
 			setSelectedRepo(null);
 			setSourceType("git");
 			setSelectedPresetId("");
+			setBuildCommand("");
+			setInstallCommand("");
+			setStartCommand("");
+			setOutputDir("");
 			setPort("");
 			setZipFile(null);
 		}
@@ -186,6 +203,18 @@ export function CreateProjectDialog({
 						undefined,
 					sourceType,
 					projectType,
+					buildCommand:
+						buildCommand.trim() ||
+						undefined,
+					installCommand:
+						installCommand.trim() ||
+						undefined,
+					startCommand:
+						startCommand.trim() ||
+						undefined,
+					outputDir:
+						outputDir.trim() ||
+						undefined,
 				});
 
 			if (stagedEnvs.length > 0) {
@@ -266,8 +295,6 @@ export function CreateProjectDialog({
 						hasEnvs={
 							stagedEnvs.length > 0
 						}
-						hasDb={provisionDb}
-						dbType={dbType}
 						onRetry={() =>
 							setSubmittingStatus(
 								"idle",

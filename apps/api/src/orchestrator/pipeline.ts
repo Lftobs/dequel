@@ -406,7 +406,7 @@ export class PipelineOrchestrator {
 				const cacheKey =
 					deployment.projectId ||
 					deploymentId;
-			const envVars = deployment.projectId ? await listEnvironmentVariablesForDeploy(deployment.projectId, "production") : [];
+			const envVars = deployment.projectId ? await listEnvironmentVariablesForDeploy(deployment.projectId, deployment.environment ?? "production") : [];
 			if (project?.buildType === "compose") {
 				const envMap: Record<string, string> = {};
 				for (const v of envVars) envMap[v.key] = v.value;

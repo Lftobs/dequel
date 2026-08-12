@@ -220,7 +220,7 @@ export const generateDynamicRailpackJson = async (
 			if (scripts.build) {
 				const buildCmds = [
 					cleanSourceDir
-						? `[ -d "${cleanSourceDir}" ] && cd ${cleanSourceDir}; ${pm} run build`
+						? `[ -d "${cleanSourceDir}" ] && cd -- "${cleanSourceDir}" && ${pm} run build`
 						: `${pm} run build`,
 				];
 				if (hasNext) {
@@ -516,7 +516,7 @@ export const generateDynamicRailpackJson = async (
 		configured = true;
 	}
 
-	if (!configured && (projectType === "static" || (await Bun.file(join(buildDir, "index.html")).exists()) || (await Bun.file(join(workspace, "index.html")).exists()))) {
+	if (projectType === "static" || (!configured && ((await Bun.file(join(buildDir, "index.html")).exists()) || (await Bun.file(join(workspace, "index.html")).exists())))) {
 		const serveScript = `
 const fs = require("fs");
 const path = require("path");
