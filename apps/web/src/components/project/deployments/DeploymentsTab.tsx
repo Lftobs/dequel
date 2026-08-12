@@ -54,6 +54,8 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 		useState("");
 	const [switchBranch, setSwitchBranch] =
 		useState("");
+	const [clearCache, setClearCache] =
+		useState(false);
 	const [isAutoDeploying, setIsAutoDeploying] =
 		useState(false);
 	const autoDeployedRef =
@@ -185,6 +187,8 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 			form.set("projectId", projectId);
 		if (environment)
 			form.set("environment", environment);
+		if (clearCache)
+			form.set("clearCache", "true");
 		if (branch) form.set("branch", branch);
 		if ((sourceType as string) === "git") {
 			if (!gitUrl.trim()) return;
@@ -205,6 +209,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 		setGitUrl("");
 		setBranch("");
 		setEnvironment("");
+		setClearCache(false);
 		setSourceType("git");
 	};
 

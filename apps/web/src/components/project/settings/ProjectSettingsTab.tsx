@@ -20,6 +20,8 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 	const [composePort, setComposePort] = useState("");
 	const [sourceDir, setSourceDir] = useState("");
 	const [buildCommand, setBuildCommand] = useState("");
+	const [installCommand, setInstallCommand] = useState("");
+	const [outputDir, setOutputDir] = useState("");
 	const [startCommand, setStartCommand] = useState("");
 	const [port, setPort] = useState("");
 	const [description, setDescription] = useState("");
@@ -40,6 +42,8 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 			setComposePort(prt);
 			setSourceDir(project.sourceDir || "");
 			setBuildCommand(project.buildCommand || "");
+			setInstallCommand((project as any).installCommand || "");
+			setOutputDir((project as any).outputDir || "");
 			setStartCommand(project.startCommand || "");
 			setPort(project.port ? String(project.port) : "");
 			setDescription(project.description || "");
@@ -93,6 +97,8 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 				buildType,
 				sourceDir: sourceDir.trim() || null,
 				buildCommand: buildCommand.trim() || null,
+				installCommand: installCommand.trim() || null,
+				outputDir: outputDir.trim() || null,
 				startCommand: startCommand.trim() || null,
 				port: port.trim() ? Number(port) || null : null,
 				description: description.trim() || null,
@@ -145,6 +151,54 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 							</div>
 						</div>
 
+						{buildType !== "compose" && (
+						<div className="space-y-2.5">
+							<label className="font-semibold text-xs text-zinc-400">
+								Project Type
+							</label>
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+								<button
+									type="button"
+									onClick={() => setProjectType("web")}
+									aria-pressed={projectType === "web"}
+									className={cn(
+										"flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all select-none active:scale-[0.98]",
+										projectType === "web"
+											? "border-orange-500/30 bg-orange-500/5 text-zinc-200"
+											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
+									)}
+								>
+									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
+										<Globe className="h-4 w-4 text-orange-500" />
+										Web Service
+									</div>
+									<span className="text-[10px] text-zinc-500 leading-relaxed">
+										Node.js, Elysia, Express, Next.js (SSR), Go, Python dynamic server container.
+									</span>
+								</button>
+								<button
+									type="button"
+									onClick={() => setProjectType("static")}
+									aria-pressed={projectType === "static"}
+									className={cn(
+										"flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all select-none active:scale-[0.98]",
+										projectType === "static"
+											? "border-emerald-500/30 bg-emerald-500/5 text-zinc-200"
+											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
+									)}
+								>
+									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
+										<Box className="h-4 w-4 text-emerald-500" />
+										Static Site / SPA
+									</div>
+									<span className="text-[10px] text-zinc-500 leading-relaxed">
+										React, Vite, Astro, HTML static export served via lightweight HTTP file server.
+									</span>
+								</button>
+							</div>
+						</div>
+						)}
+
 						{/* Build Strategy */}
 						<div className="space-y-2.5">
 							<label className="font-semibold text-xs text-zinc-400">
@@ -161,7 +215,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
 									)}
 								>
-									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-250">
+									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
 										<Box className="h-4 w-4 text-orange-500" />
 										Railpack Auto-Detection
 									</div>
@@ -179,7 +233,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
 									)}
 								>
-									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-250">
+									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
 										<Globe className="h-4 w-4 text-orange-500" />
 										Docker Compose Stack
 									</div>
@@ -230,7 +284,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 													<Input
 														placeholder="e.g. server or web"
 														value={item.serviceName}
-														onChange={(e) => updateComposeServiceRow(item.id, "serviceName", e.target.value)}
+														onChange={(e) => updateComposeServiceRow(item.id, 'serviceName', e.target.value)}
 														className="bg-[#141418] border-[#222227] text-zinc-200 text-xs h-9 font-mono focus:border-orange-500"
 													/>
 												</div>
@@ -242,7 +296,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 														placeholder="e.g. 3001 or 8080"
 														type="number"
 														value={item.port}
-														onChange={(e) => updateComposeServiceRow(item.id, "port", e.target.value)}
+														onChange={(e) => updateComposeServiceRow(item.id, 'port', e.target.value)}
 														className="bg-[#141418] border-[#222227] text-zinc-200 text-xs h-9 font-mono focus:border-orange-500"
 													/>
 												</div>
@@ -259,7 +313,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 														<Input
 															placeholder="e.g. api"
 															value={item.subdomain}
-															onChange={(e) => updateComposeServiceRow(item.id, "subdomain", e.target.value)}
+															onChange={(e) => updateComposeServiceRow(item.id, 'subdomain', e.target.value)}
 															className="bg-[#141418] border-[#222227] text-zinc-200 text-xs h-9 font-mono focus:border-orange-500"
 														/>
 													)}
@@ -281,7 +335,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 						)}
 
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-							{/* Root Directory / Source Dir */}
 							<div className="space-y-2">
 								<label htmlFor="sourceDir" className="font-semibold text-xs text-zinc-400">
 									Root Directory
@@ -298,7 +351,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								</p>
 							</div>
 
-							{/* Internal Port */}
 							<div className="space-y-2">
 								<label htmlFor="port" className="font-semibold text-xs text-zinc-400">
 									Port
@@ -316,7 +368,22 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								</p>
 							</div>
 
-							{/* Build Command Override */}
+							<div className="space-y-2">
+								<label htmlFor="installCommand" className="font-semibold text-xs text-zinc-400">
+									Install Command
+								</label>
+								<Input
+									id="installCommand"
+									placeholder="e.g. pnpm install --no-frozen-lockfile"
+									className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 text-xs h-9 rounded-lg font-mono"
+									value={installCommand}
+									onChange={(e) => setInstallCommand(e.target.value)}
+								/>
+								<p className="text-[10px] text-zinc-500 leading-normal">
+									Override the dependency installation command. Leave blank for auto.
+								</p>
+							</div>
+
 							<div className="space-y-2">
 								<label htmlFor="buildCommand" className="font-semibold text-xs text-zinc-400">
 									Build Command
@@ -333,8 +400,23 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								</p>
 							</div>
 
-							{/* Start Command Override */}
 							<div className="space-y-2">
+								<label htmlFor="outputDir" className="font-semibold text-xs text-zinc-400">
+									Output Directory
+								</label>
+								<Input
+									id="outputDir"
+									placeholder="e.g. dist, build, out, or .next (leave empty for auto)"
+									className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 text-xs h-9 rounded-lg font-mono"
+									value={outputDir}
+									onChange={(e) => setOutputDir(e.target.value)}
+								/>
+								<p className="text-[10px] text-zinc-500 leading-normal">
+									Directory where compiled static assets are located (for Static Site deployments).
+								</p>
+							</div>
+
+							<div className="space-y-2 md:col-span-2">
 								<label htmlFor="startCommand" className="font-semibold text-xs text-zinc-400">
 									Start Command
 								</label>
@@ -350,7 +432,6 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 								</p>
 							</div>
 
-							{/* Description */}
 							<div className="space-y-2 md:col-span-2">
 								<label htmlFor="description" className="font-semibold text-xs text-zinc-400">
 									Project Description

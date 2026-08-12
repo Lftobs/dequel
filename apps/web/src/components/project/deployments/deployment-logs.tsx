@@ -23,6 +23,11 @@ export function formatTimeAgo(dateStr: string) {
 	return `${Math.floor(hours / 24)}d ago`;
 }
 
+const isErrorLogLine = (message: string) =>
+	/^(CRITICAL|ERROR|Deployment failed|Rollback failed)/i.test(
+		message,
+	);
+
 export function parseTimestamp(raw: string) {
 	if (!raw) return Date.now();
 	const normalized =
@@ -176,7 +181,7 @@ export function DeploymentLogs({
 						{logs.map((log, i) => (
 							<div
 								key={i}
-								className={`log-line ${log.message.startsWith("CRITICAL") ? "error" : log.message.startsWith("ERROR") ? "error" : ""}`}
+								className={`log-line ${isErrorLogLine(log.message) ? "error" : ""}`}
 							>
 								<span className="log-stage">
 									[{log.stage}

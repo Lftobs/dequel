@@ -15,6 +15,7 @@ import { Plus } from "lucide-react";
 import * as api from "../../../api/client";
 import { getGithubIntegration } from "../../../api/client";
 import type { GithubRepo, DatabaseType } from "../../../types";
+import type { FrameworkPreset } from "../../../utils/presets";
 
 import { StepBasics } from "./StepBasics";
 import { StepEnvironment } from "./StepEnvironment";
@@ -62,6 +63,8 @@ export function CreateProjectDialog({
 		useState("git");
 	const [projectType, setProjectType] =
 		useState("web");
+	const [selectedPresetId, setSelectedPresetId] =
+		useState("");
 	const [zipFile, setZipFile] =
 		useState<File | null>(null);
 	const [cpuLimit, setCpuLimit] = useState("");
@@ -69,6 +72,14 @@ export function CreateProjectDialog({
 		useState("");
 	const [port, setPort] = useState("");
 	const [sourceDir, setSourceDir] =
+		useState("");
+	const [buildCommand, setBuildCommand] =
+		useState("");
+	const [installCommand, setInstallCommand] =
+		useState("");
+	const [startCommand, setStartCommand] =
+		useState("");
+	const [outputDir, setOutputDir] =
 		useState("");
 	const provisionDb = false;
 	const setProvisionDb = (_value: boolean) => {};
@@ -116,6 +127,18 @@ export function CreateProjectDialog({
 			.catch(() => { });
 	}, [open]);
 
+	const handleSelectPreset = (
+		preset: FrameworkPreset,
+	) => {
+		setSelectedPresetId(preset.id);
+		setProjectType(preset.projectType);
+		setBuildCommand(preset.buildCommand || "");
+		setInstallCommand(preset.installCommand || "");
+		setStartCommand(preset.startCommand || "");
+		setOutputDir(preset.outputDir || "");
+		if (preset.defaultPort) setPort(String(preset.defaultPort));
+	};
+
 	const handleOpenChange = (
 		isOpen: boolean,
 	) => {
@@ -130,6 +153,11 @@ export function CreateProjectDialog({
 			setSourceDir("");
 			setSelectedRepo(null);
 			setSourceType("git");
+			setSelectedPresetId("");
+			setBuildCommand("");
+			setInstallCommand("");
+			setStartCommand("");
+			setOutputDir("");
 			setPort("");
 			setZipFile(null);
 		}
@@ -175,6 +203,18 @@ export function CreateProjectDialog({
 						undefined,
 					sourceType,
 					projectType,
+					buildCommand:
+						buildCommand.trim() ||
+						undefined,
+					installCommand:
+						installCommand.trim() ||
+						undefined,
+					startCommand:
+						startCommand.trim() ||
+						undefined,
+					outputDir:
+						outputDir.trim() ||
+						undefined,
 				});
 
 			if (stagedEnvs.length > 0) {
@@ -255,8 +295,6 @@ export function CreateProjectDialog({
 						hasEnvs={
 							stagedEnvs.length > 0
 						}
-						hasDb={provisionDb}
-						dbType={dbType}
 						onRetry={() =>
 							setSubmittingStatus(
 								"idle",
@@ -413,9 +451,11 @@ export function CreateProjectDialog({
 								}
 							port={port}
 							setPort={setPort}
-							zipFile={zipFile}
-							setZipFile={setZipFile}
-						/>
+						zipFile={zipFile}
+						setZipFile={setZipFile}
+						selectedPresetId={selectedPresetId}
+						onSelectPreset={handleSelectPreset}
+					/>
 						)}
 
 						{step === 2 && (

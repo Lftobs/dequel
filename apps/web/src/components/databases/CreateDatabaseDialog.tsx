@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
+import { DatabaseSelect, DATABASE_ENGINES } from "../ui/DatabaseSelect";
+
 interface CreateDatabaseDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -18,7 +20,7 @@ export function CreateDatabaseDialog({ open, onOpenChange, projects, defaultProj
 	const [name, setName] = useState("");
 	const [projectId, setProjectId] = useState(defaultProjectId ?? "standalone");
 	const [type, setType] = useState<DatabaseType>("postgresql");
-	const [version, setVersion] = useState("18");
+	const [version, setVersion] = useState("16");
 	const [cpu, setCpu] = useState("1");
 	const [memory, setMemory] = useState("512");
 	const [storage, setStorage] = useState("10240");
@@ -28,7 +30,8 @@ export function CreateDatabaseDialog({ open, onOpenChange, projects, defaultProj
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-		setVersion(type === "postgresql" ? "18" : type === "mysql" ? "8.4" : "8.0");
+		const engine = DATABASE_ENGINES.find((item) => item.type === type);
+		if (engine) setVersion(engine.defaultVersion);
 	}, [type]);
 
 	const create = async () => {
@@ -63,10 +66,10 @@ export function CreateDatabaseDialog({ open, onOpenChange, projects, defaultProj
 					<DialogDescription>Public access is enabled by default and protected by database credentials plus the network allowlist.</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-5 pt-2">
-					<div className="grid gap-2"><label htmlFor="database-name" className="text-xs font-medium text-zinc-400">Name</label><Input id="database-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Production PostgreSQL" /></div>
+					<div className="grid gap-2"><label htmlFor="database-name" className="text-xs font-medium text-zinc-400">Name</label><Input id="database-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Production Database" /></div>
 					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div className="grid gap-2"><label htmlFor="database-project" className="text-xs font-medium text-zinc-400">Attach to project</label><Select value={projectId} onValueChange={setProjectId}><SelectTrigger id="database-project"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="standalone">No project</SelectItem>{projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</SelectContent></Select></div>
-						<div className="grid gap-2"><label htmlFor="database-engine" className="text-xs font-medium text-zinc-400">Engine</label><Select value={type} onValueChange={(value) => setType(value as DatabaseType)}><SelectTrigger id="database-engine"><SelectValue /></SelectTrigger><SelectContent>{["postgresql", "mysql", "redis", "mongodb"].map((engine) => <SelectItem key={engine} value={engine}>{engine}</SelectItem>)}</SelectContent></Select></div>
+						<div className="grid gap-2"><label htmlFor="database-engine" className="text-xs font-medium text-zinc-400">Database Engine</label><DatabaseSelect id="database-engine" value={type} onValueChange={(val) => setType(val)} /></div>
 					</div>
 					<div className="grid gap-2"><label htmlFor="database-version" className="text-xs font-medium text-zinc-400">Version</label><Input id="database-version" value={version} onChange={(event) => setVersion(event.target.value)} /></div>
 					<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

@@ -1,6 +1,7 @@
 import type {
 	Project,
 	Deployment,
+	CreateProjectInput,
 	EnvironmentVariable,
 	Volume,
 	Database,
@@ -76,21 +77,7 @@ export const listProjects = () =>
 	apiFetch<Project[]>("/projects");
 export const getProject = (id: string) =>
 	apiFetch<Project>(`/projects/${id}`);
-export const createProject = (data: {
-	name: string;
-	description?: string;
-	baseDomain?: string;
-	repoUrl?: string;
-	repoBranch?: string;
-	cpuLimit?: number;
-	memoryLimitMb?: number;
-	port?: number;
-	sourceDir?: string;
-	sourceType?: string;
-	projectType?: string;
-	buildCommand?: string;
-	startCommand?: string;
-}) =>
+export const createProject = (data: CreateProjectInput) =>
 	apiFetch<Project>("/projects", {
 		method: "POST",
 		body: JSON.stringify(data),
@@ -571,3 +558,15 @@ export const removeRepoHook = (owner: string, repo: string) =>
 	apiFetch<{ ok: boolean; removed: boolean }>(`/github/repos/${owner}/${repo}/hook`, {
 		method: "DELETE",
 	});
+
+export const setEnvVar = (projectId: string, key: string, value: string, environment?: string) =>
+	createEnvVar(projectId, { key, value, environment });
+
+export const uploadSourceZip = (file: File) => {
+	const formData = new FormData();
+	formData.append("file", file);
+	return apiFetch<{ filePath: string }>("/upload", {
+		method: "POST",
+		body: formData,
+	});
+};

@@ -9,10 +9,9 @@ import {
 	listAllDatabases,
 	updateDeploymentStatus,
 	updateDeploymentCommitSha,
+	listVolumes,
 } from "../db/repo";
 import { listEnvironmentVariablesForDeploy } from "../db/repo";
-import { listVolumes } from "../db/repo";
-import { filterBuildEnvVars } from "../utils/env-filter";
 import { logBus } from "./log-bus";
 import { DeploymentQueue } from "./queue";
 import { buildWithRailpack, CancelledError } from "./railpack";
@@ -407,7 +406,7 @@ export class PipelineOrchestrator {
 				const cacheKey =
 					deployment.projectId ||
 					deploymentId;
-			const envVars = deployment.projectId ? await listEnvironmentVariablesForDeploy(deployment.projectId, "production") : [];
+			const envVars = deployment.projectId ? await listEnvironmentVariablesForDeploy(deployment.projectId, deployment.environment ?? "production") : [];
 			if (project?.buildType === "compose") {
 				const envMap: Record<string, string> = {};
 				for (const v of envVars) envMap[v.key] = v.value;
@@ -444,7 +443,7 @@ export class PipelineOrchestrator {
 						installCommand: project?.installCommand,
 						outputDir: project?.outputDir,
 						startCommand: project?.startCommand,
-						environmentVariables: filterBuildEnvVars(envVars),
+						environmentVariables: envVars,
 						signal: controller.signal,
 						clearCache: deployment.clearCache
 					},
