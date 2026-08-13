@@ -6,12 +6,32 @@ import {
 	countDeployments,
 	getDeploymentById,
 	getProjectById,
+	getServerById,
 	getLogs,
 	listDeployments,
 } from "../../db/repo";
 import { orchestrator } from "../../orchestrator";
 import { logBus } from "../../orchestrator/log-bus";
 import { config } from "../../utils/config";
+import { executorFor } from "../../executors/dispatch";
+import { queueRemoteDeployment, validateRemoteDeployment } from "../../agents/deployments";
+
+const dispatchDeployment = async (deployment: Awaited<ReturnType<typeof createDeployment>>, project: Awaited<ReturnType<typeof getProjectById>>, server: Awaited<ReturnType<typeof getServerById>>) => {
+	if (server.mode === "local") {
+		orchestrator.enqueue(deployment.id);
+		return;
+	}
+	if (!project) throw new Error("Remote deployment requires a project");
+	if (deployment.sourceType !== "git") throw new Error("Remote servers currently support Git deployments only");
+	const executor = executorFor(server.mode);
+	if (server.mode === "ssh") {
+		void executor.deploy({ deployment, project, server }).catch((error) => {
+			console.error(`[SSH Executor] Deployment ${deployment.id} failed:`, error);
+		});
+		return;
+	}
+	await executor.deploy({ deployment, project, server });
+};
 
 export const deploymentsRoutes = new Elysia()
 	.get(
@@ -57,6 +77,13 @@ export const deploymentsRoutes = new Elysia()
 			const projectId =
 				String(form.get("projectId") ?? "").trim() ||
 				undefined;
+			const project = projectId ? await getProjectById(projectId) : null;
+			const serverId = project?.serverId ?? "local";
+			const server = await getServerById(serverId);
+			if (!server) {
+				set.status = 400;
+				return { error: "Selected deployment server does not exist" };
+			}
 			const branch =
 				String(form.get("branch") ?? "").trim() ||
 				undefined;
@@ -86,8 +113,29 @@ export const deploymentsRoutes = new Elysia()
 						error: "gitUrl is required for git source",
 					};
 				}
+				if (server.mode === "agent") {
+					if (!project) {
+						set.status = 400;
+						return { error: "Remote deployment requires a project" };
+					}
+					const preview = {
+						id: "validation",
+						projectId: project.id,
+						serverId,
+						sourceType: "git" as const,
+						sourceRef: gitUrl,
+						branch: resolvedBranch ?? null,
+						commitSha: commitSha ?? null,
+					} as any;
+					const error = validateRemoteDeployment(preview, project);
+					if (error) {
+						set.status = 400;
+						return { error };
+					}
+				}
 				const deployment = await createDeployment({
 					projectId,
+					serverId,
 					sourceType: "git",
 					sourceRef: gitUrl,
 					branch: resolvedBranch,
@@ -95,10 +143,14 @@ export const deploymentsRoutes = new Elysia()
 					commitSha,
 					clearCache,
 				});
-				orchestrator.enqueue(deployment.id);
+				await dispatchDeployment(deployment, project, server);
 				return deployment;
 			}
 			const file = form.get("archive");
+			if (server.mode === "agent" || server.mode === "ssh") {
+				set.status = 400;
+				return { error: "Remote servers currently support Git deployments only" };
+			}
 			if (!(file instanceof File)) {
 				set.status = 400;
 				return {
@@ -122,13 +174,14 @@ export const deploymentsRoutes = new Elysia()
 			await writeFile(uploadPath, bytes);
 			const deployment = await createDeployment({
 				projectId,
+				serverId,
 				sourceType: "upload",
 				sourceRef: uploadPath,
 				branch: resolvedBranch,
 				environment,
 				clearCache,
 			});
-			orchestrator.enqueue(deployment.id);
+			await dispatchDeployment(deployment, project, server);
 			return deployment;
 		},
 	)
@@ -166,7 +219,13 @@ export const deploymentsRoutes = new Elysia()
 				};
 			}
 			try {
-				await orchestrator.rollbackTo(id);
+				const server = await getServerById(target.serverId ?? "local");
+				if (!server) {
+					set.status = 400;
+					return { error: "Deployment server does not exist" };
+				}
+				const executor = executorFor(server.mode);
+				await executor.rollback({ deployment: target, project, server });
 				const updated = await getDeploymentById(id);
 				return updated;
 			} catch (err: any) {
@@ -196,14 +255,20 @@ export const deploymentsRoutes = new Elysia()
 				};
 			}
 			const project = original.projectId ? await getProjectById(original.projectId) : null;
+			const server = await getServerById(original.serverId ?? "local");
+			if (!server) {
+				set.status = 400;
+				return { error: "Selected deployment server does not exist" };
+			}
 			const deployment = await createDeployment({
 				projectId: original.projectId || undefined,
+				serverId: original.serverId,
 				sourceType: original.sourceType,
 				sourceRef: original.sourceRef,
 				branch: original.branch || project?.repoBranch || undefined,
 				environment: original.environment || undefined,
 			});
-			orchestrator.enqueue(deployment.id);
+			await dispatchDeployment(deployment, project, server);
 			return deployment;
 		},
 	)
@@ -221,7 +286,13 @@ export const deploymentsRoutes = new Elysia()
 					error: "Only pending or building deployments can be cancelled",
 				};
 			}
-			await orchestrator.cancelDeployment(id);
+			const server = await getServerById(deployment.serverId ?? "local");
+			if (!server) {
+				set.status = 400;
+				return { error: "Deployment server does not exist" };
+			}
+			const executor = executorFor(server.mode);
+			await executor.cancel({ deployment, server });
 			return { ok: true };
 		},
 	)
@@ -239,7 +310,14 @@ export const deploymentsRoutes = new Elysia()
 					error: "Cannot delete a running deployment — stop it first",
 				};
 			}
-			await orchestrator.deleteDeployment(id);
+			const project = deployment.projectId ? await getProjectById(deployment.projectId) : null;
+			const server = await getServerById(deployment.serverId ?? "local");
+			if (!server) {
+				set.status = 400;
+				return { error: "Deployment server does not exist" };
+			}
+			const executor = executorFor(server.mode);
+			await executor.destroy({ deployment, project, server });
 			return { ok: true };
 		},
 	)

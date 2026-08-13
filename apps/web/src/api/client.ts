@@ -438,7 +438,11 @@ export const createServer = (data: {
 	name: string;
 	host: string;
 	port?: number;
-	authToken: string;
+	mode?: string;
+	sshUser?: string;
+	sshKey?: string;
+	sshPassword?: string;
+	authToken?: string;
 }) =>
 	apiFetch<Server>("/servers", {
 		method: "POST",
@@ -449,6 +453,14 @@ export const getServer = (id: string) =>
 export const deleteServer = (id: string) =>
 	apiFetch<{ ok: boolean }>(`/servers/${id}`, {
 		method: "DELETE",
+	});
+export const createAgentRegistrationToken = (data: {
+	name: string;
+	labels?: Record<string, string>;
+}) =>
+	apiFetch<{ token: string; expiresAt: string }>("/agents/registration-tokens", {
+		method: "POST",
+		body: JSON.stringify(data),
 	});
 
 // API Keys

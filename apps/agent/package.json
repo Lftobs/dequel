@@ -1,0 +1,11 @@
+{
+  "name": "dequel-agent",
+  "version": "0.2.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "test": "bun test"
+  }
+}

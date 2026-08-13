@@ -18,6 +18,7 @@ export interface ProjectCleanupInfo {
 
 const mapProject = (row: typeof projects.$inferSelect): Project => ({
   id: row.id,
+  serverId: row.serverId ?? null,
   name: row.name,
   description: row.description,
   repoUrl: row.repoUrl,
@@ -50,6 +51,7 @@ export const createProject = async (input: CreateProjectInput): Promise<Project>
   const db = await getDrizzle();
   db.insert(projects).values({
     id,
+    serverId: input.serverId ?? "local",
     name: input.name,
     description: input.description ?? null,
     repoUrl: input.repoUrl ?? null,
@@ -98,6 +100,7 @@ export const updateProject = async (id: string, patch: Partial<CreateProjectInpu
   const db = await getDrizzle();
   const updates: Record<string, unknown> = { updatedAt: now() };
   if (patch.name !== undefined) updates.name = patch.name;
+  if (patch.serverId !== undefined) updates.serverId = patch.serverId;
   if (patch.description !== undefined) updates.description = patch.description;
   if (patch.repoUrl !== undefined) updates.repoUrl = patch.repoUrl;
   if (patch.repoBranch !== undefined) updates.repoBranch = patch.repoBranch;

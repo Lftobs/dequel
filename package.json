@@ -7,7 +7,7 @@
   "scripts": {
     "tegami": "bun scripts/tegami.mts",
     "release": "git tag v$(cat VERSION) && git push origin v$(cat VERSION)",
-    "sync-versions": "node -e \"const v = require('fs').readFileSync('VERSION','utf8').trim(); ['apps/api/package.json','apps/web/package.json','apps/docs/package.json'].forEach(f => { const p = require('./'+f); p.version = v; require('fs').writeFileSync(f, JSON.stringify(p, null, 2) + '\\n'); }); console.log('Versions synced to', v);\"",
+    "sync-versions": "node -e \"const v = require('fs').readFileSync('VERSION','utf8').trim(); ['apps/api/package.json','apps/web/package.json','apps/docs/package.json','apps/agent/package.json'].forEach(f => { const p = require('./'+f); p.version = v; require('fs').writeFileSync(f, JSON.stringify(p, null, 2) + '\\n'); }); console.log('Versions synced to', v);\"",
     "postinstall": "bun sync-versions"
   },
   "devDependencies": {

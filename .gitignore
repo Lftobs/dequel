@@ -16,3 +16,4 @@ __pycache__
 .tegami/changes-*
 SETUP_GUIDE.md
 bun.lock
+apps/docs/.blume/

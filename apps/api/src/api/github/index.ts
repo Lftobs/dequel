@@ -415,6 +415,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		for (const project of targets) {
 			const dep = await createDeployment({
 				projectId: project.id,
+				serverId: project.serverId,
 				sourceType: "git",
 				sourceRef: repoUrl,
 				branch,

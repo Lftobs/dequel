@@ -7,6 +7,7 @@ import {
 	getProjectById,
 	updateProject,
 	deleteProjectCascade,
+	getServerById,
 	listDomains,
 } from "../../db/repo";
 import { tryRun, reloadCaddy } from "../../orchestrator/runtime";
@@ -57,8 +58,14 @@ export const projectsRoutes = new Elysia()
 				set.status = 400;
 				return { error: validationError };
 			}
+			const serverId = body.serverId || "local";
+			if (!(await getServerById(serverId))) {
+				set.status = 400;
+				return { error: "Selected server does not exist" };
+			}
 			const project = await createProject({
 				name: body.name,
+				serverId,
 				description: body.description,
 				baseDomain: body.baseDomain,
 				repoUrl: body.repoUrl,
@@ -89,8 +96,13 @@ export const projectsRoutes = new Elysia()
 				set.status = 400;
 				return { error: validationError };
 			}
+			if (body?.serverId !== undefined && !(await getServerById(body.serverId))) {
+				set.status = 400;
+				return { error: "Selected server does not exist" };
+			}
 			const project = await updateProject(id, {
 				name: body?.name,
+				serverId: body?.serverId,
 				description: body?.description,
 				baseDomain: body?.baseDomain,
 				repoUrl: body?.repoUrl,

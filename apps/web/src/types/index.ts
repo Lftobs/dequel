@@ -12,6 +12,7 @@ export type AlertType = 'cpu' | 'memory' | 'error_rate' | 'downtime' | 'cert_exp
 
 export interface Project {
   id: string;
+  serverId: string | null;
   name: string;
   description: string | null;
   repoUrl: string | null;
@@ -36,6 +37,7 @@ export interface Project {
 
 export interface CreateProjectInput {
   name: string;
+  serverId?: string | null;
   description?: string;
   baseDomain?: string;
   repoUrl?: string;
@@ -152,7 +154,13 @@ export interface Server {
   name: string;
   host: string;
   port: number;
-  authToken: string;
+  mode: 'ssh' | 'agent';
+  sshUser?: string | null;
+  agentId: string | null;
+  agentVersion: string | null;
+  peerIp: string | null;
+  capabilities: Record<string, unknown>;
+  labels: Record<string, string>;
   status: ServerStatus;
   cpuTotal: number | null;
   memoryTotalMb: number | null;
@@ -160,6 +168,8 @@ export interface Server {
   cpuUsedPercent: number | null;
   memoryUsedMb: number | null;
   lastHeartbeat: string | null;
+  registeredAt: string | null;
+  revokedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
