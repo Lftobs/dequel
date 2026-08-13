@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { alertsRoutes } from "./alerts";
+import { agentRoutes } from "./agents";
 import { apiKeysRoutes } from "./api-keys";
 import { authRoutes } from "./auth";
 import { databasesRoutes } from "./databases";
@@ -16,7 +17,7 @@ import { serversRoutes } from "./servers";
 import { volumesRoutes } from "./volumes";
 import { settingsRoutes } from "./settings";
 
-const BYPASS_PATHS = new Set(["/api/auth/login", "/api/auth/logout", "/api/auth/refresh", "/api/auth/me", "/api/health", "/api/github/callback", "/api/github/webhook"]);
+const BYPASS_PATHS = new Set(["/api/auth/login", "/api/auth/logout", "/api/auth/refresh", "/api/auth/me", "/api/health", "/api/github/callback", "/api/github/webhook", "/api/agents/register", "/api/agents/p2p-sync"]);
 
 const authMiddleware = (app: Elysia) =>
 	app.onBeforeHandle(async ({ request, set, path }) => {
@@ -53,6 +54,7 @@ export const apiRoutes = new Elysia({
 })
 	.use(authRoutes)
 	.use(authMiddleware)
+	.use(agentRoutes)
 	.use(healthRoutes)
 	.use(projectsRoutes)
 	.use(deploymentsRoutes)

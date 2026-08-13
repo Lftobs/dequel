@@ -31,8 +31,21 @@ export {
 export { upsertScalingPolicy, getScalingPolicy, deleteScalingPolicy } from "./scaling";
 
 export {
-  createServer, listServers, getServerById, updateServerStatus, deleteServer,
+  createServer, listServers, listServerConnections, getServerById,
+  ensureLocalServer, updateServerStatus, deleteServer,
 } from "./servers";
+export type { ServerConnection } from "./servers";
+
+export {
+  createAgentRegistrationToken, exchangeAgentRegistrationToken,
+  validateAgentCredential, updateAgentHeartbeat,
+} from "./agents";
+
+export {
+  createAgentJob, leaseNextAgentJob, acknowledgeAgentJob,
+  getAgentJobDeploymentId, getAgentJobInfo, finishAgentJob, requeueRunningAgentJobs,
+  cancelAgentJobsByDeploymentId, listCancelledJobIds,
+} from "./agent-jobs";
 
 export { createApiKey, listApiKeys, deleteApiKey, validateApiKey } from "./api-keys";
 

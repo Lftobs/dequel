@@ -11,6 +11,7 @@ export const githubIntegrations = sqliteTable("github_integrations", {
 
 export const projects = sqliteTable("projects", {
   id: text().primaryKey(),
+  serverId: text("server_id"),
   name: text().notNull(),
   description: text(),
   repoUrl: text("repo_url"),
@@ -40,6 +41,7 @@ export const projects = sqliteTable("projects", {
 export const deployments = sqliteTable("deployments", {
   id: text().primaryKey(),
   projectId: text("project_id"),
+  serverId: text("server_id"),
   sourceType: text("source_type").notNull(),
   sourceRef: text("source_ref").notNull(),
   status: text().notNull().default("pending"),
@@ -163,6 +165,12 @@ export const servers = sqliteTable("servers", {
   host: text().notNull(),
   port: integer().notNull().default(2375),
   authToken: text("auth_token").notNull().default(""),
+  mode: text().notNull().default("docker_tcp"),
+  agentId: text("agent_id").unique(),
+  agentVersion: text("agent_version"),
+  peerIp: text("peer_ip"),
+  capabilities: text().notNull().default("{}"),
+  labels: text().notNull().default("{}"),
   status: text().notNull().default("pending"),
   cpuTotal: integer("cpu_total"),
   memoryTotalMb: integer("memory_total_mb"),
@@ -170,9 +178,53 @@ export const servers = sqliteTable("servers", {
   cpuUsedPercent: real("cpu_used_percent"),
   memoryUsedMb: integer("memory_used_mb"),
   lastHeartbeat: text("last_heartbeat"),
+  registeredAt: text("registered_at"),
+  revokedAt: text("revoked_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
+
+export const agentRegistrationTokens = sqliteTable("agent_registration_tokens", {
+  id: text().primaryKey(),
+  tokenHash: text("token_hash").notNull().unique(),
+  serverName: text("server_name").notNull(),
+  labels: text().notNull().default("{}"),
+  expiresAt: text("expires_at").notNull(),
+  usedAt: text("used_at"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const agentCredentials = sqliteTable("agent_credentials", {
+  id: text().primaryKey(),
+  serverId: text("server_id").notNull(),
+  credentialHash: text("credential_hash").notNull().unique(),
+  createdAt: text("created_at").notNull(),
+  lastUsedAt: text("last_used_at"),
+  revokedAt: text("revoked_at"),
+}, (table) => [
+  foreignKey({ columns: [table.serverId], foreignColumns: [servers.id], onDelete: "cascade" }),
+]);
+
+export const agentJobs = sqliteTable("agent_jobs", {
+  id: text().primaryKey(),
+  deploymentId: text("deployment_id"),
+  serverId: text("server_id").notNull(),
+  type: text().notNull(),
+  payload: text().notNull(),
+  status: text().notNull().default("queued"),
+  attempts: integer().notNull().default(0),
+  leaseId: text("lease_id"),
+  leaseExpiresAt: text("lease_expires_at"),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  failureReason: text("failure_reason"),
+  createdAt: text("created_at").notNull(),
+  startedAt: text("started_at"),
+  finishedAt: text("finished_at"),
+}, (table) => [
+  foreignKey({ columns: [table.serverId], foreignColumns: [servers.id], onDelete: "cascade" }),
+  foreignKey({ columns: [table.deploymentId], foreignColumns: [deployments.id], onDelete: "cascade" }),
+  index("idx_agent_jobs_server_status").on(table.serverId, table.status),
+]);
 
 export const refreshTokens = sqliteTable("refresh_tokens", {
 	id: text().primaryKey(),

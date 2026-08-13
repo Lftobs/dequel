@@ -5,7 +5,7 @@ import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { StatusBadge } from '../components/StatusBadge';
-import { Trash2, Server, Key, Mail } from 'lucide-react';
+import { Trash2, Server, Key, Mail, Copy, Terminal } from 'lucide-react';
 import * as api from '../api/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { ConfigWarnings } from '../components/ConfigWarnings';
@@ -33,6 +33,9 @@ function ServersSection() {
   const [host, setHost] = useState('');
   const [port, setPort] = useState('2376');
   const [authToken, setAuthToken] = useState('');
+  const [agentName, setAgentName] = useState('');
+  const [registrationCommand, setRegistrationCommand] = useState('');
+  const [registrationError, setRegistrationError] = useState('');
 
   const [deletingServerId, setDeletingServerId] = useState<string | null>(null);
 
@@ -43,11 +46,32 @@ function ServersSection() {
     refetch();
   };
 
-  const add = async (e: React.FormEvent) => {
+  const addSshServer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !host.trim()) return;
-    await api.createServer({ name: name.trim(), host: host.trim(), port: Number(port), authToken: authToken.trim() });
-    setName(''); setHost(''); setPort('2376'); setAuthToken(''); refetch();
+    await api.createServer({
+      name: name.trim(),
+      host: host.trim(),
+      port: Number(port) || 22,
+      mode: 'ssh',
+      sshUser: sshUser.trim() || 'root',
+    });
+    setName(''); setHost(''); setPort('22'); setSshUser('root'); refetch();
+  };
+
+  const [sshUser, setSshUser] = useState('root');
+
+  const createRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!agentName.trim()) return;
+    setRegistrationError('');
+    try {
+      const result = await api.createAgentRegistrationToken({ name: agentName.trim() });
+      const controlPlane = window.location.origin;
+      setRegistrationCommand(`docker run -d --name dequel-agent --cap-add=NET_ADMIN --device /dev/net/tun --restart unless-stopped -e DEQUEL_CONTROL_PLANE=${controlPlane} -e DEQUEL_REGISTRATION_TOKEN=${result.token} -v dequel-agent-data:/root/.dequel -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/lftobs/dequel/agent:latest`);
+    } catch (err) {
+      setRegistrationError(err instanceof Error ? err.message : 'Could not create registration token');
+    }
   };
 
   return (
@@ -56,32 +80,72 @@ function ServersSection() {
         <div className="flex items-center gap-2"><Server className="h-5 w-5 text-muted-foreground" /><CardTitle className="text-lg">Servers</CardTitle></div>
       </CardHeader>
       <CardContent>
-        <form onSubmit={add} className="flex flex-wrap items-end gap-3 mb-4">
-          <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Name</label>
-            <Input placeholder="prod-node-1" value={name} onChange={e => setName(e.target.value)} className="w-36" />
+        {/* Primary Form: Direct SSH Connection */}
+        <form onSubmit={addSshServer} className="mb-5 rounded-lg border border-border bg-black/20 p-4">
+          <div className="mb-3 flex items-start gap-3">
+            <Server className="mt-0.5 h-4 w-4 text-orange-500" />
+            <div>
+              <h3 className="text-sm font-semibold">Connect a Server (Direct SSH)</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Add any remote cloud VPS (Hetzner, DigitalOcean, AWS). Dequel deploys over SSH directly without installing software on the target server.</p>
+            </div>
           </div>
-          <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Host</label>
-            <Input placeholder="192.168.1.10" value={host} onChange={e => setHost(e.target.value)} className="w-44" />
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Server Name</label>
+              <Input placeholder="prod-node-1" value={name} onChange={e => setName(e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Host / IP Address</label>
+              <Input placeholder="192.168.1.10" value={host} onChange={e => setHost(e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">SSH Port</label>
+              <Input type="number" placeholder="22" value={port} onChange={e => setPort(e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">SSH User</label>
+              <Input placeholder="root" value={sshUser} onChange={e => setSshUser(e.target.value)} />
+            </div>
           </div>
-          <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Port</label>
-            <Input type="number" value={port} onChange={e => setPort(e.target.value)} className="w-20" />
+          <div className="mt-4 flex justify-end">
+            <Button type="submit" size="sm" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold">Add SSH Server</Button>
           </div>
-          <Button type="submit" size="sm">Add Server</Button>
         </form>
+
+        {/* Alternative: Direct P2P WireGuard Agent Mode */}
+        <details className="mb-4 rounded-lg border border-border px-4 py-3">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Alternative: Direct P2P WireGuard Agent (For Firewalled Nodes)</summary>
+          <form onSubmit={createRegistration} className="mt-3 space-y-3">
+            <p className="text-xs text-muted-foreground">Establishes an encrypted Direct P2P WireGuard tunnel for firewalled nodes or homelabs without open SSH ports.</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="grid flex-1 gap-1.5">
+                <label htmlFor="agent-server-name" className="text-xs font-medium text-muted-foreground">Agent Server Name</label>
+                <Input id="agent-server-name" placeholder="homelab-node" value={agentName} onChange={e => setAgentName(e.target.value)} />
+              </div>
+              <Button type="submit" size="sm" variant="outline">Generate P2P Agent Command</Button>
+            </div>
+            {registrationCommand && (
+              <div className="mt-3 flex items-start gap-2 rounded-md border border-border bg-background p-3">
+                <code className="min-w-0 flex-1 break-all text-xs text-zinc-300">{registrationCommand}</code>
+                <Button type="button" variant="ghost" size="icon" aria-label="Copy registration command" onClick={() => navigator.clipboard.writeText(registrationCommand)}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            {registrationError && <p role="alert" className="mt-2 text-xs text-red-400">{registrationError}</p>}
+          </form>
+        </details>
         {servers.length > 0 && (
           <div className="rounded-xl border border-border overflow-hidden overflow-x-auto">
             <Table className="min-w-[500px] md:min-w-full">
               <TableHeader>
-                <TableRow><TableHead>Name</TableHead><TableHead>Host</TableHead><TableHead>Status</TableHead><TableHead className="w-12"></TableHead></TableRow>
+                <TableRow><TableHead>Name</TableHead><TableHead>Host / Connection</TableHead><TableHead>Status</TableHead><TableHead className="w-12"></TableHead></TableRow>
               </TableHeader>
               <TableBody>
                 {servers.map(s => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell className="font-mono text-xs">{s.host}:{s.port}</TableCell>
+                    <TableCell className="font-mono text-xs">{s.mode === 'agent' ? `P2P WireGuard Agent ${s.agentVersion || ''}` : `SSH (${s.sshUser || 'root'}@${s.host}:${s.port})`}</TableCell>
                     <TableCell><StatusBadge status={s.status || 'active'} /></TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"

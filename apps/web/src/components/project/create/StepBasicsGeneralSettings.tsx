@@ -4,6 +4,8 @@ import { cn } from "../../../lib/utils";
 import { FrameworkSelect } from "../../ui/FrameworkSelect";
 import type { FrameworkPreset } from "../../../utils/presets";
 import { FRAMEWORK_PRESETS } from "../../../utils/presets";
+import { DeploymentTargetSelect } from "./DeploymentTargetSection";
+import type { Server as DequelServer } from "../../../types";
 
 interface StepBasicsGeneralSettingsProps {
 	name: string;
@@ -16,6 +18,9 @@ interface StepBasicsGeneralSettingsProps {
 	setProjectType: (v: string) => void;
 	selectedPresetId: string;
 	onSelectPreset: (preset: FrameworkPreset) => void;
+	serverId: string;
+	setServerId: (v: string) => void;
+	servers: DequelServer[];
 }
 
 export function StepBasicsGeneralSettings({
@@ -29,6 +34,9 @@ export function StepBasicsGeneralSettings({
 	setProjectType,
 	selectedPresetId,
 	onSelectPreset,
+	serverId,
+	setServerId,
+	servers,
 }: StepBasicsGeneralSettingsProps) {
 	const handleTypeChange = (type: string) => {
 		const preset = FRAMEWORK_PRESETS.find((p) => p.id === selectedPresetId);
@@ -89,6 +97,14 @@ export function StepBasicsGeneralSettings({
 					<FrameworkSelect
 						selectedPresetId={selectedPresetId}
 						onSelectPreset={onSelectPreset}
+					/>
+				</div>
+
+				<div className="sm:col-span-2">
+					<DeploymentTargetSelect
+						serverId={serverId}
+						setServerId={setServerId}
+						servers={servers}
 					/>
 				</div>
 

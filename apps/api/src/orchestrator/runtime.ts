@@ -4,6 +4,8 @@ import { spawn } from 'node:child_process';
 import { config } from '../utils/config';
 import { dockerBin } from '../utils/docker-bin';
 import { DEQUEL_MANAGED_LABEL } from '../utils/dequel-labels';
+import type { Server } from '../types';
+import { getDockerSshTarget, syncRemoteCaddyRoute } from '../utils/ssh';
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
 
@@ -17,34 +19,33 @@ export interface RuntimeOpts {
   cpuLimit?: number | null;
   memoryLimitMb?: number | null;
   appPort?: number;
+  targetServer?: Server | null;
 }
 
-export const run = (cmd: string, args: string[]) =>
+const getDockerTargetArgs = (server?: Server | null): string[] => {
+  if (server?.mode === 'ssh') {
+    return ['-H', getDockerSshTarget(server)];
+  }
+  return [];
+};
+
+export const run = (cmd: string, args: string[], server?: Server | null) =>
   new Promise<string>((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const targetArgs = getDockerTargetArgs(server);
+    const fullArgs = cmd === dockerBin && targetArgs.length > 0 ? [...targetArgs, ...args] : args;
+    const child = spawn(cmd, fullArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (chunk) => { stdout += String(chunk); });
     child.stderr.on('data', (chunk) => { stderr += String(chunk); });
     child.on('close', (code) => {
       if (code === 0) resolve((stdout + '\n' + stderr).trim());
-      else reject(new Error(`${cmd} ${args.join(' ')} failed (${code}): ${stderr}`));
+      else reject(new Error(`${cmd} ${fullArgs.join(' ')} failed (${code}): ${stderr}`));
     });
   });
 
-const getCaddyContainer = async (): Promise<string> => {
-  const output = await run(dockerBin, [
-    'ps', '-q',
-    '--filter', 'label=com.docker.compose.service=caddy',
-    '--filter', `network=${config.dockerNetwork}`,
-  ]);
-  const containerId = output.split('\n').map(l => l.trim()).find(Boolean);
-  if (!containerId) throw new Error('Could not find running Caddy container');
-  return containerId;
-};
-
-export const tryRun = async (cmd: string, args: string[]) => {
-  try { await run(cmd, args); } catch { return; }
+export const tryRun = async (cmd: string, args: string[], server?: Server | null) => {
+  try { await run(cmd, args, server); } catch { return; }
 };
 
 const waitForRunningContainer = async (
@@ -189,21 +190,26 @@ export const deployContainer = async (
 
   dockerArgs.push(imageTag);
 
-  await run(dockerBin, dockerArgs);
+  await run(dockerBin, dockerArgs, opts.targetServer);
   await onLog(`Waiting for container ${containerName} to report running`);
   await waitForRunningContainer(containerName, 40, onLog);
-  await tryRun(dockerBin, ['network', 'connect', config.dockerNetwork, containerName]);
+  await tryRun(dockerBin, ['network', 'connect', config.dockerNetwork, containerName], opts.targetServer);
 
-  const caddyRouteFile = join(config.caddyRoutesDir, `${slug}.caddy`);
   const { buildCaddySnippet } = await import('../utils/domain-verifier');
   const caddySnippet = await buildCaddySnippet(slug, containerName, opts.projectId, undefined, opts.appPort);
 
-  await onLog(`Writing Caddy route file: ${caddyRouteFile}`);
-  await writeFile(caddyRouteFile, caddySnippet, 'utf8');
+  if (opts.targetServer?.mode === 'ssh' || opts.targetServer?.mode === 'docker_tcp') {
+    await onLog(`Syncing Caddy route to remote server (${opts.targetServer.name}): ${slug}.caddy`);
+    await syncRemoteCaddyRoute(opts.targetServer, `${slug}.caddy`, caddySnippet);
+  } else {
+    const caddyRouteFile = join(config.caddyRoutesDir, `${slug}.caddy`);
+    await onLog(`Writing Caddy route file: ${caddyRouteFile}`);
+    await writeFile(caddyRouteFile, caddySnippet, 'utf8');
 
-  await onLog('Reloading Caddy to apply dynamic route');
-  try { await reloadCaddy(); } catch (error) {
-    await onLog(`Caddy reload failed (might not be ready): ${error instanceof Error ? error.message : String(error)}`);
+    await onLog('Reloading Caddy to apply dynamic route');
+    try { await reloadCaddy(); } catch (error) {
+      await onLog(`Caddy reload failed (might not be ready): ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
   await onLog('Caddy route reload completed');
 

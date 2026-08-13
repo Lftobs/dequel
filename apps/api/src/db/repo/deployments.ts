@@ -8,6 +8,7 @@ import { now } from "./helpers";
 const mapDeployment = (row: typeof deployments.$inferSelect): Deployment => ({
   id: row.id,
   projectId: row.projectId,
+  serverId: row.serverId ?? null,
   sourceType: row.sourceType as Deployment["sourceType"],
   sourceRef: row.sourceRef,
   status: row.status as DeploymentStatus,
@@ -33,6 +34,7 @@ export const createDeployment = async (input: CreateDeploymentInput): Promise<De
   db.insert(deployments).values({
     id,
     projectId: input.projectId ?? null,
+    serverId: input.serverId ?? null,
     sourceType: input.sourceType,
     sourceRef: input.sourceRef,
     status: "pending",

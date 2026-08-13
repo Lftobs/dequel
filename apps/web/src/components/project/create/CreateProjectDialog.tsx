@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useCreateProject } from "../../../hooks/useProjects";
 import { Button } from "../../ui/button";
 import {
@@ -14,8 +15,9 @@ import { cn } from "../../../lib/utils";
 import { Plus } from "lucide-react";
 import * as api from "../../../api/client";
 import { getGithubIntegration } from "../../../api/client";
-import type { GithubRepo, DatabaseType } from "../../../types";
+import type { GithubRepo, DatabaseType, Server as DequelServer } from "../../../types";
 import type { FrameworkPreset } from "../../../utils/presets";
+import { getDeploymentTargets } from "./DeploymentTargetSection";
 
 import { StepBasics } from "./StepBasics";
 import { StepEnvironment } from "./StepEnvironment";
@@ -34,9 +36,20 @@ export function CreateProjectDialog({
 	const createProject = useCreateProject();
 	const [step, setStep] = useState(1);
 
+	const { data: servers = [] } = useQuery({
+		queryKey: ["servers"],
+		queryFn: () =>
+			api
+				.listServers()
+				.catch(() => [] as DequelServer[]),
+		staleTime: 30_000,
+	});
+
 	const [name, setName] = useState("");
 	const [description, setDescription] =
 		useState("");
+	const [serverId, setServerId] =
+		useState("local");
 	const [baseDomain, setBaseDomain] =
 		useState("");
 	const [repoUrl, setRepoUrl] = useState("");
@@ -160,6 +173,7 @@ export function CreateProjectDialog({
 			setOutputDir("");
 			setPort("");
 			setZipFile(null);
+			setServerId("local");
 		}
 	};
 
@@ -186,6 +200,11 @@ export function CreateProjectDialog({
 					description:
 						description.trim() ||
 						undefined,
+					serverId: getDeploymentTargets(
+						servers,
+					).some((s) => s.id === serverId)
+						? serverId
+						: "local",
 					baseDomain:
 						baseDomain.trim() ||
 						undefined,
@@ -455,6 +474,9 @@ export function CreateProjectDialog({
 						setZipFile={setZipFile}
 						selectedPresetId={selectedPresetId}
 						onSelectPreset={handleSelectPreset}
+						serverId={serverId}
+						setServerId={setServerId}
+						servers={servers}
 					/>
 						)}
 

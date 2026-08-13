@@ -15,6 +15,7 @@ import { loadOrCreateJwtSecret } from './utils/secrets';
 import { initAuth, cleanupExpiredTokens } from './utils/auth';
 import { startBuildCleanup } from './orchestrator/cleanup';
 import { startDatabaseMonitoring } from './databases/manager';
+import { ensureLocalServer } from './db/repo';
 const bootstrap = async () => {
   await mkdir(dirname(config.databasePath), { recursive: true });
   await mkdir(config.workspaceRoot, { recursive: true });
@@ -24,6 +25,7 @@ const bootstrap = async () => {
   initAuth(jwtSecret);
 
   await migrate();
+  await ensureLocalServer();
   await orchestrator.reconcileState();
   orchestrator.startWorker();
   scalingEngine.start();
