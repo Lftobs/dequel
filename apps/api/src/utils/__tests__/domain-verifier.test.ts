@@ -2,30 +2,24 @@ import { describe, it, expect, mock, beforeAll, afterAll, afterEach } from 'bun:
 import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { addToCaddyRoute, removeFromCaddyRoute, buildCaddySnippet } from '../domain-verifier';
 
 let tmpDir: string;
 let routesDir: string;
-const testConfig = { caddyRoutesDir: '', appInternalPort: 3000, caddyBaseDomain: 'localhost' };
 
-const fileUrl = (path: string) => new URL(path, import.meta.url).toString();
-mock.module(fileUrl('../config.ts'), () => ({ config: testConfig }));
-mock.module(fileUrl('../../orchestrator/runtime.ts'), () => ({
-  reloadCaddy: mock(() => Promise.resolve()),
-}));
+const noopReload = mock(() => Promise.resolve());
 
-let module: typeof import('../domain-verifier');
-
-beforeAll(async () => {
+beforeAll(() => {
   tmpDir = mkdtempSync(join(tmpdir(), 'domain-verifier-test-'));
   routesDir = join(tmpDir, 'routes');
   mkdirSync(routesDir, { recursive: true });
-  testConfig.caddyRoutesDir = routesDir;
-  module = await import('../domain-verifier');
 });
 
 afterAll(() => {
   rmSync(tmpDir, { recursive: true, force: true });
 });
+
+const routeOpts = () => ({ routesDir, reloadFn: noopReload });
 
 function createRouteFile(slug: string, content: string) {
   writeFileSync(join(routesDir, `${slug}.caddy`), content, 'utf8');
@@ -50,40 +44,40 @@ describe('addToCaddyRoute', () => {
 
   it('adds domain with :80 to existing route file', async () => {
     createRouteFile('elysia', 'elysia.localhost:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
-    await module.addToCaddyRoute('app.example.com', 'proj-1', 'elysia');
+    await addToCaddyRoute('app.example.com', 'proj-1', 'elysia', routeOpts());
     const content = readRouteFile('elysia');
     expect(content).toBe('elysia.localhost:80, app.example.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
   });
 
   it('is idempotent (does not add duplicate domain)', async () => {
     createRouteFile('elysia', 'elysia.localhost:80, app.example.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
-    await module.addToCaddyRoute('app.example.com', 'proj-1', 'elysia');
+    await addToCaddyRoute('app.example.com', 'proj-1', 'elysia', routeOpts());
     const content = readRouteFile('elysia');
     expect(content).toBe('elysia.localhost:80, app.example.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
   });
 
   it('does nothing when route file does not exist', async () => {
-    await module.addToCaddyRoute('app.example.com', 'proj-2', 'nonexistent');
+    await addToCaddyRoute('app.example.com', 'proj-2', 'nonexistent', routeOpts());
     expect(routeFileExists('nonexistent')).toBe(false);
   });
 
   it('does nothing when route file has no site block', async () => {
     createRouteFile('test-project', '# just a comment\n');
-    await module.addToCaddyRoute('app.example.com', 'proj-3', 'test-project');
+    await addToCaddyRoute('app.example.com', 'proj-3', 'test-project', routeOpts());
     const content = readRouteFile('test-project');
     expect(content).toBe('# just a comment\n');
   });
 
   it('handles multiple domains correctly', async () => {
     createRouteFile('elysia', 'elysia.localhost:80, first.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
-    await module.addToCaddyRoute('second.com', 'proj-1', 'elysia');
+    await addToCaddyRoute('second.com', 'proj-1', 'elysia', routeOpts());
     const content = readRouteFile('elysia');
     expect(content).toBe('elysia.localhost:80, first.com:80, second.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
   });
 
   it('uses project name as slug for file path', async () => {
     createRouteFile('my-project', 'my-project.localhost:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
-    await module.addToCaddyRoute('app.example.com', 'proj-4', 'My Project');
+    await addToCaddyRoute('app.example.com', 'proj-4', 'My Project', routeOpts());
     const content = readRouteFile('my-project');
     expect(content).toContain('app.example.com:80');
   });
@@ -97,33 +91,33 @@ describe('removeFromCaddyRoute', () => {
 
   it('removes domain from route file', async () => {
     createRouteFile('elysia', 'elysia.localhost:80, app.example.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
-    await module.removeFromCaddyRoute('app.example.com', 'proj-1', 'elysia');
+    await removeFromCaddyRoute('app.example.com', 'proj-1', 'elysia', routeOpts());
     const content = readRouteFile('elysia');
     expect(content).toBe('elysia.localhost:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
   });
 
   it('removes domain from middle of domain list', async () => {
     createRouteFile('elysia', 'elysia.localhost:80, first.com:80, second.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
-    await module.removeFromCaddyRoute('first.com', 'proj-1', 'elysia');
+    await removeFromCaddyRoute('first.com', 'proj-1', 'elysia', routeOpts());
     const content = readRouteFile('elysia');
     expect(content).toBe('elysia.localhost:80, second.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
   });
 
   it('does nothing when domain is not in the file', async () => {
     createRouteFile('elysia', 'elysia.localhost:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
-    await module.removeFromCaddyRoute('not-there.com', 'proj-1', 'elysia');
+    await removeFromCaddyRoute('not-there.com', 'proj-1', 'elysia', routeOpts());
     const content = readRouteFile('elysia');
     expect(content).toBe('elysia.localhost:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
   });
 
   it('does nothing when file does not exist', async () => {
-    await module.removeFromCaddyRoute('app.example.com', 'proj-2', 'nonexistent');
+    await removeFromCaddyRoute('app.example.com', 'proj-2', 'nonexistent', routeOpts());
     expect(routeFileExists('nonexistent')).toBe(false);
   });
 
   it('handles removal when domain exists without :80 suffix (backward compat)', async () => {
     createRouteFile('elysia', 'elysia.localhost:80, app.example.com {\n  reverse_proxy deploy-abc:3000\n}\n');
-    await module.removeFromCaddyRoute('app.example.com', 'proj-1', 'elysia');
+    await removeFromCaddyRoute('app.example.com', 'proj-1', 'elysia', routeOpts());
     const content = readRouteFile('elysia');
     expect(content).toBe('elysia.localhost:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
   });
@@ -145,18 +139,23 @@ describe('buildCaddySnippet', () => {
       })),
     );
 
+  const noEnvVars = mock().mockResolvedValue([]);
+  const snippetOpts = { baseDomain: 'localhost', listEnvVarsFn: noEnvVars };
+  const APP_PORT = 3000;
+
   afterEach(() => {
     noDomains.mockClear();
+    noEnvVars.mockClear();
   });
 
   it('creates snippet with just localhost domain when no verified domains', async () => {
-    const snippet = await module.buildCaddySnippet('elysia', 'deploy-abc', 'proj-1', noDomains);
+    const snippet = await buildCaddySnippet('elysia', 'deploy-abc', 'proj-1', noDomains, APP_PORT, snippetOpts);
     expect(snippet).toBe('elysia.localhost:80 {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy deploy-abc:3000 {\n    header_up Host {upstream_hostport}\n  }\n}\n');
   });
 
   it('creates snippet with verified domains when projectId is provided', async () => {
     const listFn = mockDomains(['app.example.com']);
-    const snippet = await module.buildCaddySnippet('elysia', 'deploy-abc', 'proj-1', listFn);
+    const snippet = await buildCaddySnippet('elysia', 'deploy-abc', 'proj-1', listFn, APP_PORT, snippetOpts);
     expect(snippet).toBe('elysia.localhost:80, app.example.com:80 {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy deploy-abc:3000 {\n    header_up Host {upstream_hostport}\n  }\n}\n');
   });
 
@@ -165,25 +164,25 @@ describe('buildCaddySnippet', () => {
       { id: '1', projectId: 'proj-1', domain: 'verified.com', type: 'custom', validationStatus: 'verified', sslStatus: 'provisioned', createdAt: '', updatedAt: '' },
       { id: '2', projectId: 'proj-1', domain: 'pending.com', type: 'custom', validationStatus: 'pending', sslStatus: 'pending', createdAt: '', updatedAt: '' },
     ]);
-    const snippet = await module.buildCaddySnippet('elysia', 'deploy-abc', 'proj-1', listFn);
+    const snippet = await buildCaddySnippet('elysia', 'deploy-abc', 'proj-1', listFn, APP_PORT, snippetOpts);
     expect(snippet).toContain('verified.com:80');
     expect(snippet).not.toContain('pending.com');
   });
 
   it('does not duplicate domains', async () => {
     const listFn = mockDomains(['app.example.com']);
-    const snippet = await module.buildCaddySnippet('elysia', 'deploy-abc', 'proj-1', listFn);
+    const snippet = await buildCaddySnippet('elysia', 'deploy-abc', 'proj-1', listFn, APP_PORT, snippetOpts);
     const matches = snippet.match(/app\.example\.com/g);
     expect(matches).toHaveLength(1);
   });
 
   it('sets reverse_proxy target correctly', async () => {
-    const snippet = await module.buildCaddySnippet('my-app', 'deploy-xyz-123', 'proj-2', noDomains);
+    const snippet = await buildCaddySnippet('my-app', 'deploy-xyz-123', 'proj-2', noDomains, APP_PORT, snippetOpts);
     expect(snippet).toContain('reverse_proxy deploy-xyz-123:3000');
   });
 
   it('uses config.appInternalPort as proxy port', async () => {
-    const snippet = await module.buildCaddySnippet('my-app', 'deploy-abc', 'proj-3', noDomains);
+    const snippet = await buildCaddySnippet('my-app', 'deploy-abc', 'proj-3', noDomains, APP_PORT, snippetOpts);
     expect(snippet).toContain(':3000');
   });
 });
