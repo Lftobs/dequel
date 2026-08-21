@@ -17,6 +17,7 @@ export const config = {
   agentVersion: process.env.DEQUEL_AGENT_VERSION || "0.2.1",
   publicHost: process.env.DEQUEL_AGENT_PUBLIC_HOST,
   workspaceRoot: process.env.DEQUEL_AGENT_WORKSPACE || "/var/lib/dequel/workspace",
+  caddyRoutesDir: process.env.DEQUEL_AGENT_CADDY_ROUTES || "/etc/dequel/caddy/routes",
   dockerNetwork: process.env.DEQUEL_DOCKER_NETWORK || "dequel_net",
 };
 

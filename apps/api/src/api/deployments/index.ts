@@ -78,7 +78,8 @@ export const deploymentsRoutes = new Elysia()
 				String(form.get("projectId") ?? "").trim() ||
 				undefined;
 			const project = projectId ? await getProjectById(projectId) : null;
-			const serverId = project?.serverId ?? "local";
+			const { resolveDefaultServerId } = await import("../../utils/server-default");
+			const serverId = await resolveDefaultServerId(project?.serverId);
 			const server = await getServerById(serverId);
 			if (!server) {
 				set.status = 400;

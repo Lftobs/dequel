@@ -14,6 +14,7 @@ import { alertEvaluator } from './monitoring/evaluator';
 import { loadOrCreateJwtSecret } from './utils/secrets';
 import { initAuth, cleanupExpiredTokens } from './utils/auth';
 import { startBuildCleanup } from './orchestrator/cleanup';
+import { startFailoverMonitor } from './orchestrator/failover';
 import { startDatabaseMonitoring } from './databases/manager';
 import { ensureLocalServer } from './db/repo';
 const bootstrap = async () => {
@@ -33,6 +34,7 @@ const bootstrap = async () => {
   startDomainPolling();
   alertEvaluator.start();
   startBuildCleanup();
+  startFailoverMonitor();
   startDatabaseMonitoring();
   setInterval(() => { cleanupExpiredTokens().catch(() => {}); }, 60_000);
 

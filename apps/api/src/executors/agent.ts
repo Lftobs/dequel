@@ -1,5 +1,6 @@
 import type { Deployment, Project, Server } from "../types";
 import type { DeploymentExecutor, ExecutorCancelInput, ExecutorDeployInput, ExecutorDestroyInput, ExecutorRollbackInput } from "./types";
+import { routeNamesFor } from "../utils/routes";
 
 let repoModule: typeof import("../db/repo") | null = null;
 let deploymentsModule: typeof import("../agents/deployments") | null = null;
@@ -42,7 +43,7 @@ export const queueRemoteRollback = async (deployment: Deployment, project: Proje
   await appendLog(deployment.id, "system", `Rollback queued for server ${server.name}`);
 };
 
-export const queueRemoteDestroy = async (deployment: Deployment, server: Server) => {
+export const queueRemoteDestroy = async (deployment: Deployment, server: Server, project: Project | null = null) => {
   if (!deployment.serverId || deployment.serverId === "local") throw new Error("Remote destroy requires an agent server");
   const { createAgentJob, appendLog } = await getRepo();
   await createAgentJob({
@@ -55,6 +56,22 @@ export const queueRemoteDestroy = async (deployment: Deployment, server: Server)
       imageTag: deployment.imageTag ?? null,
     },
     idempotencyKey: `destroy:${deployment.id}`,
+  });
+  const { slug, hostname, routeFile } = routeNamesFor(project?.name ?? null, deployment.projectId, deployment.id);
+  const appPort = project?.port || 3000;
+  await createAgentJob({
+    deploymentId: deployment.id,
+    serverId: deployment.serverId,
+    type: "reload_routes",
+    payload: {
+      deploymentId: deployment.id,
+      action: "remove",
+      hostname,
+      routeFile,
+      port: appPort,
+      targetContainers: [],
+    },
+    idempotencyKey: `route:remove:${slug}:${deployment.id}`,
   });
   await appendLog(deployment.id, "system", `Destroy queued for server ${server.name}`);
 };
@@ -72,8 +89,8 @@ export const agentExecutor: DeploymentExecutor = {
     await queueRemoteRollback(deployment, project, server);
   },
 
-  async destroy({ deployment, server }: ExecutorDestroyInput) {
-    await queueRemoteDestroy(deployment, server);
+  async destroy({ deployment, server, project }: ExecutorDestroyInput) {
+    await queueRemoteDestroy(deployment, server, project ?? null);
   },
 
   async cancel({ deployment }: ExecutorCancelInput) {

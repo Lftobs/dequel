@@ -154,7 +154,7 @@ export interface Server {
   name: string;
   host: string;
   port: number;
-  mode: 'ssh' | 'agent';
+  mode: 'local' | 'ssh' | 'agent';
   sshUser?: string | null;
   agentId: string | null;
   agentVersion: string | null;

@@ -315,3 +315,35 @@ export interface LogEvent {
   message: string;
   timestamp: string;
 }
+
+export type RouteStatus = 'pending' | 'active' | 'failed' | 'removed';
+
+export interface Route {
+  id: string;
+  serverId: string | null;
+  deploymentId: string | null;
+  projectId: string | null;
+  hostname: string;
+  routeFile: string;
+  port: number;
+  targetContainers: string[];
+  upstreamHost: string | null;
+  status: RouteStatus;
+  lastError: string | null;
+  confirmedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertRouteInput {
+  serverId?: string | null;
+  deploymentId?: string | null;
+  projectId?: string | null;
+  hostname: string;
+  routeFile: string;
+  port: number;
+  targetContainers: string[];
+  upstreamHost?: string | null;
+  status?: RouteStatus;
+  lastError?: string | null;
+}

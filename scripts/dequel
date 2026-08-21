@@ -5,6 +5,7 @@ SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 DEQUEL_HOME="${DEQUEL_HOME:-$SCRIPT_DIR}"
 COMPOSE_FILE="$DEQUEL_HOME/docker-compose.yml"
+[ -f "$DEQUEL_HOME/.env" ] && set -a && . "$DEQUEL_HOME/.env" && set +a
 INSTALLED_VERSION="$(cat "$DEQUEL_HOME/VERSION" 2>/dev/null || echo "0.1.0")"
 export DEQUEL_VERSION="$INSTALLED_VERSION"
 
@@ -25,11 +26,23 @@ cmd() {
 	if [ ! -f "$COMPOSE_FILE" ]; then
 		fail "Dequel not found at $DEQUEL_HOME. Run install.sh first or set \$DEQUEL_HOME."
 	fi
-	docker compose -f "$COMPOSE_FILE" "$@"
+	local profile_args=()
+	case "${DEQUEL_PROFILE:-control-plane}" in
+		full|monitoring+build)
+			profile_args=(--profile build --profile monitoring)
+			;;
+		monitoring)
+			profile_args=(--profile monitoring)
+			;;
+		build)
+			profile_args=(--profile build)
+			;;
+	esac
+	docker compose -f "$COMPOSE_FILE" "${profile_args[@]}" "$@"
 }
 
 cmd_start() {
-	header "Starting Dequel"
+	header "Starting Dequel (profile: ${DEQUEL_PROFILE:-control-plane})"
 	cmd up -d
 	local domain="${CADDY_BASE_DOMAIN:-localhost}"
 	if [ "$domain" = "localhost" ]; then

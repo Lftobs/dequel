@@ -1,0 +1,74 @@
+import { describe, it, expect, mock } from 'bun:test';
+import { projectServerSite, ingressSite, shouldRouteViaIngress } from '../ingress';
+
+describe('ingress route shapes', () => {
+  it('writes a plain-http site when the project server is behind the ingress', () => {
+    const snippet = projectServerSite('app.example.com', 3000, ['deploy-dep-1'], true);
+    expect(snippet).toContain('http://app.example.com {');
+    expect(snippet).toContain('reverse_proxy deploy-dep-1:3000');
+  });
+
+  it('keeps the TLS site when no ingress is used', () => {
+    const snippet = projectServerSite('app.example.com', 3000, ['deploy-dep-1'], false);
+    expect(snippet.startsWith('app.example.com {')).toBe(true);
+    expect(snippet).not.toContain('http://');
+  });
+
+  it('writes an ingress proxy site to the upstream host with pass-through Host', () => {
+    const snippet = ingressSite('app.example.com', '203.0.113.10');
+    expect(snippet).toContain('reverse_proxy 203.0.113.10:80');
+    expect(snippet).not.toContain('header_up Host');
+  });
+});
+
+describe('shouldRouteViaIngress', () => {
+  it('routes ssh project servers through a different ingress server', () => {
+    expect(shouldRouteViaIngress({ id: 'b', mode: 'ssh' }, { id: 'a' })).toBe(true);
+  });
+
+  it('does not route agent or local project servers', () => {
+    expect(shouldRouteViaIngress({ id: 'b', mode: 'agent' }, { id: 'a' })).toBe(false);
+    expect(shouldRouteViaIngress({ id: 'local', mode: 'local' }, { id: 'a' })).toBe(false);
+  });
+
+  it('does not route when the project runs on the ingress itself', () => {
+    expect(shouldRouteViaIngress({ id: 'a', mode: 'ssh' }, { id: 'a' })).toBe(false);
+  });
+
+  it('does not route without an ingress configured', () => {
+    expect(shouldRouteViaIngress({ id: 'b', mode: 'ssh' }, null)).toBe(false);
+  });
+});
+
+describe('syncIngressRoute local mode', () => {
+  it('writes a route file for local ingress', async () => {
+    let writtenPath = '';
+    let writtenContent = '';
+    mock.module('node:fs/promises', () => ({
+      writeFile: mock((path: string, content: string) => { writtenPath = path; writtenContent = content; return Promise.resolve(); }),
+      rm: mock(() => Promise.resolve()),
+    }));
+    mock.module('node:path', () => ({
+      join: mock((...parts: string[]) => parts.join('/')),
+    }));
+    mock.module('../../db/repo', () => ({
+      getPlatformSettings: mock(() => Promise.resolve({ ingressServerId: 'local' })),
+      getServerById: mock(() => Promise.resolve({ id: 'local', mode: 'local' })),
+      createAgentJob: mock(() => Promise.resolve('job-1')),
+      upsertRoute: mock(() => Promise.resolve({})),
+    }));
+    mock.module('../../utils/config', () => ({
+      config: { caddyRoutesDir: '/tmp/routes' },
+    }));
+
+    const { syncIngressRoute } = await import('../ingress');
+    await syncIngressRoute(
+      { id: 'local', mode: 'local' },
+      '203.0.113.10',
+      { hostname: 'app.example.com', routeFile: 'app.example.com.caddy', port: 3000, containers: ['c-1'] },
+    );
+    expect(writtenPath).toBe('/tmp/routes/app.example.com.caddy');
+    expect(writtenContent).toContain('app.example.com');
+    expect(writtenContent).toContain('reverse_proxy 203.0.113.10:80');
+  });
+});

@@ -450,6 +450,12 @@ export const createServer = (data: {
 	});
 export const getServer = (id: string) =>
 	apiFetch<Server>(`/servers/${id}`);
+export const prepareServer = (id: string) =>
+	apiFetch<{ ok: boolean; preparing: boolean }>(`/servers/${id}/prepare`, {
+		method: "POST",
+	});
+export const serverPrepareStreamUrl = (id: string) =>
+	`${BASE}/servers/${id}/prepare/stream`;
 export const deleteServer = (id: string) =>
 	apiFetch<{ ok: boolean }>(`/servers/${id}`, {
 		method: "DELETE",

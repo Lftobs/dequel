@@ -15,6 +15,7 @@ import { removeFromCaddyRoute } from "../../utils/domain-verifier";
 import { config } from "../../utils/config";
 import { dockerBin } from "../../utils/docker-bin";
 import { SERVICE_NAME_RE, isPort, validateComposeServices } from "../../utils/validate";
+import { failoverProject } from "../../orchestrator/failover";
 
 const validateComposeFields = (body: any): string | null => {
 	if (body?.composeService && !SERVICE_NAME_RE.test(String(body.composeService))) {
@@ -35,6 +36,18 @@ const validateComposeFields = (body: any): string | null => {
 
 export const projectsRoutes = new Elysia()
 	.get("/projects", async () => listProjects())
+	.post(
+		"/projects/:id/failover",
+		async ({ params: { id }, set }) => {
+			try {
+				const deployment = await failoverProject(id);
+				return { ok: true, deployment };
+			} catch (error) {
+				set.status = 400;
+				return { error: error instanceof Error ? error.message : "Failover failed" };
+			}
+		},
+	)
 	.get(
 		"/projects/:id",
 		async ({ params: { id }, set }) => {
@@ -58,7 +71,8 @@ export const projectsRoutes = new Elysia()
 				set.status = 400;
 				return { error: validationError };
 			}
-			const serverId = body.serverId || "local";
+			const { resolveDefaultServerId } = await import("../../utils/server-default");
+			const serverId = await resolveDefaultServerId(body.serverId);
 			if (!(await getServerById(serverId))) {
 				set.status = 400;
 				return { error: "Selected server does not exist" };

@@ -28,7 +28,15 @@ export const collectContainerStats = async (): Promise<AgentContainerStat[]> => 
       const parsed = JSON.parse(raw);
       const cpuPercent = parseFloat(String(parsed.CPUPerc ?? "0").replace("%", ""));
       const memStr = String(parsed.MemUsage ?? "0B").split("/")[0]?.trim() ?? "0B";
-      stats.push({ containerName: name, cpuPercent, memoryMb: parseMemToMb(memStr) });
+      const projectId = await run("docker", ["inspect", "--format", "{{index .Config.Labels \"com.dequel.project\"}}", id]).catch(() => "");
+      const replica = await run("docker", ["inspect", "--format", "{{index .Config.Labels \"com.dequel.replica\"}}", id]).catch(() => "");
+      stats.push({
+        containerName: name,
+        cpuPercent,
+        memoryMb: parseMemToMb(memStr),
+        projectId: projectId.trim() || undefined,
+        replica: replica.trim() === "1",
+      });
     }
   } catch {
     return cached?.stats ?? [];
