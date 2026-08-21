@@ -6,6 +6,9 @@ import {
 	listServers,
 } from "../../db/repo";
 import { testSshConnection } from "../../utils/ssh";
+import { prepareServer, isServerPreparing } from "../../servers/prepare";
+import { serverEventBus } from "../../servers/event-bus";
+import { SERVER_HOST_RE, isPort } from "../../utils/validate";
 
 export const serversRoutes = new Elysia()
 	.get("/servers", async () => listServers())
@@ -17,6 +20,18 @@ export const serversRoutes = new Elysia()
 				return {
 					error: "name and host are required",
 				};
+			}
+			if (!SERVER_HOST_RE.test(body.host)) {
+				set.status = 400;
+				return { error: "host must be a valid hostname or IP address" };
+			}
+			if (body.mode && body.mode !== "ssh" && body.mode !== "agent") {
+				set.status = 400;
+				return { error: "mode must be 'ssh' or 'agent'" };
+			}
+			if (body.port !== undefined && body.port !== null && !isPort(Number(body.port))) {
+				set.status = 400;
+				return { error: "port must be between 1 and 65535" };
 			}
 			return createServer({
 				name: body.name,
@@ -39,6 +54,123 @@ export const serversRoutes = new Elysia()
 				return { error: "Server not found" };
 			}
 			return server;
+		},
+	)
+	.get(
+		"/servers/:id/stats",
+		async ({ params: { id }, set }) => {
+			const server = await getServerById(id);
+			if (!server) {
+				set.status = 404;
+				return { error: "Server not found" };
+			}
+			const containers = server.mode === "agent"
+				? [...(await (await import("../../agents/stats-cache")).agentStatsCache.get(id)).values()]
+				: [];
+			const online = server.mode === "agent"
+				? !!server.lastHeartbeat && Date.now() - new Date(server.lastHeartbeat).getTime() <= 90_000
+				: server.status === "connected";
+			return {
+				serverId: id,
+				mode: server.mode,
+				online,
+				lastHeartbeat: server.lastHeartbeat,
+				resources: {
+					cpuUsedPercent: server.cpuUsedPercent,
+					memoryUsedMb: server.memoryUsedMb,
+					cpuTotal: server.cpuTotal,
+					memoryTotalMb: server.memoryTotalMb,
+				},
+				containers,
+			};
+		},
+	)
+	.post(
+		"/servers/:id/prepare",
+		async ({ params: { id }, set }) => {
+			const server = await getServerById(id);
+			if (!server) {
+				set.status = 404;
+				return { error: "Server not found" };
+			}
+			if (isServerPreparing(id)) {
+				set.status = 409;
+				return { error: "Server preparation is already running" };
+			}
+			if (server.mode !== "ssh" && server.mode !== "agent") {
+				set.status = 400;
+				return { error: "Only ssh and agent servers can be prepared" };
+			}
+			prepareServer(server, (stage, message, done, ok, error) => {
+				serverEventBus.publish({ serverId: id, stage, message, done: done ?? false, ok: ok ?? false, error });
+			});
+			return { ok: true, preparing: true };
+		},
+	)
+	.get(
+		"/servers/:id/prepare/stream",
+		async ({ params: { id }, request, set }) => {
+			const server = await getServerById(id);
+			if (!server) {
+				set.status = 404;
+				return { error: "Server not found" };
+			}
+			const encoder = new TextEncoder();
+			let unsubscribe = () => undefined;
+			let heartbeat: ReturnType<typeof setInterval> | null = null;
+			let closed = false;
+			const stop = () => {
+				if (closed) return;
+				closed = true;
+				unsubscribe();
+				if (heartbeat) clearInterval(heartbeat);
+			};
+			const stream = new ReadableStream<Uint8Array>({
+				start(controller) {
+					const send = (eventName: string, payload: unknown) => {
+						if (closed) return;
+						controller.enqueue(
+							encoder.encode(
+								`event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`,
+							),
+						);
+					};
+					const finish = () => {
+						stop();
+						try { controller.close(); } catch {}
+					};
+					const lastEvent = serverEventBus.getLastEvent(id);
+					if (lastEvent) {
+						send(lastEvent.done ? "done" : "log", lastEvent);
+						if (lastEvent.done) { finish(); return; }
+					} else {
+						send("ready", { serverId: id, preparing: isServerPreparing(id) });
+					}
+					unsubscribe = serverEventBus.subscribe(id, (event) => {
+						send(event.done ? "done" : "log", event);
+						if (event.done) finish();
+					});
+					heartbeat = setInterval(
+						() =>
+							send("heartbeat", {
+								at: new Date().toISOString(),
+							}),
+						15000,
+					);
+				},
+				cancel: stop,
+			});
+			request.signal.addEventListener("abort", stop, {
+				once: true,
+			});
+			set.headers["content-type"] = "text/event-stream";
+			return new Response(stream, {
+				headers: {
+					"Content-Type": "text/event-stream",
+					"Cache-Control": "no-cache",
+					Connection: "keep-alive",
+				},
+			});
 		},
 	)
 	.post(

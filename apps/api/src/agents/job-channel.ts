@@ -11,9 +11,11 @@ import {
   updateAgentHeartbeat,
   updateDeploymentCommitSha,
   updateDeploymentStatus,
+  deleteRoutesByDeployment,
+  updateRouteStatus,
 } from "../db/repo";
 import { agentStatsCache } from "./stats-cache";
-import { isRemoteDeployResult, type AgentCapabilities, type P2PAgentRequest } from "./protocol";
+import { isRemoteDeployResult, type AgentCapabilities, type AgentContainerStat, type P2PAgentRequest } from "./protocol";
 
 export const HEARTBEAT_INTERVAL_MS = 15_000;
 
@@ -24,7 +26,7 @@ export const handleP2PHeartbeat = async (
     capabilities: AgentCapabilities;
     cpuUsedPercent?: number;
     memoryUsedMb?: number;
-    containers?: { containerName: string; cpuPercent: number; memoryMb: number }[];
+    containers?: AgentContainerStat[];
   },
 ) => {
   await updateAgentHeartbeat(serverId, {
@@ -60,6 +62,18 @@ export const processAgentJobUpdate = async (serverId: string, update: Exclude<P2
   if (jobInfo?.type === "destroy") {
     if (update.success && deploymentId) {
       await deleteDeploymentAndLogs(deploymentId);
+      await deleteRoutesByDeployment(deploymentId);
+    }
+    await finishAgentJob(update.jobId, serverId, update.leaseId, update.success, update.error);
+    return;
+  }
+
+  if (jobInfo?.type === "reload_routes") {
+    const payload = (jobInfo.payload ?? {}) as { hostname?: string };
+    if (update.success && payload.hostname) {
+      await updateRouteStatus(payload.hostname, "active", null, serverId);
+    } else if (!update.success && payload.hostname) {
+      await updateRouteStatus(payload.hostname, "failed", update.error || "Route reload failed", serverId);
     }
     await finishAgentJob(update.jobId, serverId, update.leaseId, update.success, update.error);
     return;

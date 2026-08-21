@@ -34,6 +34,8 @@ dequel start
 
 Open `http://localhost` to access the dashboard (or the configured `CADDY_BASE_DOMAIN` in production).
 
+> **Control plane only:** the default `DEQUEL_PROFILE=control-plane` starts just `api`, `web`, `caddy`, and `redis`. Set `DEQUEL_PROFILE=full` in `~/.dequel/.env` to also run buildkit and the monitoring stack. See [Control Plane Setup](/docs/control-plane).
+
 ## Post-Installation: User Setup
 
 Dequel authenticates against Linux system users in the `dequel` group. After install, create a user:

@@ -15,6 +15,8 @@ export type AgentContainerStat = {
   containerName: string;
   cpuPercent: number;
   memoryMb: number;
+  projectId?: string;
+  replica?: boolean;
 };
 
 export type AgentMessage =

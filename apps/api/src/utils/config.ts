@@ -43,6 +43,14 @@ export const config = {
 		"CADDY_BASE_DOMAIN",
 		"localhost",
 	),
+	controlPlaneUrl: withFile<string>(
+		"CONTROL_PLANE_URL",
+		"",
+	),
+	agentTunnelUrl: withFile<string>(
+		"AGENT_TUNNEL_URL",
+		"",
+	),
 	appInternalPort: withFile<number>(
 		"APP_INTERNAL_PORT",
 		"17476",

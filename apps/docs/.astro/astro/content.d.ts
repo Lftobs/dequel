@@ -192,6 +192,13 @@ declare module 'astro:content' {
   collection: "docs";
   data: any
 } & { render(): Render[".md"] };
+"control-plane.md": {
+	id: "control-plane.md";
+  slug: "control-plane";
+  body: string;
+  collection: "docs";
+  data: any
+} & { render(): Render[".md"] };
 "databases.md": {
 	id: "databases.md";
   slug: "databases";

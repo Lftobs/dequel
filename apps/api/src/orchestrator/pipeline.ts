@@ -10,6 +10,7 @@ import {
 	updateDeploymentStatus,
 	updateDeploymentCommitSha,
 	listVolumes,
+	deleteRoutesByDeployment,
 } from "../db/repo";
 import { listEnvironmentVariablesForDeploy } from "../db/repo";
 import { logBus } from "./log-bus";
@@ -181,6 +182,18 @@ export class PipelineOrchestrator {
 				await tryRun("docker", ["rmi", "-f", deployment.imageTag]);
 			}
 		}
+
+		const slug = (project?.name || deployment.projectId || deploymentId)
+			.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
+		const routeFile = join(config.caddyRoutesDir, `${slug}.caddy`);
+		await rm(routeFile, { force: true }).catch(() => {});
+		const { getIngressServer, removeIngressRouteFile } = await import('../utils/ingress');
+		const ingressServer = await getIngressServer();
+		if (ingressServer && ingressServer.id !== 'local') {
+			const { baseDomainFor } = await import('../utils/routes');
+			await removeIngressRouteFile(ingressServer, { hostname: `${slug}.${baseDomainFor()}`, routeFile: `${slug}.caddy` });
+		}
+		await deleteRoutesByDeployment(deploymentId);
 
 		await deleteDeploymentAndLogs(
 			deploymentId,

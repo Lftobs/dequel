@@ -167,6 +167,9 @@ EOF
 
 	{
 		echo "# Dequel environment configuration"
+		echo "# Profile: control-plane (api, web, caddy, redis) by default."
+		echo "# Set DEQUEL_PROFILE=full for buildkit + monitoring services."
+		echo "DEQUEL_PROFILE=${DEQUEL_PROFILE:-control-plane}"
 		[ -n "$ADMIN_EMAIL" ] && echo "CADDY_EMAIL=$ADMIN_EMAIL"
 		[ -n "$HOSTNAME" ] && echo "CADDY_BASE_DOMAIN=$HOSTNAME"
 	} > "$INSTALL_DIR/.env"
@@ -174,9 +177,27 @@ EOF
 	success "Created $INSTALL_DIR/.env"
 }
 
+compose_profile_args() {
+	local profile
+	profile="$(sed -n 's/^DEQUEL_PROFILE=//p' "$INSTALL_DIR/.env" 2>/dev/null | tail -1)"
+	profile="${profile:-control-plane}"
+	case "$profile" in
+		full|monitoring+build)
+			echo "--profile build --profile monitoring"
+			;;
+		monitoring)
+			echo "--profile monitoring"
+			;;
+		build)
+			echo "--profile build"
+			;;
+	esac
+}
+
 pull_images() {
-	header "Pulling Docker images"
-	$COMPOSE_CMD -f "$INSTALL_DIR/docker-compose.yml" pull || warn "Some images could not be pulled (they will be built on first run)"
+	header "Pulling Docker images (profile: ${DEQUEL_PROFILE:-control-plane})"
+	# shellcheck disable=SC2046
+	$COMPOSE_CMD -f "$INSTALL_DIR/docker-compose.yml" pull $(compose_profile_args) || warn "Some images could not be pulled (they will be built on first run)"
 }
 
 install_cli() {

@@ -1,5 +1,6 @@
 services:
     buildkit:
+        profiles: ["build"]
         image: moby/buildkit:latest
         restart: unless-stopped
         command:
@@ -57,6 +58,7 @@ services:
         depends_on:
             buildkit:
                 condition: service_started
+                required: false
         healthcheck:
             test:
                 [
@@ -176,6 +178,7 @@ services:
             retries: 5
 
     cadvisor:
+        profiles: ["monitoring"]
         image: gcr.io/cadvisor/cadvisor:latest
         restart: unless-stopped
         volumes:
@@ -206,6 +209,7 @@ services:
             start_period: 5s
 
     prometheus:
+        profiles: ["monitoring"]
         image: prom/prometheus:latest
         restart: unless-stopped
         stop_grace_period: 60s
@@ -239,6 +243,7 @@ services:
             start_period: 5s
 
     loki:
+        profiles: ["monitoring"]
         image: grafana/loki:3.0.0
         restart: unless-stopped
         command:
@@ -265,6 +270,7 @@ services:
             start_period: 10s
 
     promtail:
+        profiles: ["monitoring"]
         image: grafana/promtail:3.0.0
         restart: unless-stopped
         command:
@@ -281,6 +287,7 @@ services:
             dequel:
 
     grafana:
+        profiles: ["monitoring"]
         image: grafana/grafana:latest
         restart: unless-stopped
         environment:

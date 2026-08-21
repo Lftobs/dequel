@@ -165,7 +165,8 @@ export const servers = sqliteTable("servers", {
   host: text().notNull(),
   port: integer().notNull().default(2375),
   authToken: text("auth_token").notNull().default(""),
-  mode: text().notNull().default("docker_tcp"),
+  sshUser: text("ssh_user"),
+  mode: text().notNull().default("ssh"),
   agentId: text("agent_id").unique(),
   agentVersion: text("agent_version"),
   peerIp: text("peer_ip"),
@@ -270,3 +271,28 @@ export const smtpSettings = sqliteTable("smtp_settings", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
+
+export const platformSettings = sqliteTable("platform_settings", {
+  id: text().primaryKey(),
+  ingressServerId: text("ingress_server_id"),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const routes = sqliteTable("routes", {
+  id: text().primaryKey(),
+  serverId: text("server_id"),
+  deploymentId: text("deployment_id"),
+  projectId: text("project_id"),
+  hostname: text().notNull(),
+  routeFile: text("route_file").notNull(),
+  port: integer().notNull(),
+  targetContainers: text("target_containers").notNull(),
+  upstreamHost: text("upstream_host"),
+  status: text().notNull().default("pending"),
+  lastError: text("last_error"),
+  confirmedAt: text("confirmed_at"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("idx_routes_hostname_server").on(table.hostname, table.serverId),
+]);

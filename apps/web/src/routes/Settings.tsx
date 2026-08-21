@@ -38,6 +38,47 @@ function ServersSection() {
   const [registrationError, setRegistrationError] = useState('');
 
   const [deletingServerId, setDeletingServerId] = useState<string | null>(null);
+  const [preparingId, setPreparingId] = useState<string | null>(null);
+  const [prepareLogs, setPrepareLogs] = useState<{ stage: string; message: string }[]>([]);
+  const [prepareDone, setPrepareDone] = useState(false);
+  const [prepareError, setPrepareError] = useState<string | null>(null);
+
+  const handlePrepare = async (serverId: string) => {
+    setPreparingId(serverId);
+    setPrepareLogs([]);
+    setPrepareDone(false);
+    setPrepareError(null);
+    try {
+      await api.prepareServer(serverId);
+    } catch (err) {
+      setPrepareError(err instanceof Error ? err.message : 'Could not start preparation');
+    }
+  };
+
+  useEffect(() => {
+    if (!preparingId) return;
+    const source = new EventSource(api.serverPrepareStreamUrl(preparingId));
+    source.addEventListener('log', (e) => {
+      try {
+        const event = JSON.parse((e as MessageEvent).data);
+        setPrepareLogs(prev => [...prev, { stage: event.stage, message: event.message }]);
+      } catch {}
+    });
+    source.addEventListener('done', (e) => {
+      try {
+        const event = JSON.parse((e as MessageEvent).data);
+        setPrepareDone(true);
+        setPrepareError(event.ok ? null : (event.error || 'Preparation failed'));
+        setPreparingId(null);
+        refetch();
+      } catch {}
+    });
+    source.addEventListener('error', () => {
+      setPrepareDone(true);
+      setPreparingId(null);
+    });
+    return () => source.close();
+  }, [preparingId, refetch]);
 
   const handleDeleteServer = async () => {
     if (!deletingServerId) return;
@@ -139,7 +180,7 @@ function ServersSection() {
           <div className="rounded-xl border border-border overflow-hidden overflow-x-auto">
             <Table className="min-w-[500px] md:min-w-full">
               <TableHeader>
-                <TableRow><TableHead>Name</TableHead><TableHead>Host / Connection</TableHead><TableHead>Status</TableHead><TableHead className="w-12"></TableHead></TableRow>
+                <TableRow><TableHead>Name</TableHead><TableHead>Host / Connection</TableHead><TableHead>Status</TableHead><TableHead className="w-12"></TableHead><TableHead className="w-12"></TableHead></TableRow>
               </TableHeader>
               <TableBody>
                 {servers.map(s => (
@@ -147,6 +188,15 @@ function ServersSection() {
                     <TableCell className="font-medium">{s.name}</TableCell>
                     <TableCell className="font-mono text-xs">{s.mode === 'agent' ? `P2P WireGuard Agent ${s.agentVersion || ''}` : `SSH (${s.sshUser || 'root'}@${s.host}:${s.port})`}</TableCell>
                     <TableCell><StatusBadge status={s.status || 'active'} /></TableCell>
+                    <TableCell className="text-right">
+                      {s.mode !== 'local' && (
+                        <Button variant="outline" size="sm" className="h-7 text-xs"
+                          disabled={preparingId !== null}
+                          onClick={() => handlePrepare(s.id)}>
+                          {preparingId === s.id ? 'Preparing...' : 'Prepare'}
+                        </Button>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
                         onClick={() => setDeletingServerId(s.id)}>
@@ -157,6 +207,27 @@ function ServersSection() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+        )}
+        {preparingId && (
+          <div className="mt-4 rounded-lg border border-border bg-black/30 p-3">
+            <div className="mb-2 flex items-center gap-2">
+              <div className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
+              <span className="text-xs font-medium text-foreground">Preparing server... {prepareLogs.length} steps</span>
+            </div>
+            <div className="max-h-52 overflow-y-auto space-y-1 font-mono text-[11px]">
+              {prepareLogs.map((entry, i) => (
+                <div key={i} className={entry.stage === 'token' ? 'text-emerald-400/90 break-all' : 'text-zinc-400'}>
+                  <span className="text-orange-500/80">[{entry.stage}]</span> {entry.message}
+                </div>
+              ))}
+              {prepareLogs.length === 0 && <div className="text-zinc-600">Waiting for connection...</div>}
+            </div>
+          </div>
+        )}
+        {prepareDone && (
+          <div className={`mt-4 rounded-lg border p-3 text-xs ${prepareError ? 'border-red-500/40 text-red-400' : 'border-emerald-500/40 text-emerald-400'}`}>
+            {prepareError ? `Preparation failed: ${prepareError}` : 'Server prepared successfully. You can now deploy to it.'}
           </div>
         )}
       </CardContent>

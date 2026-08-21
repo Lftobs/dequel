@@ -1,8 +1,33 @@
 import { Elysia } from "elysia";
-import { getSmtpSettings, upsertSmtpSettings } from "../../db/repo";
+import { getSmtpSettings, upsertSmtpSettings, getPlatformSettings, setIngressServer, getServerById } from "../../db/repo";
+import { failoverState } from "../../orchestrator/failover";
 import nodemailer from "nodemailer";
 
 export const settingsRoutes = new Elysia({ prefix: "/settings" })
+  .get("/ingress", async () => {
+    const { ingressServerId } = await getPlatformSettings();
+    const server = ingressServerId ? await getServerById(ingressServerId) : null;
+    const failover = failoverState();
+    return { ingressServerId, server: server ?? null, ...failover };
+  })
+
+  .put("/ingress", async ({ body, set }: any) => {
+    const serverId = body?.serverId ?? null;
+    if (serverId) {
+      const server = await getServerById(serverId);
+      if (!server) {
+        set.status = 400;
+        return { error: "Server not found" };
+      }
+      if (server.mode !== "ssh" && server.mode !== "agent" && server.mode !== "local") {
+        set.status = 400;
+        return { error: "Unsupported server mode for ingress" };
+      }
+    }
+    await setIngressServer(serverId);
+    return { ok: true, ingressServerId: serverId };
+  })
+
   .get("/smtp", async ({ set }: any) => {
     const settings = await getSmtpSettings();
     if (!settings) {

@@ -197,19 +197,59 @@ export const deployContainer = async (
 
   const { buildCaddySnippet } = await import('../utils/domain-verifier');
   const caddySnippet = await buildCaddySnippet(slug, containerName, opts.projectId, undefined, opts.appPort);
+  const { upsertRoute } = await import('../db/repo');
+  const { baseDomainFor, slugify } = await import('../utils/routes');
+  const { getIngressServer, shouldRouteViaIngress, projectServerSite, syncIngressRoute, upsertIngressRoute } = await import('../utils/ingress');
+  const ingressServer = await getIngressServer();
+  const viaIngress = shouldRouteViaIngress(opts.targetServer ?? null, ingressServer);
+  const effectiveSnippet = viaIngress
+    ? projectServerSite(`${slug}.${baseDomainFor()}`, opts.appPort ?? config.appInternalPort, [containerName], true)
+    : caddySnippet;
+  const routeInfo = {
+    hostname: `${slug}.${baseDomainFor()}`,
+    routeFile: `${slug}.caddy`,
+    port: opts.appPort ?? config.appInternalPort,
+    containers: [containerName],
+  };
 
   if (opts.targetServer?.mode === 'ssh' || opts.targetServer?.mode === 'docker_tcp') {
     await onLog(`Syncing Caddy route to remote server (${opts.targetServer.name}): ${slug}.caddy`);
-    await syncRemoteCaddyRoute(opts.targetServer, `${slug}.caddy`, caddySnippet);
+    await syncRemoteCaddyRoute(opts.targetServer, `${slug}.caddy`, effectiveSnippet);
+    await upsertRoute({
+      serverId: opts.targetServer.id,
+      deploymentId: deploymentId,
+      projectId: opts.projectId ?? null,
+      hostname: `${slug}.${baseDomainFor()}`,
+      routeFile: `${slug}.caddy`,
+      port: opts.appPort ?? config.appInternalPort,
+      targetContainers: [containerName],
+      status: 'active',
+    });
   } else {
     const caddyRouteFile = join(config.caddyRoutesDir, `${slug}.caddy`);
     await onLog(`Writing Caddy route file: ${caddyRouteFile}`);
-    await writeFile(caddyRouteFile, caddySnippet, 'utf8');
+    await writeFile(caddyRouteFile, effectiveSnippet, 'utf8');
 
     await onLog('Reloading Caddy to apply dynamic route');
     try { await reloadCaddy(); } catch (error) {
       await onLog(`Caddy reload failed (might not be ready): ${error instanceof Error ? error.message : String(error)}`);
     }
+    await upsertRoute({
+      serverId: 'local',
+      deploymentId: deploymentId,
+      projectId: opts.projectId ?? null,
+      hostname: `${slug}.${baseDomainFor()}`,
+      routeFile: `${slug}.caddy`,
+      port: opts.appPort ?? config.appInternalPort,
+      targetContainers: [containerName],
+      status: 'active',
+    });
+  }
+
+  if (viaIngress && ingressServer && opts.targetServer) {
+    await onLog(`Registering ingress route on ${ingressServer.name} for ${routeInfo.hostname}`);
+    await syncIngressRoute(ingressServer, opts.targetServer.host, routeInfo);
+    await upsertIngressRoute(ingressServer.id, opts.projectId ?? null, deploymentId, opts.targetServer.host, routeInfo);
   }
   await onLog('Caddy route reload completed');
 
