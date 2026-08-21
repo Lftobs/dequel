@@ -1,6 +1,6 @@
 import { and, eq, desc, isNull } from "drizzle-orm";
-import { getDrizzle } from "../drizzle";
 import { routes } from "../schema";
+import { getDb } from "../db-provider";
 import type { Route, RouteStatus, UpsertRouteInput } from "../../types";
 import { randomUUID } from "node:crypto";
 import { now } from "./helpers";
@@ -23,7 +23,7 @@ export const mapRoute = (row: typeof routes.$inferSelect): Route => ({
 });
 
 export const upsertRoute = async (input: UpsertRouteInput): Promise<Route> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const existing = input.serverId
     ? db.select().from(routes).where(and(eq(routes.hostname, input.hostname), eq(routes.serverId, input.serverId))).get()
     : db.select().from(routes).where(and(eq(routes.hostname, input.hostname), isNull(routes.serverId))).get();
@@ -68,7 +68,7 @@ export const upsertRoute = async (input: UpsertRouteInput): Promise<Route> => {
 };
 
 export const getRouteByHostname = async (hostname: string, serverId?: string): Promise<Route | null> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const row = serverId
     ? db.select().from(routes).where(and(eq(routes.hostname, hostname), eq(routes.serverId, serverId))).get()
     : db.select().from(routes).where(eq(routes.hostname, hostname)).orderBy(desc(routes.createdAt)).get();
@@ -76,7 +76,7 @@ export const getRouteByHostname = async (hostname: string, serverId?: string): P
 };
 
 export const listRoutes = async (serverId?: string): Promise<Route[]> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const rows = serverId
     ? db.select().from(routes).where(eq(routes.serverId, serverId)).orderBy(desc(routes.createdAt)).all()
     : db.select().from(routes).orderBy(desc(routes.createdAt)).all();
@@ -89,7 +89,7 @@ export const updateRouteStatus = async (
   lastError?: string | null,
   serverId?: string,
 ): Promise<void> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const patch = {
     status,
     lastError: lastError ?? null,
@@ -104,7 +104,7 @@ export const updateRouteStatus = async (
 };
 
 export const deleteRouteByHostname = async (hostname: string, serverId?: string): Promise<void> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   if (serverId) {
     db.delete(routes).where(and(eq(routes.hostname, hostname), eq(routes.serverId, serverId))).run();
   } else {
@@ -113,6 +113,6 @@ export const deleteRouteByHostname = async (hostname: string, serverId?: string)
 };
 
 export const deleteRoutesByDeployment = async (deploymentId: string): Promise<void> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   db.delete(routes).where(eq(routes.deploymentId, deploymentId)).run();
 };

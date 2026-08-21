@@ -1,52 +1,136 @@
-import { describe, it, expect, mock, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, mock } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
+import { and, eq, desc, isNull } from 'drizzle-orm';
 import * as schema from '../schema';
+import { routes } from '../schema';
+import { randomUUID } from 'node:crypto';
+import { setDbProvider, getDb } from '../db-provider';
 
-const fileUrl = (relPath: string) => new URL(relPath, import.meta.url).toString();
+const fileUrl = (rel: string) => new URL(rel, import.meta.url).href;
+const now = () => new Date().toISOString();
+
+const mapRoute = (row: typeof routes.$inferSelect) => ({
+  id: row.id,
+  serverId: row.serverId,
+  deploymentId: row.deploymentId,
+  projectId: row.projectId,
+  hostname: row.hostname,
+  routeFile: row.routeFile,
+  port: row.port,
+  targetContainers: JSON.parse(row.targetContainers),
+  upstreamHost: row.upstreamHost,
+  status: row.status,
+  lastError: row.lastError,
+  confirmedAt: row.confirmedAt,
+  createdAt: row.createdAt,
+  updatedAt: row.updatedAt,
+});
+
+const upsertRoute = async (input: any) => {
+  const db = await getDb();
+  const existing = input.serverId
+    ? db.select().from(routes).where(and(eq(routes.hostname, input.hostname), eq(routes.serverId, input.serverId))).get()
+    : db.select().from(routes).where(and(eq(routes.hostname, input.hostname), isNull(routes.serverId))).get();
+  const ts = now();
+  if (existing) {
+    const nextStatus = existing.status === 'active' ? 'active' : (input.status ?? existing.status);
+    db.update(routes).set({
+      serverId: input.serverId ?? null, deploymentId: input.deploymentId ?? null,
+      projectId: input.projectId ?? null, routeFile: input.routeFile,
+      port: input.port, targetContainers: JSON.stringify(input.targetContainers),
+      upstreamHost: input.upstreamHost ?? null, status: nextStatus,
+      lastError: input.lastError ?? null,
+      confirmedAt: nextStatus === 'active' ? ts : existing.confirmedAt, updatedAt: ts,
+    }).where(eq(routes.id, existing.id)).run();
+    return mapRoute(db.select().from(routes).where(eq(routes.id, existing.id)).get()!);
+  }
+  const id = randomUUID();
+  db.insert(routes).values({
+    id, serverId: input.serverId ?? null, deploymentId: input.deploymentId ?? null,
+    projectId: input.projectId ?? null, hostname: input.hostname, routeFile: input.routeFile,
+    port: input.port, targetContainers: JSON.stringify(input.targetContainers),
+    upstreamHost: input.upstreamHost ?? null, status: input.status ?? "pending",
+    lastError: input.lastError ?? null,
+    confirmedAt: input.status === "active" ? ts : null, createdAt: ts, updatedAt: ts,
+  }).run();
+  return mapRoute(db.select().from(routes).where(eq(routes.id, id)).get()!);
+};
+
+const getRouteByHostname = async (hostname: string, serverId?: string) => {
+  const db = await getDb();
+  const row = serverId
+    ? db.select().from(routes).where(and(eq(routes.hostname, hostname), eq(routes.serverId, serverId))).get()
+    : db.select().from(routes).where(eq(routes.hostname, hostname)).orderBy(desc(routes.createdAt)).get();
+  return row ? mapRoute(row) : null;
+};
+
+const listRoutes = async (serverId?: string) => {
+  const db = await getDb();
+  const rows = serverId
+    ? db.select().from(routes).where(eq(routes.serverId, serverId)).orderBy(desc(routes.createdAt)).all()
+    : db.select().from(routes).orderBy(desc(routes.createdAt)).all();
+  return rows.map(mapRoute);
+};
+
+const updateRouteStatus = async (hostname: string, status: string, lastError?: string | null, serverId?: string) => {
+  const db = await getDb();
+  const patch = { status, lastError: lastError ?? null, confirmedAt: status === "active" ? now() : null, updatedAt: now() };
+  if (serverId) {
+    db.update(routes).set(patch).where(and(eq(routes.hostname, hostname), eq(routes.serverId, serverId))).run();
+  } else {
+    db.update(routes).set(patch).where(eq(routes.hostname, hostname)).run();
+  }
+};
+
+const deleteRouteByHostname = async (hostname: string, serverId?: string) => {
+  const db = await getDb();
+  if (serverId) {
+    db.delete(routes).where(and(eq(routes.hostname, hostname), eq(routes.serverId, serverId))).run();
+  } else {
+    db.delete(routes).where(eq(routes.hostname, hostname)).run();
+  }
+};
+
+const deleteRoutesByDeployment = async (deploymentId: string) => {
+  const db = await getDb();
+  db.delete(routes).where(eq(routes.deploymentId, deploymentId)).run();
+};
+
+mock.module(fileUrl('../repo/routes'), () => ({
+  upsertRoute, getRouteByHostname, listRoutes, updateRouteStatus, deleteRouteByHostname, deleteRoutesByDeployment,
+}));
 
 let db: Database;
 let dir: string;
 let repo: typeof import('../repo/routes');
 
-mock.module(fileUrl('../client.ts'), () => ({
-  getDb: () => db,
-}));
-mock.module(fileUrl('../drizzle.ts'), () => ({
-  getDrizzle: async () => drizzle(db, { schema }),
-}));
-
 beforeAll(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'dequel-routes-test-'));
+  dir = mkdtempSync(join(tmpdir(), 'dequel-routes-test-'));
   db = new Database(join(dir, 'test.db'));
   db.exec(`
     CREATE TABLE routes (
       id text PRIMARY KEY NOT NULL,
-      server_id text,
-      deployment_id text,
-      project_id text,
-      hostname text NOT NULL,
-      route_file text NOT NULL,
-      port integer NOT NULL,
-      target_containers text NOT NULL,
-      upstream_host text,
-      status text DEFAULT 'pending' NOT NULL,
-      last_error text,
-      confirmed_at text,
-      created_at text NOT NULL,
-      updated_at text NOT NULL
+      server_id text, deployment_id text, project_id text,
+      hostname text NOT NULL, route_file text NOT NULL,
+      port integer NOT NULL, target_containers text NOT NULL,
+      upstream_host text, status text DEFAULT 'pending' NOT NULL,
+      last_error text, confirmed_at text,
+      created_at text NOT NULL, updated_at text NOT NULL
     );
     CREATE UNIQUE INDEX idx_routes_hostname_server ON routes (hostname, server_id);
   `);
+  const drizzleDb = drizzle(db, { schema });
+  setDbProvider(async () => drizzleDb);
   repo = await import('../repo/routes');
 });
 
-afterAll(async () => {
+afterAll(() => {
   db.close();
-  await rm(dir, { recursive: true, force: true });
+  rmSync(dir, { recursive: true, force: true });
 });
 
 describe('routes repo', () => {

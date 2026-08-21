@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from './config';
 import { validateDomain, resolveServerIp } from './dns';
@@ -71,12 +71,24 @@ const poll = async () => {
   }
 };
 
-export const addToCaddyRoute = async (domain: string, projectId: string, projectName: string) => {
+export interface CaddyRouteOpts {
+  routesDir?: string;
+  reloadFn?: () => Promise<void>;
+}
+
+export const addToCaddyRoute = async (
+  domain: string,
+  projectId: string,
+  projectName: string,
+  opts?: CaddyRouteOpts,
+) => {
+  const routesDir = opts?.routesDir ?? config.caddyRoutesDir;
+  const reloadFn = opts?.reloadFn ?? reloadCaddy;
   const slug = slugify(projectName || projectId);
-  const filePath = join(config.caddyRoutesDir, `${slug}.caddy`);
+  const filePath = join(routesDir, `${slug}.caddy`);
 
   try {
-    let content = await readFile(filePath, 'utf8');
+    let content = readFileSync(filePath, 'utf8');
     const idx = content.indexOf(' {\n');
     if (idx === -1) return;
 
@@ -84,19 +96,26 @@ export const addToCaddyRoute = async (domain: string, projectId: string, project
     if (firstLine.includes(domain)) return;
 
     content = `${firstLine}, ${domain}:80${content.slice(idx)}`;
-    await writeFile(filePath, content, 'utf8');
-    await reloadCaddy();
+    writeFileSync(filePath, content, 'utf8');
+    await reloadFn();
   } catch (e) {
     console.warn(`Could not add ${domain} to Caddy route (deploy the project first):`, e instanceof Error ? e.message : e);
   }
 };
 
-export const removeFromCaddyRoute = async (domain: string, projectId: string, projectName: string) => {
+export const removeFromCaddyRoute = async (
+  domain: string,
+  projectId: string,
+  projectName: string,
+  opts?: CaddyRouteOpts,
+) => {
+  const routesDir = opts?.routesDir ?? config.caddyRoutesDir;
+  const reloadFn = opts?.reloadFn ?? reloadCaddy;
   const slug = slugify(projectName || projectId);
-  const filePath = join(config.caddyRoutesDir, `${slug}.caddy`);
+  const filePath = join(routesDir, `${slug}.caddy`);
 
   try {
-    let content = await readFile(filePath, 'utf8');
+    let content = readFileSync(filePath, 'utf8');
     const idx = content.indexOf(' {\n');
     if (idx === -1) return;
 
@@ -104,12 +123,17 @@ export const removeFromCaddyRoute = async (domain: string, projectId: string, pr
     if (!firstLine.includes(domain)) return;
 
     content = content.replace(`, ${domain}:80`, '').replace(`, ${domain}`, '').replace(domain, '');
-    await writeFile(filePath, content, 'utf8');
-    await reloadCaddy();
+    writeFileSync(filePath, content, 'utf8');
+    await reloadFn();
   } catch {
     // Caddy file doesn't exist yet
   }
 };
+
+export interface BuildSnippetOpts {
+  baseDomain?: string;
+  listEnvVarsFn?: typeof listEnvironmentVariablesForDeploy;
+}
 
 export const buildCaddySnippet = async (
   slug: string,
@@ -117,8 +141,11 @@ export const buildCaddySnippet = async (
   projectId?: string,
   listDomainsFn: typeof listDomains = listDomains,
   appPort?: number,
+  opts?: BuildSnippetOpts,
 ): Promise<string> => {
-  const baseDomain = config.caddyBaseDomain === 'localhost' ? `${config.caddyBaseDomain}:80` : config.caddyBaseDomain;
+  const baseDomainRaw = opts?.baseDomain ?? config.caddyBaseDomain;
+  const baseDomain = baseDomainRaw === 'localhost' ? `${baseDomainRaw}:80` : baseDomainRaw;
+  const listEnvVars = opts?.listEnvVarsFn ?? listEnvironmentVariablesForDeploy;
   let defaultDomains = [`${slug}.${baseDomain}`];
   let port = appPort ?? config.appInternalPort;
   const customBlocks: string[] = [];
@@ -145,7 +172,7 @@ export const buildCaddySnippet = async (
     }
 
     try {
-      const envVars = await listEnvironmentVariablesForDeploy(projectId);
+      const envVars = await listEnvVars(projectId);
       const portVar = envVars.find(v => v.key === 'PORT');
       if (portVar && portVar.value && !appPort) {
         const parsedPort = Number(portVar.value);
