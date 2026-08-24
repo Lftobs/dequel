@@ -1,1 +1,0 @@
-ALTER TABLE servers ADD COLUMN peer_ip TEXT;

@@ -1,11 +1,11 @@
 import { eq, and, asc } from "drizzle-orm";
-import { getDrizzle } from "../drizzle";
+import { getDb } from "../db-provider";
 import { environmentVariables } from "../schema";
 import type { EnvironmentVariable, CreateEnvironmentVariableInput } from "../../types";
 import { randomUUID } from "node:crypto";
 import { config } from "../../utils/config";
 import { encryptValue, decryptValue } from "../../utils/crypto";
-import { now } from "./helpers";
+import { now, getRowsAffected } from "./helpers";
 
 const mapEnvVar = (row: typeof environmentVariables.$inferSelect): EnvironmentVariable => ({
   id: row.id,
@@ -22,8 +22,8 @@ export const createEnvironmentVariable = async (input: CreateEnvironmentVariable
   const timestamp = now();
   const env = input.environment ?? "production";
   const encrypted = encryptValue(input.value, config.envEncryptionKey);
-  const db = await getDrizzle();
-  db.insert(environmentVariables).values({
+  const db = await getDb();
+  await db.insert(environmentVariables).values({
     id,
     projectId: input.projectId,
     key: input.key,
@@ -34,27 +34,28 @@ export const createEnvironmentVariable = async (input: CreateEnvironmentVariable
     environment: env,
     createdAt: timestamp,
     updatedAt: timestamp,
-  }).run();
-  const row = db.select().from(environmentVariables).where(eq(environmentVariables.id, id)).get()!;
+  }).execute();
+  const [row] = await db.select().from(environmentVariables).where(eq(environmentVariables.id, id)).execute();
   return mapEnvVar(row);
 };
 
 export const listEnvironmentVariables = async (projectId: string, environment?: string): Promise<EnvironmentVariable[]> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const cond = environment
     ? and(eq(environmentVariables.projectId, projectId), eq(environmentVariables.environment, environment))
     : eq(environmentVariables.projectId, projectId);
-  return db.select().from(environmentVariables).where(cond).orderBy(asc(environmentVariables.key)).all().map(mapEnvVar);
+  const rows = await db.select().from(environmentVariables).where(cond).orderBy(asc(environmentVariables.key)).execute();
+  return rows.map(mapEnvVar);
 };
 
 export const getEnvironmentVariablePlaintext = async (id: string): Promise<string | null> => {
-  const db = await getDrizzle();
-  const row = db.select({
+  const db = await getDb();
+  const [row] = await db.select({
     value: environmentVariables.value,
     valueEncrypted: environmentVariables.valueEncrypted,
     valueIv: environmentVariables.valueIv,
     valueTag: environmentVariables.valueTag,
-  }).from(environmentVariables).where(eq(environmentVariables.id, id)).get();
+  }).from(environmentVariables).where(eq(environmentVariables.id, id)).execute();
   if (!row) return null;
   if (row.valueEncrypted && row.valueIv && row.valueTag) {
     return decryptValue(row.valueEncrypted, row.valueIv, row.valueTag, config.envEncryptionKey);
@@ -63,8 +64,8 @@ export const getEnvironmentVariablePlaintext = async (id: string): Promise<strin
 };
 
 export const getEnvironmentVariableById = async (id: string): Promise<EnvironmentVariable | null> => {
-  const db = await getDrizzle();
-  const row = db.select().from(environmentVariables).where(eq(environmentVariables.id, id)).get();
+  const db = await getDb();
+  const [row] = await db.select().from(environmentVariables).where(eq(environmentVariables.id, id)).execute();
   return row ? mapEnvVar(row) : null;
 };
 
@@ -72,29 +73,29 @@ export const updateEnvironmentVariable = async (id: string, value: string): Prom
   const existing = await getEnvironmentVariableById(id);
   if (!existing) return null;
   const encrypted = encryptValue(value, config.envEncryptionKey);
-  const db = await getDrizzle();
-  db.update(environmentVariables).set({
+  const db = await getDb();
+  await db.update(environmentVariables).set({
     value: "",
     valueEncrypted: encrypted.encrypted,
     valueIv: encrypted.iv,
     valueTag: encrypted.tag,
     updatedAt: now(),
-  }).where(eq(environmentVariables.id, id)).run();
+  }).where(eq(environmentVariables.id, id)).execute();
   return getEnvironmentVariableById(id);
 };
 
 export const listEnvironmentVariablesForDeploy = async (projectId: string, environment?: string): Promise<{ key: string; value: string }[]> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const cond = environment
     ? and(eq(environmentVariables.projectId, projectId), eq(environmentVariables.environment, environment))
     : eq(environmentVariables.projectId, projectId);
-  const rows = db.select({
+  const rows = await db.select({
     key: environmentVariables.key,
     value: environmentVariables.value,
     valueEncrypted: environmentVariables.valueEncrypted,
     valueIv: environmentVariables.valueIv,
     valueTag: environmentVariables.valueTag,
-  }).from(environmentVariables).where(cond).orderBy(asc(environmentVariables.key)).all();
+  }).from(environmentVariables).where(cond).orderBy(asc(environmentVariables.key)).execute();
   return rows.map((row) => {
     if (row.valueEncrypted && row.valueIv && row.valueTag) {
       return { key: row.key, value: decryptValue(row.valueEncrypted, row.valueIv, row.valueTag, config.envEncryptionKey) };
@@ -104,6 +105,6 @@ export const listEnvironmentVariablesForDeploy = async (projectId: string, envir
 };
 
 export const deleteEnvironmentVariable = async (id: string): Promise<boolean> => {
-  const db = await getDrizzle();
-  return db.delete(environmentVariables).where(eq(environmentVariables.id, id)).run().changes > 0;
+  const db = await getDb();
+  return getRowsAffected(await db.delete(environmentVariables).where(eq(environmentVariables.id, id)).execute()) > 0;
 };

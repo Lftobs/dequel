@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
-import { getDrizzle } from "../drizzle";
+import { getDb } from "../db-provider";
 import { projects, deployments, deploymentLogs, environmentVariables, volumes, databases, domains, scalingPolicies, alerts } from "../schema";
 import type { Project, CreateProjectInput } from "../../types";
 import { randomUUID } from "node:crypto";
-import { now } from "./helpers";
+import { now, getRowsAffected } from "./helpers";
 
 export interface ProjectCleanupInfo {
   deploymentContainerNames: string[];
@@ -48,8 +48,8 @@ const mapProject = (row: typeof projects.$inferSelect): Project => ({
 export const createProject = async (input: CreateProjectInput): Promise<Project> => {
   const id = randomUUID();
   const timestamp = now();
-  const db = await getDrizzle();
-  db.insert(projects).values({
+  const db = await getDb();
+  await db.insert(projects).values({
     id,
     serverId: input.serverId ?? "local",
     name: input.name,
@@ -73,31 +73,32 @@ export const createProject = async (input: CreateProjectInput): Promise<Project>
     startCommand: input.startCommand ?? null,
     createdAt: timestamp,
     updatedAt: timestamp,
-  }).run();
-  const row = db.select().from(projects).where(eq(projects.id, id)).get()!;
+  }).execute();
+  const [row] = await db.select().from(projects).where(eq(projects.id, id)).execute();
   return mapProject(row);
 };
 
 export const updateProjectGithubToken = async (id: string, encrypted: string | null, iv: string | null, tag: string | null): Promise<void> => {
-  const db = await getDrizzle();
-  db.update(projects).set({ githubTokenEncrypted: encrypted, githubTokenIv: iv, githubTokenTag: tag }).where(eq(projects.id, id)).run();
+  const db = await getDb();
+  await db.update(projects).set({ githubTokenEncrypted: encrypted, githubTokenIv: iv, githubTokenTag: tag }).where(eq(projects.id, id)).execute();
 };
 
 export const listProjects = async (): Promise<Project[]> => {
-  const db = await getDrizzle();
-  return db.select().from(projects).orderBy(projects.name).all().map(mapProject);
+  const db = await getDb();
+  const rows = await db.select().from(projects).orderBy(projects.name).execute();
+  return rows.map(mapProject);
 };
 
 export const getProjectById = async (id: string): Promise<Project | null> => {
-  const db = await getDrizzle();
-  const row = db.select().from(projects).where(eq(projects.id, id)).get();
+  const db = await getDb();
+  const [row] = await db.select().from(projects).where(eq(projects.id, id)).execute();
   return row ? mapProject(row) : null;
 };
 
 export const updateProject = async (id: string, patch: Partial<CreateProjectInput>): Promise<Project | null> => {
   const existing = await getProjectById(id);
   if (!existing) return null;
-  const db = await getDrizzle();
+  const db = await getDb();
   const updates: Record<string, unknown> = { updatedAt: now() };
   if (patch.name !== undefined) updates.name = patch.name;
   if (patch.serverId !== undefined) updates.serverId = patch.serverId;
@@ -118,14 +119,13 @@ export const updateProject = async (id: string, patch: Partial<CreateProjectInpu
   if (patch.installCommand !== undefined) updates.installCommand = patch.installCommand;
   if (patch.outputDir !== undefined) updates.outputDir = patch.outputDir;
   if (patch.startCommand !== undefined) updates.startCommand = patch.startCommand;
-  db.update(projects).set(updates).where(eq(projects.id, id)).run();
+  await db.update(projects).set(updates).where(eq(projects.id, id)).execute();
   return getProjectById(id);
 };
 
 export const deleteProject = async (id: string): Promise<boolean> => {
-  const db = await getDrizzle();
-  const result = db.delete(projects).where(eq(projects.id, id)).run();
-  return result.changes > 0;
+  const db = await getDb();
+  return getRowsAffected(await db.delete(projects).where(eq(projects.id, id)).execute()) > 0;
 };
 
 export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupInfo | null> => {
@@ -136,37 +136,37 @@ export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupIn
     ? project.name.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 63)
     : id;
 
-  const db = await getDrizzle();
+  const db = await getDb();
 
-  const depRows = db.select({ id: deployments.id, containerName: deployments.containerName, imageTag: deployments.imageTag })
-    .from(deployments).where(eq(deployments.projectId, id)).all();
+  const depRows = await db.select({ id: deployments.id, containerName: deployments.containerName, imageTag: deployments.imageTag })
+    .from(deployments).where(eq(deployments.projectId, id)).execute();
   const deploymentContainerNames = depRows.filter(d => d.containerName).map(d => d.containerName!);
   const deploymentImageTags = depRows.filter(d => d.imageTag).map(d => d.imageTag!);
 
   for (const dep of depRows) {
-    db.delete(deploymentLogs).where(eq(deploymentLogs.deploymentId, dep.id)).run();
+    await db.delete(deploymentLogs).where(eq(deploymentLogs.deploymentId, dep.id)).execute();
   }
-  db.delete(deployments).where(eq(deployments.projectId, id)).run();
-  db.delete(environmentVariables).where(eq(environmentVariables.projectId, id)).run();
+  await db.delete(deployments).where(eq(deployments.projectId, id)).execute();
+  await db.delete(environmentVariables).where(eq(environmentVariables.projectId, id)).execute();
 
-  const volRows = db.select({ dockerVolumeName: volumes.dockerVolumeName })
-    .from(volumes).where(eq(volumes.projectId, id)).all();
+  const volRows = await db.select({ dockerVolumeName: volumes.dockerVolumeName })
+    .from(volumes).where(eq(volumes.projectId, id)).execute();
   const volumeDockerNames = volRows.filter(v => v.dockerVolumeName).map(v => v.dockerVolumeName!);
-  db.delete(volumes).where(eq(volumes.projectId, id)).run();
+  await db.delete(volumes).where(eq(volumes.projectId, id)).execute();
 
-  const dbRows = db.select({ containerName: databases.containerName, volumeName: databases.volumeName })
-    .from(databases).where(eq(databases.projectId, id)).all();
+  const dbRows = await db.select({ containerName: databases.containerName, volumeName: databases.volumeName })
+    .from(databases).where(eq(databases.projectId, id)).execute();
   const databaseContainerNames: string[] = [];
   const databaseVolumeNames: string[] = [];
-  db.update(databases).set({ projectId: null, updatedAt: now() }).where(eq(databases.projectId, id)).run();
+  await db.update(databases).set({ projectId: null, updatedAt: now() }).where(eq(databases.projectId, id)).execute();
 
-  const domainRows = db.select({ domain: domains.domain }).from(domains).where(eq(domains.projectId, id)).all();
+  const domainRows = await db.select({ domain: domains.domain }).from(domains).where(eq(domains.projectId, id)).execute();
   const domainInfo = domainRows.map(d => ({ domain: d.domain, projectName: project.name ?? id }));
-  db.delete(domains).where(eq(domains.projectId, id)).run();
+  await db.delete(domains).where(eq(domains.projectId, id)).execute();
 
-  db.delete(scalingPolicies).where(eq(scalingPolicies.projectId, id)).run();
-  db.delete(alerts).where(eq(alerts.projectId, id)).run();
-  db.delete(projects).where(eq(projects.id, id)).run();
+  await db.delete(scalingPolicies).where(eq(scalingPolicies.projectId, id)).execute();
+  await db.delete(alerts).where(eq(alerts.projectId, id)).execute();
+  await db.delete(projects).where(eq(projects.id, id)).execute();
 
   return {
     deploymentContainerNames,

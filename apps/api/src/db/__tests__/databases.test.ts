@@ -1,15 +1,12 @@
 import { describe, it, expect } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
 
 const runnerPath = join(import.meta.dir, 'databases-repo-runner.ts');
 
 const runRepoScenarios = (): any => {
-  const dbPath = join(tmpdir(), `dequel-repo-test-${randomUUID()}.db`);
   const result = spawnSync('bun', [runnerPath], {
-    env: { ...process.env, DATABASE_PATH: dbPath },
+    env: { ...process.env, DATABASE_URL: 'postgresql://dequel:dequel@localhost:5433/dequel', TEST_DATABASE_URL: 'postgresql://dequel:dequel@localhost:5433/dequel' },
     encoding: 'utf8',
   });
   if (result.status !== 0) {

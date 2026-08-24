@@ -1,8 +1,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { eq, sql } from 'drizzle-orm';
 import { config } from './config';
 import { validateDomain, resolveServerIp } from './dns';
-import { getDb } from '../db/client';
+import { getDb } from '../db/db-provider';
+import { domains } from '../db/schema';
 import { getProjectById, listDomains, updateDomainValidation, listEnvironmentVariablesForDeploy } from '../db/repo';
 import { reloadCaddy } from '../orchestrator/runtime';
 
@@ -27,13 +29,15 @@ export const stopDomainPolling = () => {
 const reconcileVerifiedDomains = async () => {
   try {
     const db = await getDb();
-    const rows = db.query(
-      "SELECT id, project_id, domain FROM domains WHERE validation_status = 'verified'"
-    ).all() as { id: string; project_id: string; domain: string }[];
+    const rows = await db.select({
+      id: domains.id,
+      projectId: domains.projectId,
+      domain: domains.domain,
+    }).from(domains).where(eq(domains.validationStatus, 'verified')).execute();
     for (const row of rows) {
       try {
-        const project = await getProjectById(row.project_id);
-        await addToCaddyRoute(row.domain, row.project_id, project?.name ?? '');
+        const project = await getProjectById(row.projectId);
+        await addToCaddyRoute(row.domain, row.projectId, project?.name ?? '');
       } catch (e) {
         console.error(`Caddy reconciliation failed for ${row.domain}:`, e);
       }
@@ -46,9 +50,13 @@ const reconcileVerifiedDomains = async () => {
 const poll = async () => {
   try {
     const db = await getDb();
-    const rows = db.query(
-      "SELECT id, project_id, domain FROM domains WHERE validation_status IN ('pending', 'failed')"
-    ).all() as { id: string; project_id: string; domain: string }[];
+    const rows = await db.select({
+      id: domains.id,
+      projectId: domains.projectId,
+      domain: domains.domain,
+    }).from(domains).where(
+      sql`${domains.validationStatus} IN ('pending', 'failed')`
+    ).execute();
     if (!rows.length) return;
 
     const serverIp = await resolveServerIp();

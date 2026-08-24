@@ -2,12 +2,8 @@ import {
 	describe,
 	it,
 	expect,
-	mock,
 	beforeAll,
-	beforeEach,
-	afterAll,
 } from "bun:test";
-import { Database } from "bun:sqlite";
 
 const TEST_SECRET =
 	"test-jwt-secret-for-testing-purposes-only";
