@@ -52,6 +52,11 @@ export function DomainsTab({
 		queryFn: () => api.getServerIp(),
 		staleTime: 60_000,
 	});
+	const { data: domainStatuses } = useQuery({
+		queryKey: ["domain-status", projectId],
+		queryFn: () => api.getDomainStatus(projectId),
+		refetchInterval: 30000,
+	});
 	const [isAddOpen, setIsAddOpen] =
 		useState(false);
 	const [deletingDomId, setDeletingDomId] =
@@ -388,6 +393,12 @@ export function DomainsTab({
 									<TableHead className="text-xs font-semibold py-3">
 										SSL
 									</TableHead>
+									<TableHead className="text-xs font-semibold py-3">
+										DNS
+									</TableHead>
+									<TableHead className="text-xs font-semibold py-3">
+										TLS
+									</TableHead>
 									<TableHead className="w-12 text-right pr-6"></TableHead>
 								</TableRow>
 							</TableHeader>
@@ -429,6 +440,39 @@ export function DomainsTab({
 													}
 												/>
 											</TableCell>
+											{(() => {
+												const st = domainStatuses?.find(
+													(s) => s.domain === d.domain,
+												);
+												return (
+													<>
+														<TableCell className="py-3.5">
+															{st ? (
+																<span className="inline-flex items-center gap-1.5 text-xs">
+																	<span className={`h-1.5 w-1.5 rounded-full ${st.dnsOk ? "bg-emerald-400" : "bg-red-400"}`} />
+																	<span className={st.dnsOk ? "text-emerald-400" : "text-red-400"}>
+																		{st.dnsOk ? "Resolved" : "Unresolved"}
+																	</span>
+																</span>
+															) : (
+																<span className="text-xs text-muted-foreground">—</span>
+															)}
+														</TableCell>
+														<TableCell className="py-3.5">
+															{st ? (
+																<span className="inline-flex items-center gap-1.5 text-xs">
+																	<span className={`h-1.5 w-1.5 rounded-full ${st.tlsOk ? "bg-emerald-400" : "bg-amber-400"}`} />
+																	<span className={st.tlsOk ? "text-emerald-400" : "text-amber-400"}>
+																		{st.tlsOk ? "Secured" : "Pending"}
+																	</span>
+																</span>
+															) : (
+																<span className="text-xs text-muted-foreground">—</span>
+															)}
+														</TableCell>
+													</>
+												);
+											})()}
 											<TableCell className="py-3.5 pr-6 text-right">
 												<Button
 													variant="ghost"
