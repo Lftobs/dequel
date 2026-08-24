@@ -12,6 +12,7 @@ import {
 import { resolveServerIp } from "../../utils/dns";
 import { validateDatabaseCreate } from "../../databases/validation";
 import type { Database } from "../../types";
+import { ok, created, fail } from "../response";
 
 const sanitizeDatabase = <T extends { password: string; connectionString: string }>(database: T) => ({
 	...database,
@@ -46,7 +47,7 @@ const BUSY_STATUSES = new Set<Database["status"]>(["provisioning", "restarting",
 const busyError = (dbRecord: DatabaseRecord, set: any) => {
 	if (BUSY_STATUSES.has(dbRecord.status)) {
 		set.status = 409;
-		return { error: `Database is ${dbRecord.status}; wait for the current operation to finish` };
+		return fail(`Database is ${dbRecord.status}; wait for the current operation to finish`);
 	}
 	return null;
 };
@@ -59,24 +60,24 @@ const isNonLoopbackIp = (value: string): boolean => {
 const createManagedDatabase = async (body: any, projectId: string | null, set: any) => {
 	if (projectId && !(await getProjectById(projectId))) {
 		set.status = 404;
-		return { error: "Project not found" };
+		return fail("Project not found");
 	}
 	const validation = validateDatabaseCreate(body ?? {});
 	if (!validation.ok) {
 		set.status = 400;
-		return { error: validation.error };
+		return fail(validation.error);
 	}
 	const existing = await listAllDatabases();
 	if (existing.some((database) => database.name.toLowerCase() === validation.input.name.toLowerCase())) {
 		set.status = 409;
-		return { error: "A database with this name already exists" };
+		return fail("A database with this name already exists");
 	}
 	const dbRecord = await createDbRecord({ ...validation.input, projectId });
 	const { provisionDatabase } = await import("../../databases/manager");
 	provisionDatabase(dbRecord).catch((err: Error) =>
 		console.error("DB provision failed", err),
 	);
-	return sanitizeDatabase(dbRecord);
+	return created(sanitizeDatabase(dbRecord));
 };
 
 const findDatabase = async (id: string, set: any) => {
@@ -89,27 +90,27 @@ const findDatabase = async (id: string, set: any) => {
 };
 
 export const databasesRoutes = new Elysia()
-	.get("/databases", async () => (await listAllDatabases()).map(sanitizeDatabase))
+	.get("/databases", async () => ok((await listAllDatabases()).map(sanitizeDatabase)))
 	.post("/databases", async ({ body, set }: any) =>
 		createManagedDatabase(body, body?.projectId || null, set),
 	)
-	.get("/projects/:id/databases", async ({ params }) => (await listDatabases(params.id)).map(sanitizeDatabase))
+	.get("/projects/:id/databases", async ({ params }) => ok((await listDatabases(params.id)).map(sanitizeDatabase)))
 	.post("/projects/:id/databases", async ({ params, body, set }: any) =>
 		createManagedDatabase(body, params.id, set),
 	)
 	.get("/databases/:id", async ({ params: { id }, set }) => {
 		const dbRecord = await findDatabase(id, set);
-		if (!dbRecord) return { error: "Database not found" };
+		if (!dbRecord) return fail("Database not found");
 		const { measureDatabaseStorage } = await import("../../databases/manager");
 		const staleStorage = Date.now() - new Date(dbRecord.updatedAt).getTime() > 5 * 60_000;
 		if (dbRecord.status !== "provisioning" && staleStorage) {
 			await measureDatabaseStorage(dbRecord).catch(() => dbRecord.storageUsedMb);
 		}
-		return sanitizeDatabase((await getDatabaseById(id))!);
+		return ok(sanitizeDatabase((await getDatabaseById(id))!));
 	})
 	.get("/databases/:id/credentials", async ({ params: { id }, set }) => {
 		const dbRecord = await findDatabase(id, set);
-		if (!dbRecord) return { error: "Database not found" };
+		if (!dbRecord) return fail("Database not found");
 		const externalHost = dbRecord.publicAccess && dbRecord.externalPort
 			? await resolveServerIp()
 			: null;
@@ -117,76 +118,76 @@ export const databasesRoutes = new Elysia()
 		const externalConnectionString = usableHost
 			? buildConnectionString(dbRecord, usableHost, dbRecord.externalPort!)
 			: null;
-		return {
+		return ok({
 			username: dbRecord.username,
 			password: dbRecord.password,
 			internalConnectionString: dbRecord.connectionString,
 			externalConnectionString,
 			externalHost: usableHost,
 			externalPort: usableHost ? dbRecord.externalPort : null,
-		};
+		});
 	})
 	.post("/databases/:id/start", async ({ params: { id }, set }) => {
 		const dbRecord = await findDatabase(id, set);
-		if (!dbRecord) return { error: "Database not found" };
+		if (!dbRecord) return fail("Database not found");
 		return withDatabaseLock(id, async () => {
 			const latest = (await getDatabaseById(id))!;
 			const blocked = busyError(latest, set);
 			if (blocked) return blocked;
 			const { startDatabase } = await import("../../databases/manager");
 			await startDatabase(latest);
-			return sanitizeDatabase((await getDatabaseById(id))!);
+			return ok(sanitizeDatabase((await getDatabaseById(id))!));
 		});
 	})
 	.post("/databases/:id/stop", async ({ params: { id }, set }) => {
 		const dbRecord = await findDatabase(id, set);
-		if (!dbRecord) return { error: "Database not found" };
+		if (!dbRecord) return fail("Database not found");
 		return withDatabaseLock(id, async () => {
 			const latest = (await getDatabaseById(id))!;
 			const blocked = busyError(latest, set);
 			if (blocked) return blocked;
 			const { stopDatabase } = await import("../../databases/manager");
 			await stopDatabase(latest);
-			return sanitizeDatabase((await getDatabaseById(id))!);
+			return ok(sanitizeDatabase((await getDatabaseById(id))!));
 		});
 	})
 	.post("/databases/:id/restart", async ({ params: { id }, set }) => {
 		const dbRecord = await findDatabase(id, set);
-		if (!dbRecord) return { error: "Database not found" };
+		if (!dbRecord) return fail("Database not found");
 		return withDatabaseLock(id, async () => {
 			const latest = (await getDatabaseById(id))!;
 			const blocked = busyError(latest, set);
 			if (blocked) return blocked;
 			const { restartDatabase } = await import("../../databases/manager");
 			await restartDatabase(latest);
-			return sanitizeDatabase((await getDatabaseById(id))!);
+			return ok(sanitizeDatabase((await getDatabaseById(id))!));
 		});
 	})
 	.post("/databases/:id/retry", async ({ params: { id }, set }) => {
 		const dbRecord = await findDatabase(id, set);
-		if (!dbRecord) return { error: "Database not found" };
+		if (!dbRecord) return fail("Database not found");
 		return withDatabaseLock(id, async () => {
 			const latest = (await getDatabaseById(id))!;
 			if (latest.status !== "failed") {
 				set.status = 409;
-				return { error: "Only failed databases can be retried" };
+				return fail("Only failed databases can be retried");
 			}
 			await updateDatabaseStatus(id, "provisioning");
 			const { provisionDatabase } = await import("../../databases/manager");
 			provisionDatabase((await getDatabaseById(id))!).catch((err: Error) =>
 				console.error("DB reprovision failed", err),
 			);
-			return sanitizeDatabase((await getDatabaseById(id))!);
+			return ok(sanitizeDatabase((await getDatabaseById(id))!));
 		});
 	})
 	.delete("/databases/:id", async ({ params: { id }, set }) => {
 		const dbRecord = await findDatabase(id, set);
-		if (!dbRecord) return { error: "Database not found" };
+		if (!dbRecord) return fail("Database not found");
 		return withDatabaseLock(id, async () => {
 			const latest = (await getDatabaseById(id))!;
 			if (latest.status === "deleting") {
 				set.status = 409;
-				return { error: "Database is already being deleted" };
+				return fail("Database is already being deleted");
 			}
 			const { deprovisionDatabase, waitForProvision } = await import("../../databases/manager");
 			await waitForProvision(id);
@@ -198,9 +199,10 @@ export const databasesRoutes = new Elysia()
 				console.error(`Failed to deprovision database ${id}:`, error);
 				await updateDatabaseStatus(id, "deletion_failed");
 				set.status = 502;
-				return { error: "Database resources could not be deleted; cleanup will be retried automatically" };
+				return fail("Database resources could not be deleted; cleanup will be retried automatically");
 			}
-			return { ok: await deleteDatabase(id) };
+			await deleteDatabase(id);
+			return ok(null, "Database deleted");
 		});
 	});
 

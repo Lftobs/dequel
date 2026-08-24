@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import { signAccessToken, verifyAccessToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, blacklistRefreshToken } from "../../utils/auth";
 import { config } from "../../utils/config";
+import { ok, fail } from "../response";
 
 const PAM_AUTH_URL = "http://pam-auth:4567";
 
@@ -40,12 +41,12 @@ export const authRoutes = new Elysia()
     const { username, password } = body as { username?: string; password?: string };
     if (!username || !password) {
       set.status = 400;
-      return { error: "Username and password required" };
+      return fail("Username and password required");
     }
     const result = await callPam(username, password);
     if (!result.ok) {
       set.status = 401;
-      return { error: result.error || "Authentication failed" };
+      return fail(result.error || "Authentication failed");
     }
     const accessToken = await signAccessToken(username);
     const refreshToken = generateRefreshToken();
@@ -54,7 +55,7 @@ export const authRoutes = new Elysia()
     dequel_session.set(SESSION_COOKIE_OPTS);
     dequel_refresh.value = refreshToken;
     dequel_refresh.set(REFRESH_COOKIE_OPTS);
-    return { ok: true, username };
+    return ok({ username }, "Logged in");
   })
   .post("/auth/logout", async ({ cookie: { dequel_session, dequel_refresh } }) => {
     const rt = dequel_refresh.value;
@@ -63,18 +64,18 @@ export const authRoutes = new Elysia()
     }
     dequel_session.remove();
     dequel_refresh.remove();
-    return { ok: true };
+    return ok(null, "Logged out");
   })
   .post("/auth/refresh", async ({ cookie: { dequel_session, dequel_refresh }, set }) => {
     const rt = dequel_refresh.value;
     if (!rt) {
       set.status = 401;
-      return { error: "No refresh token" };
+      return fail("No refresh token");
     }
     const username = await validateRefreshToken(rt);
     if (!username) {
       set.status = 401;
-      return { error: "Invalid or expired refresh token" };
+      return fail("Invalid or expired refresh token");
     }
     await blacklistRefreshToken(rt);
     const accessToken = await signAccessToken(username);
@@ -84,12 +85,12 @@ export const authRoutes = new Elysia()
     dequel_session.set(SESSION_COOKIE_OPTS);
     dequel_refresh.value = newRefreshToken;
     dequel_refresh.set(REFRESH_COOKIE_OPTS);
-    return { ok: true, username };
+    return ok({ username }, "Token refreshed");
   })
   .get("/auth/me", async ({ cookie: { dequel_session } }) => {
     const token = dequel_session.value;
-    if (!token) return { authenticated: false };
+    if (!token) return ok({ authenticated: false });
     const payload = await verifyAccessToken(token);
-    if (!payload) return { authenticated: false };
-    return { authenticated: true, username: payload.sub };
+    if (!payload) return ok({ authenticated: false });
+    return ok({ authenticated: true, username: payload.sub });
   });

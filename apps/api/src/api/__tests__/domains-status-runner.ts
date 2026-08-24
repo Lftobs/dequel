@@ -16,20 +16,19 @@ const db = drizzle(pool, { schema });
 setDbProvider(async () => db);
 
 const cleanup = async () => {
-  for (const name of TABLE_NAMES) {
-    await pool.query(`TRUNCATE TABLE "${name}" CASCADE`);
-  }
+  await pool.query(`DELETE FROM domains WHERE id IN ('d-ds-1', 'd-ds-2')`);
+  await pool.query(`DELETE FROM projects WHERE id IN ('proj-ds-1', 'proj-ds-missing')`);
 };
 
 try {
   const { domainsRoutes } = await import("../domains/index");
 
   await cleanup();
-  await pool.query(`INSERT INTO projects (id, name, source_type, created_at, updated_at) VALUES ('proj-1', 'Test', 'git', NOW(), NOW())`);
-  await pool.query(`INSERT INTO projects (id, name, source_type, created_at, updated_at) VALUES ('proj-missing', 'NoDomains', 'git', NOW(), NOW())`);
+  await pool.query(`INSERT INTO projects (id, name, source_type, created_at, updated_at) VALUES ('proj-ds-1', 'Test', 'git', NOW(), NOW()) ON CONFLICT (id) DO NOTHING`);
+  await pool.query(`INSERT INTO projects (id, name, source_type, created_at, updated_at) VALUES ('proj-ds-missing', 'NoDomains', 'git', NOW(), NOW()) ON CONFLICT (id) DO NOTHING`);
 
-  await pool.query(`INSERT INTO domains (id, project_id, domain, type, validation_status, ssl_status, created_at) VALUES ('d1', 'proj-1', 'example.com', 'custom', 'pending', 'pending', NOW())`);
-  await pool.query(`INSERT INTO domains (id, project_id, domain, type, validation_status, ssl_status, created_at) VALUES ('d2', 'proj-1', 'nonexistent.invalid', 'custom', 'pending', 'pending', NOW())`);
+  await pool.query(`INSERT INTO domains (id, project_id, domain, type, validation_status, ssl_status, created_at) VALUES ('d-ds-1', 'proj-ds-1', 'example.com', 'custom', 'pending', 'pending', NOW()) ON CONFLICT (id) DO NOTHING`);
+  await pool.query(`INSERT INTO domains (id, project_id, domain, type, validation_status, ssl_status, created_at) VALUES ('d-ds-2', 'proj-ds-1', 'nonexistent.invalid', 'custom', 'pending', 'pending', NOW()) ON CONFLICT (id) DO NOTHING`);
 
   const app = domainsRoutes;
 
@@ -41,18 +40,20 @@ try {
   const results: any = {};
 
   // Test 1: returns array for project with domains
-  const r1 = await handle("/projects/proj-1/domains/status");
+  const r1 = await handle("/projects/proj-ds-1/domains/status");
   const b1 = await r1.json();
-  results.test1 = { status: r1.status, isArray: Array.isArray(b1), length: b1.length };
+  const d1 = b1.data ?? b1;
+  results.test1 = { status: r1.status, isArray: Array.isArray(d1), length: d1.length };
 
   // Test 2: returns 404 for missing project
   const r2 = await handle("/projects/missing-domains/domains/status");
   results.test2 = { status: r2.status };
 
   // Test 3: empty array for project with no domains
-  const r3 = await handle("/projects/proj-missing/domains/status");
+  const r3 = await handle("/projects/proj-ds-missing/domains/status");
   const b3 = await r3.json();
-  results.test3 = { status: r3.status, length: b3.length };
+  const d3 = b3.data ?? b3;
+  results.test3 = { status: r3.status, length: d3.length };
 
   console.log(JSON.stringify(results));
 } catch (err: any) {

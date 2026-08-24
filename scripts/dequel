@@ -79,17 +79,27 @@ cmd_update() {
 	local repo="Lftobs/dequel"
 	local tag=""
 	local base_url=""
+	local target_arg="${2:-}"
 
-	info "Checking for latest release..."
-	tag=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
-		| grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/') || true
+	if [ "$target_arg" = "--pre" ] || [ "$target_arg" = "--prerelease" ]; then
+		info "Checking for latest release (including pre-releases)..."
+		tag=$(curl -fsSL "https://api.github.com/repos/$repo/releases" \
+			| grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/') || true
+	elif [ -n "$target_arg" ] && [ "$target_arg" != "latest" ]; then
+		tag="${target_arg#v}"
+		tag="v$tag"
+	else
+		info "Checking for latest stable release..."
+		tag=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
+			| grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/') || true
+	fi
 
 	if [ -z "$tag" ]; then
-		warn "Could not determine latest release, using main branch"
+		warn "Could not determine release, using main branch"
 		base_url="https://raw.githubusercontent.com/$repo/main"
 	else
 		base_url="https://raw.githubusercontent.com/$repo/$tag"
-		success "Latest release: $tag"
+		success "Target release: $tag"
 	fi
 
 	local tmp_dir
@@ -252,7 +262,7 @@ case "${1:-}" in
 	restart)  cmd_restart ;;
 	status)   cmd_status ;;
 	logs)     cmd_logs "$@" ;;
-	update)   cmd_update ;;
+	update)   cmd_update "$@" ;;
 	uninstall) cmd_uninstall ;;
 	--version|-v) cmd_version ;;
 	--help|-h|"") cmd_help ;;
