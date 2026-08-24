@@ -24,10 +24,13 @@ export const mapRoute = (row: typeof routes.$inferSelect): Route => ({
 
 export const upsertRoute = async (input: UpsertRouteInput): Promise<Route> => {
   const db = await getDb();
+  const timestamp = now();
+  const id = randomUUID();
+
   const existing = input.serverId
     ? (await db.select().from(routes).where(and(eq(routes.hostname, input.hostname), eq(routes.serverId, input.serverId))).execute())[0]
     : (await db.select().from(routes).where(and(eq(routes.hostname, input.hostname), isNull(routes.serverId))).execute())[0];
-  const timestamp = now();
+
   if (existing) {
     const nextStatus = existing.status === 'active' ? 'active' : (input.status ?? existing.status);
     await db.update(routes).set({
@@ -46,25 +49,47 @@ export const upsertRoute = async (input: UpsertRouteInput): Promise<Route> => {
     const [row] = await db.select().from(routes).where(eq(routes.id, existing.id)).execute();
     return mapRoute(row);
   }
-  const id = randomUUID();
-  await db.insert(routes).values({
-    id,
-    serverId: input.serverId ?? null,
-    deploymentId: input.deploymentId ?? null,
-    projectId: input.projectId ?? null,
-    hostname: input.hostname,
-    routeFile: input.routeFile,
-    port: input.port,
-    targetContainers: input.targetContainers,
-    upstreamHost: input.upstreamHost ?? null,
-    status: input.status ?? "pending",
-    lastError: input.lastError ?? null,
-    confirmedAt: input.status === "active" ? timestamp : null,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  }).execute();
-  const [row] = await db.select().from(routes).where(eq(routes.id, id)).execute();
-  return mapRoute(row);
+
+  try {
+    await db.insert(routes).values({
+      id,
+      serverId: input.serverId ?? null,
+      deploymentId: input.deploymentId ?? null,
+      projectId: input.projectId ?? null,
+      hostname: input.hostname,
+      routeFile: input.routeFile,
+      port: input.port,
+      targetContainers: input.targetContainers,
+      upstreamHost: input.upstreamHost ?? null,
+      status: input.status ?? "pending",
+      lastError: input.lastError ?? null,
+      confirmedAt: input.status === "active" ? timestamp : null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }).execute();
+    const [row] = await db.select().from(routes).where(eq(routes.id, id)).execute();
+    return mapRoute(row);
+  } catch {
+    const retry = input.serverId
+      ? (await db.select().from(routes).where(and(eq(routes.hostname, input.hostname), eq(routes.serverId, input.serverId))).execute())[0]
+      : (await db.select().from(routes).where(and(eq(routes.hostname, input.hostname), isNull(routes.serverId))).execute())[0];
+    if (!retry) throw new Error("Failed to create route");
+    const nextStatus = retry.status === 'active' ? 'active' : (input.status ?? retry.status);
+    await db.update(routes).set({
+      deploymentId: input.deploymentId ?? null,
+      projectId: input.projectId ?? null,
+      routeFile: input.routeFile,
+      port: input.port,
+      targetContainers: input.targetContainers,
+      upstreamHost: input.upstreamHost ?? null,
+      status: nextStatus,
+      lastError: input.lastError ?? null,
+      confirmedAt: nextStatus === 'active' ? timestamp : retry.confirmedAt,
+      updatedAt: timestamp,
+    }).where(eq(routes.id, retry.id)).execute();
+    const [row] = await db.select().from(routes).where(eq(routes.id, retry.id)).execute();
+    return mapRoute(row);
+  }
 };
 
 export const getRouteByHostname = async (hostname: string, serverId?: string): Promise<Route | null> => {

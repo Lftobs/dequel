@@ -25,6 +25,7 @@ const sync = async (message: AgentMessage): Promise<void> => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: serializeAgentMessage(message),
+    signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`p2p-sync failed (${res.status})`);
   const parsed = parseP2PResponse(await res.json());
@@ -33,12 +34,12 @@ const sync = async (message: AgentMessage): Promise<void> => {
     const controller = activeJobs.get(jobId);
     if (controller) controller.abort();
   }
-  if (parsed.jobs.length > 0 && !busy) {
-    busy = true;
-    try {
-      await runJob(parsed.jobs[0]);
-    } finally {
-      busy = false;
+  if (parsed.jobs.length > 0) {
+    for (const job of parsed.jobs) {
+      if (!busy) {
+        busy = true;
+        runJob(job).finally(() => { busy = false; });
+      }
     }
   }
 };
@@ -86,7 +87,12 @@ const poll = async () => {
   }
 };
 
-setInterval(() => void poll(), 5_000);
-void poll();
+const loop = async () => {
+  for (;;) {
+    await poll();
+    await new Promise((r) => setTimeout(r, Math.max(retryMs, 5_000)));
+  }
+};
+void loop();
 
 console.log(`[Agent] Connected as server ${stored.serverId.slice(0, 8)}${stored.wireguard ? " (WireGuard P2P)" : ""}`);

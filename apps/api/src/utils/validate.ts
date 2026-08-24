@@ -2,7 +2,7 @@ export const SERVICE_NAME_RE = /^[a-zA-Z0-9_-]+$/;
 
 export const SUBDOMAIN_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
-export const SERVER_HOST_RE = /^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$/;
+export const SERVER_HOST_RE = /^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$|^\[[\da-fA-F:]+\]$/;
 
 export const isPort = (value: unknown): value is number =>
 	typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 65535;

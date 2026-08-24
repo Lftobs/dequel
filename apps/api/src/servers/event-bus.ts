@@ -41,6 +41,10 @@ class ServerEventBus {
   getLastEvent(serverId: string): ServerEvent | undefined {
     return this.lastEvents.get(serverId);
   }
+
+  clear(serverId: string) {
+    this.lastEvents.delete(serverId);
+  }
 }
 
 export const serverEventBus = new ServerEventBus();

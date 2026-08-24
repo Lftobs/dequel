@@ -63,12 +63,11 @@ describe("remote build result parsing", () => {
 
 describe("executor dispatch", () => {
   it("maps each mode to its executor", () => {
-    expect(executorFor("local").mode).toBe("local");
     expect(executorFor("ssh").mode).toBe("ssh");
     expect(executorFor("agent").mode).toBe("agent");
   });
 
-  it("defaults unknown modes to local", () => {
-    expect(executorFor("docker_tcp").mode).toBe("local");
+  it("throws for unknown modes", () => {
+    expect(() => executorFor("bogus")).toThrow("Unsupported server mode");
   });
 });

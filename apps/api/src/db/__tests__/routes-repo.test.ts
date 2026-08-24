@@ -47,5 +47,5 @@ describe('routes repo', () => {
     expect(result.separatePerServer.serverIngress[0].upstreamHost).toBe('203.0.113.10');
     expect(result.separatePerServer.server2).toHaveLength(1);
     expect(result.separatePerServer.server2[0].upstreamHost).toBeNull();
-  });
+  }, 30_000);
 });

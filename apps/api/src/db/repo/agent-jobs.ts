@@ -15,6 +15,9 @@ export const createAgentJob = async (input: {
   idempotencyKey: string;
 }) => {
   const db = await getDb();
+  const existing = (await db.select({ id: agentJobs.id }).from(agentJobs)
+    .where(eq(agentJobs.idempotencyKey, input.idempotencyKey)).execute())[0];
+  if (existing) return existing.id;
   const id = randomUUID();
   await db.insert(agentJobs).values({
     id,
@@ -93,15 +96,24 @@ export const finishAgentJob = async (jobId: string, serverId: string, leaseId: s
 
 export const cancelAgentJobsByDeploymentId = async (deploymentId: string) => {
   const db = await getDb();
-  const result = await db.update(agentJobs).set({ status: "cancelled" })
-    .where(and(eq(agentJobs.deploymentId, deploymentId), or(eq(agentJobs.status, "queued"), eq(agentJobs.status, "leased"), eq(agentJobs.status, "running")))).execute();
-  return getRowsAffected(result);
+  const timestamp = now();
+  const finished = db.update(agentJobs).set({
+    status: "failed",
+    failureReason: "Cancelled",
+    finishedAt: timestamp,
+    leaseId: null,
+    leaseExpiresAt: null,
+  }).where(and(eq(agentJobs.deploymentId, deploymentId), eq(agentJobs.status, "queued"))).execute();
+  const cancelled = db.update(agentJobs).set({ status: "cancelled" })
+    .where(and(eq(agentJobs.deploymentId, deploymentId), or(eq(agentJobs.status, "leased"), eq(agentJobs.status, "running")))).execute();
+  const [f, c] = await Promise.all([finished, cancelled]);
+  return getRowsAffected(f) + getRowsAffected(c);
 };
 
 export const listCancelledJobIds = async (serverId: string) => {
   const db = await getDb();
   const rows = await db.select({ id: agentJobs.id }).from(agentJobs)
-    .where(and(eq(agentJobs.serverId, serverId), eq(agentJobs.status, "cancelled"))).execute();
+    .where(and(eq(agentJobs.serverId, serverId), eq(agentJobs.status, "cancelled"), isNotNull(agentJobs.leaseId))).execute();
   return rows.map((row) => row.id);
 };
 

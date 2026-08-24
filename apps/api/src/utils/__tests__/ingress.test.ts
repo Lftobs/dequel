@@ -26,9 +26,8 @@ describe('shouldRouteViaIngress', () => {
     expect(shouldRouteViaIngress({ id: 'b', mode: 'ssh' }, { id: 'a' })).toBe(true);
   });
 
-  it('does not route agent or local project servers', () => {
+  it('does not route agent project servers', () => {
     expect(shouldRouteViaIngress({ id: 'b', mode: 'agent' }, { id: 'a' })).toBe(false);
-    expect(shouldRouteViaIngress({ id: 'local', mode: 'local' }, { id: 'a' })).toBe(false);
   });
 
   it('does not route when the project runs on the ingress itself', () => {
@@ -40,35 +39,24 @@ describe('shouldRouteViaIngress', () => {
   });
 });
 
-describe('syncIngressRoute local mode', () => {
-  it('writes a route file for local ingress', async () => {
-    let writtenPath = '';
-    let writtenContent = '';
-    mock.module('node:fs/promises', () => ({
-      writeFile: mock((path: string, content: string) => { writtenPath = path; writtenContent = content; return Promise.resolve(); }),
-      rm: mock(() => Promise.resolve()),
-    }));
-    mock.module('node:path', () => ({
-      join: mock((...parts: string[]) => parts.join('/')),
-    }));
-    mock.module('../../db/repo', () => ({
-      getPlatformSettings: mock(() => Promise.resolve({ ingressServerId: 'local' })),
-      getServerById: mock(() => Promise.resolve({ id: 'local', mode: 'local' })),
-      createAgentJob: mock(() => Promise.resolve('job-1')),
-      upsertRoute: mock(() => Promise.resolve({})),
-    }));
-    mock.module('../../utils/config', () => ({
-      config: { caddyRoutesDir: '/tmp/routes' },
-    }));
-
+describe('syncIngressRoute ssh and agent modes', () => {
+  it('delegates to syncRemoteCaddyRoute for ssh ingress servers', async () => {
     const { syncIngressRoute } = await import('../ingress');
+    let calledWith: any = null;
+    mock.module('../ssh', () => ({
+      syncRemoteCaddyRoute: mock((server: any, file: string, snippet: string) => {
+        calledWith = { server, file, snippet };
+        return Promise.resolve(true);
+      }),
+      removeRemoteCaddyRoute: mock(() => Promise.resolve(true)),
+    }));
     await syncIngressRoute(
-      { id: 'local', mode: 'local' },
+      { id: 'server-ingress', mode: 'ssh' } as any,
       '203.0.113.10',
       { hostname: 'app.example.com', routeFile: 'app.example.com.caddy', port: 3000, containers: ['c-1'] },
     );
-    expect(writtenPath).toBe('/tmp/routes/app.example.com.caddy');
-    expect(writtenContent).toContain('app.example.com');
-    expect(writtenContent).toContain('reverse_proxy 203.0.113.10:80');
+    expect(calledWith).not.toBeNull();
+    expect(calledWith.file).toBe('app.example.com.caddy');
+    expect(calledWith.snippet).toContain('reverse_proxy 203.0.113.10:80');
   });
 });

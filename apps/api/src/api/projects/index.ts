@@ -43,8 +43,9 @@ export const projectsRoutes = new Elysia()
 				const deployment = await failoverProject(id);
 				return { ok: true, deployment };
 			} catch (error) {
-				set.status = 400;
-				return { error: error instanceof Error ? error.message : "Failover failed" };
+				const message = error instanceof Error ? error.message : "Failover failed";
+				set.status = message.includes("not found") ? 404 : 400;
+				return { error: message };
 			}
 		},
 	)
@@ -73,6 +74,13 @@ export const projectsRoutes = new Elysia()
 			}
 			const { resolveDefaultServerId } = await import("../../utils/server-default");
 			const serverId = await resolveDefaultServerId(body.serverId);
+			if (body.serverId && serverId !== body.serverId) {
+				const requestedServer = await getServerById(body.serverId);
+				if (!requestedServer) {
+					set.status = 400;
+					return { error: "Requested server not found" };
+				}
+			}
 			if (!(await getServerById(serverId))) {
 				set.status = 400;
 				return { error: "Selected server does not exist" };

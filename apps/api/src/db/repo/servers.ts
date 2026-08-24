@@ -53,6 +53,10 @@ export const createServer = async (input: CreateServerInput): Promise<Server> =>
     sshUser: input.sshUser ?? null,
     mode: input.mode ?? "ssh",
     status: "pending",
+    capabilities: input.mode === "local" ? { docker: true, buildkit: true, caddy: true, compose: true } : undefined,
+    labels: input.mode === "local" ? {} : undefined,
+    registeredAt: input.mode === "local" ? timestamp : undefined,
+    lastHeartbeat: input.mode === "local" ? timestamp : undefined,
     createdAt: timestamp,
     updatedAt: timestamp,
   }).execute();

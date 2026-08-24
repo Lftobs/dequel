@@ -31,7 +31,7 @@ function ServersSection() {
   });
   const [name, setName] = useState('');
   const [host, setHost] = useState('');
-  const [port, setPort] = useState('2376');
+  const [port, setPort] = useState('22');
   const [authToken, setAuthToken] = useState('');
   const [agentName, setAgentName] = useState('');
   const [registrationCommand, setRegistrationCommand] = useState('');

@@ -347,7 +347,9 @@ const scaleDeployment = async (payload: RemoteScalePayload, signal: AbortSignal,
   return { replicas: payload.replicas, started: true as const };
 };
 
-export const executeJob = async (job: AgentJobEnvelope, signal: AbortSignal, progress: Progress): Promise<RemoteDeployResult | { ok: true }> => {
+export type RemoteScaleResult = { replicas: number; removed: true } | { replicas: number; started: true };
+
+export const executeJob = async (job: AgentJobEnvelope, signal: AbortSignal, progress: Progress): Promise<RemoteDeployResult | RemoteRouteResult | RemoteScaleResult | { ok: true }> => {
   switch (job.type) {
     case "deploy":
       return deployFromGit(validatePayload(job.payload), signal, progress);
@@ -380,9 +382,12 @@ const validateRoutePayloadImpl = (value: unknown): RemoteRoutePayload => {
   if (input.upstreamHost !== undefined && (typeof input.upstreamHost !== "string" || !UPSTREAM_HOST_RE.test(input.upstreamHost))) {
     throw new Error("Invalid upstream host");
   }
-  if (!Array.isArray(input.targetContainers) || (input.targetContainers.length === 0 && !input.upstreamHost) ||
+  if (!Array.isArray(input.targetContainers) ||
       input.targetContainers.some((c) => typeof c !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(c))) {
     throw new Error("Invalid target containers");
+  }
+  if (input.action === "add" && input.targetContainers.length === 0 && !input.upstreamHost) {
+    throw new Error("Target containers required for add action without upstream host");
   }
   return input as RemoteRoutePayload;
 };

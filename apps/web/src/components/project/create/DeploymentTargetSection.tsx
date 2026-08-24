@@ -5,7 +5,7 @@ import { cn } from '../../../lib/utils';
 
 export function getDeploymentTargets(servers: DequelServer[]): DequelServer[] {
   return servers.filter(
-    (s) => s.status === 'connected' && (s.mode === 'local' || s.mode === 'agent'),
+    (s) => s.status === 'connected' && (s.mode === 'local' || s.mode === 'ssh' || s.mode === 'agent'),
   );
 }
 

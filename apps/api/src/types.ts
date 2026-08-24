@@ -7,7 +7,7 @@ export type DomainType = 'base' | 'custom';
 export type DomainValidationStatus = 'pending' | 'verified' | 'failed';
 export type SslStatus = 'pending' | 'provisioned' | 'failed';
 export type ServerStatus = 'pending' | 'connected' | 'disconnected' | 'failed';
-export type ServerMode = 'local' | 'ssh' | 'agent';
+export type ServerMode = 'local' | 'ssh' | 'agent' | 'docker_tcp';
 export type AlertChannel = 'email' | 'slack' | 'webhook';
 export type AlertType = 'cpu' | 'memory' | 'error_rate' | 'downtime' | 'cert_expiry';
 

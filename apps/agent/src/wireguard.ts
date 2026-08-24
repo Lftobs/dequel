@@ -30,10 +30,18 @@ export const bringUpTunnel = async (config: WireGuardPeerConfig): Promise<boolea
     await writeFile(confPath, contents, { mode: 0o600 });
     const up = await run("wg-quick", ["up", "dequel0"]);
     if (up.code !== 0) {
-      const status = await run("wg-quick", ["down", "dequel0"]);
-      if (status.code === 0) await run("wg-quick", ["up", "dequel0"]);
-      else console.warn(`[WireGuard] Could not bring up tunnel: ${up.output}`);
-      return false;
+      const down = await run("wg-quick", ["down", "dequel0"]);
+      if (down.code !== 0) {
+        console.warn(`[WireGuard] Could not bring up tunnel: ${up.output}`);
+        return false;
+      }
+      const retry = await run("wg-quick", ["up", "dequel0"]);
+      if (retry.code !== 0) {
+        console.warn(`[WireGuard] Could not bring up tunnel: ${retry.output}`);
+        return false;
+      }
+      console.log(`[WireGuard] Tunnel up at ${config.peerIp}`);
+      return true;
     }
     console.log(`[WireGuard] Tunnel up at ${config.peerIp}`);
     return true;
