@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import { getSmtpSettings, upsertSmtpSettings, getPlatformSettings, setIngressServer, getServerById } from "../../db/repo";
 import { failoverState } from "../../orchestrator/failover";
+import { rerenderAllIngressRoutes } from "../../orchestrator/ingress-sync";
 import nodemailer from "nodemailer";
 
 export const settingsRoutes = new Elysia({ prefix: "/settings" })
@@ -24,7 +25,9 @@ export const settingsRoutes = new Elysia({ prefix: "/settings" })
         return { error: "Unsupported server mode for ingress" };
       }
     }
+    const { ingressServerId: oldId } = await getPlatformSettings();
     await setIngressServer(serverId);
+    rerenderAllIngressRoutes(oldId, serverId).catch(() => {});
     return { ok: true, ingressServerId: serverId };
   })
 
