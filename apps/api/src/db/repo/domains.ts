@@ -1,9 +1,9 @@
 import { eq, desc } from "drizzle-orm";
-import { getDrizzle } from "../drizzle";
+import { getDb } from "../db-provider";
 import { domains } from "../schema";
 import type { Domain, CreateDomainInput, DomainValidationStatus, SslStatus } from "../../types";
 import { randomUUID } from "node:crypto";
-import { now } from "./helpers";
+import { now, getRowsAffected } from "./helpers";
 
 const mapDomain = (row: typeof domains.$inferSelect): Domain => ({
   id: row.id,
@@ -21,8 +21,8 @@ const mapDomain = (row: typeof domains.$inferSelect): Domain => ({
 export const createDomain = async (input: CreateDomainInput): Promise<Domain> => {
   const id = randomUUID();
   const timestamp = now();
-  const db = await getDrizzle();
-  db.insert(domains).values({
+  const db = await getDb();
+  await db.insert(domains).values({
     id,
     projectId: input.projectId,
     domain: input.domain,
@@ -33,35 +33,36 @@ export const createDomain = async (input: CreateDomainInput): Promise<Domain> =>
     targetPort: input.targetPort ?? null,
     createdAt: timestamp,
     updatedAt: timestamp,
-  }).run();
-  const row = db.select().from(domains).where(eq(domains.id, id)).get()!;
+  }).execute();
+  const [row] = await db.select().from(domains).where(eq(domains.id, id)).execute();
   return mapDomain(row);
 };
 
 export const listDomains = async (projectId: string): Promise<Domain[]> => {
-  const db = await getDrizzle();
-  return db.select().from(domains).where(eq(domains.projectId, projectId)).orderBy(desc(domains.createdAt)).all().map(mapDomain);
+  const db = await getDb();
+  const rows = await db.select().from(domains).where(eq(domains.projectId, projectId)).orderBy(desc(domains.createdAt)).execute();
+  return rows.map(mapDomain);
 };
 
 export const getDomainById = async (id: string): Promise<Domain | null> => {
-  const db = await getDrizzle();
-  const row = db.select().from(domains).where(eq(domains.id, id)).get();
+  const db = await getDb();
+  const [row] = await db.select().from(domains).where(eq(domains.id, id)).execute();
   return row ? mapDomain(row) : null;
 };
 
 export const updateDomainValidation = async (id: string, validationStatus: DomainValidationStatus, sslStatus?: SslStatus): Promise<void> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const updates: Record<string, unknown> = { validationStatus, updatedAt: now() };
   if (sslStatus !== undefined) updates.sslStatus = sslStatus;
-  db.update(domains).set(updates).where(eq(domains.id, id)).run();
+  await db.update(domains).set(updates).where(eq(domains.id, id)).execute();
 };
 
 export const updateDomainSslStatus = async (id: string, sslStatus: SslStatus): Promise<void> => {
-  const db = await getDrizzle();
-  db.update(domains).set({ sslStatus, updatedAt: now() }).where(eq(domains.id, id)).run();
+  const db = await getDb();
+  await db.update(domains).set({ sslStatus, updatedAt: now() }).where(eq(domains.id, id)).execute();
 };
 
 export const deleteDomain = async (id: string): Promise<boolean> => {
-  const db = await getDrizzle();
-  return db.delete(domains).where(eq(domains.id, id)).run().changes > 0;
+  const db = await getDb();
+  return getRowsAffected(await db.delete(domains).where(eq(domains.id, id)).execute()) > 0;
 };

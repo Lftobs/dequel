@@ -15,10 +15,12 @@
     "elysia": "^1.1.26",
     "ioredis": "^5.4.1",
     "nodemailer": "^8.0.10",
+    "pg": "^8.23.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/nodemailer": "^8.0.0",
+    "@types/pg": "^8.23.1",
     "drizzle-kit": "^0.31.10"
   }
 }

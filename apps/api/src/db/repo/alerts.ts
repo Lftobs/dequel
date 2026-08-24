@@ -1,9 +1,9 @@
 import { eq, desc } from "drizzle-orm";
-import { getDrizzle } from "../drizzle";
+import { getDb } from "../db-provider";
 import { alerts } from "../schema";
 import type { Alert, CreateAlertInput } from "../../types";
 import { randomUUID } from "node:crypto";
-import { now } from "./helpers";
+import { now, getRowsAffected } from "./helpers";
 
 const mapAlert = (row: typeof alerts.$inferSelect): Alert => ({
   id: row.id,
@@ -13,15 +13,15 @@ const mapAlert = (row: typeof alerts.$inferSelect): Alert => ({
   durationSeconds: row.durationSeconds,
   channel: row.channel as Alert["channel"],
   destination: row.destination,
-  enabled: row.enabled === 1,
+  enabled: row.enabled,
   createdAt: row.createdAt,
 });
 
 export const createAlert = async (input: CreateAlertInput): Promise<Alert> => {
   const id = randomUUID();
   const timestamp = now();
-  const db = await getDrizzle();
-  db.insert(alerts).values({
+  const db = await getDb();
+  await db.insert(alerts).values({
     id,
     projectId: input.projectId,
     type: input.type,
@@ -30,33 +30,33 @@ export const createAlert = async (input: CreateAlertInput): Promise<Alert> => {
     channel: input.channel,
     destination: input.destination ?? null,
     createdAt: timestamp,
-  }).run();
-  const row = db.select().from(alerts).where(eq(alerts.id, id)).get()!;
+  }).execute();
+  const [row] = await db.select().from(alerts).where(eq(alerts.id, id)).execute();
   return mapAlert(row);
 };
 
 export const listAlerts = async (projectId?: string): Promise<Alert[]> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const cond = projectId ? eq(alerts.projectId, projectId) : undefined;
   const rows = cond
-    ? db.select().from(alerts).where(cond).orderBy(desc(alerts.createdAt)).all()
-    : db.select().from(alerts).orderBy(desc(alerts.createdAt)).all();
+    ? await db.select().from(alerts).where(cond).orderBy(desc(alerts.createdAt)).execute()
+    : await db.select().from(alerts).orderBy(desc(alerts.createdAt)).execute();
   return rows.map(mapAlert);
 };
 
 export const getAlertById = async (id: string): Promise<Alert | null> => {
-  const db = await getDrizzle();
-  const row = db.select().from(alerts).where(eq(alerts.id, id)).get();
+  const db = await getDb();
+  const [row] = await db.select().from(alerts).where(eq(alerts.id, id)).execute();
   return row ? mapAlert(row) : null;
 };
 
 export const updateAlertEnabled = async (id: string, enabled: boolean): Promise<Alert | null> => {
-  const db = await getDrizzle();
-  db.update(alerts).set({ enabled: enabled ? 1 : 0 }).where(eq(alerts.id, id)).run();
+  const db = await getDb();
+  await db.update(alerts).set({ enabled }).where(eq(alerts.id, id)).execute();
   return getAlertById(id);
 };
 
 export const deleteAlert = async (id: string): Promise<boolean> => {
-  const db = await getDrizzle();
-  return db.delete(alerts).where(eq(alerts.id, id)).run().changes > 0;
+  const db = await getDb();
+  return getRowsAffected(await db.delete(alerts).where(eq(alerts.id, id)).execute()) > 0;
 };

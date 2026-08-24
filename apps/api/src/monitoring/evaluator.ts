@@ -1,6 +1,8 @@
 import Redis from 'ioredis';
 import { config } from '../utils/config';
-import { getDb } from '../db/client';
+import { getDb } from '../db/db-provider';
+import { eq } from 'drizzle-orm';
+import { alerts } from '../db/schema';
 import { listDeployments, getProjectById, getServerById } from '../db/repo';
 import { sendNotification } from './notifier';
 import { dockerBin } from '../utils/docker-bin';
@@ -113,14 +115,14 @@ class AlertEvaluator {
   private async tick() {
     try {
       const db = await getDb();
-      const alertRows = db.query('SELECT * FROM alerts WHERE enabled = 1').all() as any[];
+      const alertRows = await db.select().from(alerts).where(eq(alerts.enabled, true)).execute();
       if (!alertRows.length) return;
 
-      const byProject = new Map<string, any[]>();
+      const byProject = new Map<string, typeof alertRows>();
       for (const row of alertRows) {
-        const arr = byProject.get(row.project_id) || [];
+        const arr = byProject.get(row.projectId) || [];
         arr.push(row);
-        byProject.set(row.project_id, arr);
+        byProject.set(row.projectId, arr);
       }
 
       for (const [projectId, alerts] of byProject) {

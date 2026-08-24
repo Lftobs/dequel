@@ -1,37 +1,28 @@
-import { describe, it, expect, mock, beforeAll, beforeEach, afterAll } from 'bun:test';
-import { Database } from 'bun:sqlite';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'bun:test';
+import { sql } from 'drizzle-orm';
+import { createTestPool, truncateAllTables } from '../test-helper';
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import * as schema from '../schema';
+import { setDbProvider } from '../db-provider';
 
 const TEST_SECRET = 'test-jwt-secret-for-testing-purposes-only';
-
-let db: Database;
-
-const fileUrl = (path: string) => new URL(path, import.meta.url).toString();
-mock.module(fileUrl('../client.ts'), () => ({
-  getDb: () => db,
-}));
+let pool: Pool;
 
 beforeAll(async () => {
-  db = new Database(':memory:');
-  db.run(`
-    CREATE TABLE refresh_tokens (
-      id text PRIMARY KEY NOT NULL,
-      username text NOT NULL,
-      token_hash text NOT NULL UNIQUE,
-      expires_at text NOT NULL,
-      created_at text NOT NULL,
-      blacklisted_at text
-    )
-  `);
+  pool = createTestPool();
+  const db = drizzle(pool, { schema });
+  setDbProvider(async () => db);
   const { initAuth } = await import('../../utils/auth');
   initAuth(TEST_SECRET);
 });
 
-beforeEach(() => {
-  db.run('DELETE FROM refresh_tokens');
+beforeEach(async () => {
+  await truncateAllTables(pool);
 });
 
-afterAll(() => {
-  db.close();
+afterAll(async () => {
+  await truncateAllTables(pool);
 });
 
 describe('storeRefreshToken / validateRefreshToken', () => {
@@ -75,13 +66,14 @@ describe('blacklistRefreshToken', () => {
 describe('cleanupExpiredTokens', () => {
   it('removes expired tokens', async () => {
     const { generateRefreshToken, storeRefreshToken, cleanupExpiredTokens } = await import('../../utils/auth');
+    const { refreshTokens } = await import('../../db/schema');
     const token = generateRefreshToken();
     await storeRefreshToken('testuser', token);
-    const row = db.query('SELECT token_hash FROM refresh_tokens ORDER BY created_at DESC LIMIT 1').get() as { token_hash: string };
-    db.run(`UPDATE refresh_tokens SET expires_at = '2000-01-01T00:00:00.000Z' WHERE token_hash = ?`, [row.token_hash]);
+    const [row] = await pool.query(`SELECT token_hash FROM refresh_tokens ORDER BY created_at DESC LIMIT 1`).then(r => r.rows);
+    await pool.query(`UPDATE refresh_tokens SET expires_at = '2000-01-01T00:00:00.000Z' WHERE token_hash = $1`, [row.token_hash]);
     await cleanupExpiredTokens();
-    const remaining = db.query('SELECT COUNT(*) as c FROM refresh_tokens').get() as { c: number };
-    expect(remaining.c).toBe(0);
+    const remaining = await pool.query('SELECT COUNT(*) as c FROM refresh_tokens').then(r => r.rows[0]);
+    expect(Number(remaining.c)).toBe(0);
   });
 
   it('keeps non-expired tokens', async () => {
@@ -89,7 +81,7 @@ describe('cleanupExpiredTokens', () => {
     const token = generateRefreshToken();
     await storeRefreshToken('testuser', token);
     await cleanupExpiredTokens();
-    const remaining = db.query('SELECT COUNT(*) as c FROM refresh_tokens').get() as { c: number };
-    expect(remaining.c).toBe(1);
+    const remaining = await pool.query('SELECT COUNT(*) as c FROM refresh_tokens').then(r => r.rows[0]);
+    expect(Number(remaining.c)).toBe(1);
   });
 });

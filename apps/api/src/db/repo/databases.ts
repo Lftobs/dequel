@@ -1,9 +1,9 @@
 import { eq, desc } from "drizzle-orm";
-import { getDrizzle } from "../drizzle";
+import { getDb } from "../db-provider";
 import { databases } from "../schema";
 import type { Database, CreateDatabaseInput, DatabaseStatus } from "../../types";
 import { randomUUID } from "node:crypto";
-import { now } from "./helpers";
+import { now, getRowsAffected } from "./helpers";
 
 const mapDatabase = (row: typeof databases.$inferSelect): Database => ({
   id: row.id,
@@ -20,9 +20,9 @@ const mapDatabase = (row: typeof databases.$inferSelect): Database => ({
   memoryLimitMb: row.memoryLimitMb,
   storageLimitMb: row.storageLimitMb,
   storageUsedMb: row.storageUsedMb,
-  publicAccess: row.publicAccess === 1,
-  allowPublicAccessFromAnywhere: row.allowPublicAccessFromAnywhere === 1,
-  allowedCidrs: (() => {
+  publicAccess: Boolean(row.publicAccess),
+  allowPublicAccessFromAnywhere: Boolean(row.allowPublicAccessFromAnywhere),
+  allowedCidrs: Array.isArray(row.allowedCidrs) ? row.allowedCidrs : (() => {
     try { return JSON.parse(row.allowedCidrs || "[]"); } catch { return []; }
   })(),
   externalPort: row.externalPort,
@@ -61,8 +61,8 @@ export const createDatabase = async (input: CreateDatabaseInput): Promise<Databa
   } else {
     connStr = `postgresql://${username}:${password}@${internalHost}:${internalPort}/${dbName}`;
   }
-  const db = await getDrizzle();
-  db.insert(databases).values({
+  const db = await getDb();
+  await db.insert(databases).values({
     id,
     projectId: input.projectId ?? null,
     name: input.name,
@@ -77,9 +77,9 @@ export const createDatabase = async (input: CreateDatabaseInput): Promise<Databa
     memoryLimitMb: input.memoryLimitMb ?? null,
     storageLimitMb: input.storageLimitMb ?? null,
     storageUsedMb: 0,
-    publicAccess: input.publicAccess === false ? 0 : 1,
-    allowPublicAccessFromAnywhere: input.allowPublicAccessFromAnywhere ? 1 : 0,
-    allowedCidrs: JSON.stringify(input.allowedCidrs ?? []),
+    publicAccess: input.publicAccess === false ? false : true,
+    allowPublicAccessFromAnywhere: input.allowPublicAccessFromAnywhere,
+    allowedCidrs: input.allowedCidrs ?? [],
     externalPort: null,
     proxyContainerName: null,
     volumeName,
@@ -87,32 +87,34 @@ export const createDatabase = async (input: CreateDatabaseInput): Promise<Databa
     status: "provisioning",
     createdAt: timestamp,
     updatedAt: timestamp,
-  }).run();
-  const row = db.select().from(databases).where(eq(databases.id, id)).get()!;
+  }).execute();
+  const [row] = await db.select().from(databases).where(eq(databases.id, id)).execute();
   return mapDatabase(row);
 };
 
 export const listAllDatabases = async (): Promise<Database[]> => {
-  const db = await getDrizzle();
-  return db.select().from(databases).orderBy(desc(databases.createdAt)).all().map(mapDatabase);
+  const db = await getDb();
+  const rows = await db.select().from(databases).orderBy(desc(databases.createdAt)).execute();
+  return rows.map(mapDatabase);
 };
 
 export const listDatabases = async (projectId: string): Promise<Database[]> => {
-  const db = await getDrizzle();
-  return db.select().from(databases).where(eq(databases.projectId, projectId)).orderBy(desc(databases.createdAt)).all().map(mapDatabase);
+  const db = await getDb();
+  const rows = await db.select().from(databases).where(eq(databases.projectId, projectId)).orderBy(desc(databases.createdAt)).execute();
+  return rows.map(mapDatabase);
 };
 
 export const getDatabaseById = async (id: string): Promise<Database | null> => {
-  const db = await getDrizzle();
-  const row = db.select().from(databases).where(eq(databases.id, id)).get();
+  const db = await getDb();
+  const [row] = await db.select().from(databases).where(eq(databases.id, id)).execute();
   return row ? mapDatabase(row) : null;
 };
 
 export const updateDatabaseStatus = async (id: string, status: DatabaseStatus, containerName?: string): Promise<void> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const updates: Record<string, unknown> = { status, updatedAt: now() };
   if (containerName !== undefined) updates.containerName = containerName;
-  db.update(databases).set(updates).where(eq(databases.id, id)).run();
+  await db.update(databases).set(updates).where(eq(databases.id, id)).execute();
 };
 
 export const updateDatabaseRuntime = async (id: string, updates: {
@@ -121,11 +123,11 @@ export const updateDatabaseRuntime = async (id: string, updates: {
   storageUsedMb?: number;
   status?: DatabaseStatus;
 }): Promise<void> => {
-  const db = await getDrizzle();
-  db.update(databases).set({ ...updates, updatedAt: now() }).where(eq(databases.id, id)).run();
+  const db = await getDb();
+  await db.update(databases).set({ ...updates, updatedAt: now() }).where(eq(databases.id, id)).execute();
 };
 
 export const deleteDatabase = async (id: string): Promise<boolean> => {
-  const db = await getDrizzle();
-  return db.delete(databases).where(eq(databases.id, id)).run().changes > 0;
+  const db = await getDb();
+  return getRowsAffected(await db.delete(databases).where(eq(databases.id, id)).execute()) > 0;
 };
