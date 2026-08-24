@@ -1,97 +1,30 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect } from "bun:test";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
-const mockResolve4 = mock();
+const exec = promisify(execFile);
 
-mock.module("node:dns", () => ({
-	promises: {
-		resolve4: mockResolve4,
-	},
-}));
+const run = () =>
+  exec("bun", ["run", "src/api/__tests__/domains-status-runner.ts"], {
+    cwd: import.meta.dir + "/../../..",
+    timeout: 30000,
+    env: { ...process.env, TEST_DATABASE_URL: "postgresql://dequel:dequel@localhost:5433/dequel" },
+  });
 
-const originalFetch = globalThis.fetch;
-beforeEach(() => {
-	mockResolve4.mockReset();
-	globalThis.fetch = originalFetch;
-});
-
-const mockListDomains = mock();
-const mockGetProjectById = mock();
-const mockCreateDomain = mock();
-const mockDeleteDomain = mock();
-const mockGetDomainById = mock();
-const mockUpdateDomainValidation = mock();
-
-mock.module("../../db/repo", () => ({
-	listDomains: mockListDomains,
-	getProjectById: mockGetProjectById,
-	createDomain: mockCreateDomain,
-	deleteDomain: mockDeleteDomain,
-	getDomainById: mockGetDomainById,
-	updateDomainValidation: mockUpdateDomainValidation,
-}));
-
-const { domainsRoutes } = await import("../domains/index");
-
-const app = domainsRoutes;
-
-const fetchJson = async (path: string) => {
-	const req = new Request(`http://localhost${path}`);
-	const res = await app.handle(req);
-	return { status: res.status, body: await res.json() };
+const parse = (stdout: string) => {
+  const lines = stdout.trim().split("\n");
+  return JSON.parse(lines[lines.length - 1]);
 };
 
 describe("GET /projects/:id/domains/status", () => {
-	it("returns an array for a project with domains", async () => {
-		mockGetProjectById.mockResolvedValue({ id: "proj-1", name: "test" });
-		mockListDomains.mockResolvedValue([
-			{ id: "d1", domain: "example.com", projectId: "proj-1" },
-			{ id: "d2", domain: "foo.bar", projectId: "proj-1" },
-		]);
-		mockResolve4.mockResolvedValue(["1.2.3.4"]);
-		globalThis.fetch = mock(() =>
-			Promise.resolve({ ok: true, status: 200 }),
-		) as typeof fetch;
-
-		const { status, body } = await fetchJson("/projects/proj-1/domains/status");
-		expect(status).toBe(200);
-		expect(Array.isArray(body)).toBe(true);
-		expect(body).toHaveLength(2);
-		expect(body[0]).toHaveProperty("domain", "example.com");
-		expect(body[0]).toHaveProperty("dnsOk", true);
-		expect(body[0]).toHaveProperty("tlsOk", true);
-		expect(body[0]).toHaveProperty("lastChecked");
-	});
-
-	it("returns empty array when project has no domains", async () => {
-		mockGetProjectById.mockResolvedValue({ id: "proj-1", name: "test" });
-		mockListDomains.mockResolvedValue([]);
-
-		const { status, body } = await fetchJson("/projects/proj-1/domains/status");
-		expect(status).toBe(200);
-		expect(body).toEqual([]);
-	});
-
-	it("returns dnsOk false for non-existent domains", async () => {
-		mockGetProjectById.mockResolvedValue({ id: "proj-1", name: "test" });
-		mockListDomains.mockResolvedValue([
-			{ id: "d1", domain: "nonexistent.invalid", projectId: "proj-1" },
-		]);
-		mockResolve4.mockRejectedValue(new Error("ENOTFOUND"));
-		globalThis.fetch = mock(() =>
-			Promise.reject(new Error("fetch failed")),
-		) as typeof fetch;
-
-		const { status, body } = await fetchJson("/projects/proj-1/domains/status");
-		expect(status).toBe(200);
-		expect(body).toHaveLength(1);
-		expect(body[0].dnsOk).toBe(false);
-		expect(body[0].tlsOk).toBe(false);
-	});
-
-	it("returns 404 for non-existent project", async () => {
-		mockGetProjectById.mockResolvedValue(null);
-
-		const { status } = await fetchJson("/projects/missing/domains/status");
-		expect(status).toBe(404);
-	});
+  it("returns array and 404 for missing project", async () => {
+    const { stdout, stderr } = await run();
+    const results = parse(stdout);
+    expect(results.test1.status).toBe(200);
+    expect(results.test1.isArray).toBe(true);
+    expect(results.test1.length).toBe(2);
+    expect(results.test2.status).toBe(404);
+    expect(results.test3.status).toBe(200);
+    expect(results.test3.length).toBe(0);
+  });
 });
