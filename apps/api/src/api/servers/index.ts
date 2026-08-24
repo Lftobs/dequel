@@ -9,31 +9,30 @@ import { testSshConnection } from "../../utils/ssh";
 import { prepareServer, isServerPreparing } from "../../servers/prepare";
 import { serverEventBus } from "../../servers/event-bus";
 import { SERVER_HOST_RE, isPort } from "../../utils/validate";
+import { ok, created, fail } from "../response";
 
 export const serversRoutes = new Elysia()
-	.get("/servers", async () => listServers())
+	.get("/servers", async () => ok(await listServers()))
 	.post(
 		"/servers",
 		async ({ body, set }: any) => {
 			if (!body?.name || !body?.host) {
 				set.status = 400;
-				return {
-					error: "name and host are required",
-				};
+				return fail("name and host are required");
 			}
 			if (!SERVER_HOST_RE.test(body.host)) {
 				set.status = 400;
-				return { error: "host must be a valid hostname or IP address" };
+				return fail("host must be a valid hostname or IP address");
 			}
 			if (body.mode && body.mode !== "ssh" && body.mode !== "agent") {
 				set.status = 400;
-				return { error: "mode must be 'ssh' or 'agent'" };
+				return fail("mode must be 'ssh' or 'agent'");
 			}
 			if (body.port !== undefined && body.port !== null && !isPort(Number(body.port))) {
 				set.status = 400;
-				return { error: "port must be between 1 and 65535" };
+				return fail("port must be between 1 and 65535");
 			}
-			return createServer({
+			return created(await createServer({
 				name: body.name,
 				host: body.host,
 				port: body.port ? Number(body.port) : (body.mode === "ssh" ? 22 : 2375),
@@ -42,7 +41,7 @@ export const serversRoutes = new Elysia()
 				sshKey: body.sshKey,
 				sshPassword: body.sshPassword,
 				authToken: body.authToken,
-			});
+			}));
 		},
 	)
 	.get(
@@ -51,9 +50,9 @@ export const serversRoutes = new Elysia()
 			const server = await getServerById(id);
 			if (!server) {
 				set.status = 404;
-				return { error: "Server not found" };
+				return fail("Server not found");
 			}
-			return server;
+			return ok(server);
 		},
 	)
 	.get(
@@ -62,7 +61,7 @@ export const serversRoutes = new Elysia()
 			const server = await getServerById(id);
 			if (!server) {
 				set.status = 404;
-				return { error: "Server not found" };
+				return fail("Server not found");
 			}
 			const containers = server.mode === "agent"
 				? [...(await (await import("../../agents/stats-cache")).agentStatsCache.get(id)).values()]
@@ -70,7 +69,7 @@ export const serversRoutes = new Elysia()
 			const online = server.mode === "agent"
 				? !!server.lastHeartbeat && Date.now() - new Date(server.lastHeartbeat).getTime() <= 90_000
 				: server.status === "connected";
-			return {
+			return ok({
 				serverId: id,
 				mode: server.mode,
 				online,
@@ -82,7 +81,7 @@ export const serversRoutes = new Elysia()
 					memoryTotalMb: server.memoryTotalMb,
 				},
 				containers,
-			};
+			});
 		},
 	)
 	.post(
@@ -91,21 +90,21 @@ export const serversRoutes = new Elysia()
 			const server = await getServerById(id);
 			if (!server) {
 				set.status = 404;
-				return { error: "Server not found" };
+				return fail("Server not found");
 			}
 			if (isServerPreparing(id)) {
 				set.status = 409;
-				return { error: "Server preparation is already running" };
+				return fail("Server preparation is already running");
 			}
 			if (server.mode !== "ssh" && server.mode !== "agent") {
 				set.status = 400;
-				return { error: "Only ssh and agent servers can be prepared" };
+				return fail("Only ssh and agent servers can be prepared");
 			}
 			serverEventBus.clear(id);
 			prepareServer(server, (stage, message, done, ok, error) => {
 				serverEventBus.publish({ serverId: id, stage, message, done: done ?? false, ok: ok ?? false, error });
 			});
-			return { ok: true, preparing: true };
+			return ok({ preparing: true }, "Server preparation started");
 		},
 	)
 	.get(
@@ -114,7 +113,7 @@ export const serversRoutes = new Elysia()
 			const server = await getServerById(id);
 			if (!server) {
 				set.status = 404;
-				return { error: "Server not found" };
+				return fail("Server not found");
 			}
 			const encoder = new TextEncoder();
 			let unsubscribe = () => undefined;
@@ -180,23 +179,23 @@ export const serversRoutes = new Elysia()
 			const server = await getServerById(id);
 			if (!server) {
 				set.status = 404;
-				return { error: "Server not found" };
+				return fail("Server not found");
 			}
 			if (server.mode === "ssh") {
-				const ok = await testSshConnection(server);
-				return { ok, mode: "ssh" };
+				const passed = await testSshConnection(server);
+				return ok({ ok: passed, mode: "ssh" });
 			}
-			return { ok: server.status === "connected", mode: server.mode };
+			return ok({ ok: server.status === "connected", mode: server.mode });
 		},
 	)
 	.delete(
 		"/servers/:id",
 		async ({ params: { id }, set }) => {
-			const ok = await deleteServer(id);
-			if (!ok) {
+			const deleted = await deleteServer(id);
+			if (!deleted) {
 				set.status = 404;
-				return { error: "Server not found" };
+				return fail("Server not found");
 			}
-			return { ok: true };
+			return ok(null, "Server deleted");
 		},
 	);

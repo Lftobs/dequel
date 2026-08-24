@@ -3,6 +3,7 @@ import { createAgentRegistrationToken, exchangeAgentRegistrationToken, validateA
 import { HEARTBEAT_INTERVAL_MS, handleP2PHeartbeat, nextJobBatch, processAgentJobUpdate } from "../../agents/job-channel";
 import { parseP2PAgentRequest } from "../../agents/protocol";
 import type { AgentCapabilities } from "../../agents/protocol";
+import { ok, created, fail } from "../response";
 
 const isLabels = (value: unknown): value is Record<string, string> =>
   value === undefined || (typeof value === "object" && value !== null && !Array.isArray(value) && Object.values(value).every((item) => typeof item === "string"));
@@ -20,36 +21,36 @@ export const agentRoutes = new Elysia()
   .post("/agents/registration-tokens", async ({ body, set }: any) => {
     if (!body?.name || typeof body.name !== "string" || !body.name.trim() || body.name.trim().length > 100 || !isLabels(body.labels)) {
       set.status = 400;
-      return { error: "name and string labels are required" };
+      return fail("name and string labels are required");
     }
-    return createAgentRegistrationToken(body.name.trim(), body.labels || {});
+    return created(await createAgentRegistrationToken(body.name.trim(), body.labels || {}));
   })
   .post("/agents/register", async ({ body, set }: any) => {
     if (!body?.token || typeof body.token !== "string" || typeof body.agentVersion !== "string" || !isCapabilities(body.capabilities)) {
       set.status = 400;
-      return { error: "token, agentVersion, and valid capabilities are required" };
+      return fail("token, agentVersion, and valid capabilities are required");
     }
     if (body.publicHost !== undefined && (typeof body.publicHost !== "string" || !/^[a-zA-Z0-9.-]+$/.test(body.publicHost))) {
       set.status = 400;
-      return { error: "publicHost must be a hostname or IP address" };
+      return fail("publicHost must be a hostname or IP address");
     }
     const result = await exchangeAgentRegistrationToken(body.token, body.agentVersion, body.capabilities, body.publicHost);
     if (!result) {
       set.status = 401;
-      return { error: "Registration token is invalid, expired, or already used" };
+      return fail("Registration token is invalid, expired, or already used");
     }
-    return result;
+    return ok(result, "Agent registered");
   })
   .post("/agents/p2p-sync", async ({ body, set }: any) => {
     const request = parseP2PAgentRequest(body);
     if (!request) {
       set.status = 400;
-      return { error: "Invalid or unsupported P2P request" };
+      return fail("Invalid or unsupported P2P request");
     }
     const serverId = await validateAgentCredential(request.credential);
     if (!serverId) {
       set.status = 401;
-      return { error: "Agent credential is invalid or revoked" };
+      return fail("Agent credential is invalid or revoked");
     }
     if (request.type === "p2p_heartbeat") {
       await handleP2PHeartbeat(serverId, {
@@ -63,11 +64,10 @@ export const agentRoutes = new Elysia()
       await processAgentJobUpdate(serverId, request);
     }
     const batch = await nextJobBatch(serverId);
-    return {
-      ok: true,
+    return ok({
       serverId,
       heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
       jobs: batch.jobs,
       cancelJobIds: batch.cancelJobIds,
-    };
+    });
   });

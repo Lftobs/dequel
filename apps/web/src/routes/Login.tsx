@@ -15,10 +15,8 @@ export function Login() {
     setLoading(true);
     try {
       const res = await api.login(username, password);
-      if (res.ok) {
+      if (res.username) {
         window.location.href = '/';
-      } else {
-        setError(res.error || 'Login failed');
       }
     } catch (err: any) {
       setError(err.message || 'Login failed');

@@ -76,20 +76,25 @@ resolve_base_url() {
 	header "Downloading configuration"
 	TAG=""
 
-	if [ "$VERSION" = "latest" ]; then
-		local release_url="https://api.github.com/repos/$REPO/releases/latest"
-		info "Fetching latest release..."
+	if [ "$VERSION" = "pre" ] || [ "$VERSION" = "prerelease" ]; then
+		local release_url="https://api.github.com/repos/$REPO/releases"
+		info "Fetching latest pre-release..."
 		TAG=$(curl -fsSL "$release_url" | grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/') || true
-		if [ -z "$TAG" ]; then
-			warn "Could not determine latest release. Falling back to 'main' branch."
-			BASE_URL="https://raw.githubusercontent.com/$REPO/main"
-		else
-			BASE_URL="https://raw.githubusercontent.com/$REPO/$TAG"
-			success "Latest release: $TAG"
-		fi
+	elif [ "$VERSION" = "latest" ]; then
+		local release_url="https://api.github.com/repos/$REPO/releases/latest"
+		info "Fetching latest stable release..."
+		TAG=$(curl -fsSL "$release_url" | grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/') || true
 	else
-		TAG="v$VERSION"
+		TAG="${VERSION#v}"
+		TAG="v$TAG"
+	fi
+
+	if [ -z "$TAG" ]; then
+		warn "Could not determine release. Falling back to 'main' branch."
+		BASE_URL="https://raw.githubusercontent.com/$REPO/main"
+	else
 		BASE_URL="https://raw.githubusercontent.com/$REPO/$TAG"
+		success "Target release: $TAG"
 	fi
 }
 

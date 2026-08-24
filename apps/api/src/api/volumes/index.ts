@@ -5,19 +5,20 @@ import {
 	getVolumeById,
 	listVolumes,
 } from "../../db/repo";
+import { ok, created, fail } from "../response";
 
 export const volumesRoutes = new Elysia()
 	.get(
 		"/projects/:id/volumes",
-		async ({ params }) => listVolumes(params.id),
+		async ({ params }) => ok(await listVolumes(params.id)),
 	)
 	.post(
 		"/projects/:id/volumes",
 		async ({ params, body }: any) =>
-			createVolume({
+			created(await createVolume({
 				projectId: params.id,
 				mountPath: body?.mountPath,
-			}),
+			})),
 	)
 	.get(
 		"/volumes/:id",
@@ -25,19 +26,19 @@ export const volumesRoutes = new Elysia()
 			const volume = await getVolumeById(id);
 			if (!volume) {
 				set.status = 404;
-				return { error: "Volume not found" };
+				return fail("Volume not found");
 			}
-			return volume;
+			return ok(volume);
 		},
 	)
 	.delete(
 		"/volumes/:id",
 		async ({ params: { id }, set }) => {
-			const ok = await deleteVolume(id);
-			if (!ok) {
+			const deleted = await deleteVolume(id);
+			if (!deleted) {
 				set.status = 404;
-				return { error: "Volume not found" };
+				return fail("Volume not found");
 			}
-			return { ok: true };
+			return ok(null, "Volume deleted");
 		},
 	);

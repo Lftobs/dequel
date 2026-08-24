@@ -3,13 +3,14 @@ import { getSmtpSettings, upsertSmtpSettings, getPlatformSettings, setIngressSer
 import { failoverState } from "../../orchestrator/failover";
 import { rerenderAllIngressRoutes } from "../../orchestrator/ingress-sync";
 import nodemailer from "nodemailer";
+import { ok, fail } from "../response";
 
 export const settingsRoutes = new Elysia({ prefix: "/settings" })
   .get("/ingress", async () => {
     const { ingressServerId } = await getPlatformSettings();
     const server = ingressServerId ? await getServerById(ingressServerId) : null;
     const failover = failoverState();
-    return { ingressServerId, server: server ?? null, ...failover };
+    return ok({ ingressServerId, server: server ?? null, ...failover });
   })
 
   .put("/ingress", async ({ body, set }: any) => {
@@ -18,37 +19,37 @@ export const settingsRoutes = new Elysia({ prefix: "/settings" })
       const server = await getServerById(serverId);
       if (!server) {
         set.status = 400;
-        return { error: "Server not found" };
+        return fail("Server not found");
       }
       if (server.mode !== "ssh" && server.mode !== "agent" && server.mode !== "local") {
         set.status = 400;
-        return { error: "Unsupported server mode for ingress" };
+        return fail("Unsupported server mode for ingress");
       }
     }
     const { ingressServerId: oldId } = await getPlatformSettings();
     await setIngressServer(serverId);
     rerenderAllIngressRoutes(oldId, serverId).catch(() => {});
-    return { ok: true, ingressServerId: serverId };
+    return ok({ ingressServerId: serverId }, "Ingress server updated");
   })
 
   .get("/smtp", async ({ set }: any) => {
     const settings = await getSmtpSettings();
     if (!settings) {
-      return { configured: false };
+      return ok({ configured: false });
     }
-    return {
+    return ok({
       configured: true,
       host: settings.host,
       port: settings.port,
       user: settings.user,
       fromAddress: settings.fromAddress,
-    };
+    });
   })
 
   .put("/smtp", async ({ body, set }: any) => {
     if (!body?.host) {
       set.status = 400;
-      return { error: "host is required" };
+      return fail("host is required");
     }
     await upsertSmtpSettings({
       host: body.host,
@@ -57,14 +58,14 @@ export const settingsRoutes = new Elysia({ prefix: "/settings" })
       pass: body.pass ?? "",
       fromAddress: body.fromAddress ?? "dequel@localhost",
     });
-    return { ok: true };
+    return ok(null, "SMTP settings updated");
   })
 
   .post("/smtp/test", async ({ set }: any) => {
     const settings = await getSmtpSettings();
     if (!settings || !settings.host) {
       set.status = 400;
-      return { error: "SMTP not configured" };
+      return fail("SMTP not configured");
     }
     try {
       const transporter = nodemailer.createTransport({
@@ -81,9 +82,9 @@ export const settingsRoutes = new Elysia({ prefix: "/settings" })
         subject: "[Dequel] SMTP Test Email",
         text: "This is a test email from Dequel. Your SMTP settings are working correctly.",
       });
-      return { ok: true };
+      return ok(null, "Test email sent");
     } catch (err: any) {
       set.status = 400;
-      return { error: err.message };
+      return fail(err.message);
     }
   });
