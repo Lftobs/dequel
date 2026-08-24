@@ -8,7 +8,7 @@ Self-hosted deployment platform. Deploy apps from Git, ZIP, or Docker Compose wi
 - **Backend**: ElysiaJS (`apps/api/`) — TypeScript, port 3001
 - **Frontend**: React 18 + Vite + TanStack Router + TanStack Query (`apps/web/`) — port 3000
 - **Docs**: Astro 4 + Tailwind CSS (`apps/docs/`) — deployed to Vercel
-- **Database**: SQLite (`data/dequel.db`) — raw SQL
+- **Database**: PostgreSQL (via Drizzle ORM + node-postgres)
 - **Queue**: Redis (`ioredis`) for async job queue
 - **Container build**: Railpack CLI + BuildKit daemon
 - **Container runtime**: Docker Engine API (mounted Docker socket)
@@ -20,12 +20,12 @@ Self-hosted deployment platform. Deploy apps from Git, ZIP, or Docker Compose wi
 Caddy ──▶ API ──▶ Buildkit
   │          │
   ▼          ▼
- Web      SQLite    Redis
+ Web      PostgreSQL  Redis
 
 Observability: cAdvisor → Prometheus → Grafana / Loki
 ```
 
-Services run in Docker Compose: Caddy, API, Web, Buildkit, Redis, cAdvisor, Prometheus, Loki, Promtail, Grafana.
+Services run in Docker Compose: Caddy, API, Web, Buildkit, PostgreSQL, Redis, cAdvisor, Prometheus, Loki, Promtail, Grafana.
 
 ## Directory Structure
 
@@ -61,7 +61,6 @@ Services run in Docker Compose: Caddy, API, Web, Buildkit, Redis, cAdvisor, Prom
 ├── scripts/
 │   ├── install.sh    # One-command install script
 │   └── dequel        # CLI for managing the platform
-├── data/             # SQLite database (persisted)
 ├── workspace/        # Build staging area
 ├── docker-compose.yml
 ├── VERSION           # Single source of truth for version
@@ -75,7 +74,7 @@ Services run in Docker Compose: Caddy, API, Web, Buildkit, Redis, cAdvisor, Prom
 |------|---------|
 | `apps/api/src/index.ts` | API entry point — bootstraps DB, queue, scaling engine, etc. |
 | `apps/api/src/db/schema.ts` | Drizzle ORM schema definitions (all tables) |
-| `apps/api/src/db/drizzle.ts` | Drizzle client wrapper (wraps `bun:sqlite`) |
+| `apps/api/src/db/db-provider.ts` | Database DI provider (setDbProvider/getDb) |
 | `apps/api/src/db/migrations/` | Drizzle Kit migration files (`drizzle-kit generate` outputs here) |
 | `apps/api/drizzle.config.ts` | Drizzle Kit configuration |
 | `apps/web/src/main.tsx` | Frontend entry point |
@@ -176,7 +175,7 @@ Requires secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3001` | API listen port |
-| `DATABASE_PATH` | `./data/dequel.db` | SQLite database |
+| `DATABASE_URL` | `postgresql://dequel:dequel@localhost:5432/dequel` | PostgreSQL connection string |
 | `WORKSPACE_ROOT` | `./workspace` | Build staging |
 | `CADDY_ROUTES_DIR` | `./infra/caddy/routes` | Caddy route output |
 | `CADDY_BASE_DOMAIN` | `localhost` | Base domain for deployment subdomains. Set to a real domain (e.g. `example.com`) for Let's Encrypt auto-SSL. |
@@ -189,7 +188,7 @@ Requires secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
 
 - Never commit secrets or `.env` files
 - Drizzle ORM for migrations; raw SQL is still used in `repo.ts` for queries (may be migrated incrementally)
-- Database: SQLite with `bun:sqlite` (future: Drizzle ORM + PostgreSQL)
+- Database: PostgreSQL (via Drizzle ORM + node-postgres)
 - `.gitignore` ignores `infra/caddy/routes/`, NOT `apps/web/src/routes/`
 - Always run `bun test` in `apps/api/` before committing API changes
 - Docs landing page (`index.astro`) is standalone — no shared layout

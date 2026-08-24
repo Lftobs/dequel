@@ -6,7 +6,7 @@ import { setDbProvider } from '../db-provider';
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgresql://dequel:dequel@localhost:5433/dequel';
 const TABLE_NAMES = [
   'agent_credentials', 'agent_jobs', 'agent_registration_tokens', 'alerts', 'api_keys',
-  'deployment_logs', 'deployments', 'databases', 'domains', 'environment_variables',
+  'deployment_events', 'deployment_logs', 'deployments', 'databases', 'domains', 'environment_variables',
   'github_integrations', 'platform_settings', 'projects', 'refresh_tokens', 'routes',
   'scaling_policies', 'servers', 'smtp_settings', 'volumes',
 ];
@@ -22,9 +22,6 @@ const truncate = async () => {
 };
 
 try {
-  const { migrate } = await import('../migrate');
-  await migrate();
-
   const { upsertRoute, listRoutes, getRouteByHostname, updateRouteStatus, deleteRoutesByDeployment } = await import('../repo/routes');
 
   await truncate();
