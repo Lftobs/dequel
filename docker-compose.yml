@@ -36,7 +36,7 @@ services:
             dockerfile: Dockerfile
         environment:
             PORT: 3001
-            DATABASE_PATH: /app/data/dequel.db
+            DATABASE_URL: postgresql://dequel:dequel@postgres:5432/dequel
             WORKSPACE_ROOT: /app/workspace
             CADDY_ROUTES_DIR: /caddy/routes
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
@@ -48,7 +48,6 @@ services:
             RAILPACK_BUILD_TIMEOUT_MS: "1200000"
             GRAFANA_URL: http://grafana:3000/grafana
         volumes:
-            - ./data:/app/data
             - ./workspace:/app/workspace
             - ./infra/caddy/routes:/caddy/routes
             - /var/run/docker.sock:/var/run/docker.sock
@@ -59,6 +58,8 @@ services:
             buildkit:
                 condition: service_started
                 required: false
+            postgres:
+                condition: service_healthy
         healthcheck:
             test:
                 [
@@ -173,6 +174,25 @@ services:
                     - redis
         healthcheck:
             test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+
+    postgres:
+        image: postgres:16-alpine
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: dequel
+            POSTGRES_PASSWORD: dequel
+            POSTGRES_DB: dequel
+        volumes:
+            - postgres-data:/var/lib/postgresql/data
+        networks:
+            dequel:
+                aliases:
+                    - postgres
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U dequel"]
             interval: 5s
             timeout: 3s
             retries: 5
@@ -330,6 +350,7 @@ networks:
 volumes:
     buildkit-data:
     redis-data:
+    postgres-data:
     prometheus-data:
     loki-data:
     grafana-data:

@@ -60,6 +60,7 @@ const mockDb = {
   updateRouteStatus: mock(() => Promise.resolve()),
   updateDomainValidation: mock(() => Promise.resolve()),
   listDomains: mock(() => Promise.resolve([])),
+  createDeploymentEvent: mock(() => Promise.resolve()),
 };
 
 mock.module(fileUrl('../../db/repo'), () => mockDb);

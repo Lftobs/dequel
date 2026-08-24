@@ -37,6 +37,7 @@ mock.module(fileUrl('../../db/repo'), () => ({
   createAgentRegistrationToken: mock(() => Promise.resolve({ token: 'dqr_test', expiresAt: new Date().toISOString() })),
   listServers: mock(() => Promise.resolve(servers)),
   ensureLocalServer: mock(() => Promise.resolve()),
+  createDeploymentEvent: mock(() => Promise.resolve()),
 }));
 
 const { failoverProject } = await import('../failover');

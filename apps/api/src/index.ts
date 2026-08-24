@@ -18,6 +18,7 @@ import { startBuildCleanup } from './orchestrator/cleanup';
 import { startFailoverMonitor } from './orchestrator/failover';
 import { startDatabaseMonitoring } from './databases/manager';
 import { ensureLocalServer } from './db/repo';
+import { startReconciliation, startStaleAgentCleanup, startAbandonedJobCleanup } from './orchestrator/reconciliation';
 
 const bootstrap = async () => {
   await mkdir(config.workspaceRoot, { recursive: true });
@@ -37,6 +38,9 @@ const bootstrap = async () => {
   startBuildCleanup();
   startFailoverMonitor();
   startDatabaseMonitoring();
+  startReconciliation();
+  startStaleAgentCleanup();
+  startAbandonedJobCleanup();
   setInterval(() => { cleanupExpiredTokens().catch(() => {}); }, 60_000);
 
   const metrics = {

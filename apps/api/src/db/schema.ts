@@ -72,6 +72,18 @@ export const deploymentLogs = pgTable("deployment_logs", {
   uniqueIndex("idx_logs_dep_seq").on(table.deploymentId, table.sequence),
 ]);
 
+export const deploymentEvents = pgTable("deployment_events", {
+  id: text().primaryKey(),
+  deploymentId: text("deployment_id").notNull(),
+  type: text().notNull(),
+  message: text(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  foreignKey({ columns: [table.deploymentId], foreignColumns: [deployments.id], onDelete: "cascade" }),
+  index("idx_events_dep_type").on(table.deploymentId, table.type),
+]);
+
 export const environmentVariables = pgTable("environment_variables", {
   id: text().primaryKey(),
   projectId: text("project_id").notNull(),

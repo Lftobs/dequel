@@ -1,5 +1,7 @@
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { eq } from "drizzle-orm";
+import { deployments } from "../db/schema";
 import {
 	appendLog,
 	deleteDeploymentAndLogs,
@@ -11,6 +13,7 @@ import {
 	updateDeploymentCommitSha,
 	listVolumes,
 	deleteRoutesByDeployment,
+	createDeploymentEvent,
 } from "../db/repo";
 import { listEnvironmentVariablesForDeploy } from "../db/repo";
 import { logBus } from "./log-bus";
@@ -132,6 +135,11 @@ export class PipelineOrchestrator {
 				"system",
 				"Deployment cancelled by user",
 			),
+			createDeploymentEvent({
+				deploymentId,
+				type: "cancelled",
+				message: "Deployment cancelled by user",
+			}),
 		]);
 		logBus.publish({
 			deploymentId,
@@ -356,6 +364,11 @@ export class PipelineOrchestrator {
 					"building",
 					{ failureReason: null },
 				);
+				await createDeploymentEvent({
+					deploymentId,
+					type: "started",
+					message: "Deployment started",
+				});
 
 				if (
 					deployment.sourceType ===
@@ -462,13 +475,19 @@ export class PipelineOrchestrator {
 					},
 				);
 			}
-			} else {
-				await emitLog(
-					deploymentId,
-					"build",
-					`Rolling back to existing image: ${imageTag}`,
-				);
-			}
+		} else {
+			await emitLog(
+				deploymentId,
+				"build",
+				`Rolling back to existing image: ${imageTag}`,
+			);
+		}
+
+		await createDeploymentEvent({
+			deploymentId,
+			type: "build_completed",
+			message: `Image built: ${imageTag}`,
+		});
 
 			await this.checkCancelled(deploymentId);
 
@@ -702,6 +721,11 @@ export class PipelineOrchestrator {
 				"system",
 				"Deployment is running",
 			);
+			await createDeploymentEvent({
+				deploymentId,
+				type: "deployed",
+				message: "Containers started",
+			});
 			return true;
 		} catch (error) {
 			if (error instanceof CancelledError) {
@@ -722,6 +746,12 @@ export class PipelineOrchestrator {
 				"failed",
 				{ failureReason: message },
 			);
+			await createDeploymentEvent({
+				deploymentId,
+				type: "failed",
+				message,
+				metadata: { stage: "unknown" },
+			});
 
 			if (!deployed) {
 				await emitLog(
@@ -925,9 +955,10 @@ export class PipelineOrchestrator {
 			const { getDb } =
 				await import("../db/client");
 			const db = await getDb();
-			db.query(
-				"UPDATE deployments SET failure_reason = NULL WHERE id = ?",
-			).run(targetDeploymentId);
+			await db.update(deployments)
+				.set({ failureReason: null })
+				.where(eq(deployments.id, targetDeploymentId))
+				.execute();
 
 			if (current) {
 				await updateDeploymentStatus(

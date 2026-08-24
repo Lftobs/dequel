@@ -60,3 +60,5 @@ export { upsertRoute, getRouteByHostname, listRoutes, updateRouteStatus, deleteR
 
 export { getPlatformSettings, setIngressServer } from "./platform-settings";
 export type { Route } from "../../types";
+
+export { createDeploymentEvent, listDeploymentEvents } from "./deployment-events";

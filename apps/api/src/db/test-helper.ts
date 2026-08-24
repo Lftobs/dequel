@@ -12,6 +12,7 @@ const TABLE_NAMES = [
   'agent_registration_tokens',
   'alerts',
   'api_keys',
+  'deployment_events',
   'deployment_logs',
   'deployments',
   'databases',
