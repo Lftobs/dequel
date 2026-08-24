@@ -1,4 +1,4 @@
-import { createConnection } from "node:net";
+import http from "node:http";
 import {
   appendLog,
   createDeployment,
@@ -19,16 +19,17 @@ const CONNECT_TIMEOUT_MS = 5_000;
 const unreachableSince = new Map<string, number>();
 const failingOver = new Set<string>();
 
-export const isServerReachable = (host: string, port: number): Promise<boolean> =>
+export const isServerReachable = (host: string, port: number = 80): Promise<boolean> =>
   new Promise((resolve) => {
-    const socket = createConnection({ host, port });
-    const done = (ok: boolean) => {
-      socket.destroy();
-      resolve(ok);
-    };
-    socket.setTimeout(CONNECT_TIMEOUT_MS, () => done(false));
-    socket.once("connect", () => done(true));
-    socket.once("error", () => done(false));
+    const req = http.get(`http://${host}:${port}/`, { timeout: CONNECT_TIMEOUT_MS }, (res) => {
+      res.resume();
+      resolve(res.statusCode !== undefined && res.statusCode < 500);
+    });
+    req.on("error", () => resolve(false));
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(false);
+    });
   });
 
 export const failoverProject = async (projectId: string) => {
