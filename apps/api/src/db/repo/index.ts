@@ -56,7 +56,7 @@ export { getGithubIntegration, setGithubIntegration } from "./github";
 export { getSmtpSettings, upsertSmtpSettings } from "./settings";
 export type { SmtpSettingsData } from "./settings";
 
-export { upsertRoute, getRouteByHostname, listRoutes, updateRouteStatus, deleteRouteByHostname, deleteRoutesByDeployment } from "./routes";
+export { upsertRoute, getRouteByHostname, listRoutes, listIngressRoutes, updateRouteStatus, deleteRouteByHostname, deleteRoute, deleteRoutesByDeployment } from "./routes";
 
 export { getPlatformSettings, setIngressServer } from "./platform-settings";
 export type { Route } from "../../types";

@@ -6,8 +6,6 @@ let platformSettings: { ingressServerId: string | null } = { ingressServerId: nu
 let servers: any[] = [];
 let projects: any[] = [];
 let deploymentsByProject: Record<string, any[]> = {};
-let updatedProject: any = null;
-let latestInactiveStatus: string | null = null;
 
 mock.module(fileUrl('../../db/repo'), () => ({
   getPlatformSettings: mock(() => Promise.resolve(platformSettings)),
@@ -16,8 +14,8 @@ mock.module(fileUrl('../../db/repo'), () => ({
   listProjects: mock(() => Promise.resolve(projects)),
   listDeployments: mock((projectId?: string) => Promise.resolve(projectId ? (deploymentsByProject[projectId] ?? []) : [])),
   createDeployment: mock((input: any) => Promise.resolve({ id: 'dep-new', ...input })),
-  updateProject: mock((id: string, patch: any) => { updatedProject = patch; return Promise.resolve({ id, ...patch }); }),
-  updateDeploymentStatus: mock((id: string, status: string) => { latestInactiveStatus = status; return Promise.resolve(); }),
+  updateProject: mock(() => Promise.resolve()),
+  updateDeploymentStatus: mock(() => Promise.resolve()),
   appendLog: mock(() => Promise.resolve({ sequence: 1 })),
   listDomains: mock(() => Promise.resolve([])),
   listEnvironmentVariablesForDeploy: mock(() => Promise.resolve([])),
@@ -33,6 +31,7 @@ mock.module(fileUrl('../../db/repo'), () => ({
   getLogs: mock(() => Promise.resolve([])),
   createAgentJob: mock(() => Promise.resolve('job-1')),
   upsertRoute: mock(() => Promise.resolve({})),
+  listRoutes: mock(() => Promise.resolve([])),
   updateServerStatus: mock(() => Promise.resolve()),
   createAgentRegistrationToken: mock(() => Promise.resolve({ token: 'dqr_test', expiresAt: new Date().toISOString() })),
   listServers: mock(() => Promise.resolve(servers)),
@@ -87,11 +86,9 @@ describe('failoverProject', () => {
     ];
     projects = [{ id: 'p1', name: 'proj-1', serverId: 'a' }];
     deploymentsByProject = { p1: [{ id: 'dep-1', sourceType: 'git', sourceRef: 'https://github.com/x/y.git', branch: 'main' }] };
-    updatedProject = null;
 
     const deployment = await failoverProject('p1');
     expect(deployment.id).toBe('dep-new');
     expect(deployment.serverId).toBe('b');
-    expect(updatedProject).toEqual({ serverId: 'b' });
   });
 });

@@ -1,4 +1,4 @@
-import { and, eq, desc, isNull } from "drizzle-orm";
+import { and, eq, desc, isNull, isNotNull } from "drizzle-orm";
 import { routes } from "../schema";
 import { getDb } from "../db-provider";
 import type { Route, RouteStatus, UpsertRouteInput } from "../../types";
@@ -115,4 +115,15 @@ export const deleteRouteByHostname = async (hostname: string, serverId?: string)
 export const deleteRoutesByDeployment = async (deploymentId: string): Promise<void> => {
   const db = await getDb();
   await db.delete(routes).where(eq(routes.deploymentId, deploymentId)).execute();
+};
+
+export const deleteRoute = async (id: string): Promise<void> => {
+  const db = await getDb();
+  await db.delete(routes).where(eq(routes.id, id)).execute();
+};
+
+export const listIngressRoutes = async (): Promise<Route[]> => {
+  const db = await getDb();
+  const rows = await db.select().from(routes).where(isNotNull(routes.upstreamHost)).execute();
+  return rows.map(mapRoute);
 };
