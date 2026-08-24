@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { promises as dns } from "node:dns";
 import {
 	createDomain,
 	deleteDomain,
@@ -9,10 +10,57 @@ import {
 } from "../../db/repo";
 import { SERVICE_NAME_RE, isPort } from "../../utils/validate";
 
+const checkDns = async (domain: string): Promise<boolean> => {
+	try {
+		await dns.resolve4(domain);
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+const checkTls = async (domain: string): Promise<boolean> => {
+	try {
+		const res = await fetch(`https://${domain}`, {
+			method: "HEAD",
+			signal: AbortSignal.timeout(5000),
+		});
+		return res.ok || res.status < 500;
+	} catch {
+		return false;
+	}
+};
+
 export const domainsRoutes = new Elysia()
 	.get(
 		"/projects/:id/domains",
 		async ({ params }) => listDomains(params.id),
+	)
+	.get(
+		"/projects/:id/domains/status",
+		async ({ params, set }) => {
+			const project = await getProjectById(params.id);
+			if (!project) {
+				set.status = 404;
+				return { error: "Project not found" };
+			}
+			const domains = await listDomains(params.id);
+			const results = await Promise.all(
+				domains.map(async (d) => {
+					const [dnsOk, tlsOk] = await Promise.all([
+						checkDns(d.domain),
+						checkTls(d.domain),
+					]);
+					return {
+						domain: d.domain,
+						dnsOk,
+						tlsOk,
+						lastChecked: new Date().toISOString(),
+					};
+				}),
+			);
+			return results;
+		},
 	)
 	.post(
 		"/projects/:id/domains",
