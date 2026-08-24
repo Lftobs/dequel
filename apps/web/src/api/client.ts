@@ -332,6 +332,13 @@ export const deleteDomain = (id: string) =>
 	apiFetch<{ ok: boolean }>(`/domains/${id}`, {
 		method: "DELETE",
 	});
+export const getDomainStatus = (projectId: string) =>
+	apiFetch<Array<{
+		domain: string;
+		dnsOk: boolean;
+		tlsOk: boolean;
+		lastChecked: string;
+	}>>(`/projects/${projectId}/domains/status`);
 
 // Scaling
 export const getScalingPolicy = (
