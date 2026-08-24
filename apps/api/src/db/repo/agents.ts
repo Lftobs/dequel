@@ -125,5 +125,6 @@ export const updateAgentHeartbeat = async (
   if (patch.cpuUsedPercent !== undefined) updates.cpuUsedPercent = patch.cpuUsedPercent;
   if (patch.memoryUsedMb !== undefined) updates.memoryUsedMb = patch.memoryUsedMb;
   const db = await getDb();
-  await db.update(servers).set(updates).where(eq(servers.id, serverId)).execute();
+  await db.update(servers).set(updates)
+    .where(and(eq(servers.id, serverId), eq(servers.mode, "agent"), isNull(servers.revokedAt))).execute();
 };

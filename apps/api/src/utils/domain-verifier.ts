@@ -130,7 +130,22 @@ export const removeFromCaddyRoute = async (
     const firstLine = content.slice(0, idx);
     if (!firstLine.includes(domain)) return;
 
-    content = content.replace(`, ${domain}:80`, '').replace(`, ${domain}`, '').replace(domain, '');
+    const ports = [':80', ':443', ''];
+    let replaced = false;
+    for (const port of ports) {
+      const needle = `, ${domain}${port}`;
+      if (firstLine.includes(needle)) {
+        content = content.replace(needle, '');
+        replaced = true;
+        break;
+      }
+    }
+    if (!replaced) {
+      const bare = domain;
+      if (firstLine.includes(bare)) {
+        content = content.replace(bare, '');
+      }
+    }
     writeFileSync(filePath, content, 'utf8');
     await reloadFn();
   } catch {

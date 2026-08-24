@@ -1,6 +1,7 @@
 import type { Deployment, Project } from "../types";
 
 const GIT_URL = /^https:\/\/[^\s]+$/;
+const PRIVATE_IP_RE = /(?::\/\/|^)(?:10\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.|localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])/;
 
 export const validateRemoteDeployment = (deployment: Deployment, project: Project): string | null => {
   if (deployment.sourceType !== "git") return "Remote agents currently support Git deployments only";
@@ -8,6 +9,7 @@ export const validateRemoteDeployment = (deployment: Deployment, project: Projec
   try {
     const url = new URL(deployment.sourceRef);
     if (url.username || url.password) return "Remote Git deployments require a public HTTPS repository URL";
+    if (PRIVATE_IP_RE.test(url.hostname)) return "Remote Git deployments cannot target private-network endpoints";
   } catch {
     return "Remote Git deployments require a public HTTPS repository URL";
   }

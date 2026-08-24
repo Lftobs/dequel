@@ -59,4 +59,7 @@ try {
   console.error("Runner error:", err?.message ?? String(err));
   console.error(err?.stack ?? err);
   process.exit(1);
+} finally {
+  await cleanup();
+  await pool.end();
 }

@@ -22,7 +22,7 @@ const unreachableSince = new Map<string, number>();
 const failingOver = new Set<string>();
 const previouslyUnreachableServers = new Set<string>();
 
-export const isServerReachable = (host: string, port: number = 80): Promise<boolean> =>
+export const isServerReachable = (host: string, port: number = 22): Promise<boolean> =>
   new Promise((resolve) => {
     const req = http.get(`http://${host}:${port}/`, { timeout: CONNECT_TIMEOUT_MS }, (res) => {
       res.resume();
@@ -82,6 +82,7 @@ export const failoverProject = async (projectId: string) => {
     }
 
     await updateProject(projectId, { serverId: targetId });
+    unreachableSince.delete(projectId);
     await updateDeploymentStatus(latest.id, "inactive", {
       failureReason: `Superseded by failover deployment to ${targetServer.name}`,
     }).catch(() => {});
@@ -122,7 +123,7 @@ export const failoverMonitorTick = async () => {
       .map(async (project) => {
         const server = await getServerById(project.serverId!);
         if (!server || server.mode !== "ssh") return;
-        const reachable = await isServerReachable(server.host, 80);
+        const reachable = await isServerReachable(server.host, server.port || 22);
         if (reachable) {
           unreachableSince.delete(project.id);
           return;

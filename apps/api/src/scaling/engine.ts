@@ -192,10 +192,15 @@ class ScalingEngine {
       const containers = await agentStatsCache.get(target.server!.id);
       let count = 0;
       for (const stat of containers.values()) {
-        if (stat.replica && stat.projectId && dep.projectId && stat.projectId === dep.projectId) count++;
+        if (stat.replica && dep.id && stat.deploymentId === dep.id) count++;
       }
       if (containers.has(dep.containerName ?? '')) count++;
       return Math.max(1, count);
+    }
+    if (target.mode === 'ssh' && dep) {
+      const result = await execDockerSshCommand(target.server!, ['ps', '-q', '--filter', 'label=com.dequel.managed=1', '--filter', `name=deploy-${dep.id}-replica-`]);
+      const count = result.stdout.split('\n').map(l => l.trim()).filter(Boolean).length;
+      return Math.max(1, count + 1);
     }
     if (target.mode === 'ssh') {
       const result = await execDockerSshCommand(target.server!, ['ps', '-q', '--filter', 'label=com.dequel.replica=1']);

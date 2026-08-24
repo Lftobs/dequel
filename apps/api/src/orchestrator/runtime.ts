@@ -26,6 +26,9 @@ const getDockerTargetArgs = (server?: Server | null): string[] => {
   if (server?.mode === 'ssh') {
     return ['-H', getDockerSshTarget(server)];
   }
+  if (server?.mode === 'docker_tcp') {
+    return ['-H', `tcp://${server.host}:${server.port || 2376}`];
+  }
   return [];
 };
 

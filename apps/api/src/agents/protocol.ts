@@ -93,8 +93,18 @@ export const parseP2PAgentRequest = (raw: unknown): P2PAgentRequest | null => {
   if (typeof value.credential !== "string") return null;
   if (value.type === "p2p_heartbeat") {
     if (typeof value.agentVersion !== "string" || !isCapabilities(value.capabilities)) return null;
-    if (value.resources !== undefined && !isRecord(value.resources)) return null;
-    if (value.containers !== undefined && !Array.isArray(value.containers)) return null;
+    if (value.resources !== undefined) {
+      if (!isRecord(value.resources)) return null;
+      const r = value.resources;
+      if (r.cpuUsedPercent !== undefined && typeof r.cpuUsedPercent !== "number") return null;
+      if (r.memoryUsedMb !== undefined && typeof r.memoryUsedMb !== "number") return null;
+    }
+    if (value.containers !== undefined) {
+      if (!Array.isArray(value.containers)) return null;
+      for (const c of value.containers) {
+        if (!isRecord(c) || typeof c.containerName !== "string" || typeof c.cpuPercent !== "number" || typeof c.memoryMb !== "number") return null;
+      }
+    }
     return value as P2PAgentRequest;
   }
   if (value.type === "job_ack") return typeof value.jobId === "string" && typeof value.leaseId === "string" ? value as P2PAgentRequest : null;

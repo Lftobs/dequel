@@ -79,6 +79,11 @@ export const processAgentJobUpdate = async (serverId: string, update: Exclude<P2
     return;
   }
 
+  if (jobInfo?.type === "scale") {
+    await finishAgentJob(update.jobId, serverId, update.leaseId, update.success, update.error);
+    return;
+  }
+
   if (update.success && !isRemoteDeployResult(update.result)) return;
   if (deploymentId) {
     if (update.success && isRemoteDeployResult(update.result)) {

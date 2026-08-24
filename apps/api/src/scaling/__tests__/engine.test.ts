@@ -337,9 +337,9 @@ describe('evaluate', () => {
       'dequel:agent-stats:server-1': JSON.stringify({
         updatedAt: new Date().toISOString(),
         containers: [
-          { containerName: 'deploy-dep-1', cpuPercent: 40, memoryMb: 100, projectId: 'proj-1', replica: false },
-          { containerName: 'deploy-dep-1-replica-2', cpuPercent: 41, memoryMb: 110, projectId: 'proj-1', replica: true },
-          { containerName: 'other-app', cpuPercent: 10, memoryMb: 10, projectId: 'proj-2', replica: false },
+          { containerName: 'deploy-dep-1', cpuPercent: 40, memoryMb: 100, deploymentId: 'dep-1', replica: false },
+          { containerName: 'deploy-dep-1-replica-2', cpuPercent: 41, memoryMb: 110, deploymentId: 'dep-1', replica: true },
+          { containerName: 'other-app', cpuPercent: 10, memoryMb: 10, deploymentId: 'other', replica: false },
         ],
       }),
     };

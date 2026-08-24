@@ -18,6 +18,7 @@ export const testSshConnection = (server: { host: string; port?: number; sshUser
     const target = getDockerSshTarget(server);
     const child = spawn("docker", ["-H", target, "info", "--format", "{{.ServerVersion}}"], {
       stdio: ["ignore", "pipe", "pipe"],
+      timeout: 10_000,
     });
     let output = "";
     child.stdout?.on("data", (chunk) => { output += String(chunk); });
@@ -25,6 +26,7 @@ export const testSshConnection = (server: { host: string; port?: number; sshUser
       resolve(code === 0 && output.trim().length > 0);
     });
     child.on("error", () => resolve(false));
+    child.on("timeout", () => { child.kill(); resolve(false); });
   });
 };
 
@@ -81,6 +83,10 @@ export const syncRemoteCaddyRoute = (
   content: string
 ): Promise<boolean> => {
   return new Promise((resolve) => {
+    if (!/^[a-zA-Z0-9._-]+$/.test(filename) || filename.includes('..')) {
+      resolve(false);
+      return;
+    }
     const user = server.sshUser || "root";
     const port = server.port || 22;
     // Writes route file via SSH tee command to /etc/caddy/routes/ or caddy reload
@@ -106,6 +112,10 @@ export const removeRemoteCaddyRoute = (
   filename: string
 ): Promise<boolean> => {
   return new Promise((resolve) => {
+    if (!/^[a-zA-Z0-9._-]+$/.test(filename) || filename.includes('..')) {
+      resolve(false);
+      return;
+    }
     const user = server.sshUser || "root";
     const port = server.port || 22;
     const sshCmd = spawn("ssh", [

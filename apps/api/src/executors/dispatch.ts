@@ -5,12 +5,16 @@ import type { DeploymentExecutor } from "./types";
 
 export const executorFor = (mode: string): DeploymentExecutor => {
   switch (mode) {
+    case "local":
+      return localExecutor;
     case "agent":
       return agentExecutor;
     case "ssh":
       return sshExecutor;
-    default:
+    case "docker_tcp":
       return localExecutor;
+    default:
+      throw new Error(`Unsupported server mode: ${mode}`);
   }
 };
 

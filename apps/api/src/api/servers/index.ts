@@ -36,7 +36,7 @@ export const serversRoutes = new Elysia()
 			return createServer({
 				name: body.name,
 				host: body.host,
-				port: body.port ?? (body.mode === "ssh" ? 22 : 2375),
+				port: body.port ? Number(body.port) : (body.mode === "ssh" ? 22 : 2375),
 				mode: body.mode ?? "ssh",
 				sshUser: body.sshUser ?? "root",
 				sshKey: body.sshKey,
@@ -101,6 +101,7 @@ export const serversRoutes = new Elysia()
 				set.status = 400;
 				return { error: "Only ssh and agent servers can be prepared" };
 			}
+			serverEventBus.clear(id);
 			prepareServer(server, (stage, message, done, ok, error) => {
 				serverEventBus.publish({ serverId: id, stage, message, done: done ?? false, ok: ok ?? false, error });
 			});

@@ -163,16 +163,20 @@ export const prepareAgentServer = async (server: Server, emit: PrepareEmit): Pro
         connected = true;
         break;
       }
-      emit("register", "Still waiting for agent...");
+      if (Date.now() < deadline) {
+        emit("register", "Still waiting for agent...");
+      }
     }
     if (connected) {
       emit("done", "Agent registered successfully", true, true);
     } else {
       const message = "Timed out waiting for the agent to register (180s)";
+      await updateServerStatus(server.id, "failed").catch(() => {});
       emit("error", message, true, false, message);
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to prepare agent server";
+    await updateServerStatus(server.id, "failed").catch(() => {});
     emit("error", message, true, false, message);
   }
 };

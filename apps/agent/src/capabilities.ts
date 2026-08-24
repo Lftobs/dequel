@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import type { AgentCapabilities } from "./protocol";
 
 const succeeds = (command: string, args: string[]) => new Promise<boolean>((resolve) => {
-  const child = spawn(command, args, { stdio: "ignore" });
+  const child = spawn(command, args, { stdio: "ignore", timeout: 10_000 });
   child.on("error", () => resolve(false));
   child.on("close", (code) => resolve(code === 0));
 });

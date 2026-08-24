@@ -356,6 +356,8 @@ export class PipelineOrchestrator {
 				deployment.projectId,
 			) : null;
 
+			const targetServer = project?.serverId ? await getServerById(project.serverId) : null;
+
 			if (
 				deployment.sourceType !== "image"
 			) {
@@ -471,7 +473,8 @@ export class PipelineOrchestrator {
 						startCommand: project?.startCommand,
 						environmentVariables: envVars,
 						signal: controller.signal,
-						clearCache: deployment.clearCache
+						clearCache: deployment.clearCache,
+						server: targetServer,
 					},
 				);
 			}
@@ -602,7 +605,6 @@ export class PipelineOrchestrator {
 				appPort = project.port;
 			}
 
-			const targetServer = project?.serverId ? await getServerById(project.serverId) : null;
 			let runtimeContainerName = "";
 			let runtimeLiveUrl = "";
 

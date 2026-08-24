@@ -18,8 +18,7 @@ class AgentStatsCache {
   }
 
   async set(serverId: string, containers: AgentContainerStat[]) {
-    if (!containers || containers.length === 0) return;
-    const payload = JSON.stringify({ updatedAt: new Date().toISOString(), containers });
+    const payload = JSON.stringify({ updatedAt: new Date().toISOString(), containers: containers ?? [] });
     await this.redis.set(this.key(serverId), payload, "EX", STATS_TTL_SECONDS).catch(() => {});
   }
 

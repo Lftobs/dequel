@@ -126,15 +126,15 @@ export const sshExecutor: DeploymentExecutor = {
     }
   },
 
-  async rollback({ deployment, project, server }: ExecutorRollbackInput) {
+  async rollback({ deployment, project, server, imageTag }: ExecutorRollbackInput) {
     const { getProjectById, listDeployments, updateDeploymentStatus } = await getRepo();
     await updateDeploymentStatus(deployment.id, "deploying");
-    await emitLog(deployment.id, "system", `Rolling back to this version (image: ${deployment.imageTag})`);
+    await emitLog(deployment.id, "system", `Rolling back to this version (image: ${imageTag})`);
     try {
       const all = await listDeployments(deployment.projectId ?? "");
       const current = all.find((d) => d.status === "running" && d.id !== deployment.id);
       const resolvedProject = project ?? (deployment.projectId ? await getProjectById(deployment.projectId) : null);
-      const runtime = await deployFromImage(deployment, resolvedProject, server, deployment.imageTag!, current?.containerName ?? undefined);
+      const runtime = await deployFromImage(deployment, resolvedProject, server, imageTag, current?.containerName ?? undefined);
       if (current) {
         await updateDeploymentStatus(current.id, "inactive", { failureReason: `Superseded by rollback to ${deployment.id.slice(0, 8)}` });
         await emitLog(current.id, "system", `Marked inactive (rolled back to ${deployment.id.slice(0, 8)})`);
