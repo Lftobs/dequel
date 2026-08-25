@@ -52,7 +52,7 @@ export function DomainsTab({
 		queryFn: () => api.getServerIp(),
 		staleTime: 60_000,
 	});
-	const { data: domainStatuses } = useQuery({
+	const { data: domainStatuses, refetch: refetchStatus } = useQuery({
 		queryKey: ["domain-status", projectId],
 		queryFn: () => api.getDomainStatus(projectId),
 		refetchInterval: 30000,
@@ -88,6 +88,7 @@ export function DomainsTab({
 			setTargetPort("");
 			setIsAddOpen(false);
 			refetch();
+			refetchStatus();
 		} finally {
 			setIsAdding(false);
 		}
@@ -98,6 +99,7 @@ export function DomainsTab({
 		await api.deleteDomain(deletingDomId);
 		setDeletingDomId(null);
 		refetch();
+		refetchStatus();
 	};
 
 	const copyText = (text: string) => {

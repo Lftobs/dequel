@@ -149,6 +149,6 @@ export const deleteRoute = async (id: string): Promise<void> => {
 
 export const listIngressRoutes = async (): Promise<Route[]> => {
   const db = await getDb();
-  const rows = await db.select().from(routes).where(isNotNull(routes.upstreamHost)).execute();
+  const rows = await db.select().from(routes).where(and(isNotNull(routes.upstreamHost), eq(routes.status, "active"))).execute();
   return rows.map(mapRoute);
 };

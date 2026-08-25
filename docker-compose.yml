@@ -36,7 +36,7 @@ services:
             dockerfile: Dockerfile
         environment:
             PORT: 3001
-            DATABASE_URL: postgresql://dequel:dequel@postgres:5432/dequel
+            DATABASE_URL: postgresql://${POSTGRES_USER:-dequel}:${POSTGRES_PASSWORD:-dequel}@postgres:5432/${POSTGRES_DB:-dequel}
             WORKSPACE_ROOT: /app/workspace
             CADDY_ROUTES_DIR: /caddy/routes
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
@@ -52,6 +52,7 @@ services:
             - ./infra/caddy/routes:/caddy/routes
             - /var/run/docker.sock:/var/run/docker.sock
             - railpack-cache:/tmp/railpack
+            - api-data:/app/data
             - /etc/passwd:/etc/passwd:ro
             - /etc/group:/etc/group:ro
         depends_on:
@@ -182,9 +183,9 @@ services:
         image: postgres:16-alpine
         restart: unless-stopped
         environment:
-            POSTGRES_USER: dequel
-            POSTGRES_PASSWORD: dequel
-            POSTGRES_DB: dequel
+            POSTGRES_USER: ${POSTGRES_USER:-dequel}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dequel}
+            POSTGRES_DB: ${POSTGRES_DB:-dequel}
         volumes:
             - postgres-data:/var/lib/postgresql/data
         networks:
@@ -351,6 +352,7 @@ volumes:
     buildkit-data:
     redis-data:
     postgres-data:
+    api-data:
     prometheus-data:
     loki-data:
     grafana-data:

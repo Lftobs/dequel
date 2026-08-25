@@ -37,6 +37,8 @@ export const handleP2PHeartbeat = async (
   });
   if (patch.containers && patch.containers.length > 0) {
     await agentStatsCache.set(serverId, patch.containers);
+  } else if (patch.containers && patch.containers.length === 0) {
+    await agentStatsCache.set(serverId, []);
   }
 };
 

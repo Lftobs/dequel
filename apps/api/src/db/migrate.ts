@@ -14,8 +14,9 @@ export const migrate = async () => {
     const msg = err?.message ?? String(err);
     const innerCode = err?.cause?.code;
     if (err?.code === "42P07" || innerCode === "42P07" || msg.includes("already exists")) {
-      console.log("[Migrate] Some tables already exist, skipping");
+      console.log("[Migrate] Some tables already exist, continuing to seed");
     } else {
+      console.error("[Migrate] Migration failed:", msg);
       throw err;
     }
   }

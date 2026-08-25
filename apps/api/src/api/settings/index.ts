@@ -27,8 +27,13 @@ export const settingsRoutes = new Elysia({ prefix: "/settings" })
       }
     }
     const { ingressServerId: oldId } = await getPlatformSettings();
+    if (oldId === serverId) {
+      return ok({ ingressServerId: serverId }, "Ingress server unchanged");
+    }
     await setIngressServer(serverId);
-    rerenderAllIngressRoutes(oldId, serverId).catch(() => {});
+    await rerenderAllIngressRoutes(oldId, serverId).catch((err) => {
+      console.error("[Settings] Ingress rerender failed:", err);
+    });
     return ok({ ingressServerId: serverId }, "Ingress server updated");
   })
 

@@ -24,7 +24,11 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  await truncateAllTables(pool);
+  try {
+    await truncateAllTables(pool);
+  } finally {
+    await pool.end();
+  }
 });
 
 describe('Domain CRUD', () => {

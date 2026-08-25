@@ -17,14 +17,8 @@ export const getPlatformSettings = async (): Promise<PlatformSettingsData> => {
 
 export const setIngressServer = async (ingressServerId: string | null): Promise<PlatformSettingsData> => {
   const db = await getDb();
-  const [existing] = await db.select().from(platformSettings).where(eq(platformSettings.id, SETTINGS_ID)).execute();
-  if (existing) {
-    await db.update(platformSettings)
-      .set({ ingressServerId, updatedAt: now() })
-      .where(eq(platformSettings.id, SETTINGS_ID))
-      .execute();
-  } else {
-    await db.insert(platformSettings).values({ id: SETTINGS_ID, ingressServerId, updatedAt: now() }).execute();
-  }
+  await db.insert(platformSettings).values({ id: SETTINGS_ID, ingressServerId, updatedAt: now() })
+    .onConflictDoUpdate({ target: platformSettings.id, set: { ingressServerId, updatedAt: now() } })
+    .execute();
   return { ingressServerId };
 };

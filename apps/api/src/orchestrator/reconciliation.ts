@@ -63,22 +63,24 @@ const cleanStaleAgents = async () => {
       .where(
         and(
           eq(servers.mode, "agent"),
-          eq(servers.status, "online"),
+          eq(servers.status, "connected"),
           lt(servers.lastHeartbeat, threshold),
         )
       )
       .execute();
 
     for (const server of staleAgents) {
-      await db.update(servers).set({
-        status: "offline",
+      const updated = await db.update(servers).set({
+        status: "disconnected",
         updatedAt: new Date(),
-      }).where(eq(servers.id, server.id)).execute();
+      }).where(and(eq(servers.id, server.id), eq(servers.status, "connected"))).execute();
+
+      if (updated.rowCount === 0) continue;
 
       const heartbeatAge = server.lastHeartbeat
         ? Math.round((Date.now() - server.lastHeartbeat.getTime()) / 1000)
         : "unknown";
-      console.log(`[Reconciliation] Marked agent ${server.name} (${server.id}) as offline — no heartbeat for ${heartbeatAge}s`);
+      console.log(`[Reconciliation] Marked agent ${server.name} (${server.id}) as disconnected — no heartbeat for ${heartbeatAge}s`);
     }
   } catch (err) {
     console.error("[Reconciliation] Stale agent cleanup failed:", err);

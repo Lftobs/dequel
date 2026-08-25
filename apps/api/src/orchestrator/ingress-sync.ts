@@ -12,22 +12,6 @@ export const rerenderAllIngressRoutes = async (
     const routes = await listIngressRoutes();
     if (routes.length === 0) return;
 
-    if (oldIngressServerId) {
-      const oldServer = await getServerById(oldIngressServerId);
-      if (oldServer) {
-        for (const route of routes) {
-          try {
-            await removeIngressRouteFile(oldServer, {
-              hostname: route.hostname,
-              routeFile: route.routeFile,
-            });
-          } catch (err) {
-            console.error(`Failed to remove ingress route ${route.hostname} from server ${oldIngressServerId}:`, err);
-          }
-        }
-      }
-    }
-
     if (newIngressServerId) {
       const newServer = await getServerById(newIngressServerId);
       if (newServer) {
@@ -42,6 +26,22 @@ export const rerenderAllIngressRoutes = async (
             await syncIngressRoute(newServer, route.upstreamHost!, info);
           } catch (err) {
             console.error(`Failed to sync ingress route ${route.hostname} to server ${newIngressServerId}:`, err);
+          }
+        }
+      }
+    }
+
+    if (oldIngressServerId) {
+      const oldServer = await getServerById(oldIngressServerId);
+      if (oldServer) {
+        for (const route of routes) {
+          try {
+            await removeIngressRouteFile(oldServer, {
+              hostname: route.hostname,
+              routeFile: route.routeFile,
+            });
+          } catch (err) {
+            console.error(`Failed to remove ingress route ${route.hostname} from server ${oldIngressServerId}:`, err);
           }
         }
       }
