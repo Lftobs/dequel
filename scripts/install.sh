@@ -160,6 +160,9 @@ prompt_config() {
 	local ENC_KEY
 	ENC_KEY=$(openssl rand -hex 32 2>/dev/null || dd if=/dev/urandom bs=32 count=1 status=none 2>/dev/null | od -A n -t x1 | tr -d ' \n' || fail "Cannot generate encryption key — openssl and dd both failed")
 
+	local PG_PASS
+	PG_PASS=$(openssl rand -hex 16 2>/dev/null || dd if=/dev/urandom bs=16 count=1 status=none 2>/dev/null | od -A n -t x1 | tr -d ' \n' || fail "Cannot generate database password")
+
 	cat > "$INSTALL_DIR/data/dequel.json" <<EOF
 {
   "CADDY_BASE_DOMAIN": "$HOSTNAME",
@@ -175,6 +178,9 @@ EOF
 		echo "# Profile: control-plane (api, web, caddy, redis) by default."
 		echo "# Set DEQUEL_PROFILE=full for buildkit + monitoring services."
 		echo "DEQUEL_PROFILE=${DEQUEL_PROFILE:-control-plane}"
+		echo "POSTGRES_USER=dequel"
+		echo "POSTGRES_PASSWORD=$PG_PASS"
+		echo "POSTGRES_DB=dequel"
 		[ -n "$ADMIN_EMAIL" ] && echo "CADDY_EMAIL=$ADMIN_EMAIL"
 		[ -n "$HOSTNAME" ] && echo "CADDY_BASE_DOMAIN=$HOSTNAME"
 	} > "$INSTALL_DIR/.env"

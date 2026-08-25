@@ -40,10 +40,10 @@ class AgentStatsCache {
   async getAll(): Promise<Map<string, Map<string, CachedContainerStat>>> {
     const keys = await this.redis.keys("dequel:agent-stats:*").catch(() => [] as string[]);
     const result = new Map<string, Map<string, CachedContainerStat>>();
-    for (const key of keys) {
+    await Promise.all(keys.map(async (key) => {
       const serverId = key.slice("dequel:agent-stats:".length);
       result.set(serverId, await this.get(serverId));
-    }
+    }));
     return result;
   }
 }

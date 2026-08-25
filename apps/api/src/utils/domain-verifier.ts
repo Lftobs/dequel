@@ -64,11 +64,11 @@ const poll = async () => {
 
     for (const row of rows) {
       try {
-        const project = await getProjectById(row.project_id);
+        const project = await getProjectById(row.projectId);
         const valid = await validateDomain(row.domain, serverIp, project?.baseDomain);
         if (valid) {
           await updateDomainValidation(row.id, 'verified', 'provisioned');
-          await addToCaddyRoute(row.domain, row.project_id, project?.name ?? '');
+          await addToCaddyRoute(row.domain, row.projectId, project?.name ?? '');
         }
       } catch (e) {
         console.error(`Domain verification failed for ${row.domain}:`, e);

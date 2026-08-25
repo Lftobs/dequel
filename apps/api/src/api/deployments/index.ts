@@ -15,6 +15,7 @@ import { logBus } from "../../orchestrator/log-bus";
 import { config } from "../../utils/config";
 import { executorFor } from "../../executors/dispatch";
 import { queueRemoteDeployment, validateRemoteDeployment } from "../../agents/deployments";
+import { isPrivateGitUrl } from "../../utils/validate";
 import { ok, created, fail } from "../response";
 
 const dispatchDeployment = async (deployment: Awaited<ReturnType<typeof createDeployment>>, project: Awaited<ReturnType<typeof getProjectById>>, server: Awaited<ReturnType<typeof getServerById>>) => {
@@ -108,6 +109,10 @@ export const deploymentsRoutes = new Elysia()
 				if (!gitUrl) {
 					set.status = 400;
 					return fail("gitUrl is required for git source");
+				}
+				if (isPrivateGitUrl(gitUrl)) {
+					set.status = 400;
+					return fail("Private network Git endpoints are not allowed");
 				}
 				if (server.mode === "agent") {
 					if (!project) {

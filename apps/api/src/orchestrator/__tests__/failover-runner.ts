@@ -112,7 +112,11 @@ try {
   deploymentsByProject = { p1: [{ id: 'dep-1', sourceType: 'git', sourceRef: 'https://github.com/x/y.git', branch: 'main' }] };
 
   const deployment = await failoverProject('p1');
-  results.test5 = { ok: deployment.id === 'dep-new' && deployment.serverId === 'b' };
+  const updateProjectCall = (await import('../../db/repo')).updateProject as any;
+  const wasReassigned = updateProjectCall.mock.calls.some(
+    (call: any[]) => call[0] === 'p1' && call[1]?.serverId === 'b'
+  );
+  results.test5 = { ok: deployment.id === 'dep-new' && deployment.serverId === 'b' && wasReassigned };
 } catch (e: any) {
   results.test5 = { ok: false, error: e.message };
 }

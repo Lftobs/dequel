@@ -39,17 +39,14 @@ try {
 
   const results: any = {};
 
-  // Test 1: returns array for project with domains
   const r1 = await handle("/projects/proj-ds-1/domains/status");
   const b1 = await r1.json();
   const d1 = b1.data ?? b1;
   results.test1 = { status: r1.status, isArray: Array.isArray(d1), length: d1.length };
 
-  // Test 2: returns 404 for missing project
   const r2 = await handle("/projects/missing-domains/domains/status");
   results.test2 = { status: r2.status };
 
-  // Test 3: empty array for project with no domains
   const r3 = await handle("/projects/proj-ds-missing/domains/status");
   const b3 = await r3.json();
   const d3 = b3.data ?? b3;

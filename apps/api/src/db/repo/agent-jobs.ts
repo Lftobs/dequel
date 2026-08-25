@@ -55,7 +55,7 @@ export const leaseNextAgentJob = async (serverId: string, leaseMs = 30_000): Pro
     type: row.type as AgentJobType,
     payload: row.payload,
     leaseId,
-    leaseExpiresAt,
+    leaseExpiresAt: leaseExpiresAt.toISOString(),
     idempotencyKey: row.idempotencyKey,
   };
 };

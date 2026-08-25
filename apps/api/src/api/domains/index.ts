@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { promises as dns } from "node:dns";
+import { isIPv4 } from "node:net";
 import {
 	createDomain,
 	deleteDomain,
@@ -11,12 +12,28 @@ import {
 import { SERVICE_NAME_RE, isPort } from "../../utils/validate";
 import { ok, created, fail } from "../response";
 
-const checkDns = async (domain: string): Promise<boolean> => {
+const PRIVATE_IP_RANGES = [
+	/^10\./,
+	/^172\.(1[6-9]|2\d|3[01])\./,
+	/^192\.168\./,
+	/^127\./,
+	/^169\.254\./,
+	/^::1$/,
+	/^fc00:/,
+	/^fe80:/,
+];
+
+const isPrivateIp = (ip: string): boolean =>
+	PRIVATE_IP_RANGES.some((re) => re.test(ip));
+
+const checkDns = async (domain: string): Promise<{ ok: boolean; ip?: string }> => {
 	try {
-		await dns.resolve4(domain);
-		return true;
+		const ips = await dns.resolve4(domain);
+		const publicIp = ips.find((ip) => !isPrivateIp(ip));
+		if (!publicIp) return { ok: false };
+		return { ok: true, ip: publicIp };
 	} catch {
-		return false;
+		return { ok: false };
 	}
 };
 
@@ -25,6 +42,7 @@ const checkTls = async (domain: string): Promise<boolean> => {
 		const res = await fetch(`https://${domain}`, {
 			method: "HEAD",
 			signal: AbortSignal.timeout(5000),
+			redirect: "error",
 		});
 		return res.ok || res.status < 500;
 	} catch {
@@ -46,20 +64,21 @@ export const domainsRoutes = new Elysia()
 				return fail("Project not found");
 			}
 			const domains = await listDomains(params.id);
-			const results = await Promise.all(
-				domains.map(async (d) => {
-					const [dnsOk, tlsOk] = await Promise.all([
-						checkDns(d.domain),
-						checkTls(d.domain),
-					]);
-					return {
-						domain: d.domain,
-						dnsOk,
-						tlsOk,
-						lastChecked: new Date().toISOString(),
-					};
-				}),
-			);
+		const results = await Promise.all(
+			domains.map(async (d) => {
+				const [dnsResult, tlsOk] = await Promise.all([
+					checkDns(d.domain),
+					checkTls(d.domain),
+				]);
+				return {
+					domain: d.domain,
+					dnsOk: dnsResult.ok,
+					tlsOk,
+					serverIp: dnsResult.ip ?? null,
+					lastChecked: new Date().toISOString(),
+				};
+			}),
+		);
 			return ok(results);
 		},
 	)

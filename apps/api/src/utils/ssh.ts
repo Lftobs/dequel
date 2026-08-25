@@ -18,7 +18,7 @@ export const testSshConnection = (server: { host: string; port?: number; sshUser
     const target = getDockerSshTarget(server);
     const child = spawn("docker", ["-H", target, "info", "--format", "{{.ServerVersion}}"], {
       stdio: ["ignore", "pipe", "pipe"],
-      timeout: 10_000,
+      timeout: 15_000,
     });
     let output = "";
     child.stdout?.on("data", (chunk) => { output += String(chunk); });
@@ -93,6 +93,7 @@ export const syncRemoteCaddyRoute = (
     const sshCmd = spawn("ssh", [
       "-p", String(port),
       "-o", "StrictHostKeyChecking=no",
+      "-o", "ConnectTimeout=10",
       `${user}@${server.host}`,
       `mkdir -p /etc/caddy/routes && cat > /etc/caddy/routes/${filename} && (caddy reload --config /etc/caddy/Caddyfile || docker exec dequel-caddy caddy reload || true)`
     ], { stdio: ["pipe", "pipe", "pipe"] });
@@ -121,6 +122,7 @@ export const removeRemoteCaddyRoute = (
     const sshCmd = spawn("ssh", [
       "-p", String(port),
       "-o", "StrictHostKeyChecking=no",
+      "-o", "ConnectTimeout=10",
       `${user}@${server.host}`,
       `rm -f /etc/caddy/routes/${filename} && (caddy reload --config /etc/caddy/Caddyfile || docker exec dequel-caddy caddy reload || true)`
     ], { stdio: ["ignore", "pipe", "pipe"] });

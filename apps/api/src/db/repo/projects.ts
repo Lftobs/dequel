@@ -156,8 +156,8 @@ export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupIn
 
   const dbRows = await db.select({ containerName: databases.containerName, volumeName: databases.volumeName })
     .from(databases).where(eq(databases.projectId, id)).execute();
-  const databaseContainerNames: string[] = [];
-  const databaseVolumeNames: string[] = [];
+  const databaseContainerNames = dbRows.filter(d => d.containerName).map(d => d.containerName!);
+  const databaseVolumeNames = dbRows.filter(d => d.volumeName).map(d => d.volumeName!);
   await db.update(databases).set({ projectId: null, updatedAt: now() }).where(eq(databases.projectId, id)).execute();
 
   const domainRows = await db.select({ domain: domains.domain }).from(domains).where(eq(domains.projectId, id)).execute();

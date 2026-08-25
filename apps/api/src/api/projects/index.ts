@@ -14,7 +14,7 @@ import { tryRun, reloadCaddy } from "../../orchestrator/runtime";
 import { removeFromCaddyRoute } from "../../utils/domain-verifier";
 import { config } from "../../utils/config";
 import { dockerBin } from "../../utils/docker-bin";
-import { SERVICE_NAME_RE, isPort, validateComposeServices } from "../../utils/validate";
+import { SERVICE_NAME_RE, isPort, validateComposeServices, isPrivateGitUrl } from "../../utils/validate";
 import { failoverProject } from "../../orchestrator/failover";
 import { ok, created, fail } from "../response";
 
@@ -85,6 +85,10 @@ export const projectsRoutes = new Elysia()
 			if (!(await getServerById(serverId))) {
 				set.status = 400;
 				return fail("Selected server does not exist");
+			}
+			if (body.repoUrl && isPrivateGitUrl(body.repoUrl)) {
+				set.status = 400;
+				return fail("Private network Git endpoints are not allowed");
 			}
 			const project = await createProject({
 				name: body.name,

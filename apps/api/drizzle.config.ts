@@ -5,6 +5,6 @@ export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./src/db/migrations",
   dbCredentials: {
-    url: process.env.DATABASE_URL || "postgresql://dequel:dequel@localhost:5432/dequel",
+    url: process.env.DATABASE_URL!,
   },
 });

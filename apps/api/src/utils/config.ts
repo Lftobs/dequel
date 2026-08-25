@@ -31,7 +31,7 @@ const SYSTEM = {
 
 export const config = {
 	...SYSTEM,
-	databaseUrl: withFile<string>("DATABASE_URL", "postgresql://dequel:dequel@localhost:5432/dequel"),
+	databaseUrl: withFile<string>("DATABASE_URL", ""),
 	workspaceRoot: withFile<string>("WORKSPACE_ROOT", "/app/workspace"),
 	caddyRoutesDir: withFile<string>("CADDY_ROUTES_DIR", "/caddy/routes"),
 	port: withFile<number>(

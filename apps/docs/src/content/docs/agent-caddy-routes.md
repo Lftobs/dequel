@@ -17,7 +17,7 @@ The directory must exist and be writable by the process managing Caddy. The API 
 
 The main Caddyfile at `/etc/caddy/Caddyfile` includes all route files via a glob import:
 
-```
+```text
 import /etc/caddy/routes/*.caddy
 ```
 
@@ -27,13 +27,13 @@ Each `.caddy` file is a standalone Caddy site block. Caddy reads all matching fi
 
 A route file contains a single Caddy site block. The filename matches the project slug:
 
-```
+```text
 my-app.caddy
 ```
 
 The file content defines the hostname, logging, and reverse proxy target:
 
-```
+```caddyfile
 my-app.localhost:80 {
   log {
     output stdout
@@ -51,7 +51,7 @@ my-app.localhost:80 {
 
 For custom domains, multiple hostnames are comma-separated on the first line:
 
-```
+```caddyfile
 my-app.localhost:80, blog.example.com:80 {
   log {
     output stdout

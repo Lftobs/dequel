@@ -6,7 +6,7 @@ const XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME || `${homedir()}/.config`;
 
 export interface FileConfig {
   port?: number;
-  databasePath?: string;
+  databaseUrl?: string;
   workspaceRoot?: string;
   caddyRoutesDir?: string;
   caddyBaseDomain?: string;
