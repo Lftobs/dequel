@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0-rc.1] - 2026-08-25
+
+### Added
+
+- Multi-server architecture supporting Direct SSH (`mode: 'ssh'`) and Direct P2P WireGuard Agent (`mode: 'agent'`) modes
+- Target-aware container deployment and remote SFTP Caddy route synchronization
+- Cross-server autoscaling with fleet load evaluation and spillover placement
+- Direct WireGuard P2P tunneling (`10.200.0.x`) with Curve25519 key generation and real-time metric sync
+- Domain verification with A/CNAME record matching against assigned target server IPs
+- Safe pre-release CI/CD workflow preventing pre-release images from overriding `:latest`
+
+### Changed
+
+- Migrated platform database from SQLite to PostgreSQL with Drizzle ORM
+- Streamlined server connection modes strictly to Direct SSH and Direct P2P WireGuard Agent
+
 ## [0.1.1] - 2026-06-19
 
 ### Added
