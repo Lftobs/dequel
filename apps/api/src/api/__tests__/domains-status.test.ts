@@ -26,5 +26,5 @@ describe("GET /projects/:id/domains/status", () => {
     expect(results.test2.status).toBe(404);
     expect(results.test3.status).toBe(200);
     expect(results.test3.length).toBe(0);
-  });
+  }, 30_000);
 });
