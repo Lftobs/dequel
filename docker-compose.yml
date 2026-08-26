@@ -29,11 +29,11 @@ services:
             start_period: 5s
 
     api:
-        # image: ghcr.io/lftobs/dequel/api:latest
+        image: ghcr.io/lftobs/dequel/api:latest
+        # build:
+        #     context: ./apps/api
+        #     dockerfile: Dockerfile
         restart: unless-stopped
-        build:
-            context: ./apps/api
-            dockerfile: Dockerfile
         environment:
             PORT: 3001
             DATABASE_URL: postgresql://${POSTGRES_USER:-dequel}:${POSTGRES_PASSWORD:-dequel}@postgres:5432/${POSTGRES_DB:-dequel}
@@ -86,9 +86,10 @@ services:
             - sh
             - -c
             - |
-                apt-get update -qq > /dev/null 2>&1 && apt-get install -y -qq libpam-modules > /dev/null 2>&1 && exec python3 -u /app/pam-server.py
+                apt-get update -qq > /dev/null 2>&1 && apt-get install -y -qq libpam-modules > /dev/null 2>&1 && cp /app/dequel /etc/pam.d/dequel && exec python3 -u /app/pam-server.py
         volumes:
             - ./scripts/auth/pam-server.py:/app/pam-server.py:ro
+            - ./scripts/auth/dequel:/app/dequel:ro
             - /etc/passwd:/etc/passwd:ro
             - /etc/shadow:/etc/shadow:ro
             - /etc/group:/etc/group:ro
@@ -110,12 +111,12 @@ services:
             start_period: 10s
 
     web:
-        # image: ghcr.io/lftobs/dequel/web:latest
+        image: ghcr.io/lftobs/dequel/web:latest
+        # build:
+        #     context: ./apps/web
+        #     args:
+        #         DEQUEL_VERSION: ${DEQUEL_VERSION:-}
         restart: unless-stopped
-        build:
-            context: ./apps/web
-            args:
-                DEQUEL_VERSION: ${DEQUEL_VERSION:-}
         healthcheck:
             test:
                 [
