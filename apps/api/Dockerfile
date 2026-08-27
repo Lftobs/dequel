@@ -7,32 +7,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     unzip \
     tar \
-    gnupg \
-    python3 \
+    openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Docker CLI + buildx plugin from Docker's official repo
-RUN install -m 0755 -d /etc/apt/keyrings && \
-    curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
-    chmod a+r /etc/apt/keyrings/docker.asc && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
-    apt-get update && \
-    apt-get install -y docker-ce-cli docker-buildx-plugin && \
-    rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.5.1.tgz | tar -xz -C /usr/local/bin --strip-components=1 && \
+    curl -sSL https://railpack.com/install.sh | sh -s -- --bin-dir /usr/local/bin
 
-# Verify docker + buildx are available
-RUN docker --version && docker buildx version
-
-# Install railpack
-RUN curl -sSL https://railpack.com/install.sh | sh -s -- --bin-dir /usr/local/bin
-
-
-RUN curl -sSL https://mise.jdx.dev/install.sh | sh \
-    && ln -sf /root/.local/bin/mise /usr/local/bin/mise
 
 WORKDIR /app
-
-COPY package.json ./
+COPY package.json bun.lock* drizzle.config.ts* ./
 RUN bun install
 
 COPY src ./src

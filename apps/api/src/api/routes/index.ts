@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
 import { ok } from "../response";
-import { listRoutes } from "../db/repo";
+import { listRoutes } from "../../db/repo";
 
 export const routesRoutes = new Elysia()
 	.get("/routes", async ({ query }) => {

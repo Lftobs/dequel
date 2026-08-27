@@ -3,7 +3,7 @@ import { getDb } from "../db-provider";
 import { projects, deployments, deploymentLogs, environmentVariables, volumes, databases, domains, scalingPolicies, alerts } from "../schema";
 import type { Project, CreateProjectInput } from "../../types";
 import { randomUUID } from "node:crypto";
-import { now, getRowsAffected } from "./helpers";
+import { now, formatTimestamp, getRowsAffected } from "./helpers";
 
 export interface ProjectCleanupInfo {
   deploymentContainerNames: string[];
@@ -41,8 +41,8 @@ const mapProject = (row: typeof projects.$inferSelect): Project => ({
   githubTokenEncrypted: row.githubTokenEncrypted ?? null,
   githubTokenIv: row.githubTokenIv ?? null,
   githubTokenTag: row.githubTokenTag ?? null,
-  createdAt: row.createdAt,
-  updatedAt: row.updatedAt,
+  createdAt: formatTimestamp(row.createdAt),
+  updatedAt: formatTimestamp(row.updatedAt),
 });
 
 export const createProject = async (input: CreateProjectInput): Promise<Project> => {

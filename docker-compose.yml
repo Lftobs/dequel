@@ -1,6 +1,5 @@
 services:
     buildkit:
-        profiles: ["build"]
         image: moby/buildkit:latest
         restart: unless-stopped
         command:
@@ -30,9 +29,9 @@ services:
 
     api:
         image: ghcr.io/lftobs/dequel/api:latest
-        # build:
-        #     context: ./apps/api
-        #     dockerfile: Dockerfile
+        build:
+            context: ./apps/api
+            dockerfile: Dockerfile
         restart: unless-stopped
         environment:
             PORT: 3001
@@ -112,10 +111,10 @@ services:
 
     web:
         image: ghcr.io/lftobs/dequel/web:latest
-        # build:
-        #     context: ./apps/web
-        #     args:
-        #         DEQUEL_VERSION: ${DEQUEL_VERSION:-}
+        build:
+            context: ./apps/web
+            args:
+                DEQUEL_VERSION: ${DEQUEL_VERSION:-}
         restart: unless-stopped
         healthcheck:
             test:

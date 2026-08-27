@@ -177,20 +177,20 @@ export const deployContainer = async (
     for (const vol of opts.volumes) {
       // Check if the volume exists, create if not
       if (vol.volumeName) {
-        await tryRun(dockerBin, ['volume', 'create', vol.volumeName]);
+        await tryRun(dockerBin, ['volume', 'create', vol.volumeName], opts.targetServer);
         dockerArgs.push('-v', `${vol.volumeName}:${vol.mountPath}`);
       } else if (vol.hostPath) {
         dockerArgs.push('-v', `${vol.hostPath}:${vol.mountPath}`);
       }
     }
   }
-  // Default volume mount if project has a volume
   if (!opts.volumes?.length && opts.projectId) {
     const defaultVolume = `vol-${opts.projectId.slice(0, 12)}`;
-    await tryRun(dockerBin, ['volume', 'create', defaultVolume]);
+    await tryRun(dockerBin, ['volume', 'create', defaultVolume], opts.targetServer);
     dockerArgs.push('-v', `${defaultVolume}:/app/data`);
   }
 
+  await tryRun(dockerBin, ['network', 'create', config.dockerNetwork], opts.targetServer);
   dockerArgs.push(imageTag);
 
   await run(dockerBin, dockerArgs, opts.targetServer);
@@ -201,7 +201,7 @@ export const deployContainer = async (
   const { buildCaddySnippet } = await import('../utils/domain-verifier');
   const caddySnippet = await buildCaddySnippet(slug, containerName, opts.projectId, undefined, opts.appPort);
   const { upsertRoute } = await import('../db/repo');
-  const { baseDomainFor, slugify } = await import('../utils/routes');
+  const { baseDomainFor } = await import('../utils/routes');
   const { getIngressServer, shouldRouteViaIngress, projectServerSite, syncIngressRoute, upsertIngressRoute } = await import('../utils/ingress');
   const ingressServer = await getIngressServer();
   const viaIngress = shouldRouteViaIngress(opts.targetServer ?? null, ingressServer);

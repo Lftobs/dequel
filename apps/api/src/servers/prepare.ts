@@ -9,21 +9,27 @@ const PREPARE_SCRIPT = String.raw`
 set -euo pipefail
 log() { echo "[prepare:$1] $2"; }
 
+if [ "$(id -u)" -ne 0 ]; then
+  SUDO="sudo"
+else
+  SUDO=""
+fi
+
 OS="$(grep -oP '^ID=\K.*' /etc/os-release 2>/dev/null || echo unknown)"
 log "connect" "Connected as $(whoami)@$(hostname) ($OS)"
 
 install_docker() {
   case "$OS" in
     debian|ubuntu)
-      curl -fsSL https://get.docker.com | sh
+      curl -fsSL https://get.docker.com | $SUDO sh
       ;;
     alpine)
-      apk add --no-cache docker openrc
-      rc-update add docker default || true
-      rc-service docker start || true
+      $SUDO apk add --no-cache docker openrc
+      $SUDO rc-update add docker default || true
+      $SUDO rc-service docker start || true
       ;;
     fedora|rhel|centos|rocky|almalinux|ol|amzn)
-      dnf install -y docker || yum install -y docker || true
+      $SUDO dnf install -y docker || $SUDO yum install -y docker || true
       ;;
   esac
 }
@@ -38,64 +44,48 @@ if ! command -v docker >/dev/null 2>&1; then
   log "docker" "Docker install failed - install Docker manually (https://docs.docker.com/engine/install/)"
   exit 1
 fi
-systemctl start docker 2>/dev/null || service docker start 2>/dev/null || rc-service docker start 2>/dev/null || true
+$SUDO systemctl start docker 2>/dev/null || $SUDO service docker start 2>/dev/null || $SUDO rc-service docker start 2>/dev/null || true
+if [ -n "$SUDO" ]; then
+  $SUDO usermod -aG docker "$(whoami)" 2>/dev/null || true
+fi
 log "docker" "Docker ready"
 
 install_caddy() {
-  case "$OS" in
-    debian|ubuntu)
-      apt-get update -y
-      apt-get install -y debian-keyring debian-archive-keyring apt-transport-https curl
-      curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-      curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
-      apt-get update -y
-      apt-get install -y caddy
-      ;;
-    alpine)
-      apk add --no-cache caddy
-      ;;
-    fedora|rhel|centos|rocky|almalinux|ol|amzn)
-      dnf install -y caddy 2>/dev/null || yum install -y caddy 2>/dev/null || true
-      ;;
-  esac
+  $SUDO mkdir -p /etc/caddy/routes
+  if [ ! -f /etc/caddy/Caddyfile ]; then
+    printf 'import /etc/caddy/routes/*.caddy\n' | $SUDO tee /etc/caddy/Caddyfile > /dev/null
+  elif ! grep -q "routes/\*.caddy" /etc/caddy/Caddyfile 2>/dev/null; then
+    printf 'import /etc/caddy/routes/*.caddy\n' | cat - /etc/caddy/Caddyfile > /tmp/dequel-caddyfile
+    $SUDO mv /tmp/dequel-caddyfile /etc/caddy/Caddyfile
+  fi
+
+  $SUDO docker network create dequel_net 2>/dev/null || true
+  if ! docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q '^dequel-caddy$'; then
+    log "caddy" "Starting Dequel Caddy container..."
+    $SUDO docker run -d --restart unless-stopped --name dequel-caddy --network dequel_net -p 80:80 -p 443:443 -v /etc/caddy/Caddyfile:/etc/caddy/Caddyfile -v /etc/caddy/routes:/etc/caddy/routes -v caddy_data:/data caddy:alpine 2>/dev/null || true
+  else
+    $SUDO docker start dequel-caddy 2>/dev/null || true
+  fi
 }
 
-if command -v caddy >/dev/null 2>&1; then
-  log "caddy" "Caddy already installed ($(caddy version 2>/dev/null || echo present))"
-else
-  log "caddy" "Installing Caddy..."
-  install_caddy
-fi
-if ! command -v caddy >/dev/null 2>&1; then
-  log "caddy" "Caddy install failed - install Caddy manually (https://caddyserver.com/docs/install)"
-  exit 1
-fi
-mkdir -p /etc/caddy/routes
-if grep -q "routes/\*.caddy" /etc/caddy/Caddyfile 2>/dev/null; then
-  log "caddy" "Caddyfile already imports /etc/caddy/routes/"
-else
-  cp /etc/caddy/Caddyfile "/etc/caddy/Caddyfile.bak.$(date +%s)" 2>/dev/null || true
-  if [ -s /etc/caddy/Caddyfile ]; then
-    printf 'import /etc/caddy/routes/*.caddy\n' | cat - /etc/caddy/Caddyfile > /tmp/dequel-caddyfile
-  else
-    printf 'import /etc/caddy/routes/*.caddy\n' > /tmp/dequel-caddyfile
-  fi
-  mv /tmp/dequel-caddyfile /etc/caddy/Caddyfile
-  log "caddy" "Caddyfile configured to import /etc/caddy/routes/"
-fi
-systemctl enable --now caddy 2>/dev/null || service caddy restart 2>/dev/null || rc-service caddy restart 2>/dev/null || true
+install_caddy
 log "caddy" "Caddy ready"
 
 if command -v railpack >/dev/null 2>&1 || command -v n >/dev/null 2>&1; then
   log "railpack" "Railpack already installed"
 else
   log "railpack" "Installing Railpack..."
-  curl -fsSL https://railpack.com/install.sh | sh -s -- --bin-dir /usr/local/bin
+  curl -fsSL https://railpack.com/install.sh | $SUDO sh -s -- --bin-dir /usr/local/bin
 fi
 if command -v railpack >/dev/null 2>&1 || command -v n >/dev/null 2>&1; then
   log "railpack" "Railpack ready"
 else
   log "railpack" "Railpack install failed - builds will attempt auto-install"
+fi
+
+if ! docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q '^buildkit$'; then
+  log "buildkit" "Starting BuildKit container..."
+  $SUDO docker run -d --restart unless-stopped --name buildkit --privileged moby/buildkit:latest 2>/dev/null || true
 fi
 
 log "done" "Server preparation complete"

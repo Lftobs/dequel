@@ -3,7 +3,7 @@ import { getDb } from "../db-provider";
 import { servers } from "../schema";
 import type { Server, CreateServerInput, ServerMode, ServerStatus } from "../../types";
 import { randomUUID } from "node:crypto";
-import { now, getRowsAffected } from "./helpers";
+import { now, formatTimestamp, getRowsAffected } from "./helpers";
 
 const mapServer = (row: typeof servers.$inferSelect): Server => ({
   id: row.id,
@@ -12,6 +12,8 @@ const mapServer = (row: typeof servers.$inferSelect): Server => ({
   port: row.port,
   mode: row.mode as ServerMode,
   sshUser: row.sshUser ?? null,
+  sshKey: row.sshKey ?? null,
+  sshPassword: row.sshPassword ?? null,
   agentId: row.agentId,
   agentVersion: row.agentVersion,
   capabilities: parseJsonObject(row.capabilities),
@@ -22,11 +24,11 @@ const mapServer = (row: typeof servers.$inferSelect): Server => ({
   diskTotalMb: row.diskTotalMb,
   cpuUsedPercent: row.cpuUsedPercent,
   memoryUsedMb: row.memoryUsedMb,
-  lastHeartbeat: row.lastHeartbeat,
-  registeredAt: row.registeredAt,
-  revokedAt: row.revokedAt,
-  createdAt: row.createdAt,
-  updatedAt: row.updatedAt,
+  lastHeartbeat: row.lastHeartbeat ? formatTimestamp(row.lastHeartbeat) : null,
+  registeredAt: row.registeredAt ? formatTimestamp(row.registeredAt) : null,
+  revokedAt: row.revokedAt ? formatTimestamp(row.revokedAt) : null,
+  createdAt: formatTimestamp(row.createdAt),
+  updatedAt: formatTimestamp(row.updatedAt),
 });
 
 const parseJsonObject = (value: unknown): Record<string, unknown> => {
@@ -51,6 +53,8 @@ export const createServer = async (input: CreateServerInput): Promise<Server> =>
     port: input.port ?? 2375,
     authToken: input.authToken ?? "",
     sshUser: input.sshUser ?? null,
+    sshKey: input.sshKey ?? null,
+    sshPassword: input.sshPassword ?? null,
     mode: input.mode ?? "ssh",
     status: "pending",
     capabilities: input.mode === "local" ? { docker: true, buildkit: true, caddy: true, compose: true } : undefined,
@@ -70,6 +74,8 @@ export interface ServerConnection {
   port: number;
   authToken: string;
   mode: ServerMode;
+  sshUser?: string | null;
+  sshKey?: string | null;
 }
 
 export const listServerConnections = async (): Promise<ServerConnection[]> => {
@@ -79,6 +85,8 @@ export const listServerConnections = async (): Promise<ServerConnection[]> => {
     host: servers.host,
     port: servers.port,
     authToken: servers.authToken,
+    sshUser: servers.sshUser,
+    sshKey: servers.sshKey,
     mode: servers.mode,
   }).from(servers).execute();
   return rows.map((row) => ({

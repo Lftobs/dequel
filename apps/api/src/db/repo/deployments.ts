@@ -3,7 +3,7 @@ import { getDb } from "../db-provider";
 import { deployments, deploymentLogs } from "../schema";
 import type { Deployment, DeploymentLog, CreateDeploymentInput, DeploymentStatus, LogEvent } from "../../types";
 import { randomUUID } from "node:crypto";
-import { now, getRowsAffected } from "./helpers";
+import { now, formatTimestamp, getRowsAffected } from "./helpers";
 
 const mapDeployment = (row: typeof deployments.$inferSelect): Deployment => ({
   id: row.id,
@@ -22,9 +22,9 @@ const mapDeployment = (row: typeof deployments.$inferSelect): Deployment => ({
   environment: row.environment,
   failureReason: row.failureReason,
   clearCache: Boolean(row.clearCache),
-  finishedAt: row.finishedAt ?? null,
-  createdAt: row.createdAt,
-  updatedAt: row.updatedAt,
+  finishedAt: row.finishedAt ? formatTimestamp(row.finishedAt) : null,
+  createdAt: formatTimestamp(row.createdAt),
+  updatedAt: formatTimestamp(row.updatedAt),
 });
 
 export const createDeployment = async (input: CreateDeploymentInput): Promise<Deployment> => {
@@ -122,16 +122,23 @@ export const deleteDeploymentAndLogs = async (id: string): Promise<boolean> => {
   return getRowsAffected(result) > 0;
 };
 
+const seqMap = new Map<string, number>();
+
 export const appendLog = async (
   deploymentId: string,
   stage: LogEvent["stage"],
   message: string,
 ): Promise<DeploymentLog> => {
   const db = await getDb();
-  const [row] = await db.select({ maxSeq: deploymentLogs.sequence }).from(deploymentLogs)
-    .where(eq(deploymentLogs.deploymentId, deploymentId))
-    .orderBy(desc(deploymentLogs.sequence)).limit(1).execute();
-  const sequence = (row?.maxSeq ?? 0) + 1;
+  if (!seqMap.has(deploymentId)) {
+    const [row] = await db.select({ maxSeq: deploymentLogs.sequence }).from(deploymentLogs)
+      .where(eq(deploymentLogs.deploymentId, deploymentId))
+      .orderBy(desc(deploymentLogs.sequence)).limit(1).execute();
+    seqMap.set(deploymentId, row?.maxSeq ?? 0);
+  }
+  const sequence = (seqMap.get(deploymentId) ?? 0) + 1;
+  seqMap.set(deploymentId, sequence);
+
   const createdAt = now();
   const [inserted] = await db.insert(deploymentLogs).values({
     deploymentId,
