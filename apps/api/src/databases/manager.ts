@@ -135,13 +135,9 @@ const runProvision = async (dbRecord: Database): Promise<void> => {
   const containerName = dbRecord.internalHost;
   let createdVolume = false;
 
-  const stillProvisioning = async () => {
-    const current = await getDatabaseById(dbRecord.id);
-    return current !== null && current.status === 'provisioning';
-  };
-
   const abortIfDeleted = async () => {
-    if (!(await stillProvisioning())) {
+    const current = await getDatabaseById(dbRecord.id);
+    if (!current || current.status === 'deleting') {
       if (createdVolume) await ensureVolumeRemoved(dbRecord.volumeName).catch(() => {});
       await ensureContainerRemoved(containerName).catch(() => {});
       await ensureContainerRemoved(publicProxyName(dbRecord)).catch(() => {});
@@ -345,7 +341,10 @@ export const startDatabaseMonitoring = () => {
             if (inspectStatus === 'restarting') continue;
             await updateDatabaseStatus(dbRecord.id, inspectStatus === 'running' ? 'running' : 'failed');
           } else if (dbRecord.status === 'provisioning' && !provisionInFlight.has(dbRecord.id)) {
-            await updateDatabaseStatus(dbRecord.id, running ? 'running' : 'failed');
+            const ageMs = Date.now() - new Date(dbRecord.createdAt).getTime();
+            if (ageMs > 5 * 60_000) {
+              await updateDatabaseStatus(dbRecord.id, running ? 'running' : 'failed');
+            }
           }
           if (running) {
             const lastMeasured = lastStorageMeasure.get(dbRecord.id) ?? 0;

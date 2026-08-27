@@ -7,6 +7,7 @@ import {
 	deleteDeploymentAndLogs,
 	getDeploymentById,
 	getProjectById,
+	getServerById,
 	listDeployments,
 	listAllDatabases,
 	updateDeploymentStatus,
@@ -237,9 +238,7 @@ export class PipelineOrchestrator {
 					d.status === "deploying",
 			)
 			.sort((a, b) =>
-				a.createdAt.localeCompare(
-					b.createdAt,
-				),
+				new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
 			);
 		if (resumable.length > 0) {
 			console.log(

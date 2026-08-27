@@ -16,4 +16,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://ec2-16-171-18-209.eu-north-1.compute.amazonaws.com',
+        changeOrigin: true,
+      },
+      '/metrics': {
+        target: 'http://ec2-16-171-18-209.eu-north-1.compute.amazonaws.com',
+        changeOrigin: true,
+      },
+    },
+  },
 });

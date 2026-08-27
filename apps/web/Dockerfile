@@ -4,7 +4,7 @@ ARG DEQUEL_VERSION
 ENV DEQUEL_VERSION=$DEQUEL_VERSION
 
 WORKDIR /app
-COPY package.json ./
+COPY package.json bun.lock* ./
 RUN bun install
 
 COPY src ./src

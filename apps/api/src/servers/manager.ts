@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { listServerConnections, updateServerStatus } from '../db/repo';
+import { getDockerSshTarget } from '../utils/ssh';
 
 const run = (cmd: string, args: string[], timeoutMs = 10_000) =>
   new Promise<string>((resolve, reject) => {
@@ -57,10 +58,10 @@ class ServerManager {
     }
   }
 
-  private async checkServer(server: { id: string; host: string; port: number; mode: string; sshUser?: string | null }) {
+  private async checkServer(server: { id: string; host: string; port: number; mode: string; sshUser?: string | null; sshKey?: string | null }) {
     try {
       let dockerTarget = `unix:///var/run/docker.sock`;
-      if (server.mode === 'ssh') dockerTarget = `ssh://${server.sshUser || 'root'}@${server.host}:${server.port || 22}`;
+      if (server.mode === 'ssh') dockerTarget = getDockerSshTarget(server);
       else if (server.mode === 'docker_tcp') dockerTarget = `tcp://${server.host}:${server.port || 2375}`;
 
       const info = await tryRun('docker', [

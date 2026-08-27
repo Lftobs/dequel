@@ -195,6 +195,8 @@ export interface Server {
   port: number;
   mode: ServerMode;
   sshUser?: string | null;
+  sshKey?: string | null;
+  sshPassword?: string | null;
   sshKeyEncrypted?: string | null;
   agentId: string | null;
   agentVersion: string | null;
