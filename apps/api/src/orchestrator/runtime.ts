@@ -12,6 +12,7 @@ const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').repl
 export interface RuntimeOpts {
   projectId?: string;
   projectName?: string;
+  baseDomain?: string | null;
   oldContainerName?: string;
   envVars?: Record<string, string>;
   volumes?: { hostPath?: string; volumeName?: string; mountPath: string }[];
@@ -46,6 +47,13 @@ export const run = (cmd: string, args: string[], server?: Server | null) =>
       else reject(new Error(`${cmd} ${fullArgs.join(' ')} failed (${code}): ${stderr}`));
     });
   });
+
+const getCaddyContainer = async (): Promise<string> => {
+  const output = await run(dockerBin, ['ps', '--filter', 'name=caddy', '--filter', 'label=com.docker.compose.service=caddy', '--format', '{{.Names}}']);
+  const name = output.split('\n')[0]?.trim();
+  if (!name) throw new Error('Caddy container not found');
+  return name;
+};
 
 export const tryRun = async (cmd: string, args: string[], server?: Server | null) => {
   try { await run(cmd, args, server); } catch { return; }
@@ -145,8 +153,9 @@ export const deployContainer = async (
   const slug = slugify(opts.projectName || opts.projectId || deploymentId);
   const shortId = deploymentId.slice(0, 8);
   const containerName = `${slug}-${shortId}`;
-  const scheme = config.caddyBaseDomain === 'localhost' ? 'http' : 'https';
-  const liveUrl = `${scheme}://${slug}.${config.caddyBaseDomain}`;
+  const effectiveBaseDomain = opts.baseDomain || config.caddyBaseDomain;
+  const scheme = effectiveBaseDomain === 'localhost' ? 'http' : 'https';
+  const liveUrl = `${scheme}://${slug}.${effectiveBaseDomain}`;
 
   await onLog(`Starting container ${containerName} from image ${imageTag}`);
 
