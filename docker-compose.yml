@@ -28,10 +28,10 @@ services:
             start_period: 5s
 
     api:
-        image: ghcr.io/lftobs/dequel/api:latest
-        build:
-            context: ./apps/api
-            dockerfile: Dockerfile
+        image: ghcr.io/lftobs/dequel/api:next
+        # build:
+        #     context: ./apps/api
+        #     dockerfile: Dockerfile
         restart: unless-stopped
         environment:
             PORT: 3001
@@ -110,11 +110,11 @@ services:
             start_period: 10s
 
     web:
-        image: ghcr.io/lftobs/dequel/web:latest
-        build:
-            context: ./apps/web
-            args:
-                DEQUEL_VERSION: ${DEQUEL_VERSION:-}
+        image: ghcr.io/lftobs/dequel/web:next
+        # build:
+        #     context: ./apps/web
+        #     args:
+        #         DEQUEL_VERSION: ${DEQUEL_VERSION:-}
         restart: unless-stopped
         healthcheck:
             test:
