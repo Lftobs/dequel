@@ -1,6 +1,5 @@
 import { Elysia } from "elysia";
 import { signAccessToken, verifyAccessToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, blacklistRefreshToken } from "../../utils/auth";
-import { config } from "../../utils/config";
 import { ok, fail } from "../response";
 
 const PAM_AUTH_URL = "http://pam-auth:4567";
@@ -24,7 +23,6 @@ const SESSION_COOKIE_OPTS = {
   path: "/",
   httpOnly: true,
   sameSite: "lax" as const,
-  secure: config.caddyBaseDomain !== "localhost",
   maxAge: 900,
 };
 
@@ -32,12 +30,16 @@ const REFRESH_COOKIE_OPTS = {
   path: "/",
   httpOnly: true,
   sameSite: "strict" as const,
-  secure: config.caddyBaseDomain !== "localhost",
   maxAge: 7 * 24 * 60 * 60,
 };
 
 export const authRoutes = new Elysia()
-  .post("/auth/login", async ({ body, cookie: { dequel_session, dequel_refresh }, set }) => {
+  .derive(({ request }) => {
+    const proto = request.headers.get("x-forwarded-proto");
+    const isSecure = proto === "https" || request.url.startsWith("https://");
+    return { isSecure };
+  })
+  .post("/auth/login", async ({ body, cookie: { dequel_session, dequel_refresh }, set, isSecure }) => {
     const { username, password } = body as { username?: string; password?: string };
     if (!username || !password) {
       set.status = 400;
@@ -52,9 +54,9 @@ export const authRoutes = new Elysia()
     const refreshToken = generateRefreshToken();
     await storeRefreshToken(username, refreshToken);
     dequel_session.value = accessToken;
-    dequel_session.set(SESSION_COOKIE_OPTS);
+    dequel_session.set({ ...SESSION_COOKIE_OPTS, secure: isSecure });
     dequel_refresh.value = refreshToken;
-    dequel_refresh.set(REFRESH_COOKIE_OPTS);
+    dequel_refresh.set({ ...REFRESH_COOKIE_OPTS, secure: isSecure });
     return ok({ username }, "Logged in");
   })
   .post("/auth/logout", async ({ cookie: { dequel_session, dequel_refresh } }) => {
@@ -66,7 +68,7 @@ export const authRoutes = new Elysia()
     dequel_refresh.remove();
     return ok(null, "Logged out");
   })
-  .post("/auth/refresh", async ({ cookie: { dequel_session, dequel_refresh }, set }) => {
+  .post("/auth/refresh", async ({ cookie: { dequel_session, dequel_refresh }, set, isSecure }) => {
     const rt = dequel_refresh.value;
     if (!rt) {
       set.status = 401;
@@ -82,9 +84,9 @@ export const authRoutes = new Elysia()
     const newRefreshToken = generateRefreshToken();
     await storeRefreshToken(username, newRefreshToken);
     dequel_session.value = accessToken;
-    dequel_session.set(SESSION_COOKIE_OPTS);
+    dequel_session.set({ ...SESSION_COOKIE_OPTS, secure: isSecure });
     dequel_refresh.value = newRefreshToken;
-    dequel_refresh.set(REFRESH_COOKIE_OPTS);
+    dequel_refresh.set({ ...REFRESH_COOKIE_OPTS, secure: isSecure });
     return ok({ username }, "Token refreshed");
   })
   .get("/auth/me", async ({ cookie: { dequel_session } }) => {
