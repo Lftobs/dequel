@@ -2,9 +2,9 @@ import { describe, it, expect, mock } from 'bun:test';
 import { projectServerSite, ingressSite, shouldRouteViaIngress } from '../ingress';
 
 describe('ingress route shapes', () => {
-  it('writes a plain-http site when the project server is behind the ingress', () => {
+  it('writes a :80 listener site when the project server is behind the ingress', () => {
     const snippet = projectServerSite('app.example.com', 3000, ['deploy-dep-1'], true);
-    expect(snippet).toContain('http://app.example.com {');
+    expect(snippet).toContain(':80 {');
     expect(snippet).toContain('reverse_proxy deploy-dep-1:3000');
   });
 

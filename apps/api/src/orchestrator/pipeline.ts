@@ -642,6 +642,7 @@ export class PipelineOrchestrator {
 							deployment.projectId ||
 							undefined,
 						projectName,
+						baseDomain: project?.baseDomain,
 						oldContainerName,
 						envVars,
 						volumes,

@@ -16,7 +16,7 @@ const parse = (stdout: string) => {
 };
 
 describe('failoverProject', () => {
-  it('rejects when no ingress is configured', async () => {
+  it('defaults to local ingress and rejects when no target server exists', async () => {
     const { stdout } = await run();
     const r = parse(stdout);
     expect(r.test1.ok).toBe(true);

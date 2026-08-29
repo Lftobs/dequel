@@ -5,8 +5,8 @@ import { config } from "./config";
 import { syncRemoteCaddyRoute, removeRemoteCaddyRoute } from "./ssh";
 
 const reloadLocalCaddy = async () => {
-  const { run } = await import("../orchestrator/runtime");
-  await run("docker", ["exec", "dequel-caddy", "caddy", "reload", "--config", "/etc/caddy/Caddyfile"]);
+  const { reloadCaddy } = await import("../orchestrator/runtime");
+  await reloadCaddy();
 };
 
 export interface IngressRouteInfo {
@@ -18,8 +18,11 @@ export interface IngressRouteInfo {
 
 export const getIngressServer = async () => {
   const { ingressServerId } = await getPlatformSettings();
-  if (!ingressServerId) return null;
-  return (await getServerById(ingressServerId)) ?? null;
+  const resolved = ingressServerId ?? "local";
+  if (resolved === "local") {
+    return { id: "local", name: "Local Control Plane", mode: "local" };
+  }
+  return (await getServerById(resolved)) ?? { id: "local", name: "Local Control Plane", mode: "local" };
 };
 
 export const shouldRouteViaIngress = (
@@ -37,9 +40,11 @@ export const projectServerSite = (
   containers: string[],
   viaIngress: boolean,
 ): string => {
-  const prefix = viaIngress ? "http://" : "";
   const targets = containers.map((c) => `${c}:${port}`).join(" ");
-  return `${prefix}${hostname} {\n  reverse_proxy ${targets} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+  if (viaIngress) {
+    return `:80 {\n  reverse_proxy ${targets} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+  }
+  return `${hostname} {\n  reverse_proxy ${targets} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
 };
 
 export const ingressSite = (hostname: string, upstreamHost: string): string =>
