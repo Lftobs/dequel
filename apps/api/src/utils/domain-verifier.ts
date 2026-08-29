@@ -103,7 +103,8 @@ export const addToCaddyRoute = async (
     const firstLine = content.slice(0, idx);
     if (firstLine.includes(domain)) return;
 
-    content = `${firstLine}, ${domain}:80${content.slice(idx)}`;
+    const entry = domain.includes('localhost') ? `${domain}:80` : domain;
+    content = `${firstLine}, ${entry}${content.slice(idx)}`;
     writeFileSync(filePath, content, 'utf8');
     await reloadFn();
   } catch (e) {
@@ -177,7 +178,7 @@ export const buildCaddySnippet = async (
     const projectDomains = await listDomainsFn(projectId);
     const verified = projectDomains.filter(d => d.validationStatus === 'verified');
     for (const d of verified) {
-      const withPort = `${d.domain}:80`;
+      const entryDomain = d.domain.includes('localhost') ? `${d.domain}:80` : d.domain;
       if (d.targetService || d.targetPort) {
         let targetContainer = containerName;
         if (d.targetService) {
@@ -188,9 +189,9 @@ export const buildCaddySnippet = async (
           }
         }
         const tPort = d.targetPort || port;
-        customBlocks.push(`${withPort} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${targetContainer}:${tPort} {\n    header_up Host {upstream_hostport}\n  }\n}\n`);
+        customBlocks.push(`${entryDomain} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${targetContainer}:${tPort} {\n    header_up Host {upstream_hostport}\n  }\n}\n`);
       } else {
-        if (!defaultDomains.includes(withPort)) defaultDomains.push(withPort);
+        if (!defaultDomains.includes(entryDomain)) defaultDomains.push(entryDomain);
       }
     }
 

@@ -51,6 +51,7 @@ const deployFromImage = async (
     {
       projectId: deployment.projectId ?? undefined,
       projectName: project?.name,
+      baseDomain: project?.baseDomain,
       oldContainerName,
       envVars,
       volumes,

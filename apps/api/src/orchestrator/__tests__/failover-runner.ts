@@ -49,14 +49,16 @@ const { failoverProject } = await import('../failover');
 
 const results: any = {};
 
-// Test 1: rejects when no ingress is configured
+// Test 1: defaults to local ingress when none configured
 try {
   platformSettings = { ingressServerId: null };
   projects = [{ id: 'p1', serverId: 'a' }];
+  servers = [{ id: 'a', name: 'AppServer', mode: 'ssh', status: 'connected' }];
+  deploymentsByProject = { p1: [{ id: 'dep-1', sourceType: 'git', sourceRef: 'https://github.com/x/y.git', branch: 'main' }] };
   await failoverProject('p1');
   results.test1 = { ok: false, error: 'should have thrown' };
 } catch (e: any) {
-  results.test1 = { ok: e.message?.includes('No ingress server configured') };
+  results.test1 = { ok: e.message?.includes('No other healthy server available') };
 }
 
 // Test 2: rejects non-ssh project servers

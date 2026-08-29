@@ -42,18 +42,18 @@ describe('addToCaddyRoute', () => {
     }
   });
 
-  it('adds domain with :80 to existing route file', async () => {
+  it('adds domain to existing route file', async () => {
     createRouteFile('elysia', 'elysia.localhost:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
     await addToCaddyRoute('app.example.com', 'proj-1', 'elysia', routeOpts());
     const content = readRouteFile('elysia');
-    expect(content).toBe('elysia.localhost:80, app.example.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
+    expect(content).toBe('elysia.localhost:80, app.example.com {\n  reverse_proxy deploy-abc:3000\n}\n');
   });
 
   it('is idempotent (does not add duplicate domain)', async () => {
-    createRouteFile('elysia', 'elysia.localhost:80, app.example.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
+    createRouteFile('elysia', 'elysia.localhost:80, app.example.com {\n  reverse_proxy deploy-abc:3000\n}\n');
     await addToCaddyRoute('app.example.com', 'proj-1', 'elysia', routeOpts());
     const content = readRouteFile('elysia');
-    expect(content).toBe('elysia.localhost:80, app.example.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
+    expect(content).toBe('elysia.localhost:80, app.example.com {\n  reverse_proxy deploy-abc:3000\n}\n');
   });
 
   it('does nothing when route file does not exist', async () => {
@@ -69,17 +69,17 @@ describe('addToCaddyRoute', () => {
   });
 
   it('handles multiple domains correctly', async () => {
-    createRouteFile('elysia', 'elysia.localhost:80, first.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
+    createRouteFile('elysia', 'elysia.localhost:80, first.com {\n  reverse_proxy deploy-abc:3000\n}\n');
     await addToCaddyRoute('second.com', 'proj-1', 'elysia', routeOpts());
     const content = readRouteFile('elysia');
-    expect(content).toBe('elysia.localhost:80, first.com:80, second.com:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
+    expect(content).toBe('elysia.localhost:80, first.com, second.com {\n  reverse_proxy deploy-abc:3000\n}\n');
   });
 
   it('uses project name as slug for file path', async () => {
     createRouteFile('my-project', 'my-project.localhost:80 {\n  reverse_proxy deploy-abc:3000\n}\n');
     await addToCaddyRoute('app.example.com', 'proj-4', 'My Project', routeOpts());
     const content = readRouteFile('my-project');
-    expect(content).toContain('app.example.com:80');
+    expect(content).toContain('app.example.com');
   });
 });
 
@@ -156,7 +156,7 @@ describe('buildCaddySnippet', () => {
   it('creates snippet with verified domains when projectId is provided', async () => {
     const listFn = mockDomains(['app.example.com']);
     const snippet = await buildCaddySnippet('elysia', 'deploy-abc', 'proj-1', listFn, APP_PORT, snippetOpts);
-    expect(snippet).toBe('elysia.localhost:80, app.example.com:80 {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy deploy-abc:3000 {\n    header_up Host {upstream_hostport}\n  }\n}\n');
+    expect(snippet).toBe('elysia.localhost:80, app.example.com {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy deploy-abc:3000 {\n    header_up Host {upstream_hostport}\n  }\n}\n');
   });
 
   it('only includes verified (not pending) domains', async () => {
@@ -165,7 +165,7 @@ describe('buildCaddySnippet', () => {
       { id: '2', projectId: 'proj-1', domain: 'pending.com', type: 'custom', validationStatus: 'pending', sslStatus: 'pending', createdAt: '', updatedAt: '' },
     ]);
     const snippet = await buildCaddySnippet('elysia', 'deploy-abc', 'proj-1', listFn, APP_PORT, snippetOpts);
-    expect(snippet).toContain('verified.com:80');
+    expect(snippet).toContain('verified.com');
     expect(snippet).not.toContain('pending.com');
   });
 
