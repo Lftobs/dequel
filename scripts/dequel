@@ -26,23 +26,11 @@ cmd() {
 	if [ ! -f "$COMPOSE_FILE" ]; then
 		fail "Dequel not found at $DEQUEL_HOME. Run install.sh first or set \$DEQUEL_HOME."
 	fi
-	local profile_args=()
-	case "${DEQUEL_PROFILE:-control-plane}" in
-		full|monitoring+build)
-			profile_args=(--profile build --profile monitoring)
-			;;
-		monitoring)
-			profile_args=(--profile monitoring)
-			;;
-		build)
-			profile_args=(--profile build)
-			;;
-	esac
-	docker compose -f "$COMPOSE_FILE" "${profile_args[@]}" "$@"
+	docker compose -f "$COMPOSE_FILE" "$@"
 }
 
 cmd_start() {
-	header "Starting Dequel (profile: ${DEQUEL_PROFILE:-control-plane})"
+	header "Starting Dequel"
 	cmd up -d
 	local domain="${CADDY_BASE_DOMAIN:-localhost}"
 	if [ "$domain" = "localhost" ]; then
