@@ -96,11 +96,13 @@ function ServersSection() {
       port: Number(port) || 22,
       mode: 'ssh',
       sshUser: sshUser.trim() || 'root',
+      sshKey: sshKey.trim() || undefined,
     });
-    setName(''); setHost(''); setPort('22'); setSshUser('root'); refetch();
+    setName(''); setHost(''); setPort('22'); setSshUser('root'); setSshKey(''); refetch();
   };
 
   const [sshUser, setSshUser] = useState('root');
+  const [sshKey, setSshKey] = useState('');
 
   const createRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,6 +150,15 @@ function ServersSection() {
               <Input placeholder="root" value={sshUser} onChange={e => setSshUser(e.target.value)} />
             </div>
           </div>
+          <div className="mt-3 grid gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">SSH Private Key <span className="text-muted-foreground/60">(optional — paste PEM content)</span></label>
+            <textarea
+              className="min-h-[80px] rounded-md border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+              placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
+              value={sshKey}
+              onChange={e => setSshKey(e.target.value)}
+            />
+          </div>
           <div className="mt-4 flex justify-end">
             <Button type="submit" size="sm" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold">Add SSH Server</Button>
           </div>
@@ -186,7 +197,7 @@ function ServersSection() {
                 {servers.map(s => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell className="font-mono text-xs">{s.mode === 'agent' ? `P2P WireGuard Agent ${s.agentVersion || ''}` : `SSH (${s.sshUser || 'root'}@${s.host}:${s.port})`}</TableCell>
+                    <TableCell className="font-mono text-xs">{s.mode === 'agent' ? `P2P WireGuard Agent ${s.agentVersion || ''}` : `SSH (${s.sshUser || 'root'}@${s.host}:${s.port})${s.sshKey ? ' [key]' : ''}`}</TableCell>
                     <TableCell><StatusBadge status={s.status || 'active'} /></TableCell>
                     <TableCell className="text-right">
                       {s.mode !== 'local' && (
