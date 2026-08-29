@@ -1,15 +1,15 @@
 ---
 title: Control Plane Setup
 category: Getting Started
-description: Run the Dequel control panel on your own machine and connect remote servers.
+description: Install Dequel and connect remote servers for deployment.
 slug: control-plane
 ---
 
-The control plane (dashboard + API) can run on any machine with Docker — including your personal computer. All builds, containers, and Caddy routing happen on the **servers** you connect; the control plane only orchestrates them over SSH or the P2P WireGuard agent.
+The control plane (dashboard + API) runs on any machine with Docker. All builds, containers, and Caddy routing happen on the **servers** you connect; the control plane only orchestrates them over SSH or the P2P WireGuard agent.
 
-## Install the control plane
+## Install
 
-The install script sets up only the control-plane services by default (`api`, `web`, `caddy`, `redis`):
+The install script sets up all services (`api`, `web`, `caddy`, `redis`, `buildkit`, and the monitoring stack):
 
 ```bash
 curl -fsSL https://github.com/Lftobs/dequel/releases/latest/download/install.sh | bash
@@ -17,24 +17,6 @@ dequel start
 ```
 
 Open `http://localhost` to access the dashboard.
-
-### Profiles
-
-The Compose file groups optional services behind profiles:
-
-| Profile | Services | When to enable |
-|---------|----------|----------------|
-| (default) | api, web, caddy, redis | Control plane only |
-| `build` | buildkit | Local builds on the control plane |
-| `monitoring` | cAdvisor, Prometheus, Loki, Promtail, Grafana | Server-side monitoring stack |
-
-`DEQUEL_PROFILE` is written to `~/.dequel/.env` during install. To run the full stack (buildkit + monitoring):
-
-```bash
-# in ~/.dequel/.env
-DEQUEL_PROFILE=full
-dequel restart
-```
 
 ## Connecting servers
 
