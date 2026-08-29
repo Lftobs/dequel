@@ -4,6 +4,8 @@ import { servers } from "../schema";
 import type { Server, CreateServerInput, ServerMode, ServerStatus } from "../../types";
 import { randomUUID } from "node:crypto";
 import { now, formatTimestamp, getRowsAffected } from "./helpers";
+import { encryptValue, decryptValue } from "../../utils/crypto";
+import { config } from "../../utils/config";
 
 const mapServer = (row: typeof servers.$inferSelect): Server => ({
   id: row.id,
@@ -12,7 +14,9 @@ const mapServer = (row: typeof servers.$inferSelect): Server => ({
   port: row.port,
   mode: row.mode as ServerMode,
   sshUser: row.sshUser ?? null,
-  sshKey: row.sshKey ?? null,
+  sshKey: row.sshKey && row.sshKeyIv && row.sshKeyTag
+    ? decryptValue(row.sshKey, row.sshKeyIv, row.sshKeyTag, config.envEncryptionKey)
+    : row.sshKey ?? null,
   sshPassword: row.sshPassword ?? null,
   agentId: row.agentId,
   agentVersion: row.agentVersion,
@@ -46,6 +50,7 @@ export const createServer = async (input: CreateServerInput): Promise<Server> =>
   const id = randomUUID();
   const timestamp = now();
   const db = await getDb();
+  const encrypted = input.sshKey ? encryptValue(input.sshKey, config.envEncryptionKey) : null;
   await db.insert(servers).values({
     id,
     name: input.name,
@@ -53,7 +58,9 @@ export const createServer = async (input: CreateServerInput): Promise<Server> =>
     port: input.port ?? 2375,
     authToken: input.authToken ?? "",
     sshUser: input.sshUser ?? null,
-    sshKey: input.sshKey ?? null,
+    sshKey: encrypted?.encrypted ?? null,
+    sshKeyIv: encrypted?.iv ?? null,
+    sshKeyTag: encrypted?.tag ?? null,
     sshPassword: input.sshPassword ?? null,
     mode: input.mode ?? "ssh",
     status: "pending",
@@ -76,6 +83,8 @@ export interface ServerConnection {
   mode: ServerMode;
   sshUser?: string | null;
   sshKey?: string | null;
+  sshKeyIv?: string | null;
+  sshKeyTag?: string | null;
 }
 
 export const listServerConnections = async (): Promise<ServerConnection[]> => {
@@ -87,11 +96,16 @@ export const listServerConnections = async (): Promise<ServerConnection[]> => {
     authToken: servers.authToken,
     sshUser: servers.sshUser,
     sshKey: servers.sshKey,
+    sshKeyIv: servers.sshKeyIv,
+    sshKeyTag: servers.sshKeyTag,
     mode: servers.mode,
   }).from(servers).execute();
   return rows.map((row) => ({
     ...row,
     mode: row.mode as ServerMode,
+    sshKey: row.sshKey && row.sshKeyIv && row.sshKeyTag
+      ? decryptValue(row.sshKey, row.sshKeyIv, row.sshKeyTag, config.envEncryptionKey)
+      : row.sshKey ?? null,
   }));
 };
 

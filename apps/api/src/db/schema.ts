@@ -179,6 +179,8 @@ export const servers = pgTable("servers", {
   authToken: text("auth_token").notNull().default(""),
   sshUser: text("ssh_user"),
   sshKey: text("ssh_key"),
+  sshKeyIv: text("ssh_key_iv"),
+  sshKeyTag: text("ssh_key_tag"),
   sshPassword: text("ssh_password"),
   mode: text().notNull().default("ssh"),
   agentId: text("agent_id").unique(),
