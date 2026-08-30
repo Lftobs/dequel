@@ -25,10 +25,14 @@ export const buildRemoteDeployScript = (input: SshBuildScriptInput): string => {
       ? `git checkout ${sh(input.branch)}`
       : "true";
 
+  const remoteWorkspace = input.workspaceRoot.startsWith("/app")
+    ? "$HOME/.dequel/workspace"
+    : input.workspaceRoot;
+
   return [
     "set -euo pipefail",
     "",
-    `WORKSPACE=${sh(input.workspaceRoot)}`,
+    `WORKSPACE="${remoteWorkspace}"`,
     `PROJECT_DIR="$WORKSPACE/${input.deploymentId}"`,
     'echo "[build] Ensuring workspace"',
     'rm -rf "$PROJECT_DIR"',
@@ -42,6 +46,12 @@ export const buildRemoteDeployScript = (input: SshBuildScriptInput): string => {
     "  curl -fsSL https://railpack.com/install.sh | sh -s -- --bin-dir /usr/local/bin",
     "fi",
     "",
+    'if ! docker ps --format "{{.Names}}" | grep -q "^buildkit$"; then',
+    '  echo "[build] Starting BuildKit container"',
+    '  docker run -d --restart unless-stopped --name buildkit --privileged moby/buildkit:latest || true',
+    "fi",
+    'export BUILDKIT_HOST="docker-container://buildkit"',
+    "",
     `echo "[build] Cloning repository ${input.gitUrl}"`,
     `git clone --depth 1 ${sh(input.gitUrl)} .`,
     checkoutSha,
@@ -54,8 +64,8 @@ export const buildRemoteDeployScript = (input: SshBuildScriptInput): string => {
     "  --env NPM_CONFIG_TIMEOUT=600000 --env NPM_CONFIG_AUDIT=false --env NPM_CONFIG_FUND=false \\",
     "  --env PNPM_CONFIG_TRUST_LOCKFILE=true --env NPM_CONFIG_MAXSOCKETS=4 \\",
     "  --env PNPM_CONFIG_NETWORK_CONCURRENCY=4 --env PNPM_CONFIG_CHILD_CONCURRENCY=4 \\",
-    "  --env PNPM_CONFIG_FETCH_RETRIES=10",
-    envFlags ? `  ${envFlags} \\` : "",
+    "  --env PNPM_CONFIG_FETCH_RETRIES=10 \\",
+    ...(envFlags ? [`  ${envFlags} \\`] : []),
     "  .",
     "",
     `echo "RESULT:{\\"imageTag\\":\\"${input.imageTag}\\",\\"commitSha\\":\\"$SHA\\"}"`,

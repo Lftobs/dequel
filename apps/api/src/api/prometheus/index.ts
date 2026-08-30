@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { ok, fail } from "../response";
 
 export const prometheusRoutes = new Elysia()
 	.get(
@@ -7,17 +8,17 @@ export const prometheusRoutes = new Elysia()
 			const promQuery = query?.query as string | undefined;
 			if (!promQuery) {
 				set.status = 400;
-				return { error: "query parameter required" };
+				return fail("query parameter required");
 			}
 			try {
 				const url = `http://prometheus:9090/api/v1/query?query=${encodeURIComponent(
 					promQuery,
 				)}`;
 				const res = await fetch(url);
-				return res.json();
+				return ok(await res.json());
 			} catch {
 				set.status = 502;
-				return { error: "Prometheus unavailable" };
+				return fail("Prometheus unavailable");
 			}
 		},
 	)
@@ -30,18 +31,17 @@ export const prometheusRoutes = new Elysia()
 			const step = query?.step as string | undefined;
 			if (!promQuery || !start || !end || !step) {
 				set.status = 400;
-				return { error: "query, start, end, and step parameters are required" };
+				return fail("query, start, end, and step parameters are required");
 			}
 			try {
 				const url = `http://prometheus:9090/api/v1/query_range?query=${encodeURIComponent(
 					promQuery,
 				)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&step=${encodeURIComponent(step)}`;
 				const res = await fetch(url);
-				return res.json();
+				return ok(await res.json());
 			} catch {
 				set.status = 502;
-				return { error: "Prometheus unavailable" };
+				return fail("Prometheus unavailable");
 			}
 		},
 	);
-

@@ -51,6 +51,7 @@ const deployFromImage = async (
     {
       projectId: deployment.projectId ?? undefined,
       projectName: project?.name,
+      baseDomain: project?.baseDomain,
       oldContainerName,
       envVars,
       volumes,
@@ -126,15 +127,15 @@ export const sshExecutor: DeploymentExecutor = {
     }
   },
 
-  async rollback({ deployment, project, server }: ExecutorRollbackInput) {
+  async rollback({ deployment, project, server, imageTag }: ExecutorRollbackInput) {
     const { getProjectById, listDeployments, updateDeploymentStatus } = await getRepo();
     await updateDeploymentStatus(deployment.id, "deploying");
-    await emitLog(deployment.id, "system", `Rolling back to this version (image: ${deployment.imageTag})`);
+    await emitLog(deployment.id, "system", `Rolling back to this version (image: ${imageTag})`);
     try {
       const all = await listDeployments(deployment.projectId ?? "");
       const current = all.find((d) => d.status === "running" && d.id !== deployment.id);
       const resolvedProject = project ?? (deployment.projectId ? await getProjectById(deployment.projectId) : null);
-      const runtime = await deployFromImage(deployment, resolvedProject, server, deployment.imageTag!, current?.containerName ?? undefined);
+      const runtime = await deployFromImage(deployment, resolvedProject, server, imageTag, current?.containerName ?? undefined);
       if (current) {
         await updateDeploymentStatus(current.id, "inactive", { failureReason: `Superseded by rollback to ${deployment.id.slice(0, 8)}` });
         await emitLog(current.id, "system", `Marked inactive (rolled back to ${deployment.id.slice(0, 8)})`);
@@ -149,7 +150,7 @@ export const sshExecutor: DeploymentExecutor = {
   },
 
   async destroy({ deployment, project, server }) {
-    const { deleteDeploymentAndLogs } = await getRepo();
+    const { deleteDeploymentAndLogs, deleteRoutesByDeployment } = await getRepo();
     const { tryRun } = await getRuntime();
     if (deployment.containerName) {
       await tryRun("docker", ["stop", "-t", "5", deployment.containerName], server);
@@ -160,6 +161,13 @@ export const sshExecutor: DeploymentExecutor = {
     }
     const slug = slugify(project?.name || deployment.projectId || deployment.id);
     await removeRemoteCaddyRoute(server, `${slug}.caddy`);
+    const { getIngressServer, removeIngressRouteFile } = await import("../utils/ingress");
+    const ingressServer = await getIngressServer();
+    if (ingressServer && ingressServer.id !== server.id) {
+      const { baseDomainFor } = await import("../utils/routes");
+      await removeIngressRouteFile(ingressServer, { hostname: `${slug}.${baseDomainFor()}`, routeFile: `${slug}.caddy` });
+    }
+    await deleteRoutesByDeployment(deployment.id);
     await deleteDeploymentAndLogs(deployment.id);
   },
 

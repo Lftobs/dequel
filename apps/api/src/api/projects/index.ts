@@ -14,7 +14,9 @@ import { tryRun, reloadCaddy } from "../../orchestrator/runtime";
 import { removeFromCaddyRoute } from "../../utils/domain-verifier";
 import { config } from "../../utils/config";
 import { dockerBin } from "../../utils/docker-bin";
-import { SERVICE_NAME_RE, isPort, validateComposeServices } from "../../utils/validate";
+import { SERVICE_NAME_RE, isPort, validateComposeServices, isPrivateGitUrl } from "../../utils/validate";
+import { failoverProject } from "../../orchestrator/failover";
+import { ok, created, fail } from "../response";
 
 const validateComposeFields = (body: any): string | null => {
 	if (body?.composeService && !SERVICE_NAME_RE.test(String(body.composeService))) {
@@ -34,16 +36,29 @@ const validateComposeFields = (body: any): string | null => {
 };
 
 export const projectsRoutes = new Elysia()
-	.get("/projects", async () => listProjects())
+	.get("/projects", async () => ok(await listProjects()))
+	.post(
+		"/projects/:id/failover",
+		async ({ params: { id }, set }) => {
+			try {
+				const deployment = await failoverProject(id);
+				return ok({ deployment }, "Failover initiated");
+			} catch (error) {
+				const message = error instanceof Error ? error.message : "Failover failed";
+				set.status = message.includes("not found") ? 404 : 400;
+				return fail(message);
+			}
+		},
+	)
 	.get(
 		"/projects/:id",
 		async ({ params: { id }, set }) => {
 			const project = await getProjectById(id);
 			if (!project) {
 				set.status = 404;
-				return { error: "Project not found" };
+				return fail("Project not found");
 			}
-			return project;
+			return ok(project);
 		},
 	)
 	.post(
@@ -51,17 +66,29 @@ export const projectsRoutes = new Elysia()
 		async ({ body, set }: any) => {
 			if (!body?.name) {
 				set.status = 400;
-				return { error: "name is required" };
+				return fail("name is required");
 			}
 			const validationError = validateComposeFields(body);
 			if (validationError) {
 				set.status = 400;
-				return { error: validationError };
+				return fail(validationError);
 			}
-			const serverId = body.serverId || "local";
+			const { resolveDefaultServerId } = await import("../../utils/server-default");
+			const serverId = await resolveDefaultServerId(body.serverId);
+			if (body.serverId && serverId !== body.serverId) {
+				const requestedServer = await getServerById(body.serverId);
+				if (!requestedServer) {
+					set.status = 400;
+					return fail("Requested server not found");
+				}
+			}
 			if (!(await getServerById(serverId))) {
 				set.status = 400;
-				return { error: "Selected server does not exist" };
+				return fail("Selected server does not exist");
+			}
+			if (body.repoUrl && isPrivateGitUrl(body.repoUrl)) {
+				set.status = 400;
+				return fail("Private network Git endpoints are not allowed");
 			}
 			const project = await createProject({
 				name: body.name,
@@ -85,7 +112,7 @@ export const projectsRoutes = new Elysia()
 				outputDir: body.outputDir || undefined,
 				startCommand: body.startCommand || undefined,
 			});
-			return project;
+			return created(project);
 		},
 	)
 	.patch(
@@ -94,11 +121,11 @@ export const projectsRoutes = new Elysia()
 			const validationError = validateComposeFields(body);
 			if (validationError) {
 				set.status = 400;
-				return { error: validationError };
+				return fail(validationError);
 			}
 			if (body?.serverId !== undefined && !(await getServerById(body.serverId))) {
 				set.status = 400;
-				return { error: "Selected server does not exist" };
+				return fail("Selected server does not exist");
 			}
 			const project = await updateProject(id, {
 				name: body?.name,
@@ -123,9 +150,9 @@ export const projectsRoutes = new Elysia()
 			});
 			if (!project) {
 				set.status = 404;
-				return { error: "Project not found" };
+				return fail("Project not found");
 			}
-			return project;
+			return ok(project);
 		},
 	)
 	.delete(
@@ -134,7 +161,7 @@ export const projectsRoutes = new Elysia()
 			const info = await deleteProjectCascade(id);
 			if (!info) {
 				set.status = 404;
-				return { error: "Project not found" };
+				return fail("Project not found");
 			}
 
 			for (const name of info.deploymentContainerNames) {
@@ -162,7 +189,7 @@ export const projectsRoutes = new Elysia()
 			await unlink(caddyFilePath).catch(() => {});
 			await reloadCaddy().catch(() => {});
 
-			return { ok: true };
+			return ok(null, "Project deleted");
 		},
 	)
 	.get(
@@ -171,7 +198,7 @@ export const projectsRoutes = new Elysia()
 			const project = await getProjectById(id);
 			if (!project) {
 				set.status = 404;
-				return { error: "Project not found" };
+				return fail("Project not found");
 			}
 			const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
 			const slug = slugify(project.name);
@@ -192,7 +219,6 @@ export const projectsRoutes = new Elysia()
 			if (startParam) {
 				startNs = `${Number(startParam) * 1000000}`;
 			} else {
-				// Default to 7 days ago in nanoseconds
 				startNs = `${(Date.now() - 7 * 24 * 60 * 60 * 1000) * 1000000}`;
 			}
 
@@ -208,13 +234,16 @@ export const projectsRoutes = new Elysia()
 			if (endNs) url += `&end=${endNs}`;
 
 			try {
-				const response = await fetch(url);
+				const controller = new AbortController();
+				const timeout = setTimeout(() => controller.abort(), 5000);
+				const response = await fetch(url, { signal: controller.signal });
+				clearTimeout(timeout);
 				if (!response.ok) {
-					return [];
+					return ok([]);
 				}
 				const data = (await response.json()) as any;
 				if (data.status !== "success" || !data.data?.result) {
-					return [];
+					return ok([]);
 				}
 
 				const logs: any[] = [];
@@ -234,10 +263,10 @@ export const projectsRoutes = new Elysia()
 				}
 
 				logs.sort((a, b) => b.sequence - a.sequence);
-				return logs;
+				return ok(logs);
 			} catch (e) {
 				console.error("Failed to fetch request logs from Loki:", e);
-				return [];
+				return ok([]);
 			}
 		}
 	)
@@ -247,7 +276,7 @@ export const projectsRoutes = new Elysia()
 			const project = await getProjectById(id);
 			if (!project) {
 				set.status = 404;
-				return { error: "Project not found" };
+				return fail("Project not found");
 			}
 			const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
 			const slug = slugify(project.name);
@@ -260,12 +289,11 @@ export const projectsRoutes = new Elysia()
 
 			const regexEscaped = domains.map(d => d.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\\\$&')).join('|');
 
-			// Loki metric query for request rate
 			const query = `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [5m]))`;
 
 			const end = Math.floor(Date.now() / 1000);
-			const start = end - (6 * 60 * 60); // 6 hours ago
-			const step = "60s"; // 1 min resolution
+			const start = end - (6 * 60 * 60);
+			const step = "60s";
 
 			try {
 				const response = await fetch(
@@ -273,23 +301,20 @@ export const projectsRoutes = new Elysia()
 				);
 				const data = await response.json() as any;
 				if (data.status === "success" && data.data?.result?.[0]?.values) {
-					return {
-						status: "success",
-						data: {
-							resultType: "matrix",
-							result: [
-								{
-									metric: {},
-									values: data.data.result[0].values
-								}
-							]
-						}
-					};
+					return ok({
+						resultType: "matrix",
+						result: [
+							{
+								metric: {},
+								values: data.data.result[0].values
+							}
+						]
+					});
 				}
-				return { status: "success", data: { resultType: "matrix", result: [] } };
+				return ok({ resultType: "matrix", result: [] });
 			} catch (e) {
 				console.error("Loki query failed", e);
-				return { status: "success", data: { resultType: "matrix", result: [] } };
+				return ok({ resultType: "matrix", result: [] });
 			}
 		}
 	)
@@ -299,7 +324,7 @@ export const projectsRoutes = new Elysia()
 			const project = await getProjectById(id);
 			if (!project) {
 				set.status = 404;
-				return { error: "Project not found" };
+				return fail("Project not found");
 			}
 			const encoder = new TextEncoder();
 			const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);

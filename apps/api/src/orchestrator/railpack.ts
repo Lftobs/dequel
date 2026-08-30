@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { dockerBin } from "../utils/docker-bin";
 import { generateDynamicRailpackJson } from "./railpack-config-utils";
+import type { Server } from "../types";
 
 export interface RailpackBuildResult {
 	imageTag: string;
@@ -243,8 +244,10 @@ const spawnAsync = (
 	});
 };
 
-const ensureBuilder = async (): Promise<void> => {
+const ensureBuilder = async (dockerHost?: string): Promise<void> => {
+	const hostArgs = dockerHost ? ['-H', dockerHost] : [];
 	const ls = await spawnAsync(dockerBin, [
+		...hostArgs,
 		"buildx",
 		"ls",
 	]);
@@ -254,6 +257,7 @@ const ensureBuilder = async (): Promise<void> => {
 
 	if (!hasBuilder) {
 		await spawnAsync(dockerBin, [
+			...hostArgs,
 			"buildx",
 			"create",
 			"--name",
@@ -263,6 +267,7 @@ const ensureBuilder = async (): Promise<void> => {
 			"--bootstrap",
 		]);
 		await spawnAsync(dockerBin, [
+			...hostArgs,
 			"buildx",
 			"use",
 			"railpack-builder",
@@ -286,14 +291,18 @@ export const buildWithRailpack = async (
 		environmentVariables?: { key: string; value: string }[];
 		signal?: AbortSignal;
 		clearCache?: boolean;
+		server?: Server | null;
 	},
 ): Promise<RailpackBuildResult> => {
 	await onLog(
 		`Starting Railpack CLI build for image: ${imageTag}`,
 	);
 
-	// Ensure builder exists (persists across builds)
-	await ensureBuilder();
+	const dockerHost = opts?.server?.mode === 'docker_tcp'
+		? `tcp://${opts.server.host}:${opts.server.port || 2376}`
+		: undefined;
+
+	await ensureBuilder(dockerHost);
 
 	let cacheKey =
 		opts?.cacheKey ??

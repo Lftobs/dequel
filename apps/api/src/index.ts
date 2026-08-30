@@ -1,12 +1,13 @@
 import { mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
 import { Elysia } from 'elysia';
 import { cors } from '@elysiajs/cors';
+import { count, eq } from 'drizzle-orm';
 import { apiRoutes } from './api';
 import { migrate } from './db/migrate';
 import { orchestrator } from './orchestrator';
 import { config } from './utils/config';
-import { getDb } from './db/client';
+import { getDb } from './db/db-provider';
+import { deployments } from './db/schema';
 import { scalingEngine } from './scaling/engine';
 import { serverManager } from './servers/manager';
 import { startDomainPolling } from './utils/domain-verifier';
@@ -14,14 +15,16 @@ import { alertEvaluator } from './monitoring/evaluator';
 import { loadOrCreateJwtSecret } from './utils/secrets';
 import { initAuth, cleanupExpiredTokens } from './utils/auth';
 import { startBuildCleanup } from './orchestrator/cleanup';
+import { startFailoverMonitor } from './orchestrator/failover';
 import { startDatabaseMonitoring } from './databases/manager';
 import { ensureLocalServer } from './db/repo';
+import { startReconciliation, startStaleAgentCleanup, startAbandonedJobCleanup } from './orchestrator/reconciliation';
+
 const bootstrap = async () => {
-  await mkdir(dirname(config.databasePath), { recursive: true });
   await mkdir(config.workspaceRoot, { recursive: true });
   await mkdir(config.caddyRoutesDir, { recursive: true });
 
-  const jwtSecret = await loadOrCreateJwtSecret(dirname(config.databasePath));
+  const jwtSecret = await loadOrCreateJwtSecret('/app/data');
   initAuth(jwtSecret);
 
   await migrate();
@@ -33,7 +36,11 @@ const bootstrap = async () => {
   startDomainPolling();
   alertEvaluator.start();
   startBuildCleanup();
+  startFailoverMonitor();
   startDatabaseMonitoring();
+  startReconciliation();
+  startStaleAgentCleanup();
+  startAbandonedJobCleanup();
   setInterval(() => { cleanupExpiredTokens().catch(() => {}); }, 60_000);
 
   const metrics = {
@@ -44,8 +51,8 @@ const bootstrap = async () => {
 
   const renderMetrics = async () => {
     const db = await getDb();
-    const depCount = db.query('SELECT COUNT(*) as count FROM deployments WHERE status = ?').get('running') as any;
-    metrics.activeDeployments = depCount?.count ?? 0;
+    const [result] = await db.select({ count: count() }).from(deployments).where(eq(deployments.status, 'running'));
+    metrics.activeDeployments = Number(result?.count ?? 0);
     const uptimeSec = Math.floor((Date.now() - metrics.uptime) / 1000);
     return `# HELP dequel_requests_total Total API requests
 # TYPE dequel_requests_total counter

@@ -1,89 +1,33 @@
 {
-  "version": "6",
-  "dialect": "sqlite",
+  "version": "7",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "6",
-      "when": 1718000000000,
-      "tag": "0000_baseline",
+      "version": "7",
+      "when": 1787441273837,
+      "tag": "0000_damp_madame_web",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "6",
-      "when": 1782100000000,
-      "tag": "0001_refresh_tokens",
+      "version": "7",
+      "when": 1787555903651,
+      "tag": "0001_perfect_charles_xavier",
       "breakpoints": true
     },
     {
       "idx": 2,
-      "version": "6",
-      "when": 1784587675597,
-      "tag": "0002_colossal_flatman",
+      "version": "7",
+      "when": 1787910000000,
+      "tag": "0002_add_server_ssh_keys",
       "breakpoints": true
     },
     {
       "idx": 3,
-      "version": "6",
-      "when": 1784681960309,
-      "tag": "0003_aberrant_viper",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1785247979558,
-      "tag": "0004_early_sunfire",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1785254008342,
-      "tag": "0005_famous_grandmaster",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1785409331053,
-      "tag": "0006_cheerful_vance_astro",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
-      "when": 1785596400000,
-      "tag": "0007_standalone_databases",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "6",
-      "when": 1785816991600,
-      "tag": "0008_closed_whirlwind",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "6",
-      "when": 1785900000000,
-      "tag": "0009_remote_control_plane",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "6",
-      "when": 1785900100000,
-      "tag": "0010_agent_foundation",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "6",
-      "when": 1785900200000,
-      "tag": "0011_agent_wireguard",
+      "version": "7",
+      "when": 1788000000000,
+      "tag": "0003_add_server_ssh_key_encryption",
       "breakpoints": true
     }
   ]

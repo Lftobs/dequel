@@ -1,12 +1,33 @@
-import { rmSync } from 'node:fs';
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import * as schema from '../schema';
+import { setDbProvider } from '../db-provider';
 
-const dbPath = process.env.DATABASE_PATH ?? `/tmp/dequel-repo-test-${Date.now()}.db`;
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgresql://dequel:dequel@localhost:5433/dequel';
+const TABLE_NAMES = [
+  'agent_credentials', 'agent_jobs', 'agent_registration_tokens', 'alerts', 'api_keys',
+  'deployment_events', 'deployment_logs', 'deployments', 'databases', 'domains', 'environment_variables',
+  'github_integrations', 'platform_settings', 'projects', 'refresh_tokens', 'routes',
+  'scaling_policies', 'servers', 'smtp_settings', 'volumes',
+];
 
-const { migrate } = await import('../migrate');
-const { createDatabase, listAllDatabases, listDatabases, getDatabaseById, updateDatabaseStatus, updateDatabaseRuntime, deleteDatabase } = await import('../repo');
+const pool = new Pool({ connectionString: TEST_DATABASE_URL });
+const db = drizzle(pool, { schema });
+setDbProvider(async () => db);
+
+const cleanup = async () => {
+  for (const name of TABLE_NAMES) {
+    await pool.query(`TRUNCATE TABLE "${name}" CASCADE`);
+  }
+};
 
 try {
-  await migrate();
+  const { createDatabase, listAllDatabases, listDatabases, getDatabaseById, updateDatabaseStatus, updateDatabaseRuntime, deleteDatabase } = await import('../repo');
+
+  await cleanup();
+
+  await pool.query(`INSERT INTO projects (id, name, source_type, created_at, updated_at) VALUES ('proj-1', 'legacy', 'git', NOW(), NOW())`);
+
   const standalone = await createDatabase({ name: 'orders', type: 'postgresql', version: '16' });
   const attached = await createDatabase({
     name: 'internal',
@@ -46,5 +67,6 @@ try {
     total: (await listAllDatabases()).length,
   }));
 } finally {
-  rmSync(dbPath, { force: true });
+  await cleanup();
+  await pool.end();
 }

@@ -1,9 +1,10 @@
 import { Elysia } from "elysia";
+import { ok } from "../response";
 
 export const serverInfoRoutes = new Elysia().get(
 	"/server/ip",
 	async () => {
 		const { checkBaseDomainStatus } = await import("../../utils/dns");
-		return await checkBaseDomainStatus();
+		return ok(await checkBaseDomainStatus());
 	},
 );

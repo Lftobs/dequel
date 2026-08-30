@@ -1,4 +1,6 @@
 import { Elysia } from "elysia";
+import { promises as dns } from "node:dns";
+import { isIPv4 } from "node:net";
 import {
 	createDomain,
 	deleteDomain,
@@ -8,27 +10,93 @@ import {
 	updateDomainValidation,
 } from "../../db/repo";
 import { SERVICE_NAME_RE, isPort } from "../../utils/validate";
+import { ok, created, fail } from "../response";
+
+const PRIVATE_IP_RANGES = [
+	/^10\./,
+	/^172\.(1[6-9]|2\d|3[01])\./,
+	/^192\.168\./,
+	/^127\./,
+	/^169\.254\./,
+	/^::1$/,
+	/^fc00:/,
+	/^fe80:/,
+];
+
+const isPrivateIp = (ip: string): boolean =>
+	PRIVATE_IP_RANGES.some((re) => re.test(ip));
+
+const checkDns = async (domain: string): Promise<{ ok: boolean; ip?: string }> => {
+	try {
+		const ips = await dns.resolve4(domain);
+		const publicIp = ips.find((ip) => !isPrivateIp(ip));
+		if (!publicIp) return { ok: false };
+		return { ok: true, ip: publicIp };
+	} catch {
+		return { ok: false };
+	}
+};
+
+const checkTls = async (domain: string): Promise<boolean> => {
+	try {
+		const res = await fetch(`https://${domain}`, {
+			method: "HEAD",
+			signal: AbortSignal.timeout(5000),
+			redirect: "error",
+		});
+		return res.ok || res.status < 500;
+	} catch {
+		return false;
+	}
+};
 
 export const domainsRoutes = new Elysia()
 	.get(
 		"/projects/:id/domains",
-		async ({ params }) => listDomains(params.id),
+		async ({ params }) => ok(await listDomains(params.id)),
+	)
+	.get(
+		"/projects/:id/domains/status",
+		async ({ params, set }) => {
+			const project = await getProjectById(params.id);
+			if (!project) {
+				set.status = 404;
+				return fail("Project not found");
+			}
+			const domains = await listDomains(params.id);
+		const results = await Promise.all(
+			domains.map(async (d) => {
+				const [dnsResult, tlsOk] = await Promise.all([
+					checkDns(d.domain),
+					checkTls(d.domain),
+				]);
+				return {
+					domain: d.domain,
+					dnsOk: dnsResult.ok,
+					tlsOk,
+					serverIp: dnsResult.ip ?? null,
+					lastChecked: new Date().toISOString(),
+				};
+			}),
+		);
+			return ok(results);
+		},
 	)
 	.post(
 		"/projects/:id/domains",
 		async ({ params, body, set }: any) => {
 			if (!body?.domain) {
 				set.status = 400;
-				return { error: "domain is required" };
+				return fail("domain is required");
 			}
 			if (body.targetService && !SERVICE_NAME_RE.test(String(body.targetService))) {
 				set.status = 400;
-				return { error: "targetService may only contain letters, numbers, underscores and hyphens" };
+				return fail("targetService may only contain letters, numbers, underscores and hyphens");
 			}
 			const targetPort = body.targetPort ? Number(body.targetPort) : null;
 			if (targetPort !== null && !isPort(targetPort)) {
 				set.status = 400;
-				return { error: "targetPort must be an integer between 1 and 65535" };
+				return fail("targetPort must be an integer between 1 and 65535");
 			}
 			const domain = await createDomain({
 				projectId: params.id,
@@ -65,7 +133,7 @@ export const domainsRoutes = new Elysia()
 					}
 				});
 			});
-			return domain;
+			return created(domain);
 		},
 	)
 	.get(
@@ -74,9 +142,9 @@ export const domainsRoutes = new Elysia()
 			const domain = await getDomainById(id);
 			if (!domain) {
 				set.status = 404;
-				return { error: "Domain not found" };
+				return fail("Domain not found");
 			}
-			return domain;
+			return ok(domain);
 		},
 	)
 	.post(
@@ -85,7 +153,7 @@ export const domainsRoutes = new Elysia()
 			const domain = await getDomainById(id);
 			if (!domain) {
 				set.status = 404;
-				return { error: "Domain not found" };
+				return fail("Domain not found");
 			}
 			const { validateDomain, resolveServerIp } = await import(
 				"../../utils/dns",
@@ -94,7 +162,7 @@ export const domainsRoutes = new Elysia()
 			const ip = await resolveServerIp();
 			if (!ip) {
 				set.status = 500;
-				return { error: "Could not determine server IP" };
+				return fail("Could not determine server IP");
 			}
 			const valid = await validateDomain(
 				domain.domain,
@@ -117,11 +185,11 @@ export const domainsRoutes = new Elysia()
 					project?.name ?? "",
 				);
 			}
-			return {
+			return ok({
 				domain: domain.domain,
 				validationStatus,
 				serverIp: ip,
-			};
+			});
 		},
 	)
 	.delete(
@@ -130,7 +198,7 @@ export const domainsRoutes = new Elysia()
 			const domain = await getDomainById(id);
 			if (!domain) {
 				set.status = 404;
-				return { error: "Domain not found" };
+				return fail("Domain not found");
 			}
 			const { removeFromCaddyRoute } = await import(
 				"../../utils/domain-verifier",
@@ -143,6 +211,6 @@ export const domainsRoutes = new Elysia()
 					project.id,
 					project.name,
 				);
-			return { ok: true };
+			return ok(null, "Domain deleted");
 		},
 	);

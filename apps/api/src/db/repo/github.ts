@@ -1,5 +1,5 @@
 import { eq, desc } from "drizzle-orm";
-import { getDrizzle } from "../drizzle";
+import { getDb } from "../db-provider";
 import { githubIntegrations } from "../schema";
 import type { GithubIntegration } from "../../types";
 import { randomUUID } from "node:crypto";
@@ -15,39 +15,39 @@ const mapGithubIntegration = (row: typeof githubIntegrations.$inferSelect): Gith
 });
 
 export const getGithubIntegration = async (): Promise<GithubIntegration | null> => {
-  const db = await getDrizzle();
-  const row = db.select().from(githubIntegrations).orderBy(desc(githubIntegrations.createdAt)).limit(1).get();
+  const db = await getDb();
+  const [row] = await db.select().from(githubIntegrations).orderBy(desc(githubIntegrations.createdAt)).limit(1).execute();
   return row ? mapGithubIntegration(row) : null;
 };
 
 export const setGithubIntegration = async (input: { clientId: string; clientSecret: string; appName?: string; webhookSecret?: string }): Promise<GithubIntegration> => {
-  const db = await getDrizzle();
+  const db = await getDb();
 
-  return db.transaction((tx) => {
-    const existing = tx.select().from(githubIntegrations).orderBy(desc(githubIntegrations.createdAt)).limit(1).get();
+  return db.transaction(async (tx) => {
+    const [existing] = await tx.select().from(githubIntegrations).orderBy(desc(githubIntegrations.createdAt)).limit(1).execute();
     const timestamp = now();
 
     if (existing) {
-      tx.update(githubIntegrations).set({
+      await tx.update(githubIntegrations).set({
         clientId: input.clientId,
         clientSecret: input.clientSecret,
         appName: input.appName ?? "Dequel",
         webhookSecret: input.webhookSecret ?? existing.webhookSecret,
-      }).where(eq(githubIntegrations.id, existing.id)).run();
-      const updated = tx.select().from(githubIntegrations).where(eq(githubIntegrations.id, existing.id)).get()!;
+      }).where(eq(githubIntegrations.id, existing.id)).execute();
+      const [updated] = await tx.select().from(githubIntegrations).where(eq(githubIntegrations.id, existing.id)).execute();
       return mapGithubIntegration(updated);
     }
 
     const id = randomUUID();
-    tx.insert(githubIntegrations).values({
+    await tx.insert(githubIntegrations).values({
       id,
       clientId: input.clientId,
       clientSecret: input.clientSecret,
       appName: input.appName ?? "Dequel",
       webhookSecret: input.webhookSecret ?? null,
       createdAt: timestamp,
-    }).run();
-    const inserted = tx.select().from(githubIntegrations).where(eq(githubIntegrations.id, id)).get()!;
+    }).execute();
+    const [inserted] = await tx.select().from(githubIntegrations).where(eq(githubIntegrations.id, id)).execute();
     return mapGithubIntegration(inserted);
   });
 };

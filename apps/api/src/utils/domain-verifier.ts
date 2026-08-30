@@ -1,8 +1,10 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { eq, sql } from 'drizzle-orm';
 import { config } from './config';
 import { validateDomain, resolveServerIp } from './dns';
-import { getDb } from '../db/client';
+import { getDb } from '../db/db-provider';
+import { domains } from '../db/schema';
 import { getProjectById, listDomains, updateDomainValidation, listEnvironmentVariablesForDeploy } from '../db/repo';
 import { reloadCaddy } from '../orchestrator/runtime';
 
@@ -27,13 +29,15 @@ export const stopDomainPolling = () => {
 const reconcileVerifiedDomains = async () => {
   try {
     const db = await getDb();
-    const rows = db.query(
-      "SELECT id, project_id, domain FROM domains WHERE validation_status = 'verified'"
-    ).all() as { id: string; project_id: string; domain: string }[];
+    const rows = await db.select({
+      id: domains.id,
+      projectId: domains.projectId,
+      domain: domains.domain,
+    }).from(domains).where(eq(domains.validationStatus, 'verified')).execute();
     for (const row of rows) {
       try {
-        const project = await getProjectById(row.project_id);
-        await addToCaddyRoute(row.domain, row.project_id, project?.name ?? '');
+        const project = await getProjectById(row.projectId);
+        await addToCaddyRoute(row.domain, row.projectId, project?.name ?? '');
       } catch (e) {
         console.error(`Caddy reconciliation failed for ${row.domain}:`, e);
       }
@@ -46,9 +50,13 @@ const reconcileVerifiedDomains = async () => {
 const poll = async () => {
   try {
     const db = await getDb();
-    const rows = db.query(
-      "SELECT id, project_id, domain FROM domains WHERE validation_status IN ('pending', 'failed')"
-    ).all() as { id: string; project_id: string; domain: string }[];
+    const rows = await db.select({
+      id: domains.id,
+      projectId: domains.projectId,
+      domain: domains.domain,
+    }).from(domains).where(
+      sql`${domains.validationStatus} IN ('pending', 'failed')`
+    ).execute();
     if (!rows.length) return;
 
     const serverIp = await resolveServerIp();
@@ -56,11 +64,11 @@ const poll = async () => {
 
     for (const row of rows) {
       try {
-        const project = await getProjectById(row.project_id);
+        const project = await getProjectById(row.projectId);
         const valid = await validateDomain(row.domain, serverIp, project?.baseDomain);
         if (valid) {
           await updateDomainValidation(row.id, 'verified', 'provisioned');
-          await addToCaddyRoute(row.domain, row.project_id, project?.name ?? '');
+          await addToCaddyRoute(row.domain, row.projectId, project?.name ?? '');
         }
       } catch (e) {
         console.error(`Domain verification failed for ${row.domain}:`, e);
@@ -71,45 +79,85 @@ const poll = async () => {
   }
 };
 
-export const addToCaddyRoute = async (domain: string, projectId: string, projectName: string) => {
+export interface CaddyRouteOpts {
+  routesDir?: string;
+  reloadFn?: () => Promise<void>;
+}
+
+export const addToCaddyRoute = async (
+  domain: string,
+  projectId: string,
+  projectName: string,
+  opts?: CaddyRouteOpts,
+) => {
+  const routesDir = opts?.routesDir ?? config.caddyRoutesDir;
+  const reloadFn = opts?.reloadFn ?? reloadCaddy;
   const slug = slugify(projectName || projectId);
-  const filePath = join(config.caddyRoutesDir, `${slug}.caddy`);
+  const filePath = join(routesDir, `${slug}.caddy`);
 
   try {
-    let content = await readFile(filePath, 'utf8');
+    let content = readFileSync(filePath, 'utf8');
     const idx = content.indexOf(' {\n');
     if (idx === -1) return;
 
     const firstLine = content.slice(0, idx);
     if (firstLine.includes(domain)) return;
 
-    content = `${firstLine}, ${domain}:80${content.slice(idx)}`;
-    await writeFile(filePath, content, 'utf8');
-    await reloadCaddy();
+    const entry = domain.includes('localhost') ? `${domain}:80` : domain;
+    content = `${firstLine}, ${entry}${content.slice(idx)}`;
+    writeFileSync(filePath, content, 'utf8');
+    await reloadFn();
   } catch (e) {
     console.warn(`Could not add ${domain} to Caddy route (deploy the project first):`, e instanceof Error ? e.message : e);
   }
 };
 
-export const removeFromCaddyRoute = async (domain: string, projectId: string, projectName: string) => {
+export const removeFromCaddyRoute = async (
+  domain: string,
+  projectId: string,
+  projectName: string,
+  opts?: CaddyRouteOpts,
+) => {
+  const routesDir = opts?.routesDir ?? config.caddyRoutesDir;
+  const reloadFn = opts?.reloadFn ?? reloadCaddy;
   const slug = slugify(projectName || projectId);
-  const filePath = join(config.caddyRoutesDir, `${slug}.caddy`);
+  const filePath = join(routesDir, `${slug}.caddy`);
 
   try {
-    let content = await readFile(filePath, 'utf8');
+    let content = readFileSync(filePath, 'utf8');
     const idx = content.indexOf(' {\n');
     if (idx === -1) return;
 
     const firstLine = content.slice(0, idx);
     if (!firstLine.includes(domain)) return;
 
-    content = content.replace(`, ${domain}:80`, '').replace(`, ${domain}`, '').replace(domain, '');
-    await writeFile(filePath, content, 'utf8');
-    await reloadCaddy();
+    const ports = [':80', ':443', ''];
+    let replaced = false;
+    for (const port of ports) {
+      const needle = `, ${domain}${port}`;
+      if (firstLine.includes(needle)) {
+        content = content.replace(needle, '');
+        replaced = true;
+        break;
+      }
+    }
+    if (!replaced) {
+      const bare = domain;
+      if (firstLine.includes(bare)) {
+        content = content.replace(bare, '');
+      }
+    }
+    writeFileSync(filePath, content, 'utf8');
+    await reloadFn();
   } catch {
     // Caddy file doesn't exist yet
   }
 };
+
+export interface BuildSnippetOpts {
+  baseDomain?: string;
+  listEnvVarsFn?: typeof listEnvironmentVariablesForDeploy;
+}
 
 export const buildCaddySnippet = async (
   slug: string,
@@ -117,8 +165,11 @@ export const buildCaddySnippet = async (
   projectId?: string,
   listDomainsFn: typeof listDomains = listDomains,
   appPort?: number,
+  opts?: BuildSnippetOpts,
 ): Promise<string> => {
-  const baseDomain = config.caddyBaseDomain === 'localhost' ? `${config.caddyBaseDomain}:80` : config.caddyBaseDomain;
+  const baseDomainRaw = opts?.baseDomain ?? config.caddyBaseDomain;
+  const baseDomain = baseDomainRaw === 'localhost' ? `${baseDomainRaw}:80` : baseDomainRaw;
+  const listEnvVars = opts?.listEnvVarsFn ?? listEnvironmentVariablesForDeploy;
   let defaultDomains = [`${slug}.${baseDomain}`];
   let port = appPort ?? config.appInternalPort;
   const customBlocks: string[] = [];
@@ -127,7 +178,7 @@ export const buildCaddySnippet = async (
     const projectDomains = await listDomainsFn(projectId);
     const verified = projectDomains.filter(d => d.validationStatus === 'verified');
     for (const d of verified) {
-      const withPort = `${d.domain}:80`;
+      const entryDomain = d.domain.includes('localhost') ? `${d.domain}:80` : d.domain;
       if (d.targetService || d.targetPort) {
         let targetContainer = containerName;
         if (d.targetService) {
@@ -138,14 +189,14 @@ export const buildCaddySnippet = async (
           }
         }
         const tPort = d.targetPort || port;
-        customBlocks.push(`${withPort} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${targetContainer}:${tPort} {\n    header_up Host {upstream_hostport}\n  }\n}\n`);
+        customBlocks.push(`${entryDomain} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${targetContainer}:${tPort} {\n    header_up Host {upstream_hostport}\n  }\n}\n`);
       } else {
-        if (!defaultDomains.includes(withPort)) defaultDomains.push(withPort);
+        if (!defaultDomains.includes(entryDomain)) defaultDomains.push(entryDomain);
       }
     }
 
     try {
-      const envVars = await listEnvironmentVariablesForDeploy(projectId);
+      const envVars = await listEnvVars(projectId);
       const portVar = envVars.find(v => v.key === 'PORT');
       if (portVar && portVar.value && !appPort) {
         const parsedPort = Number(portVar.value);

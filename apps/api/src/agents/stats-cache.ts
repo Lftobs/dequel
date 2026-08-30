@@ -4,6 +4,8 @@ import type { AgentContainerStat } from "./protocol";
 
 const STATS_TTL_SECONDS = 120;
 
+export type CachedContainerStat = AgentContainerStat;
+
 class AgentStatsCache {
   private redis: Redis;
 
@@ -16,19 +18,18 @@ class AgentStatsCache {
   }
 
   async set(serverId: string, containers: AgentContainerStat[]) {
-    if (!containers || containers.length === 0) return;
-    const payload = JSON.stringify({ updatedAt: new Date().toISOString(), containers });
+    const payload = JSON.stringify({ updatedAt: new Date().toISOString(), containers: containers ?? [] });
     await this.redis.set(this.key(serverId), payload, "EX", STATS_TTL_SECONDS).catch(() => {});
   }
 
-  async get(serverId: string): Promise<Map<string, { cpuPercent: number; memoryMb: number }>> {
+  async get(serverId: string): Promise<Map<string, CachedContainerStat>> {
     const raw = await this.redis.get(this.key(serverId)).catch(() => null);
-    const result = new Map<string, { cpuPercent: number; memoryMb: number }>();
+    const result = new Map<string, CachedContainerStat>();
     if (!raw) return result;
     try {
       const parsed = JSON.parse(raw) as { containers?: AgentContainerStat[] };
       for (const container of parsed.containers ?? []) {
-        result.set(container.containerName, { cpuPercent: container.cpuPercent, memoryMb: container.memoryMb });
+        result.set(container.containerName, container);
       }
     } catch {
       return result;
@@ -36,13 +37,13 @@ class AgentStatsCache {
     return result;
   }
 
-  async getAll(): Promise<Map<string, Map<string, { cpuPercent: number; memoryMb: number }>>> {
+  async getAll(): Promise<Map<string, Map<string, CachedContainerStat>>> {
     const keys = await this.redis.keys("dequel:agent-stats:*").catch(() => [] as string[]);
-    const result = new Map<string, Map<string, { cpuPercent: number; memoryMb: number }>>();
-    for (const key of keys) {
+    const result = new Map<string, Map<string, CachedContainerStat>>();
+    await Promise.all(keys.map(async (key) => {
       const serverId = key.slice("dequel:agent-stats:".length);
       result.set(serverId, await this.get(serverId));
-    }
+    }));
     return result;
   }
 }

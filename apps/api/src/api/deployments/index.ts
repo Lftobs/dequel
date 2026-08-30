@@ -15,6 +15,8 @@ import { logBus } from "../../orchestrator/log-bus";
 import { config } from "../../utils/config";
 import { executorFor } from "../../executors/dispatch";
 import { queueRemoteDeployment, validateRemoteDeployment } from "../../agents/deployments";
+import { isPrivateGitUrl } from "../../utils/validate";
+import { ok, created, fail } from "../response";
 
 const dispatchDeployment = async (deployment: Awaited<ReturnType<typeof createDeployment>>, project: Awaited<ReturnType<typeof getProjectById>>, server: Awaited<ReturnType<typeof getServerById>>) => {
 	if (server.mode === "local") {
@@ -44,7 +46,7 @@ export const deploymentsRoutes = new Elysia()
 				listDeployments(projectId, offset, limit),
 				countDeployments(projectId),
 			]);
-			return { items, total, offset, limit };
+			return ok({ items, total, offset, limit });
 		},
 	)
 	.get(
@@ -53,9 +55,9 @@ export const deploymentsRoutes = new Elysia()
 			const deployment = await getDeploymentById(id);
 			if (!deployment) {
 				set.status = 404;
-				return { error: "Deployment not found" };
+				return fail("Deployment not found");
 			}
-			return deployment;
+			return ok(deployment);
 		},
 	)
 	.post(
@@ -66,9 +68,7 @@ export const deploymentsRoutes = new Elysia()
 				"";
 			if (!contentType.includes("multipart/form-data")) {
 				set.status = 400;
-				return {
-					error: "Expected multipart/form-data payload",
-				};
+				return fail("Expected multipart/form-data payload");
 			}
 			const form = await request.formData();
 			const sourceType = String(
@@ -78,11 +78,12 @@ export const deploymentsRoutes = new Elysia()
 				String(form.get("projectId") ?? "").trim() ||
 				undefined;
 			const project = projectId ? await getProjectById(projectId) : null;
-			const serverId = project?.serverId ?? "local";
+			const { resolveDefaultServerId } = await import("../../utils/server-default");
+			const serverId = await resolveDefaultServerId(project?.serverId);
 			const server = await getServerById(serverId);
 			if (!server) {
 				set.status = 400;
-				return { error: "Selected deployment server does not exist" };
+				return fail("Selected deployment server does not exist");
 			}
 			const branch =
 				String(form.get("branch") ?? "").trim() ||
@@ -101,22 +102,22 @@ export const deploymentsRoutes = new Elysia()
 				sourceType !== "compose"
 			) {
 				set.status = 400;
-				return {
-					error: "sourceType must be git, upload, or compose",
-				};
+				return fail("sourceType must be git, upload, or compose");
 			}
 			if (sourceType === "git") {
 				const gitUrl = String(form.get("gitUrl") ?? "").trim();
 				if (!gitUrl) {
 					set.status = 400;
-					return {
-						error: "gitUrl is required for git source",
-					};
+					return fail("gitUrl is required for git source");
+				}
+				if (isPrivateGitUrl(gitUrl)) {
+					set.status = 400;
+					return fail("Private network Git endpoints are not allowed");
 				}
 				if (server.mode === "agent") {
 					if (!project) {
 						set.status = 400;
-						return { error: "Remote deployment requires a project" };
+						return fail("Remote deployment requires a project");
 					}
 					const preview = {
 						id: "validation",
@@ -130,7 +131,7 @@ export const deploymentsRoutes = new Elysia()
 					const error = validateRemoteDeployment(preview, project);
 					if (error) {
 						set.status = 400;
-						return { error };
+						return fail(error);
 					}
 				}
 				const deployment = await createDeployment({
@@ -144,18 +145,16 @@ export const deploymentsRoutes = new Elysia()
 					clearCache,
 				});
 				await dispatchDeployment(deployment, project, server);
-				return deployment;
+				return created(deployment);
 			}
 			const file = form.get("archive");
 			if (server.mode === "agent" || server.mode === "ssh") {
 				set.status = 400;
-				return { error: "Remote servers currently support Git deployments only" };
+				return fail("Remote servers currently support Git deployments only");
 			}
 			if (!(file instanceof File)) {
 				set.status = 400;
-				return {
-					error: "archive file is required for upload source",
-				};
+				return fail("archive file is required for upload source");
 			}
 			const uploadsDir = join(
 				config.workspaceRoot,
@@ -182,7 +181,7 @@ export const deploymentsRoutes = new Elysia()
 				clearCache,
 			});
 			await dispatchDeployment(deployment, project, server);
-			return deployment;
+			return created(deployment);
 		},
 	)
 	.post(
@@ -191,46 +190,38 @@ export const deploymentsRoutes = new Elysia()
 			const target = await getDeploymentById(id);
 			if (!target) {
 				set.status = 404;
-				return { error: "Deployment not found" };
+				return fail("Deployment not found");
 			}
 			if (!target.imageTag) {
 				set.status = 400;
-				return {
-					error: "Deployment has no built image to rollback to",
-				};
+				return fail("Deployment has no built image to rollback to");
 			}
 			if (target.status === "running") {
 				set.status = 400;
-				return {
-					error: "Cannot rollback to the currently running deployment",
-				};
+				return fail("Cannot rollback to the currently running deployment");
 			}
 			if (target.status === "pending" || target.status === "building" || target.status === "deploying") {
 				set.status = 400;
-				return {
-					error: "Cannot rollback to a deployment that is still in progress",
-				};
+				return fail("Cannot rollback to a deployment that is still in progress");
 			}
 			const project = target.projectId ? await getProjectById(target.projectId) : null;
 			if (project?.buildType === "compose") {
 				set.status = 400;
-				return {
-					error: "Rollback is not supported for Docker Compose deployments",
-				};
+				return fail("Rollback is not supported for Docker Compose deployments");
 			}
 			try {
 				const server = await getServerById(target.serverId ?? "local");
 				if (!server) {
 					set.status = 400;
-					return { error: "Deployment server does not exist" };
+					return fail("Deployment server does not exist");
 				}
 				const executor = executorFor(server.mode);
 				await executor.rollback({ deployment: target, project, server });
 				const updated = await getDeploymentById(id);
-				return updated;
+				return ok(updated);
 			} catch (err: any) {
 				set.status = 500;
-				return { error: err.message || "Rollback failed" };
+				return fail(err.message || "Rollback failed");
 			}
 		},
 	)
@@ -240,25 +231,21 @@ export const deploymentsRoutes = new Elysia()
 			const original = await getDeploymentById(id);
 			if (!original) {
 				set.status = 404;
-				return { error: "Deployment not found" };
+				return fail("Deployment not found");
 			}
 			if (original.status !== "running") {
 				set.status = 400;
-				return {
-					error: "Can only redeploy the currently running deployment",
-				};
+				return fail("Can only redeploy the currently running deployment");
 			}
 			if (original.sourceType === "image") {
 				set.status = 400;
-				return {
-					error: "Cannot redeploy an image-based (rollback) deployment — rollback to an earlier source deployment instead",
-				};
+				return fail("Cannot redeploy an image-based (rollback) deployment — rollback to an earlier source deployment instead");
 			}
 			const project = original.projectId ? await getProjectById(original.projectId) : null;
 			const server = await getServerById(original.serverId ?? "local");
 			if (!server) {
 				set.status = 400;
-				return { error: "Selected deployment server does not exist" };
+				return fail("Selected deployment server does not exist");
 			}
 			const deployment = await createDeployment({
 				projectId: original.projectId || undefined,
@@ -269,7 +256,7 @@ export const deploymentsRoutes = new Elysia()
 				environment: original.environment || undefined,
 			});
 			await dispatchDeployment(deployment, project, server);
-			return deployment;
+			return created(deployment);
 		},
 	)
 	.post(
@@ -278,22 +265,20 @@ export const deploymentsRoutes = new Elysia()
 			const deployment = await getDeploymentById(id);
 			if (!deployment) {
 				set.status = 404;
-				return { error: "Deployment not found" };
+				return fail("Deployment not found");
 			}
 			if (deployment.status !== "pending" && deployment.status !== "building") {
 				set.status = 400;
-				return {
-					error: "Only pending or building deployments can be cancelled",
-				};
+				return fail("Only pending or building deployments can be cancelled");
 			}
 			const server = await getServerById(deployment.serverId ?? "local");
 			if (!server) {
 				set.status = 400;
-				return { error: "Deployment server does not exist" };
+				return fail("Deployment server does not exist");
 			}
 			const executor = executorFor(server.mode);
 			await executor.cancel({ deployment, server });
-			return { ok: true };
+			return ok(null, "Deployment cancelled");
 		},
 	)
 	.delete(
@@ -302,23 +287,21 @@ export const deploymentsRoutes = new Elysia()
 			const deployment = await getDeploymentById(id);
 			if (!deployment) {
 				set.status = 404;
-				return { error: "Deployment not found" };
+				return fail("Deployment not found");
 			}
 			if (deployment.status === "running") {
 				set.status = 400;
-				return {
-					error: "Cannot delete a running deployment — stop it first",
-				};
+				return fail("Cannot delete a running deployment — stop it first");
 			}
 			const project = deployment.projectId ? await getProjectById(deployment.projectId) : null;
 			const server = await getServerById(deployment.serverId ?? "local");
 			if (!server) {
 				set.status = 400;
-				return { error: "Deployment server does not exist" };
+				return fail("Deployment server does not exist");
 			}
 			const executor = executorFor(server.mode);
 			await executor.destroy({ deployment, project, server });
-			return { ok: true };
+			return ok(null, "Deployment deleted");
 		},
 	)
 	.get(
@@ -327,9 +310,9 @@ export const deploymentsRoutes = new Elysia()
 			const deployment = await getDeploymentById(id);
 			if (!deployment) {
 				set.status = 404;
-				return { error: "Deployment not found" };
+				return fail("Deployment not found");
 			}
-			return getLogs(id);
+			return ok(await getLogs(id));
 		},
 	)
 	.get(
@@ -338,7 +321,7 @@ export const deploymentsRoutes = new Elysia()
 			const deployment = await getDeploymentById(id);
 			if (!deployment) {
 				set.status = 404;
-				return { error: "Deployment not found" };
+				return fail("Deployment not found");
 			}
 			const encoder = new TextEncoder();
 			let unsubscribe = () => undefined;
@@ -393,7 +376,7 @@ export const deploymentsRoutes = new Elysia()
 			const deployment = await getDeploymentById(id);
 			if (!deployment) {
 				set.status = 404;
-				return { error: "Deployment not found" };
+				return fail("Deployment not found");
 			}
 			const { run } = await import("../../orchestrator/runtime");
 			const containerName =
@@ -414,9 +397,9 @@ export const deploymentsRoutes = new Elysia()
 						timestamp: new Date().toISOString(),
 						stage: "runtime" as const,
 					}));
-				return lines;
+				return ok(lines);
 			} catch {
-				return [];
+				return ok([]);
 			}
 		},
 	)
@@ -426,7 +409,7 @@ export const deploymentsRoutes = new Elysia()
 			const deployment = await getDeploymentById(id);
 			if (!deployment) {
 				set.status = 404;
-				return { error: "Deployment not found" };
+				return fail("Deployment not found");
 			}
 			const encoder = new TextEncoder();
 			const containerName =

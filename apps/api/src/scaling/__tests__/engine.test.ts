@@ -59,6 +59,9 @@ mock.module('node:fs/promises', () => {
   const fs = require('node:fs');
   const pathMod = require('node:path');
   return {
+    rm: mock(async (path: string, opts?: any) => {
+      if (fs.existsSync(path)) fs.rmSync(path, opts || {});
+    }),
     readFile: mock(async (path: string, options?: any) => {
       if (mockReadFileContent !== null) {
         return mockReadFileContent;
@@ -86,17 +89,33 @@ mock.module('ioredis', () => ({
     hset = mock(async (_key: string, data: Record<string, string>) => {
       mockRedisData = { ...mockRedisData, ...data };
     });
+    get = mock(async (key: string) => mockRedisData[key] ?? null);
+    set = mock(async (key: string, value: string) => { mockRedisData[key] = value; });
     quit = mock(async () => {});
   },
 }));
 
 // Mock db/repo
+let mockScaleJobs: any[] = [];
 mock.module(fileUrl('../../db/repo'), () => ({
   getProjectById: mock(() => Promise.resolve({ id: "proj-1", name: "proj-1", cpuLimit: 0.5, memoryLimitMb: 512 })),
   listDeployments: mock(() => Promise.resolve([])),
   getScalingPolicy: mock((id: string) =>
     mockGetScalingPolicyResult ? Promise.resolve(mockGetScalingPolicyResult(id)) : Promise.resolve(null)
   ),
+  getServerById: mock(async (id: string) => {
+    if (id === 'server-1') return { id, mode: 'agent', lastHeartbeat: new Date().toISOString() };
+    if (id === 'server-2') return { id, mode: 'agent', lastHeartbeat: new Date(Date.now() - 600_000).toISOString() };
+    return null;
+  }),
+  createAgentJob: mock(async (input: any) => { mockScaleJobs.push(input); return 'job-1'; }),
+  upsertRoute: mock(async () => ({})),
+  updateServerStatus: mock(() => Promise.resolve()),
+  createAgentRegistrationToken: mock(() => Promise.resolve({ token: 'dqr_test', expiresAt: new Date().toISOString() })),
+  getPlatformSettings: mock(() => Promise.resolve({ ingressServerId: null })),
+  listServers: mock(() => Promise.resolve([])),
+  listProjects: mock(() => Promise.resolve([])),
+  ensureLocalServer: mock(() => Promise.resolve()),
   updateDeploymentStatus: mock(() => Promise.resolve()),
   listEnvironmentVariablesForDeploy: mock(() => Promise.resolve(mockListEnvVarsResult)),
   listDomains: mock(() => Promise.resolve([])),
@@ -280,5 +299,51 @@ describe('evaluate', () => {
 
     await (scalingEngine as any).evaluate(TEST_DEPLOYMENT);
     expect(mockWriteFilePath).toBeNull();
+  });
+
+  it('skips evaluation when the agent server is offline', async () => {
+    mockGetScalingPolicyResult = () => ({ ...TEST_POLICY, cooldownSeconds: 0 });
+    mockRedisData = { highCpuSince: String(Date.now() - 10_000), lastScaleUp: '0' };
+    mockScaleJobs = [];
+    await (scalingEngine as any).evaluate({ ...TEST_DEPLOYMENT, serverId: 'server-2' });
+    expect(mockScaleJobs.length).toBe(0);
+  });
+
+  it('scales up through a scale job on an online agent server', async () => {
+    mockGetScalingPolicyResult = () => ({ ...TEST_POLICY, cooldownSeconds: 0 });
+    mockRedisData = {
+      highCpuSince: String(Date.now() - 10_000),
+      lastScaleUp: '0',
+      'dequel:agent-stats:server-1': JSON.stringify({
+        updatedAt: new Date().toISOString(),
+        containers: [
+          { containerName: 'deploy-dep-1', cpuPercent: 90, memoryMb: 200 },
+        ],
+      }),
+    };
+    mockScaleJobs = [];
+    await (scalingEngine as any).evaluate({ ...TEST_DEPLOYMENT, serverId: 'server-1' });
+    expect(mockScaleJobs.length).toBe(2);
+    expect(mockScaleJobs[0].type).toBe('scale');
+    expect(mockScaleJobs[0].payload.action).toBe('up');
+    expect(mockScaleJobs[0].payload.replicas).toBe(2);
+    expect(mockScaleJobs[0].serverId).toBe('server-1');
+    expect(mockScaleJobs[1].type).toBe('reload_routes');
+    expect(mockScaleJobs[1].payload.action).toBe('add');
+  });
+
+  it('counts agent replicas from cached stats', async () => {
+    mockRedisData = {
+      'dequel:agent-stats:server-1': JSON.stringify({
+        updatedAt: new Date().toISOString(),
+        containers: [
+          { containerName: 'deploy-dep-1', cpuPercent: 40, memoryMb: 100, deploymentId: 'dep-1', replica: false },
+          { containerName: 'deploy-dep-1-replica-2', cpuPercent: 41, memoryMb: 110, deploymentId: 'dep-1', replica: true },
+          { containerName: 'other-app', cpuPercent: 10, memoryMb: 10, deploymentId: 'other', replica: false },
+        ],
+      }),
+    };
+    const count = await (scalingEngine as any).getCurrentReplicas('proj-1', { server: { id: 'server-1' }, mode: 'agent' }, TEST_DEPLOYMENT);
+    expect(count).toBe(2);
   });
 });

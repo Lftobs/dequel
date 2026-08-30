@@ -17,3 +17,6 @@ __pycache__
 SETUP_GUIDE.md
 bun.lock
 apps/docs/.blume/
+FEATURES.md
+docs/plans/
+.agents/skills/verify-dequel/

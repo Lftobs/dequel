@@ -31,7 +31,7 @@ const SYSTEM = {
 
 export const config = {
 	...SYSTEM,
-	databasePath: withFile<string>("DATABASE_PATH", "/app/data/dequel.db"),
+	databaseUrl: withFile<string>("DATABASE_URL", ""),
 	workspaceRoot: withFile<string>("WORKSPACE_ROOT", "/app/workspace"),
 	caddyRoutesDir: withFile<string>("CADDY_ROUTES_DIR", "/caddy/routes"),
 	port: withFile<number>(
@@ -42,6 +42,14 @@ export const config = {
 	caddyBaseDomain: withFile<string>(
 		"CADDY_BASE_DOMAIN",
 		"localhost",
+	),
+	controlPlaneUrl: withFile<string>(
+		"CONTROL_PLANE_URL",
+		"",
+	),
+	agentTunnelUrl: withFile<string>(
+		"AGENT_TUNNEL_URL",
+		"",
 	),
 	appInternalPort: withFile<number>(
 		"APP_INTERNAL_PORT",

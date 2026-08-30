@@ -50,10 +50,10 @@ const apiFetch = async <T>(
 		const body = await res
 			.json()
 			.catch(() => ({
-				error: res.statusText,
+				message: res.statusText,
 			}));
 		throw new ApiError(
-			body.error ?? "Request failed",
+			body.message ?? body.error ?? "Request failed",
 			res.status,
 		);
 	}
@@ -69,7 +69,15 @@ const apiFetch = async <T>(
 			?.includes("text/plain")
 	)
 		return res.text() as unknown as T;
-	return res.json();
+	const json = await res.json();
+	if (
+		json &&
+		typeof json === "object" &&
+		"status" in json &&
+		"data" in json
+	)
+		return json.data as T;
+	return json as T;
 };
 
 // Projects
@@ -100,7 +108,7 @@ export const updateProject = (
 		body: JSON.stringify(data),
 	});
 export const deleteProject = (id: string) =>
-	apiFetch<{ ok: boolean }>(`/projects/${id}`, {
+	apiFetch<void>(`/projects/${id}`, {
 		method: "DELETE",
 	});
 
@@ -141,12 +149,12 @@ export const redeployDeployment = (id: string) =>
 		{ method: "POST" },
 	);
 export const cancelDeployment = (id: string) =>
-	apiFetch<{ ok: boolean }>(
+	apiFetch<void>(
 		`/deployments/${id}/cancel`,
 		{ method: "POST" },
 	);
 export const deleteDeployment = (id: string) =>
-	apiFetch<{ ok: boolean }>(
+	apiFetch<void>(
 		`/deployments/${id}`,
 		{ method: "DELETE" },
 	);
@@ -220,7 +228,7 @@ export const updateEnvVar = (
 		},
 	);
 export const deleteEnvVar = (id: string) =>
-	apiFetch<{ ok: boolean }>(`/env-vars/${id}`, {
+	apiFetch<void>(`/env-vars/${id}`, {
 		method: "DELETE",
 	});
 export const revealEnvVar = (id: string) =>
@@ -243,7 +251,7 @@ export const createVolume = (
 		},
 	);
 export const deleteVolume = (id: string) =>
-	apiFetch<{ ok: boolean }>(`/volumes/${id}`, {
+	apiFetch<void>(`/volumes/${id}`, {
 		method: "DELETE",
 	});
 
@@ -280,7 +288,7 @@ export const createDatabase = (
 export const getDatabase = (id: string) =>
 	apiFetch<Database>(`/databases/${id}`);
 export const deleteDatabase = (id: string) =>
-	apiFetch<{ ok: boolean }>(
+	apiFetch<void>(
 		`/databases/${id}`,
 		{ method: "DELETE" },
 	);
@@ -329,9 +337,16 @@ export const createDomain = (
 export const getDomain = (id: string) =>
 	apiFetch<Domain>(`/domains/${id}`);
 export const deleteDomain = (id: string) =>
-	apiFetch<{ ok: boolean }>(`/domains/${id}`, {
+	apiFetch<void>(`/domains/${id}`, {
 		method: "DELETE",
 	});
+export const getDomainStatus = (projectId: string) =>
+	apiFetch<Array<{
+		domain: string;
+		dnsOk: boolean;
+		tlsOk: boolean;
+		lastChecked: string;
+	}>>(`/projects/${projectId}/domains/status`);
 
 // Scaling
 export const getScalingPolicy = (
@@ -354,7 +369,7 @@ export const upsertScalingPolicy = (
 export const deleteScalingPolicy = (
 	projectId: string,
 ) =>
-	apiFetch<{ ok: boolean }>(
+	apiFetch<void>(
 		`/projects/${projectId}/scaling`,
 		{ method: "DELETE" },
 	);
@@ -365,22 +380,22 @@ export const getServerIp = () =>
 
 // Auth
 export const login = (username: string, password: string) =>
-	apiFetch<{ ok: boolean; username: string; error?: string }>("/auth/login", {
+	apiFetch<{ username: string }>("/auth/login", {
 		method: "POST",
 		body: JSON.stringify({ username, password }),
 	});
 
 export const logout = () =>
-	apiFetch<{ ok: boolean }>("/auth/logout", { method: "POST" });
+	apiFetch<void>("/auth/logout", { method: "POST" });
 
 export const refreshSession = () =>
-	apiFetch<{ ok: boolean; username: string }>("/auth/refresh", { method: "POST" });
+	apiFetch<{ username: string }>("/auth/refresh", { method: "POST" });
 
 export const getMe = async () => {
 	const res = await apiFetch<{ authenticated: boolean; username?: string }>("/auth/me");
 	if (!res.authenticated) {
-		const refreshed = await apiFetch<{ ok: boolean }>("/auth/refresh", { method: "POST" }).catch(() => ({ ok: false }));
-		if (refreshed.ok) {
+		const refreshed = await apiFetch<{ username: string }>("/auth/refresh", { method: "POST" }).catch(() => null);
+		if (refreshed) {
 			return apiFetch<{ authenticated: boolean; username?: string }>("/auth/me");
 		}
 	}
@@ -450,8 +465,14 @@ export const createServer = (data: {
 	});
 export const getServer = (id: string) =>
 	apiFetch<Server>(`/servers/${id}`);
+export const prepareServer = (id: string) =>
+	apiFetch<{ preparing: boolean }>(`/servers/${id}/prepare`, {
+		method: "POST",
+	});
+export const serverPrepareStreamUrl = (id: string) =>
+	`${BASE}/servers/${id}/prepare/stream`;
 export const deleteServer = (id: string) =>
-	apiFetch<{ ok: boolean }>(`/servers/${id}`, {
+	apiFetch<void>(`/servers/${id}`, {
 		method: "DELETE",
 	});
 export const createAgentRegistrationToken = (data: {
@@ -475,7 +496,7 @@ export const createApiKey = (data: {
 		body: JSON.stringify(data),
 	});
 export const deleteApiKey = (id: string) =>
-	apiFetch<{ ok: boolean }>(`/api-keys/${id}`, {
+	apiFetch<void>(`/api-keys/${id}`, {
 		method: "DELETE",
 	});
 
@@ -504,7 +525,7 @@ export const toggleAlert = (
 		body: JSON.stringify({ enabled }),
 	});
 export const deleteAlert = (id: string) =>
-	apiFetch<{ ok: boolean }>(`/alerts/${id}`, {
+	apiFetch<void>(`/alerts/${id}`, {
 		method: "DELETE",
 	});
 
@@ -520,7 +541,7 @@ export const getGithubRepos = () =>
 	apiFetch<GithubRepo[]>("/github/repos");
 
 export const disconnectGithub = () =>
-	apiFetch<{ ok: boolean }>("/github/disconnect", { method: "POST" });
+	apiFetch<void>("/github/disconnect", { method: "POST" });
 
 export const getGithubIntegration = () =>
 	apiFetch<GithubIntegrationStatus>("/github/integration");
@@ -531,7 +552,7 @@ export const setGithubIntegration = (data: {
 	appName?: string;
 	webhookSecret?: string;
 }) =>
-	apiFetch<{ ok: boolean }>("/github/integration", {
+	apiFetch<void>("/github/integration", {
 		method: "PUT",
 		body: JSON.stringify(data),
 	});
@@ -546,13 +567,13 @@ export const setSmtpSettings = (data: {
 	pass?: string;
 	fromAddress?: string;
 }) =>
-	apiFetch<{ ok: boolean }>("/settings/smtp", {
+	apiFetch<void>("/settings/smtp", {
 		method: "PUT",
 		body: JSON.stringify(data),
 	});
 
 export const testSmtpSettings = () =>
-	apiFetch<{ ok: boolean } | { error: string }>("/settings/smtp/test", {
+	apiFetch<void>("/settings/smtp/test", {
 		method: "POST",
 	});
 
@@ -567,7 +588,7 @@ export const registerRepoHook = (owner: string, repo: string) =>
 	});
 
 export const removeRepoHook = (owner: string, repo: string) =>
-	apiFetch<{ ok: boolean; removed: boolean }>(`/github/repos/${owner}/${repo}/hook`, {
+	apiFetch<{ removed: boolean }>(`/github/repos/${owner}/${repo}/hook`, {
 		method: "DELETE",
 	});
 

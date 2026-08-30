@@ -7,7 +7,7 @@ export type DomainType = 'base' | 'custom';
 export type DomainValidationStatus = 'pending' | 'verified' | 'failed';
 export type SslStatus = 'pending' | 'provisioned' | 'failed';
 export type ServerStatus = 'pending' | 'connected' | 'disconnected' | 'failed';
-export type ServerMode = 'local' | 'ssh' | 'agent';
+export type ServerMode = 'local' | 'ssh' | 'agent' | 'docker_tcp';
 export type AlertChannel = 'email' | 'slack' | 'webhook';
 export type AlertType = 'cpu' | 'memory' | 'error_rate' | 'downtime' | 'cert_expiry';
 
@@ -195,6 +195,8 @@ export interface Server {
   port: number;
   mode: ServerMode;
   sshUser?: string | null;
+  sshKey?: string | null;
+  sshPassword?: string | null;
   sshKeyEncrypted?: string | null;
   agentId: string | null;
   agentVersion: string | null;
@@ -314,4 +316,36 @@ export interface LogEvent {
   stage: LogStage;
   message: string;
   timestamp: string;
+}
+
+export type RouteStatus = 'pending' | 'active' | 'failed' | 'removed';
+
+export interface Route {
+  id: string;
+  serverId: string | null;
+  deploymentId: string | null;
+  projectId: string | null;
+  hostname: string;
+  routeFile: string;
+  port: number;
+  targetContainers: string[];
+  upstreamHost: string | null;
+  status: RouteStatus;
+  lastError: string | null;
+  confirmedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertRouteInput {
+  serverId?: string | null;
+  deploymentId?: string | null;
+  projectId?: string | null;
+  hostname: string;
+  routeFile: string;
+  port: number;
+  targetContainers: string[];
+  upstreamHost?: string | null;
+  status?: RouteStatus;
+  lastError?: string | null;
 }

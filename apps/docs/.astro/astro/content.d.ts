@@ -171,6 +171,13 @@ declare module 'astro:content' {
 } & { render(): Render[".md"] };
 };
 "docs": {
+"agent-caddy-routes.md": {
+	id: "agent-caddy-routes.md";
+  slug: "agent-caddy-routes";
+  body: string;
+  collection: "docs";
+  data: any
+} & { render(): Render[".md"] };
 "auth.md": {
 	id: "auth.md";
   slug: "auth";
@@ -188,6 +195,13 @@ declare module 'astro:content' {
 "configuration.md": {
 	id: "configuration.md";
   slug: "configuration";
+  body: string;
+  collection: "docs";
+  data: any
+} & { render(): Render[".md"] };
+"control-plane.md": {
+	id: "control-plane.md";
+  slug: "control-plane";
   body: string;
   collection: "docs";
   data: any

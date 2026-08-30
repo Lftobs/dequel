@@ -1,9 +1,9 @@
 import { eq, desc } from "drizzle-orm";
-import { getDrizzle } from "../drizzle";
+import { getDb } from "../db-provider";
 import { deployments, deploymentLogs } from "../schema";
 import type { Deployment, DeploymentLog, CreateDeploymentInput, DeploymentStatus, LogEvent } from "../../types";
 import { randomUUID } from "node:crypto";
-import { now } from "./helpers";
+import { now, formatTimestamp, getRowsAffected } from "./helpers";
 
 const mapDeployment = (row: typeof deployments.$inferSelect): Deployment => ({
   id: row.id,
@@ -22,16 +22,16 @@ const mapDeployment = (row: typeof deployments.$inferSelect): Deployment => ({
   environment: row.environment,
   failureReason: row.failureReason,
   clearCache: Boolean(row.clearCache),
-  finishedAt: row.finishedAt ?? null,
-  createdAt: row.createdAt,
-  updatedAt: row.updatedAt,
+  finishedAt: row.finishedAt ? formatTimestamp(row.finishedAt) : null,
+  createdAt: formatTimestamp(row.createdAt),
+  updatedAt: formatTimestamp(row.updatedAt),
 });
 
 export const createDeployment = async (input: CreateDeploymentInput): Promise<Deployment> => {
   const id = randomUUID();
   const timestamp = now();
-  const db = await getDrizzle();
-  db.insert(deployments).values({
+  const db = await getDb();
+  await db.insert(deployments).values({
     id,
     projectId: input.projectId ?? null,
     serverId: input.serverId ?? null,
@@ -42,39 +42,39 @@ export const createDeployment = async (input: CreateDeploymentInput): Promise<De
     branch: input.branch ?? null,
     commitSha: input.commitSha ?? null,
     environment: input.environment ?? null,
-    clearCache: input.clearCache ? 1 : 0,
+    clearCache: input.clearCache ? true : false,
     createdAt: timestamp,
     updatedAt: timestamp,
-  }).run();
-  const row = db.select().from(deployments).where(eq(deployments.id, id)).get()!;
+  }).execute();
+  const [row] = await db.select().from(deployments).where(eq(deployments.id, id)).execute();
   return mapDeployment(row);
 };
 
 export const listDeployments = async (projectId?: string, offset = 0, limit = 50): Promise<Deployment[]> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const rows = projectId
-    ? db.select().from(deployments).where(eq(deployments.projectId, projectId)).orderBy(desc(deployments.createdAt)).limit(limit).offset(offset).all()
-    : db.select().from(deployments).orderBy(desc(deployments.createdAt)).limit(limit).offset(offset).all();
+    ? await db.select().from(deployments).where(eq(deployments.projectId, projectId)).orderBy(desc(deployments.createdAt)).limit(limit).offset(offset).execute()
+    : await db.select().from(deployments).orderBy(desc(deployments.createdAt)).limit(limit).offset(offset).execute();
   return rows.map(mapDeployment);
 };
 
 export const countDeployments = async (projectId?: string): Promise<number> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const rows = projectId
-    ? db.select().from(deployments).where(eq(deployments.projectId, projectId)).all()
-    : db.select().from(deployments).all();
+    ? await db.select().from(deployments).where(eq(deployments.projectId, projectId)).execute()
+    : await db.select().from(deployments).execute();
   return rows.length;
 };
 
 export const getDeploymentById = async (id: string): Promise<Deployment | null> => {
-  const db = await getDrizzle();
-  const row = db.select().from(deployments).where(eq(deployments.id, id)).get();
+  const db = await getDb();
+  const [row] = await db.select().from(deployments).where(eq(deployments.id, id)).execute();
   return row ? mapDeployment(row) : null;
 };
 
 export const updateDeploymentCommitSha = async (id: string, commitSha: string) => {
-  const db = await getDrizzle();
-  db.update(deployments).set({ commitSha, updatedAt: now() }).where(eq(deployments.id, id)).run();
+  const db = await getDb();
+  await db.update(deployments).set({ commitSha, updatedAt: now() }).where(eq(deployments.id, id)).execute();
 };
 
 const ACTIVE_STATUSES: DeploymentStatus[] = [
@@ -93,12 +93,12 @@ export const updateDeploymentStatus = async (
   status: DeploymentStatus,
   patch: Partial<Pick<Deployment, "imageTag" | "containerName" | "liveUrl" | "failureReason" | "replicas">> = {},
 ) => {
-  const db = await getDrizzle();
-  const existing = db
+  const db = await getDb();
+  const [existing] = await db
     .select({ finishedAt: deployments.finishedAt })
     .from(deployments)
     .where(eq(deployments.id, id))
-    .get();
+    .execute();
   const updates: Record<string, unknown> = { status, updatedAt: now() };
   if (patch.imageTag !== undefined) updates.imageTag = patch.imageTag;
   if (patch.containerName !== undefined) updates.containerName = patch.containerName;
@@ -112,36 +112,43 @@ export const updateDeploymentStatus = async (
       updates.finishedAt = now();
     }
   }
-  db.update(deployments).set(updates).where(eq(deployments.id, id)).run();
+  await db.update(deployments).set(updates).where(eq(deployments.id, id)).execute();
 };
 
 export const deleteDeploymentAndLogs = async (id: string): Promise<boolean> => {
-  const db = await getDrizzle();
-  db.delete(deploymentLogs).where(eq(deploymentLogs.deploymentId, id)).run();
-  const result = db.delete(deployments).where(eq(deployments.id, id)).run();
-  return result.changes > 0;
+  const db = await getDb();
+  await db.delete(deploymentLogs).where(eq(deploymentLogs.deploymentId, id)).execute();
+  const result = await db.delete(deployments).where(eq(deployments.id, id)).execute();
+  return getRowsAffected(result) > 0;
 };
+
+const seqMap = new Map<string, number>();
 
 export const appendLog = async (
   deploymentId: string,
   stage: LogEvent["stage"],
   message: string,
 ): Promise<DeploymentLog> => {
-  const db = await getDrizzle();
-  const row = db.select({ maxSeq: deploymentLogs.sequence }).from(deploymentLogs)
-    .where(eq(deploymentLogs.deploymentId, deploymentId))
-    .orderBy(desc(deploymentLogs.sequence)).limit(1).get();
-  const sequence = (row?.maxSeq ?? 0) + 1;
+  const db = await getDb();
+  if (!seqMap.has(deploymentId)) {
+    const [row] = await db.select({ maxSeq: deploymentLogs.sequence }).from(deploymentLogs)
+      .where(eq(deploymentLogs.deploymentId, deploymentId))
+      .orderBy(desc(deploymentLogs.sequence)).limit(1).execute();
+    seqMap.set(deploymentId, row?.maxSeq ?? 0);
+  }
+  const sequence = (seqMap.get(deploymentId) ?? 0) + 1;
+  seqMap.set(deploymentId, sequence);
+
   const createdAt = now();
-  const result = db.insert(deploymentLogs).values({
+  const [inserted] = await db.insert(deploymentLogs).values({
     deploymentId,
     sequence,
     stage,
     message,
     createdAt,
-  }).run();
+  }).returning({ id: deploymentLogs.id });
   return {
-    id: Number(result.lastInsertRowid),
+    id: inserted.id,
     deploymentId,
     sequence,
     stage: stage as DeploymentLog["stage"],
@@ -151,10 +158,10 @@ export const appendLog = async (
 };
 
 export const getLogs = async (deploymentId: string): Promise<DeploymentLog[]> => {
-  const db = await getDrizzle();
-  const rows = db.select().from(deploymentLogs)
+  const db = await getDb();
+  const rows = await db.select().from(deploymentLogs)
     .where(eq(deploymentLogs.deploymentId, deploymentId))
-    .orderBy(deploymentLogs.sequence).all();
+    .orderBy(deploymentLogs.sequence).execute();
   return rows.map((r) => ({
     id: r.id,
     deploymentId: r.deploymentId,

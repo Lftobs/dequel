@@ -40,7 +40,7 @@ export function LogsTab({
 	const [isLive, setIsLive] = useState(true);
 	const [logSource, setLogSource] = useState<
 		"runtime" | "request"
-	>("request");
+	>("runtime");
 
 	const [startDate, setStartDate] =
 		useState<string>("");

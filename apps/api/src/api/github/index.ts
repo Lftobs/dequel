@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { getGithubIntegration, setGithubIntegration, createDeployment, listProjects } from "../../db/repo";
 import { orchestrator } from "../../orchestrator";
 import { config } from "../../utils/config";
+import { ok, fail } from "../response";
 
 const SESSIONS_FILE = join(process.env.DATA_DIR ?? "./data", ".github-sessions.json");
 
@@ -117,14 +118,14 @@ const fetchGitHubWithBody = async (path: string, token: string, method: string, 
 export const githubRoutes = new Elysia({ prefix: "/github" })
 	.get("/integration", async () => {
 		const integration = await getGithubIntegration();
-		if (!integration) return { configured: false };
-		return { configured: true, clientId: integration.clientId, appName: integration.appName, hasWebhookSecret: !!integration.webhookSecret };
+		if (!integration) return ok({ configured: false });
+		return ok({ configured: true, clientId: integration.clientId, appName: integration.appName, hasWebhookSecret: !!integration.webhookSecret });
 	})
 
 	.put("/integration", async ({ body, set }: any) => {
 		if (!body?.clientId || !body?.clientSecret) {
 			set.status = 400;
-			return { error: "clientId and clientSecret are required" };
+			return fail("clientId and clientSecret are required");
 		}
 		await setGithubIntegration({
 			clientId: body.clientId,
@@ -132,13 +133,13 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			appName: body.appName,
 			webhookSecret: body.webhookSecret,
 		});
-		return { ok: true };
+		return ok(null, "GitHub integration configured");
 	})
 	.get("/auth-url", async ({ request, set }) => {
 		const integration = await getGithubIntegration();
 		if (!integration) {
 			set.status = 400;
-			return { error: "GitHub integration not configured" };
+			return fail("GitHub integration not configured");
 		}
 		const url = publicUrl(request);
 		const redirectUri = `${url.protocol}//${url.host}/api/github/callback`;
@@ -149,19 +150,19 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			scope: "repo,read:org,admin:repo_hook",
 			state,
 		});
-		return { url: `https://github.com/login/oauth/authorize?${params}` };
+		return ok({ url: `https://github.com/login/oauth/authorize?${params}` });
 	})
 
 	.get("/callback", async ({ request, query, set }) => {
 		const { code, state } = query as Record<string, string>;
 		if (!code) {
 			set.status = 400;
-			return { error: "Missing code parameter" };
+			return fail("Missing code parameter");
 		}
 		const integration = await getGithubIntegration();
 		if (!integration) {
 			set.status = 400;
-			return { error: "GitHub integration not configured" };
+			return fail("GitHub integration not configured");
 		}
 		const url = publicUrl(request);
 		const origin = url.origin;
@@ -197,16 +198,16 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		const token = await getSession(request.headers.get("cookie"));
 		if (!token) {
 			set.status = 401;
-			return { error: "Not authenticated" };
+			return fail("Not authenticated");
 		}
-		return fetchGitHub("/user", token);
+		return ok(await fetchGitHub("/user", token));
 	})
 
 	.get("/repos", async ({ request, set }) => {
 		const token = await getSession(request.headers.get("cookie"));
 		if (!token) {
 			set.status = 401;
-			return { error: "Not authenticated" };
+			return fail("Not authenticated");
 		}
 		const allRepos: any[] = [];
 		let page = 1;
@@ -216,7 +217,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			allRepos.push(...repos);
 			page++;
 		}
-		return allRepos.map((r: any) => ({
+		return ok(allRepos.map((r: any) => ({
 			id: r.id,
 			name: r.name,
 			fullName: r.full_name,
@@ -227,22 +228,22 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			private: r.private,
 			defaultBranch: r.default_branch,
 			owner: { login: r.owner.login, avatarUrl: r.owner.avatar_url },
-		}));
+		})));
 	})
 
 	.get("/repos/:owner/:repo/hooks", async ({ request, set, params }) => {
 		const token = await getSession(request.headers.get("cookie"));
 		if (!token) {
 			set.status = 401;
-			return { error: "Not authenticated" };
+			return fail("Not authenticated");
 		}
 		try {
 			const hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);
-			return Array.isArray(hooks) ? hooks.map((h: any) => ({ id: h.id, url: h.config.url, active: h.active, events: h.events })) : [];
+			return ok(Array.isArray(hooks) ? hooks.map((h: any) => ({ id: h.id, url: h.config.url, active: h.active, events: h.events })) : []);
 		} catch (err) {
 			const { status, message } = describeGithubError(err);
 			set.status = status;
-			return { error: message };
+			return fail(message);
 		}
 	})
 
@@ -250,7 +251,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		const token = await getSession(request.headers.get("cookie"));
 		if (!token) {
 			set.status = 401;
-			return { error: "Not authenticated" };
+			return fail("Not authenticated");
 		}
 		const webhookUrl = `${publicUrl(request).origin}/api/github/webhook`;
 		const integration = await getGithubIntegration();
@@ -261,10 +262,9 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			const existing = Array.isArray(hooks) ? hooks.find((h: any) => h.config?.url === webhookUrl) : null;
 
 			if (existing) {
-				return { id: existing.id, created: false, url: webhookUrl };
+				return ok({ id: existing.id, created: false, url: webhookUrl });
 			}
 
-			// Remove stale Dequel webhooks left over from a previous tunnel/domain
 			const stale = Array.isArray(hooks)
 				? hooks.filter((h: any) => typeof h.config?.url === "string" && h.config.url.endsWith("/api/github/webhook") && h.config.url !== webhookUrl)
 				: [];
@@ -283,11 +283,11 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 					insecure_ssl: "0",
 				},
 			});
-			return { id: hook.id, created: true, url: webhookUrl };
+			return ok({ id: hook.id, created: true, url: webhookUrl });
 		} catch (err) {
 			const { status, message } = describeGithubError(err);
 			set.status = status;
-			return { error: message };
+			return fail(message);
 		}
 	})
 
@@ -295,7 +295,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		const token = await getSession(request.headers.get("cookie"));
 		if (!token) {
 			set.status = 401;
-			return { error: "Not authenticated" };
+			return fail("Not authenticated");
 		}
 		const webhookUrl = `${publicUrl(request).origin}/api/github/webhook`;
 		let hooks: any;
@@ -304,19 +304,19 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		} catch (err) {
 			const { status, message } = describeGithubError(err);
 			set.status = status;
-			return { error: message };
+			return fail(message);
 		}
 		const existing = Array.isArray(hooks) ? hooks.find((h: any) => h.config?.url === webhookUrl) : null;
 		if (!existing) {
-			return { ok: true, removed: false };
+			return ok({ removed: false }, "No webhook found");
 		}
 		try {
 			await fetchGitHubWithBody(`/repos/${params.owner}/${params.repo}/hooks/${existing.id}`, token, "DELETE");
-			return { ok: true, removed: true };
+			return ok({ removed: true }, "Webhook removed");
 		} catch (err) {
 			const { status, message } = describeGithubError(err);
 			set.status = status;
-			return { error: message };
+			return fail(message);
 		}
 	})
 
@@ -328,7 +328,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			saveSessions();
 		}
 		set.headers["Set-Cookie"] = "github_session=; Path=/; Max-Age=0";
-		return { ok: true };
+		return ok(null, "GitHub disconnected");
 	})
 
 	.post("/webhook", async ({ request, set }) => {
@@ -340,7 +340,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		if (!integration?.webhookSecret) {
 			console.log("[GitWebhook] rejected: no webhook secret configured on this Dequel instance");
 			set.status = 400;
-			return { error: "GitHub webhook not configured" };
+			return fail("GitHub webhook not configured");
 		}
 
 		const signature = request.headers.get("x-hub-signature-256") || "";
@@ -360,17 +360,17 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		if (signature.length !== expectedSig.length) {
 			console.log(`[GitWebhook] rejected delivery=${delivery}: signature length mismatch (check webhook secret matches Dequel settings)`);
 			set.status = 401;
-			return { error: "Invalid signature" };
+			return fail("Invalid signature");
 		}
 		if (!crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signature))) {
 			console.log(`[GitWebhook] rejected delivery=${delivery}: signature mismatch (check webhook secret matches Dequel settings)`);
 			set.status = 401;
-			return { error: "Invalid signature" };
+			return fail("Invalid signature");
 		}
 
 		if (event !== "push") {
 			console.log(`[GitWebhook] ignored delivery=${delivery}: unsupported event ${event}`);
-			return { ok: true, ignored: `unsupported event: ${event}` };
+			return ok({ ignored: `unsupported event: ${event}` }, "Event ignored");
 		}
 
 		let payload: any;
@@ -378,13 +378,13 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			payload = JSON.parse(rawBody);
 		} catch {
 			set.status = 400;
-			return { error: "Invalid JSON payload" };
+			return fail("Invalid JSON payload");
 		}
 
 		const repoUrl = payload?.repository?.clone_url;
 		if (!repoUrl) {
 			set.status = 400;
-			return { error: "Missing repository.clone_url in payload" };
+			return fail("Missing repository.clone_url in payload");
 		}
 
 		const branch = payload?.ref?.replace("refs/heads/", "") || "main";
@@ -392,7 +392,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 
 		if (!commitSha || commitSha === "0000000000000000000000000000000000000000") {
 			console.log(`[GitWebhook] ignored delivery=${delivery}: deletion event, no commit to deploy`);
-			return { ok: true, ignored: "deletion event, no commit to deploy" };
+			return ok({ ignored: "deletion event, no commit to deploy" }, "Event ignored");
 		}
 
 		const projects = await listProjects();
@@ -401,14 +401,14 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 
 		if (matching.length === 0) {
 			console.log(`[GitWebhook] ignored delivery=${delivery}: no project found for repo ${repoUrl}. Known project repos: ${projects.map(p => p.repoUrl).filter(Boolean).join(", ") || "(none)"}`);
-			return { ok: true, ignored: `no project found for repo: ${repoUrl}` };
+			return ok({ ignored: `no project found for repo: ${repoUrl}` }, "Event ignored");
 		}
 
 		const targets = matching.filter(p => !p.repoBranch || p.repoBranch === branch);
 
 		if (targets.length === 0) {
 			console.log(`[GitWebhook] ignored delivery=${delivery}: branch "${branch}" does not match any project watching ${repoUrl} (branches: ${matching.map(p => p.repoBranch ?? "any").join(", ")})`);
-			return { ok: true, ignored: `branch "${branch}" does not match any watching project's branch` };
+			return ok({ ignored: `branch "${branch}" does not match any watching project's branch` }, "Event ignored");
 		}
 
 		const deploymentIds: string[] = [];
@@ -426,5 +426,5 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			console.log(`[GitWebhook] Auto-deploy triggered for ${project.name} (${branch}) — commit ${commitSha.slice(0, 7)}`);
 		}
 
-		return { ok: true, deploymentIds };
+		return ok({ deploymentIds }, "Deployments triggered");
 	});

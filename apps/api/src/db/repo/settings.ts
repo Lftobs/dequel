@@ -1,5 +1,5 @@
 import { eq, desc } from "drizzle-orm";
-import { getDrizzle } from "../drizzle";
+import { getDb } from "../db-provider";
 import { smtpSettings } from "../schema";
 import { encryptValue, decryptValue } from "../../utils/crypto";
 import { config } from "../../utils/config";
@@ -25,23 +25,23 @@ const mapRow = (row: typeof smtpSettings.$inferSelect): SmtpSettingsData => ({
 });
 
 export const getSmtpSettings = async (): Promise<SmtpSettingsData | null> => {
-  const db = await getDrizzle();
-  const row = db.select().from(smtpSettings).orderBy(desc(smtpSettings.createdAt)).limit(1).get();
+  const db = await getDb();
+  const [row] = await db.select().from(smtpSettings).orderBy(desc(smtpSettings.createdAt)).limit(1).execute();
   return row ? mapRow(row) : null;
 };
 
 export const upsertSmtpSettings = async (input: SmtpSettingsData): Promise<SmtpSettingsData> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const encrypted = input.pass
     ? encryptValue(input.pass, config.envEncryptionKey)
     : null;
 
-  return db.transaction((tx) => {
-    const existing = tx.select().from(smtpSettings).orderBy(desc(smtpSettings.createdAt)).limit(1).get();
+  return db.transaction(async (tx) => {
+    const [existing] = await tx.select().from(smtpSettings).orderBy(desc(smtpSettings.createdAt)).limit(1).execute();
     const timestamp = now();
 
     if (existing) {
-      tx.update(smtpSettings).set({
+      await tx.update(smtpSettings).set({
         host: input.host,
         port: input.port,
         user: input.user,
@@ -50,13 +50,13 @@ export const upsertSmtpSettings = async (input: SmtpSettingsData): Promise<SmtpS
         passTag: encrypted?.tag ?? existing.passTag,
         fromAddress: input.fromAddress,
         updatedAt: timestamp,
-      }).where(eq(smtpSettings.id, existing.id)).run();
-      const updated = tx.select().from(smtpSettings).where(eq(smtpSettings.id, existing.id)).get()!;
+      }).where(eq(smtpSettings.id, existing.id)).execute();
+      const [updated] = await tx.select().from(smtpSettings).where(eq(smtpSettings.id, existing.id)).execute();
       return mapRow(updated);
     }
 
     const id = randomUUID();
-    tx.insert(smtpSettings).values({
+    await tx.insert(smtpSettings).values({
       id,
       host: input.host,
       port: input.port,
@@ -67,8 +67,8 @@ export const upsertSmtpSettings = async (input: SmtpSettingsData): Promise<SmtpS
       fromAddress: input.fromAddress,
       createdAt: timestamp,
       updatedAt: timestamp,
-    }).run();
-    const inserted = tx.select().from(smtpSettings).where(eq(smtpSettings.id, id)).get()!;
+    }).execute();
+    const [inserted] = await tx.select().from(smtpSettings).where(eq(smtpSettings.id, id)).execute();
     return mapRow(inserted);
   });
 };

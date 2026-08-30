@@ -1,9 +1,11 @@
 import { eq, desc } from "drizzle-orm";
-import { getDrizzle } from "../drizzle";
+import { getDb } from "../db-provider";
 import { servers } from "../schema";
 import type { Server, CreateServerInput, ServerMode, ServerStatus } from "../../types";
 import { randomUUID } from "node:crypto";
-import { now } from "./helpers";
+import { now, formatTimestamp, getRowsAffected } from "./helpers";
+import { encryptValue, decryptValue } from "../../utils/crypto";
+import { config } from "../../utils/config";
 
 const mapServer = (row: typeof servers.$inferSelect): Server => ({
   id: row.id,
@@ -11,6 +13,11 @@ const mapServer = (row: typeof servers.$inferSelect): Server => ({
   host: row.host,
   port: row.port,
   mode: row.mode as ServerMode,
+  sshUser: row.sshUser ?? null,
+  sshKey: row.sshKey && row.sshKeyIv && row.sshKeyTag
+    ? decryptValue(row.sshKey, row.sshKeyIv, row.sshKeyTag, config.envEncryptionKey)
+    : row.sshKey ?? null,
+  sshPassword: row.sshPassword ?? null,
   agentId: row.agentId,
   agentVersion: row.agentVersion,
   capabilities: parseJsonObject(row.capabilities),
@@ -21,14 +28,16 @@ const mapServer = (row: typeof servers.$inferSelect): Server => ({
   diskTotalMb: row.diskTotalMb,
   cpuUsedPercent: row.cpuUsedPercent,
   memoryUsedMb: row.memoryUsedMb,
-  lastHeartbeat: row.lastHeartbeat,
-  registeredAt: row.registeredAt,
-  revokedAt: row.revokedAt,
-  createdAt: row.createdAt,
-  updatedAt: row.updatedAt,
+  lastHeartbeat: row.lastHeartbeat ? formatTimestamp(row.lastHeartbeat) : null,
+  registeredAt: row.registeredAt ? formatTimestamp(row.registeredAt) : null,
+  revokedAt: row.revokedAt ? formatTimestamp(row.revokedAt) : null,
+  createdAt: formatTimestamp(row.createdAt),
+  updatedAt: formatTimestamp(row.updatedAt),
 });
 
-const parseJsonObject = (value: string): Record<string, unknown> => {
+const parseJsonObject = (value: unknown): Record<string, unknown> => {
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) return value;
+  if (typeof value !== 'string') return {};
   try {
     const parsed = JSON.parse(value);
     return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
@@ -40,19 +49,29 @@ const parseJsonObject = (value: string): Record<string, unknown> => {
 export const createServer = async (input: CreateServerInput): Promise<Server> => {
   const id = randomUUID();
   const timestamp = now();
-  const db = await getDrizzle();
-  db.insert(servers).values({
+  const db = await getDb();
+  const encrypted = input.sshKey ? encryptValue(input.sshKey, config.envEncryptionKey) : null;
+  await db.insert(servers).values({
     id,
     name: input.name,
     host: input.host,
     port: input.port ?? 2375,
     authToken: input.authToken ?? "",
+    sshUser: input.sshUser ?? null,
+    sshKey: encrypted?.encrypted ?? null,
+    sshKeyIv: encrypted?.iv ?? null,
+    sshKeyTag: encrypted?.tag ?? null,
+    sshPassword: input.sshPassword ?? null,
     mode: input.mode ?? "ssh",
     status: "pending",
+    capabilities: input.mode === "local" ? { docker: true, buildkit: true, caddy: true, compose: true } : undefined,
+    labels: input.mode === "local" ? {} : undefined,
+    registeredAt: input.mode === "local" ? timestamp : undefined,
+    lastHeartbeat: input.mode === "local" ? timestamp : undefined,
     createdAt: timestamp,
     updatedAt: timestamp,
-  }).run();
-  const row = db.select().from(servers).where(eq(servers.id, id)).get()!;
+  }).execute();
+  const [row] = await db.select().from(servers).where(eq(servers.id, id)).execute();
   return mapServer(row);
 };
 
@@ -62,19 +81,31 @@ export interface ServerConnection {
   port: number;
   authToken: string;
   mode: ServerMode;
+  sshUser?: string | null;
+  sshKey?: string | null;
+  sshKeyIv?: string | null;
+  sshKeyTag?: string | null;
 }
 
 export const listServerConnections = async (): Promise<ServerConnection[]> => {
-  const db = await getDrizzle();
-  return db.select({
+  const db = await getDb();
+  const rows = await db.select({
     id: servers.id,
     host: servers.host,
     port: servers.port,
     authToken: servers.authToken,
+    sshUser: servers.sshUser,
+    sshKey: servers.sshKey,
+    sshKeyIv: servers.sshKeyIv,
+    sshKeyTag: servers.sshKeyTag,
     mode: servers.mode,
-  }).from(servers).all().map((row) => ({
+  }).from(servers).execute();
+  return rows.map((row) => ({
     ...row,
     mode: row.mode as ServerMode,
+    sshKey: row.sshKey && row.sshKeyIv && row.sshKeyTag
+      ? decryptValue(row.sshKey, row.sshKeyIv, row.sshKeyTag, config.envEncryptionKey)
+      : row.sshKey ?? null,
   }));
 };
 
@@ -82,8 +113,8 @@ export const ensureLocalServer = async (): Promise<Server> => {
   const existing = await getServerById("local");
   if (existing) return existing;
   const timestamp = now();
-  const db = await getDrizzle();
-  db.insert(servers).values({
+  const db = await getDb();
+  await db.insert(servers).values({
     id: "local",
     name: "Local server",
     host: "127.0.0.1",
@@ -91,24 +122,25 @@ export const ensureLocalServer = async (): Promise<Server> => {
     authToken: "",
     mode: "local",
     status: "connected",
-    capabilities: JSON.stringify({ docker: true, buildkit: true, caddy: true, compose: true }),
-    labels: "{}",
+    capabilities: { docker: true, buildkit: true, caddy: true, compose: true },
+    labels: {},
     registeredAt: timestamp,
     lastHeartbeat: timestamp,
     createdAt: timestamp,
     updatedAt: timestamp,
-  }).run();
+  }).execute();
   return getServerById("local") as Promise<Server>;
 };
 
 export const listServers = async (): Promise<Server[]> => {
-  const db = await getDrizzle();
-  return db.select().from(servers).orderBy(servers.name).all().map(mapServer);
+  const db = await getDb();
+  const rows = await db.select().from(servers).orderBy(servers.name).execute();
+  return rows.map(mapServer);
 };
 
 export const getServerById = async (id: string): Promise<Server | null> => {
-  const db = await getDrizzle();
-  const row = db.select().from(servers).where(eq(servers.id, id)).get();
+  const db = await getDb();
+  const [row] = await db.select().from(servers).where(eq(servers.id, id)).execute();
   return row ? mapServer(row) : null;
 };
 
@@ -116,7 +148,7 @@ export const updateServerStatus = async (id: string, status: ServerStatus, resou
   cpuTotal?: number; memoryTotalMb?: number; diskTotalMb?: number;
   cpuUsedPercent?: number; memoryUsedMb?: number;
 }): Promise<void> => {
-  const db = await getDrizzle();
+  const db = await getDb();
   const updates: Record<string, unknown> = { status, updatedAt: now() };
   if (resources) {
     if (resources.cpuTotal !== undefined) updates.cpuTotal = resources.cpuTotal;
@@ -126,10 +158,10 @@ export const updateServerStatus = async (id: string, status: ServerStatus, resou
     if (resources.memoryUsedMb !== undefined) updates.memoryUsedMb = resources.memoryUsedMb;
     updates.lastHeartbeat = now();
   }
-  db.update(servers).set(updates).where(eq(servers.id, id)).run();
+  await db.update(servers).set(updates).where(eq(servers.id, id)).execute();
 };
 
 export const deleteServer = async (id: string): Promise<boolean> => {
-  const db = await getDrizzle();
-  return db.delete(servers).where(eq(servers.id, id)).run().changes > 0;
+  const db = await getDb();
+  return getRowsAffected(await db.delete(servers).where(eq(servers.id, id)).execute()) > 0;
 };

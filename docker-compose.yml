@@ -28,14 +28,14 @@ services:
             start_period: 5s
 
     api:
-        # image: ghcr.io/lftobs/dequel/api:latest
+        image: ghcr.io/lftobs/dequel/api:next
+        # build:
+        #     context: ./apps/api
+        #     dockerfile: Dockerfile
         restart: unless-stopped
-        build:
-            context: ./apps/api
-            dockerfile: Dockerfile
         environment:
             PORT: 3001
-            DATABASE_PATH: /app/data/dequel.db
+            DATABASE_URL: postgresql://${POSTGRES_USER:-dequel}:${POSTGRES_PASSWORD:-dequel}@postgres:5432/${POSTGRES_DB:-dequel}
             WORKSPACE_ROOT: /app/workspace
             CADDY_ROUTES_DIR: /caddy/routes
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
@@ -47,16 +47,19 @@ services:
             RAILPACK_BUILD_TIMEOUT_MS: "1200000"
             GRAFANA_URL: http://grafana:3000/grafana
         volumes:
-            - ./data:/app/data
             - ./workspace:/app/workspace
             - ./infra/caddy/routes:/caddy/routes
             - /var/run/docker.sock:/var/run/docker.sock
             - railpack-cache:/tmp/railpack
+            - api-data:/app/data
             - /etc/passwd:/etc/passwd:ro
             - /etc/group:/etc/group:ro
         depends_on:
             buildkit:
                 condition: service_started
+                required: false
+            postgres:
+                condition: service_healthy
         healthcheck:
             test:
                 [
@@ -82,9 +85,10 @@ services:
             - sh
             - -c
             - |
-                apt-get update -qq > /dev/null 2>&1 && apt-get install -y -qq libpam-modules > /dev/null 2>&1 && exec python3 -u /app/pam-server.py
+                apt-get update -qq > /dev/null 2>&1 && apt-get install -y -qq libpam-modules > /dev/null 2>&1 && cp /app/dequel /etc/pam.d/dequel && exec python3 -u /app/pam-server.py
         volumes:
             - ./scripts/auth/pam-server.py:/app/pam-server.py:ro
+            - ./scripts/auth/dequel:/app/dequel:ro
             - /etc/passwd:/etc/passwd:ro
             - /etc/shadow:/etc/shadow:ro
             - /etc/group:/etc/group:ro
@@ -106,12 +110,12 @@ services:
             start_period: 10s
 
     web:
-        # image: ghcr.io/lftobs/dequel/web:latest
+        image: ghcr.io/lftobs/dequel/web:next
+        # build:
+        #     context: ./apps/web
+        #     args:
+        #         DEQUEL_VERSION: ${DEQUEL_VERSION:-}
         restart: unless-stopped
-        build:
-            context: ./apps/web
-            args:
-                DEQUEL_VERSION: ${DEQUEL_VERSION:-}
         healthcheck:
             test:
                 [
@@ -171,6 +175,25 @@ services:
                     - redis
         healthcheck:
             test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+
+    postgres:
+        image: postgres:16-alpine
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER:-dequel}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dequel}
+            POSTGRES_DB: ${POSTGRES_DB:-dequel}
+        volumes:
+            - postgres-data:/var/lib/postgresql/data
+        networks:
+            dequel:
+                aliases:
+                    - postgres
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U dequel"]
             interval: 5s
             timeout: 3s
             retries: 5
@@ -323,6 +346,8 @@ networks:
 volumes:
     buildkit-data:
     redis-data:
+    postgres-data:
+    api-data:
     prometheus-data:
     loki-data:
     grafana-data:

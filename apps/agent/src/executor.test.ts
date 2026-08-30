@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { validateDeploymentPayload, validateDestroyPayload, validateRollbackPayload } from "./executor";
+import { validateDeploymentPayload, validateDestroyPayload, validateRollbackPayload, validateScalePayload, validateRoutePayload } from "./executor";
 
 const payload = {
   deploymentId: "deployment-1",
@@ -93,5 +93,89 @@ describe("remote destroy payload", () => {
       containerName: "rm -rf /",
       imageTag: null,
     })).toThrow("Invalid container name");
+  });
+});
+
+describe("remote scale payload", () => {
+  const scalePayload = {
+    deploymentId: "deployment-1",
+    projectId: "project-1",
+    action: "up" as const,
+    replicas: 2,
+    imageTag: "dequel-example-api:deployment-1234",
+    appPort: 3000,
+    cpuLimit: 0.5,
+    memoryLimitMb: 512,
+    environmentVariables: [{ key: "PORT", value: "3000" }],
+  };
+
+  it("accepts a valid scale payload", () => {
+    expect(validateScalePayload(scalePayload)).toEqual(scalePayload);
+  });
+
+  it("rejects an unknown action", () => {
+    expect(() => validateScalePayload({ ...scalePayload, action: "sideways" })).toThrow("Invalid scale action");
+  });
+
+  it("rejects replicas out of range", () => {
+    expect(() => validateScalePayload({ ...scalePayload, replicas: 0 })).toThrow("Invalid replica count");
+    expect(() => validateScalePayload({ ...scalePayload, replicas: 51 })).toThrow("Invalid replica count");
+  });
+
+  it("rejects unsafe environment variable keys", () => {
+    expect(() => validateScalePayload({
+      ...scalePayload,
+      environmentVariables: [{ key: "X; rm -rf /", value: "1" }],
+    })).toThrow("Invalid environment variables");
+  });
+
+  it("rejects missing required fields for a down action", () => {
+    expect(() => validateScalePayload({
+      deploymentId: "deployment-1",
+      action: "down",
+      replicas: 1,
+    })).toThrow();
+  });
+});
+
+describe("remote route payload", () => {
+  const routePayload = {
+    deploymentId: "deployment-1",
+    action: "add" as const,
+    hostname: "example-api.localhost:80",
+    routeFile: "example-api.caddy",
+    port: 3000,
+    targetContainers: ["deploy-deployment-1"],
+  };
+
+  it("accepts a valid add payload", () => {
+    expect(validateRoutePayload(routePayload)).toEqual(routePayload);
+  });
+
+  it("accepts a remove action with a single target", () => {
+    expect(validateRoutePayload({
+      deploymentId: "deployment-1",
+      action: "remove",
+      hostname: "example-api.localhost:80",
+      routeFile: "example-api.caddy",
+      port: 3000,
+      targetContainers: ["deploy-deployment-1"],
+    }).action).toBe("remove");
+  });
+
+  it("rejects an unknown action", () => {
+    expect(() => validateRoutePayload({ ...routePayload, action: "nope" })).toThrow("Invalid route action");
+  });
+
+  it("rejects hostnames with unsafe characters", () => {
+    expect(() => validateRoutePayload({ ...routePayload, hostname: "x; rm -rf /" })).toThrow("Invalid hostname");
+  });
+
+  it("rejects route file names that are not .caddy", () => {
+    expect(() => validateRoutePayload({ ...routePayload, routeFile: "../../etc/passwd" })).toThrow("Invalid route file name");
+  });
+
+  it("rejects empty target containers", () => {
+    expect(() => validateRoutePayload({ ...routePayload, targetContainers: [] })).toThrow("Invalid target containers");
   });
 });

@@ -1,15 +1,20 @@
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { eq } from "drizzle-orm";
+import { deployments } from "../db/schema";
 import {
 	appendLog,
 	deleteDeploymentAndLogs,
 	getDeploymentById,
 	getProjectById,
+	getServerById,
 	listDeployments,
 	listAllDatabases,
 	updateDeploymentStatus,
 	updateDeploymentCommitSha,
 	listVolumes,
+	deleteRoutesByDeployment,
+	createDeploymentEvent,
 } from "../db/repo";
 import { listEnvironmentVariablesForDeploy } from "../db/repo";
 import { logBus } from "./log-bus";
@@ -131,6 +136,11 @@ export class PipelineOrchestrator {
 				"system",
 				"Deployment cancelled by user",
 			),
+			createDeploymentEvent({
+				deploymentId,
+				type: "cancelled",
+				message: "Deployment cancelled by user",
+			}),
 		]);
 		logBus.publish({
 			deploymentId,
@@ -182,6 +192,18 @@ export class PipelineOrchestrator {
 			}
 		}
 
+		const slug = (project?.name || deployment.projectId || deploymentId)
+			.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
+		const routeFile = join(config.caddyRoutesDir, `${slug}.caddy`);
+		await rm(routeFile, { force: true }).catch(() => {});
+		const { getIngressServer, removeIngressRouteFile } = await import('../utils/ingress');
+		const ingressServer = await getIngressServer();
+		if (ingressServer && ingressServer.id !== 'local') {
+			const { baseDomainFor } = await import('../utils/routes');
+			await removeIngressRouteFile(ingressServer, { hostname: `${slug}.${baseDomainFor()}`, routeFile: `${slug}.caddy` });
+		}
+		await deleteRoutesByDeployment(deploymentId);
+
 		await deleteDeploymentAndLogs(
 			deploymentId,
 		);
@@ -216,9 +238,7 @@ export class PipelineOrchestrator {
 					d.status === "deploying",
 			)
 			.sort((a, b) =>
-				a.createdAt.localeCompare(
-					b.createdAt,
-				),
+				new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
 			);
 		if (resumable.length > 0) {
 			console.log(
@@ -335,6 +355,8 @@ export class PipelineOrchestrator {
 				deployment.projectId,
 			) : null;
 
+			const targetServer = project?.serverId ? await getServerById(project.serverId) : null;
+
 			if (
 				deployment.sourceType !== "image"
 			) {
@@ -343,6 +365,11 @@ export class PipelineOrchestrator {
 					"building",
 					{ failureReason: null },
 				);
+				await createDeploymentEvent({
+					deploymentId,
+					type: "started",
+					message: "Deployment started",
+				});
 
 				if (
 					deployment.sourceType ===
@@ -445,17 +472,24 @@ export class PipelineOrchestrator {
 						startCommand: project?.startCommand,
 						environmentVariables: envVars,
 						signal: controller.signal,
-						clearCache: deployment.clearCache
+						clearCache: deployment.clearCache,
+						server: targetServer,
 					},
 				);
 			}
-			} else {
-				await emitLog(
-					deploymentId,
-					"build",
-					`Rolling back to existing image: ${imageTag}`,
-				);
-			}
+		} else {
+			await emitLog(
+				deploymentId,
+				"build",
+				`Rolling back to existing image: ${imageTag}`,
+			);
+		}
+
+		await createDeploymentEvent({
+			deploymentId,
+			type: "build_completed",
+			message: `Image built: ${imageTag}`,
+		});
 
 			await this.checkCancelled(deploymentId);
 
@@ -570,7 +604,6 @@ export class PipelineOrchestrator {
 				appPort = project.port;
 			}
 
-			const targetServer = project?.serverId ? await getServerById(project.serverId) : null;
 			let runtimeContainerName = "";
 			let runtimeLiveUrl = "";
 
@@ -609,6 +642,7 @@ export class PipelineOrchestrator {
 							deployment.projectId ||
 							undefined,
 						projectName,
+						baseDomain: project?.baseDomain,
 						oldContainerName,
 						envVars,
 						volumes,
@@ -689,6 +723,11 @@ export class PipelineOrchestrator {
 				"system",
 				"Deployment is running",
 			);
+			await createDeploymentEvent({
+				deploymentId,
+				type: "deployed",
+				message: "Containers started",
+			});
 			return true;
 		} catch (error) {
 			if (error instanceof CancelledError) {
@@ -709,6 +748,12 @@ export class PipelineOrchestrator {
 				"failed",
 				{ failureReason: message },
 			);
+			await createDeploymentEvent({
+				deploymentId,
+				type: "failed",
+				message,
+				metadata: { stage: "unknown" },
+			});
 
 			if (!deployed) {
 				await emitLog(
@@ -912,9 +957,10 @@ export class PipelineOrchestrator {
 			const { getDb } =
 				await import("../db/client");
 			const db = await getDb();
-			db.query(
-				"UPDATE deployments SET failure_reason = NULL WHERE id = ?",
-			).run(targetDeploymentId);
+			await db.update(deployments)
+				.set({ failureReason: null })
+				.where(eq(deployments.id, targetDeploymentId))
+				.execute();
 
 			if (current) {
 				await updateDeploymentStatus(

@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
-import { getDrizzle } from '../db/drizzle';
-import { getDb } from '../db/client';
-import { eq, and, sql } from 'drizzle-orm';
+import { getDb } from '../db/db-provider';
+import { eq, and, isNull, gt, lt } from 'drizzle-orm';
 import { refreshTokens } from '../db/schema';
+import { now } from '../db/repo/helpers';
 
 let jwtSecret = '';
 
@@ -40,11 +40,11 @@ export interface JwtPayload {
 
 export const signAccessToken = async (username: string): Promise<string> => {
   const header = b64url(encoder.encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));
-  const now = Math.floor(Date.now() / 1000);
+  const current = Math.floor(Date.now() / 1000);
   const payload = b64url(encoder.encode(JSON.stringify({
     sub: username,
-    iat: now,
-    exp: now + 900,
+    iat: current,
+    exp: current + 900,
   })));
   const sig = await hmacSign(`${header}.${payload}`);
   return `${header}.${payload}.${sig}`;
@@ -74,44 +74,44 @@ export const generateRefreshToken = (): string =>
   `dqr_${randomBytes(32).toString('hex')}`;
 
 export const storeRefreshToken = async (username: string, token: string): Promise<void> => {
-  const drizzle = await getDrizzle();
+  const db = await getDb();
   const tokenHash = hashToken(token);
-  const now = new Date().toISOString();
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const timestamp = now();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const id = randomBytes(16).toString('hex');
-  drizzle.insert(refreshTokens).values({
+  await db.insert(refreshTokens).values({
     id,
     username,
     tokenHash,
     expiresAt,
-    createdAt: now,
-  }).run();
+    createdAt: timestamp,
+  }).execute();
 };
 
 export const validateRefreshToken = async (token: string): Promise<string | null> => {
-  const drizzle = await getDrizzle();
+  const db = await getDb();
   const tokenHash = hashToken(token);
-  const row = drizzle.select().from(refreshTokens)
+  const [row] = await db.select().from(refreshTokens)
     .where(and(
       eq(refreshTokens.tokenHash, tokenHash),
-      sql`${refreshTokens.blacklistedAt} IS NULL`,
-      sql`datetime(${refreshTokens.expiresAt}) > datetime('now')`,
+      isNull(refreshTokens.blacklistedAt),
+      gt(refreshTokens.expiresAt, new Date()),
     ))
-    .get();
+    .execute();
   return row?.username ?? null;
 };
 
 export const blacklistRefreshToken = async (token: string): Promise<void> => {
-  const drizzle = await getDrizzle();
+  const db = await getDb();
   const tokenHash = hashToken(token);
-  const now = new Date().toISOString();
-  drizzle.update(refreshTokens)
-    .set({ blacklistedAt: now })
+  const timestamp = now();
+  await db.update(refreshTokens)
+    .set({ blacklistedAt: timestamp })
     .where(eq(refreshTokens.tokenHash, tokenHash))
-    .run();
+    .execute();
 };
 
 export const cleanupExpiredTokens = async (): Promise<void> => {
   const db = await getDb();
-  db.run(`DELETE FROM refresh_tokens WHERE expires_at < datetime('now')`);
+  await db.delete(refreshTokens).where(lt(refreshTokens.expiresAt, new Date())).execute();
 };

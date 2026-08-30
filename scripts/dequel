@@ -5,6 +5,7 @@ SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 DEQUEL_HOME="${DEQUEL_HOME:-$SCRIPT_DIR}"
 COMPOSE_FILE="$DEQUEL_HOME/docker-compose.yml"
+[ -f "$DEQUEL_HOME/.env" ] && set -a && . "$DEQUEL_HOME/.env" && set +a
 INSTALLED_VERSION="$(cat "$DEQUEL_HOME/VERSION" 2>/dev/null || echo "0.1.0")"
 export DEQUEL_VERSION="$INSTALLED_VERSION"
 
@@ -66,18 +67,41 @@ cmd_update() {
 	local repo="Lftobs/dequel"
 	local tag=""
 	local base_url=""
+	local target_arg="${2:-}"
 
-	info "Checking for latest release..."
-	tag=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
-		| grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/') || true
+	if [ "$target_arg" = "--pre" ] || [ "$target_arg" = "--prerelease" ]; then
+		info "Checking for latest pre-release..."
+		tag=$(curl -fsSL "https://api.github.com/repos/$repo/releases" \
+			| grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/') || true
+	elif [ "$target_arg" = "--rc" ]; then
+		info "Checking for latest release candidate..."
+		tag=$(curl -fsSL "https://api.github.com/repos/$repo/releases" \
+			| grep '"tag_name"' | grep -E 'rc[0-9]+$' | head -1 | sed -E 's/.*"([^"]+)".*/\1/') || true
+		if [ -z "$tag" ]; then
+			fail "No release candidate found"
+		fi
+	elif [ -n "$target_arg" ] && [ "$target_arg" != "latest" ]; then
+		if [[ "$target_arg" == v* ]]; then
+			tag="$target_arg"
+		else
+			tag="v$target_arg"
+		fi
+	else
+		info "Checking for latest stable release..."
+		tag=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
+			| grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/') || true
+	fi
 
 	if [ -z "$tag" ]; then
-		warn "Could not determine latest release, using main branch"
+		warn "Could not determine release, using main branch"
 		base_url="https://raw.githubusercontent.com/$repo/main"
 	else
 		base_url="https://raw.githubusercontent.com/$repo/$tag"
-		success "Latest release: $tag"
+		success "Target release: $tag"
 	fi
+
+	local current_version
+	current_version="$(cat "$DEQUEL_HOME/VERSION" 2>/dev/null || echo "unknown")"
 
 	local tmp_dir
 	tmp_dir=$(mktemp -d)
@@ -85,37 +109,43 @@ cmd_update() {
 	trap "rm -rf '$tmp_dir'" EXIT
 
 	info "Downloading updated configuration..."
-	curl -fsSL "$base_url/docker-compose.yml" -o "$tmp_dir/docker-compose.yml"
-	curl -fsSL "$base_url/infra/caddy/Caddyfile" -o "$tmp_dir/Caddyfile"
-	curl -fsSL "$base_url/scripts/dequel" -o "$tmp_dir/dequel"
-	curl -fsSL "$base_url/VERSION" -o "$tmp_dir/VERSION"
+	curl -fsSL "$base_url/docker-compose.yml" -o "$tmp_dir/docker-compose.yml" || fail "Failed to download docker-compose.yml"
+	curl -fsSL "$base_url/infra/caddy/Caddyfile" -o "$tmp_dir/Caddyfile" || fail "Failed to download Caddyfile"
+	curl -fsSL "$base_url/scripts/dequel" -o "$tmp_dir/dequel" || fail "Failed to download dequel CLI"
+	curl -fsSL "$base_url/VERSION" -o "$tmp_dir/VERSION" 2>/dev/null || echo "${tag#v}" > "$tmp_dir/VERSION"
 
 	mkdir -p "$tmp_dir/infra/monitoring/grafana/datasources" \
 		"$tmp_dir/infra/monitoring/grafana/dashboards" \
 		"$tmp_dir/scripts/auth"
 
 	for f in prometheus.yml loki-config.yml promtail-config.yml; do
-		curl -fsSL "$base_url/infra/monitoring/$f" -o "$tmp_dir/infra/monitoring/$f"
+		curl -fsSL "$base_url/infra/monitoring/$f" -o "$tmp_dir/infra/monitoring/$f" 2>/dev/null || true
 	done
 
 	for f in loki.yml prometheus.yml; do
-		curl -fsSL "$base_url/infra/monitoring/grafana/datasources/$f" -o "$tmp_dir/infra/monitoring/grafana/datasources/$f"
+		curl -fsSL "$base_url/infra/monitoring/grafana/datasources/$f" -o "$tmp_dir/infra/monitoring/grafana/datasources/$f" 2>/dev/null || true
 	done
 
 	for f in dashboards.yml deployed-apps.json; do
-		curl -fsSL "$base_url/infra/monitoring/grafana/dashboards/$f" -o "$tmp_dir/infra/monitoring/grafana/dashboards/$f"
+		curl -fsSL "$base_url/infra/monitoring/grafana/dashboards/$f" -o "$tmp_dir/infra/monitoring/grafana/dashboards/$f" 2>/dev/null || true
 	done
 
 	for f in pam-server.py pam-verify.py; do
-		curl -fsSL "$base_url/scripts/auth/$f" -o "$tmp_dir/scripts/auth/$f"
+		curl -fsSL "$base_url/scripts/auth/$f" -o "$tmp_dir/scripts/auth/$f" 2>/dev/null || true
 	done
 
+	local resolved_tag="${tag#v}"
+	if [ -z "$resolved_tag" ] || [ "$resolved_tag" = "main" ]; then
+		resolved_tag="latest"
+	fi
+
 	python3 -c "
-import re
+import re, sys
 with open('$tmp_dir/docker-compose.yml', 'r') as f:
     content = f.read()
-content = re.sub(r'#\s*(image:\s*ghcr\.io/lftobs/dequel/api:latest)', r'\1', content)
-content = re.sub(r'#\s*(image:\s*ghcr\.io/lftobs/dequel/web:latest)', r'\1', content)
+content = re.sub(r'ghcr\.io/lftobs/dequel/api:\w+', 'ghcr.io/lftobs/dequel/api:$resolved_tag', content)
+content = re.sub(r'ghcr\.io/lftobs/dequel/web:\w+', 'ghcr.io/lftobs/dequel/web:$resolved_tag', content)
+content = re.sub(r'#\s*(image:\s*ghcr\.io/lftobs/dequel/)', r'\1', content)
 content = re.sub(r'([ \t]+)build:\s*\n\s+context:\s*(?:\.|\./apps/api)\s*\n\s+dockerfile:\s*\S+', r'\1# build:\n\1#     context: ./apps/api\n\1#     dockerfile: Dockerfile', content)
 content = re.sub(r'([ \t]+)build:\s*\n\s+context:\s*\./apps/web(?:\s*\n\s+args:\s*\n\s+DEQUEL_VERSION:\s*\S+)?', r'\1# build:\n\1#     context: ./apps/web\n\1#     args:\n\1#         DEQUEL_VERSION: \${DEQUEL_VERSION:-}', content)
 with open('$tmp_dir/docker-compose.yml', 'w') as f:
@@ -131,16 +161,16 @@ with open('$tmp_dir/docker-compose.yml', 'w') as f:
 	mv "$tmp_dir/Caddyfile" "$DEQUEL_HOME/infra/caddy/Caddyfile"
 
 	for f in prometheus.yml loki-config.yml promtail-config.yml; do
-		mv "$tmp_dir/infra/monitoring/$f" "$DEQUEL_HOME/infra/monitoring/$f"
+		[ -f "$tmp_dir/infra/monitoring/$f" ] && mv "$tmp_dir/infra/monitoring/$f" "$DEQUEL_HOME/infra/monitoring/$f"
 	done
 	for f in loki.yml prometheus.yml; do
-		mv "$tmp_dir/infra/monitoring/grafana/datasources/$f" "$DEQUEL_HOME/infra/monitoring/grafana/datasources/$f"
+		[ -f "$tmp_dir/infra/monitoring/grafana/datasources/$f" ] && mv "$tmp_dir/infra/monitoring/grafana/datasources/$f" "$DEQUEL_HOME/infra/monitoring/grafana/datasources/$f"
 	done
 	for f in dashboards.yml deployed-apps.json; do
-		mv "$tmp_dir/infra/monitoring/grafana/dashboards/$f" "$DEQUEL_HOME/infra/monitoring/grafana/dashboards/$f"
+		[ -f "$tmp_dir/infra/monitoring/grafana/dashboards/$f" ] && mv "$tmp_dir/infra/monitoring/grafana/dashboards/$f" "$DEQUEL_HOME/infra/monitoring/grafana/dashboards/$f"
 	done
 	for f in pam-server.py pam-verify.py; do
-		mv "$tmp_dir/scripts/auth/$f" "$DEQUEL_HOME/scripts/auth/$f"
+		[ -f "$tmp_dir/scripts/auth/$f" ] && mv "$tmp_dir/scripts/auth/$f" "$DEQUEL_HOME/scripts/auth/$f"
 	done
 
 	mv "$tmp_dir/VERSION" "$DEQUEL_HOME/VERSION"
@@ -149,13 +179,31 @@ with open('$tmp_dir/docker-compose.yml', 'w') as f:
 
 	success "Configuration updated"
 
-	header "Pulling Docker images"
+	header "Pulling new images"
 	cmd pull
 
-	header "Recreating services"
-	cmd up -d
+	header "Rolling restart (zero downtime)"
+	cmd up -d --remove-orphans --force-recreate api web 2>/dev/null || cmd up -d
 
-	success "Dequel updated to ${tag:-main}"
+	cmd exec -T caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || true
+
+	info "Waiting for services to become healthy..."
+	local retries=0
+	local max_retries=30
+	while [ $retries -lt $max_retries ]; do
+		if curl -fs http://localhost/api/health >/dev/null 2>&1; then
+			break
+		fi
+		retries=$((retries + 1))
+		sleep 2
+	done
+
+	if [ $retries -ge $max_retries ]; then
+		warn "API did not become healthy within ${max_retries}x2s — check logs with 'dequel logs api'"
+		warn "To rollback: dequel update v${current_version#v}"
+	else
+		success "Dequel updated to ${tag:-main} (was ${current_version})"
+	fi
 }
 
 cmd_uninstall() {
@@ -219,15 +267,23 @@ cmd_help() {
 	echo "Usage: dequel <command>"
 	echo ""
 	echo "Commands:"
-	echo "  start      Start all Dequel services"
-	echo "  stop       Stop all Dequel services"
-	echo "  restart    Restart all Dequel services"
-	echo "  status     Show service status"
-	echo "  logs       Follow service logs"
-	echo "  update     Download latest config, pull images, and recreate services"
-	echo "  uninstall  Remove Dequel completely (config, images, volumes)"
-	echo "  --version  Show version"
-	echo "  --help     Show this help"
+	echo "  start             Start all Dequel services"
+	echo "  stop              Stop all Dequel services"
+	echo "  restart           Restart all Dequel services"
+	echo "  status            Show service status"
+	echo "  logs              Follow service logs"
+	echo "  update            Update Dequel (zero-downtime rolling restart)"
+	echo "  uninstall         Remove Dequel completely (config, images, volumes)"
+	echo "  --version         Show version"
+	echo "  --help            Show this help"
+	echo ""
+	echo "Update options:"
+	echo "  dequel update                 Update to latest stable release"
+	echo "  dequel update latest          Update to latest stable release"
+	echo "  dequel update --pre           Update to latest pre-release"
+	echo "  dequel update --rc            Update to latest release candidate"
+	echo "  dequel update v0.3.0-rc.8     Update to specific version"
+	echo "  dequel update v1.0.0          Update to specific version"
 	echo ""
 	echo "Environment:"
 	echo "  DEQUEL_HOME  Config directory (default: auto-detected from install path)"
@@ -239,7 +295,7 @@ case "${1:-}" in
 	restart)  cmd_restart ;;
 	status)   cmd_status ;;
 	logs)     cmd_logs "$@" ;;
-	update)   cmd_update ;;
+	update)   cmd_update "$@" ;;
 	uninstall) cmd_uninstall ;;
 	--version|-v) cmd_version ;;
 	--help|-h|"") cmd_help ;;

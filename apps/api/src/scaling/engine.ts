@@ -5,7 +5,9 @@ import { config } from '../utils/config';
 import { dockerBin } from '../utils/docker-bin';
 import { DEQUEL_MANAGED_LABEL } from '../utils/dequel-labels';
 import { run, tryRun } from './docker-utils';
+import { execDockerSshCommand, syncRemoteCaddyRoute } from '../utils/ssh';
 import { getScalingPolicy, listDeployments, updateDeploymentStatus, listEnvironmentVariablesForDeploy, getProjectById } from '../db/repo';
+import type { Server } from '../types';
 
 interface ContainerStats {
   containerName: string;
@@ -19,6 +21,13 @@ interface CooldownState {
   highCpuSince: number | null;
   lowCpuSince: number | null;
 }
+
+interface Target {
+  server: Server | null;
+  mode: string;
+}
+
+const AGENT_OFFLINE_MS = 90_000;
 
 class ScalingEngine {
   private redis: Redis;
@@ -52,7 +61,19 @@ class ScalingEngine {
     }
   }
 
-  private async evaluate(dep: { id: string; projectId: string | null; containerName: string | null }) {
+  private async resolveTarget(dep: { serverId?: string | null }): Promise<Target> {
+    if (!dep.serverId || dep.serverId === 'local') return { server: null, mode: 'local' };
+    const { getServerById } = await import('../db/repo');
+    const server = await getServerById(dep.serverId).catch(() => null);
+    return { server, mode: server?.mode ?? 'local' };
+  }
+
+  private isAgentOffline(server: Server | null): boolean {
+    if (!server?.lastHeartbeat) return true;
+    return Date.now() - new Date(server.lastHeartbeat).getTime() > AGENT_OFFLINE_MS;
+  }
+
+  private async evaluate(dep: { id: string; projectId: string | null; containerName: string | null; serverId?: string | null }) {
     if (!dep.projectId || !dep.containerName) return;
     const policy = await getScalingPolicy(dep.projectId);
     if (!policy || !policy.enabled) return;
@@ -60,7 +81,10 @@ class ScalingEngine {
     const project = await getProjectById(dep.projectId);
     if (!project || !project.cpuLimit || project.cpuLimit <= 0) return;
 
-    const stats = await this.getContainerStats(dep.containerName);
+    const target = await this.resolveTarget(dep);
+    if (target.mode === 'agent' && this.isAgentOffline(target.server)) return;
+
+    const stats = await this.getContainerStats(dep.containerName, target);
     if (!stats) return;
     const slug = project ? project.name.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63) : dep.projectId;
 
@@ -73,7 +97,7 @@ class ScalingEngine {
         state.highCpuSince = now;
       } else if (now - state.highCpuSince > policy.cooldownSeconds * 1000) {
         if (now - state.lastScaleUp > policy.cooldownSeconds * 1000) {
-          await this.scaleUp(dep, policy.maxReplicas, slug, project?.cpuLimit, project?.memoryLimitMb);
+          await this.scaleUp(dep, policy.maxReplicas, slug, target, project?.cpuLimit, project?.memoryLimitMb);
           state.lastScaleUp = now;
           state.highCpuSince = null;
         }
@@ -89,7 +113,7 @@ class ScalingEngine {
         state.lowCpuSince = now;
       } else if (now - state.lowCpuSince > 300_000) { // 5 min
         if (now - state.lastScaleDown > policy.cooldownSeconds * 1000) {
-          await this.scaleDown(dep, policy.minReplicas, slug);
+          await this.scaleDown(dep, policy.minReplicas, slug, target);
           state.lastScaleDown = now;
           state.lowCpuSince = null;
         }
@@ -101,8 +125,21 @@ class ScalingEngine {
     await this.saveCooldownState(dep.id, state);
   }
 
-  private async getContainerStats(containerName: string): Promise<ContainerStats | null> {
+  private async getContainerStats(containerName: string, target: Target): Promise<ContainerStats | null> {
     try {
+      if (target.mode === 'agent') {
+        const { agentStatsCache } = await import('../agents/stats-cache');
+        const containers = await agentStatsCache.get(target.server!.id);
+        const stat = containers.get(containerName);
+        if (!stat) return null;
+        return { containerName, cpuPercent: stat.cpuPercent, memoryMb: stat.memoryMb };
+      }
+      if (target.mode === 'ssh') {
+        const result = await execDockerSshCommand(target.server!, ['stats', '--no-stream', '--format', '{{json .}}', containerName]);
+        if (result.code !== 0) return null;
+        const stats = JSON.parse(result.stdout);
+        return { containerName, cpuPercent: parseFloat(stats.CPUPerc?.replace('%', '') ?? '0'), memoryMb: this.parseMemToMb(stats.MemUsage?.split('/')[0]?.trim() ?? '0B') };
+      }
       const statsJson = await run(dockerBin, ['stats', '--no-stream', '--format', '{{json .}}', containerName]);
       const stats = JSON.parse(statsJson);
       const cpuPercent = parseFloat(stats.CPUPerc?.replace('%', '') ?? '0');
@@ -114,7 +151,7 @@ class ScalingEngine {
     }
   }
 
-  private parseMemToMb(mem: string): number {
+  parseMemToMb(mem: string): number {
     const match = mem.match(/^([\d.]+)(\w+)$/);
     if (!match) return 0;
     const val = parseFloat(match[1]);
@@ -149,7 +186,27 @@ class ScalingEngine {
     }).catch(() => {});
   }
 
-  private async getCurrentReplicas(slug: string): Promise<number> {
+  private async getCurrentReplicas(slug: string, target: Target = { server: null, mode: 'local' }, dep: { id: string; projectId: string | null; containerName: string | null } | null = null): Promise<number> {
+    if (target.mode === 'agent' && dep) {
+      const { agentStatsCache } = await import('../agents/stats-cache');
+      const containers = await agentStatsCache.get(target.server!.id);
+      let count = 0;
+      for (const stat of containers.values()) {
+        if (stat.replica && dep.id && stat.deploymentId === dep.id) count++;
+      }
+      if (containers.has(dep.containerName ?? '')) count++;
+      return Math.max(1, count);
+    }
+    if (target.mode === 'ssh' && dep) {
+      const result = await execDockerSshCommand(target.server!, ['ps', '-q', '--filter', 'label=com.dequel.managed=1', '--filter', `name=deploy-${dep.id}-replica-`]);
+      const count = result.stdout.split('\n').map(l => l.trim()).filter(Boolean).length;
+      return Math.max(1, count + 1);
+    }
+    if (target.mode === 'ssh') {
+      const result = await execDockerSshCommand(target.server!, ['ps', '-q', '--filter', 'label=com.dequel.replica=1']);
+      const count = result.stdout.split('\n').map(l => l.trim()).filter(Boolean).length;
+      return Math.max(1, count + 1);
+    }
     const routeFile = join(config.caddyRoutesDir, `${slug}.caddy`);
     try {
       const content = await readFile(routeFile, 'utf8');
@@ -168,26 +225,36 @@ class ScalingEngine {
   }
 
   private async scaleUp(
-    dep: { id: string; projectId: string | null; containerName: string | null },
+    dep: { id: string; projectId: string | null; containerName: string | null; serverId?: string | null },
     maxReplicas: number,
     slug: string,
+    target: Target,
     cpuLimit?: number | null,
     memoryLimitMb?: number | null,
   ) {
-    const currentReplicas = await this.getCurrentReplicas(slug);
+    const currentReplicas = await this.getCurrentReplicas(slug, target, dep);
     if (currentReplicas >= maxReplicas) return;
 
     const newReplicaNum = currentReplicas + 1;
     const containerName = `deploy-${dep.id}-replica-${newReplicaNum}`;
 
-    console.log(`[Scaling] Scaling up ${slug} -> ${newReplicaNum} replicas`);
+    console.log(`[Scaling] Scaling up ${slug} -> ${newReplicaNum} replicas (${target.mode})`);
+
+    if (target.mode === 'agent') {
+      await this.enqueueScaleJob(dep, target.server!, 'up', newReplicaNum, slug);
+      return;
+    }
 
     // Get the original container's image
-    const imageTag = await run(dockerBin, ['inspect', '-f', '{{.Config.Image}}', dep.containerName!]).catch(() => '');
+    const imageTag = target.mode === 'ssh'
+      ? dep.imageTag ?? (await execDockerSshCommand(target.server!, ['inspect', '-f', '{{.Config.Image}}', dep.containerName!])).stdout.trim()
+      : await run(dockerBin, ['inspect', '-f', '{{.Config.Image}}', dep.containerName!]).catch(() => '');
     if (!imageTag) return;
 
     // Get env vars from original
-    const envJson = await run(dockerBin, ['inspect', '-f', '{{json .Config.Env}}', dep.containerName!]).catch(() => '[]');
+    const envJson = target.mode === 'ssh'
+      ? (await execDockerSshCommand(target.server!, ['inspect', '-f', '{{json .Config.Env}}', dep.containerName!])).stdout
+      : await run(dockerBin, ['inspect', '-f', '{{json .Config.Env}}', dep.containerName!]).catch(() => '[]');
     const envVars: string[] = [];
     try {
       const parsed = JSON.parse(envJson);
@@ -195,7 +262,9 @@ class ScalingEngine {
     } catch {}
 
     // Get volumes from original
-    const mountsJson = await run(dockerBin, ['inspect', '-f', '{{json .Mounts}}', dep.containerName!]).catch(() => '[]');
+    const mountsJson = target.mode === 'ssh'
+      ? (await execDockerSshCommand(target.server!, ['inspect', '-f', '{{json .Mounts}}', dep.containerName!])).stdout
+      : await run(dockerBin, ['inspect', '-f', '{{json .Mounts}}', dep.containerName!]).catch(() => '[]');
     const volumes: string[] = [];
     try {
       const parsed = JSON.parse(mountsJson);
@@ -212,50 +281,129 @@ class ScalingEngine {
       resources.push('--memory', `${Math.round(memoryLimitMb)}m`);
     }
 
+    const replicaArgs = [
+      'run', '-d', '--name', containerName,
+      '--network', config.dockerNetwork,
+      '-l', DEQUEL_MANAGED_LABEL,
+      '-l', 'com.dequel.replica=1',
+      ...resources,
+      ...volumes, ...envVars,
+      imageTag,
+    ];
+
     try {
-      await run(dockerBin, [
-        'run', '-d', '--name', containerName,
-        '--network', config.dockerNetwork,
-        '-l', DEQUEL_MANAGED_LABEL,
-        ...resources,
-        ...volumes, ...envVars,
-        imageTag,
-      ]);
+      if (target.mode === 'ssh') {
+        const result = await execDockerSshCommand(target.server!, replicaArgs);
+        if (result.code !== 0) throw new Error(result.stderr);
+      } else {
+        await run(dockerBin, replicaArgs);
+      }
     } catch (err) {
       console.error(`[Scaling] Failed to create replica ${containerName}:`, err);
       return;
     }
 
     // Update Caddy route to include the new replica
-    await this.updateCaddyRoute(slug, dep, newReplicaNum);
+    await this.updateCaddyRoute(slug, dep, newReplicaNum, target);
     console.log(`[Scaling] Replica ${containerName} started`);
   }
 
   private async scaleDown(
-    dep: { id: string; projectId: string | null; containerName: string | null },
+    dep: { id: string; projectId: string | null; containerName: string | null; serverId?: string | null },
     minReplicas: number,
     slug: string,
+    target: Target,
   ) {
-    const currentReplicas = await this.getCurrentReplicas(slug);
+    const currentReplicas = await this.getCurrentReplicas(slug, target, dep);
     if (currentReplicas <= minReplicas) return;
 
-    console.log(`[Scaling] Scaling down ${slug} -> ${currentReplicas - 1} replicas`);
+    console.log(`[Scaling] Scaling down ${slug} -> ${currentReplicas - 1} replicas (${target.mode})`);
 
     // Remove highest-numbered replica
     const replicaToRemove = `deploy-${dep.id}-replica-${currentReplicas}`;
-    await tryRun(dockerBin, ['stop', '-t', '5', replicaToRemove]);
-    await tryRun(dockerBin, ['rm', '-f', replicaToRemove]);
 
-    await this.updateCaddyRoute(slug, dep, currentReplicas - 1);
+    if (target.mode === 'agent') {
+      await this.enqueueScaleJob(dep, target.server!, 'down', currentReplicas, slug);
+      return;
+    }
+
+    if (target.mode === 'ssh') {
+      await execDockerSshCommand(target.server!, ['rm', '-f', replicaToRemove]).catch(() => {});
+    } else {
+      await tryRun(dockerBin, ['rm', '-f', replicaToRemove]);
+    }
+
+    await this.updateCaddyRoute(slug, dep, currentReplicas - 1, target);
     console.log(`[Scaling] Replica ${replicaToRemove} removed`);
+  }
+
+  private async enqueueScaleJob(
+    dep: { id: string; projectId: string | null; containerName: string | null; imageTag?: string | null },
+    server: Server,
+    action: 'up' | 'down',
+    replicas: number,
+    slug: string,
+  ) {
+    const { createAgentJob, upsertRoute } = await import('../db/repo');
+    const project = dep.projectId ? await getProjectById(dep.projectId) : null;
+    const envVars = dep.projectId ? await listEnvironmentVariablesForDeploy(dep.projectId) : [];
+    const payload = {
+      deploymentId: dep.id,
+      projectId: dep.projectId,
+      action,
+      replicas,
+      imageTag: dep.imageTag ?? `${slug}-${dep.id.slice(0, 8)}:latest`,
+      appPort: project?.port || 3000,
+      cpuLimit: project?.cpuLimit ?? null,
+      memoryLimitMb: project?.memoryLimitMb ?? null,
+      environmentVariables: envVars,
+    };
+    await createAgentJob({
+      deploymentId: dep.id,
+      serverId: server.id,
+      type: 'scale',
+      payload,
+      idempotencyKey: `scale:${dep.id}:${action}:${replicas}`,
+    });
+    const { baseDomainFor } = await import('../utils/routes');
+    const hostname = `${slug}.${baseDomainFor()}`;
+    const routeFile = `${slug}.caddy`;
+    const appPort = project?.port || 3000;
+    const targets = [`deploy-${dep.id}`];
+    for (let i = 2; i <= replicas; i++) targets.push(`deploy-${dep.id}-replica-${i}`);
+    await upsertRoute({
+      serverId: server.id,
+      deploymentId: dep.id,
+      projectId: dep.projectId,
+      hostname,
+      routeFile,
+      port: appPort,
+      targetContainers: targets,
+      status: 'pending',
+    });
+    await createAgentJob({
+      deploymentId: dep.id,
+      serverId: server.id,
+      type: 'reload_routes',
+      payload: {
+        deploymentId: dep.id,
+        action: 'add',
+        hostname,
+        routeFile,
+        port: appPort,
+        targetContainers: targets,
+      },
+      idempotencyKey: `route:scale:${dep.id}:${action}:${replicas}`,
+    });
+    console.log(`[Scaling] Scale ${action} job queued for server ${server.id.slice(0, 8)}`);
   }
 
   private async updateCaddyRoute(
     slug: string,
     dep: { id: string; projectId: string | null; containerName: string | null },
     replicaCount: number,
+    target: Target,
   ) {
-    const routeFile = join(config.caddyRoutesDir, `${slug}.caddy`);
     let port = config.appInternalPort;
 
     if (dep.projectId) {
@@ -280,8 +428,71 @@ class ScalingEngine {
     }
 
     const baseDomain = config.caddyBaseDomain === 'localhost' ? `${config.caddyBaseDomain}:80` : config.caddyBaseDomain;
-    const caddySnippet = `${slug}.${baseDomain} {\n  reverse_proxy ${targets.join(' ')} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
-    await writeFile(routeFile, caddySnippet, 'utf8');
+    const { getIngressServer, shouldRouteViaIngress, projectServerSite, syncIngressRoute, upsertIngressRoute } = await import('../utils/ingress');
+    const ingressServer = await getIngressServer();
+    const viaIngress = shouldRouteViaIngress(target.server ?? null, ingressServer);
+    const caddySnippet = viaIngress
+      ? projectServerSite(`${slug}.${baseDomain}`, port, targets.map((t) => t.split(':')[0]), true)
+      : `${slug}.${baseDomain} {\n  reverse_proxy ${targets.join(' ')} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+
+    if (target.mode === 'ssh') {
+      await syncRemoteCaddyRoute(target.server!, `${slug}.caddy`, caddySnippet);
+      const { upsertRoute } = await import('../db/repo');
+      const { baseDomainFor } = await import('../utils/routes');
+      await upsertRoute({
+        serverId: target.server!.id,
+        deploymentId: dep.id,
+        projectId: dep.projectId,
+        hostname: `${slug}.${baseDomainFor()}`,
+        routeFile: `${slug}.caddy`,
+        port,
+        targetContainers: targets.map((t) => t.split(':')[0]),
+        status: 'active',
+      });
+      if (viaIngress && ingressServer && target.server) {
+        await syncIngressRoute(ingressServer, target.server.host, {
+          hostname: `${slug}.${baseDomainFor()}`,
+          routeFile: `${slug}.caddy`,
+          port,
+          containers: targets.map((t) => t.split(':')[0]),
+        });
+        await upsertIngressRoute(ingressServer.id, dep.projectId, dep.id, target.server.host, {
+          hostname: `${slug}.${baseDomainFor()}`,
+          routeFile: `${slug}.caddy`,
+          port,
+          containers: targets.map((t) => t.split(':')[0]),
+        });
+      }
+      return;
+    }
+
+    await writeFile(join(config.caddyRoutesDir, `${slug}.caddy`), caddySnippet, 'utf8');
+    const { upsertRoute } = await import('../db/repo');
+    const { baseDomainFor } = await import('../utils/routes');
+    await upsertRoute({
+      serverId: 'local',
+      deploymentId: dep.id,
+      projectId: dep.projectId,
+      hostname: `${slug}.${baseDomainFor()}`,
+      routeFile: `${slug}.caddy`,
+      port,
+      targetContainers: targets.map((t) => t.split(':')[0]),
+      status: 'active',
+    });
+    if (viaIngress && ingressServer && target.server) {
+      await syncIngressRoute(ingressServer, target.server.host, {
+        hostname: `${slug}.${baseDomainFor()}`,
+        routeFile: `${slug}.caddy`,
+        port,
+        containers: targets.map((t) => t.split(':')[0]),
+      });
+      await upsertIngressRoute(ingressServer.id, dep.projectId, dep.id, target.server.host, {
+        hostname: `${slug}.${baseDomainFor()}`,
+        routeFile: `${slug}.caddy`,
+        port,
+        containers: targets.map((t) => t.split(':')[0]),
+      });
+    }
 
     // Reload Caddy
     try {

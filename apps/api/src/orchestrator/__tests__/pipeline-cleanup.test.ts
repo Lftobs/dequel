@@ -47,8 +47,20 @@ const mockDb = {
   listAllDatabases: mock(() => Promise.resolve([])),
   deleteDeploymentAndLogs: mock(() => Promise.resolve()),
   getScalingPolicy: mock(() => Promise.resolve(null)),
+  getServerById: mock(() => Promise.resolve(null)),
+  createAgentJob: mock(() => Promise.resolve('job-1')),
+  upsertRoute: mock(() => Promise.resolve({})),
+  updateServerStatus: mock(() => Promise.resolve()),
+  createAgentRegistrationToken: mock(() => Promise.resolve({ token: 'dqr_test', expiresAt: new Date().toISOString() })),
+  getPlatformSettings: mock(() => Promise.resolve({ ingressServerId: null })),
+  listServers: mock(() => Promise.resolve([])),
+  listProjects: mock(() => Promise.resolve([])),
+  ensureLocalServer: mock(() => Promise.resolve()),
+  deleteRoutesByDeployment: mock(() => Promise.resolve()),
+  updateRouteStatus: mock(() => Promise.resolve()),
   updateDomainValidation: mock(() => Promise.resolve()),
   listDomains: mock(() => Promise.resolve([])),
+  createDeploymentEvent: mock(() => Promise.resolve()),
 };
 
 mock.module(fileUrl('../../db/repo'), () => mockDb);
