@@ -16,6 +16,7 @@ import { Rocket, Play, Webhook } from "lucide-react";
 import { ManualDeployDialog } from "./manual-deploy-dialog";
 import { DeploymentHistory } from "./deployment-history";
 import { ClearCacheToggle } from "./clear-cache-toggle";
+import { SwitchToGitCard } from "./SwitchToGitCard";
 
 const PAGE_SIZE = 5;
 
@@ -280,12 +281,12 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 					{sourceType === "git" ? (
 						<div className="space-y-4">
 							<div className="p-4 rounded-lg bg-[#141417]/50 border border-[#222227] space-y-3">
-								<div className="flex items-center justify-between">
-									<div className="space-y-1">
+								<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+									<div className="space-y-1 min-w-0">
 										<div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Repository URL</div>
-										<div className="text-sm font-mono text-zinc-200">{project?.repoUrl || "No repository configured"}</div>
+										<div className="text-sm font-mono text-zinc-200 break-all">{project?.repoUrl || "No repository configured"}</div>
 									</div>
-									<div className="text-right space-y-1">
+									<div className="text-left sm:text-right space-y-1 shrink-0">
 										<div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Branch</div>
 										<div className="text-xs bg-[#1a1a20] border border-[#33333b] text-zinc-300 px-2 py-1 rounded font-mono inline-block">
 											{project?.repoBranch || "main"}
@@ -295,7 +296,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 								{webhookError && (
 									<p className="text-xs text-red-400">{webhookError}</p>
 								)}
-							<div className="pt-2 flex justify-end gap-2">
+							<div className="pt-2 flex flex-col sm:flex-row justify-end gap-2">
 								{webhookChecked && (
 									<Button
 										type="button"
@@ -304,11 +305,11 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 										onClick={toggleWebhook}
 										disabled={webhookLoading}
 										className={webhookActive
-											? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-											: "border-zinc-700 text-zinc-400 hover:border-zinc-600"
+											? "w-full sm:w-auto border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+											: "w-full sm:w-auto border-zinc-700 text-zinc-400 hover:border-zinc-600"
 										}
 									>
-										<Webhook className="h-3.5 w-3.5 mr-1.5" />
+										<Webhook className="h-3.5 w-3.5 mr-1.5 shrink-0" />
 										{webhookLoading
 											? "Loading..."
 											: webhookActive
@@ -319,7 +320,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 								<Button
 									type="button"
 									onClick={() => setShowManualDeployDialog(true)}
-									className="bg-amber-600 hover:bg-amber-700 text-white font-medium flex items-center gap-2 shadow-lg shadow-amber-500/10"
+									className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-medium flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10"
 								>
 									<Play className="h-4 w-4 fill-current" /> Manual Deploy...
 								</Button>
@@ -331,7 +332,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 							onSubmit={handleDeploy}
 							className="space-y-3"
 						>
-							<div className="flex gap-2">
+							<div className="flex flex-wrap gap-2">
 								{(
 									[
 										"git",
@@ -380,7 +381,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 								onChange={setClearCache}
 								id="clearCacheUpload"
 							/>
-							<div className="flex gap-2">
+							<div className="flex flex-col sm:flex-row gap-2">
 								<Input
 									placeholder="Environment (e.g. production)"
 									value={
@@ -401,6 +402,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 										!canUpdateDeployment ||
 										isAutoDeploying
 									}
+									className="w-full sm:w-auto"
 								>
 									{createDeployment.isPending ||
 									isAutoDeploying ? (
@@ -428,71 +430,15 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 			</Card>
 
 			{showGitSwitch && (
-				<Card className="border-primary/30 bg-primary/5">
-					<CardHeader className="pb-2">
-						<CardTitle className="text-sm text-foreground">
-							Switch deployment
-							source to Git?
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-3">
-						<p className="text-xs text-foreground">
-							Enter the git repository
-							URL to create a new
-							deployment from source.
-						</p>
-						<Input
-							placeholder="https://github.com/user/repo.git"
-							value={switchGitUrl}
-							onChange={(e) =>
-								setSwitchGitUrl(
-									e.target.value,
-								)
-							}
-							className="text-sm"
-						/>
-						<Input
-							placeholder="Branch (optional)"
-							value={switchBranch}
-							onChange={(e) =>
-								setSwitchBranch(
-									e.target.value,
-								)
-							}
-							className="text-sm"
-						/>
-						<div className="flex justify-end gap-2">
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								onClick={() =>
-									setShowGitSwitch(
-										false,
-									)
-								}
-							>
-								Cancel
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								onClick={
-									handleSwitchToGit
-								}
-								disabled={
-									!switchGitUrl.trim() ||
-									createDeployment.isPending ||
-									isAutoDeploying
-								}
-							>
-								{createDeployment.isPending
-									? "Switching..."
-									: "Switch"}
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
+				<SwitchToGitCard
+					switchGitUrl={switchGitUrl}
+					setSwitchGitUrl={setSwitchGitUrl}
+					switchBranch={switchBranch}
+					setSwitchBranch={setSwitchBranch}
+					onCancel={() => setShowGitSwitch(false)}
+					onSwitch={handleSwitchToGit}
+					isPending={createDeployment.isPending || isAutoDeploying}
+				/>
 			)}
 
 			{totalDeployments > 0 && (

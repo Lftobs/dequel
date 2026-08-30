@@ -144,26 +144,37 @@ export function DeploymentLogs({
 		});
 	}, [logs]);
 
+	const [copied, setCopied] = useState(false);
+	const copyAllLogs = () => {
+		const fullText = logs.map(l => `[${l.stage}]-[${fmtLogTs((l as any).timestamp || l.createdAt)}] ${l.message}`).join("\n");
+		navigator.clipboard.writeText(fullText);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 1500);
+	};
+
 	return (
 		<Card>
 			<CardHeader className="pb-3">
-				<CardTitle className="text-sm flex items-center justify-between w-full">
-					<span className="flex items-center gap-2">
-						<Terminal className="h-4 w-4" />
-						Build Logs —{" "}
-						{deployment.id.slice(
-							0,
-							8,
+				<CardTitle className="text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
+					<span className="flex items-center gap-2 truncate">
+						<Terminal className="h-4 w-4 shrink-0 text-amber-500" />
+						<span className="truncate">Build Logs — {deployment.id.slice(0, 8)}</span>
+					</span>
+					<div className="flex items-center gap-3 text-xs font-normal text-muted-foreground select-none shrink-0 justify-between sm:justify-end">
+						<span className="flex items-center gap-1.5">
+							<span>Duration:</span>
+							<DeploymentDuration deployment={deployment} />
+						</span>
+						{logs.length > 0 && (
+							<button
+								type="button"
+								onClick={copyAllLogs}
+								className="text-[11px] px-2 py-0.5 rounded bg-secondary/50 hover:bg-secondary text-zinc-300 hover:text-white transition-colors flex items-center gap-1"
+							>
+								{copied ? "Copied" : "Copy"}
+							</button>
 						)}
-					</span>
-					<span className="text-xs font-normal text-muted-foreground flex items-center gap-2 select-none">
-						<span>Duration:</span>
-						<DeploymentDuration
-							deployment={
-								deployment
-							}
-						/>
-					</span>
+					</div>
 				</CardTitle>
 			</CardHeader>
 			<CardContent>

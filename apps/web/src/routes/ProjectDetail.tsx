@@ -76,48 +76,50 @@ export function ProjectDetail({
 
 	return (
 		<div>
-			<div className="flex items-center gap-3 mb-6">
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={() =>
-						navigate({ to: "/" })
-					}
-					className="h-8 w-8 text-muted-foreground"
-				>
-					<ArrowLeft className="h-4 w-4" />
-				</Button>
-				<div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-					{project.name
-						.charAt(0)
-						.toUpperCase()}
-				</div>
-				<div>
-					<div className="flex items-center gap-3">
-						<h1 className="text-xl font-bold text-foreground">
-							{project.name}
-						</h1>
-						{liveUrl && (
-							<a
-								href={liveUrl}
-								target="_blank"
-								rel="noreferrer"
-								className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-2 py-0.5 rounded-full transition-all duration-200"
-							>
-								{liveUrl} ↗
-							</a>
+			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+				<div className="flex items-start sm:items-center gap-3 min-w-0">
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={() =>
+							navigate({ to: "/" })
+						}
+						className="h-8 w-8 text-muted-foreground shrink-0 mt-0.5 sm:mt-0"
+					>
+						<ArrowLeft className="h-4 w-4" />
+					</Button>
+					<div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+						{project.name
+							.charAt(0)
+							.toUpperCase()}
+					</div>
+					<div className="min-w-0">
+						<div className="flex flex-wrap items-center gap-2">
+							<h1 className="text-xl font-bold text-foreground truncate">
+								{project.name}
+							</h1>
+							{liveUrl && (
+								<a
+									href={liveUrl}
+									target="_blank"
+									rel="noreferrer"
+									className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-2 py-0.5 rounded-full transition-all duration-200 truncate max-w-[240px]"
+								>
+									<span className="truncate">{liveUrl}</span> ↗
+								</a>
+							)}
+						</div>
+						{project.description && (
+							<p className="text-muted-foreground text-xs sm:text-sm mt-0.5 line-clamp-2">
+								{project.description}
+							</p>
 						)}
 					</div>
-					{project.description && (
-						<p className="text-muted-foreground text-sm mt-0.5">
-							{project.description}
-						</p>
-					)}
 				</div>
 			</div>
 
 			<Tabs value={activeTab} onValueChange={(val) => navigate({ search: { tab: val } as any })} className="space-y-4">
-				<TabsList ref={tabsListRef} className="mb-6 flex overflow-x-auto whitespace-nowrap justify-start h-auto p-1 bg-[#141417] border border-[#222227] rounded-lg max-w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+				<TabsList ref={tabsListRef} className="mb-6 flex overflow-x-auto whitespace-nowrap justify-start h-auto p-1 bg-[#141417] border border-[#222227] rounded-lg max-w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x">
 					<TabsTrigger value="deployments" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
 						Deployments
 					</TabsTrigger>

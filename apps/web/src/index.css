@@ -74,7 +74,9 @@
   border: 1px solid hsl(var(--border));
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: auto;
   line-height: 1.6;
+  -webkit-overflow-scrolling: touch;
 }
 
 .log-line {
@@ -88,7 +90,7 @@
 
 .log-line.error {
   color: hsl(0 72% 56%);
-  opacity: 0.7;
+  opacity: 0.85;
 }
 
 .log-stage {
@@ -103,6 +105,35 @@
 
 .log-msg {
   word-break: break-all;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .log-box {
+    font-size: 11px;
+    padding: 8px 10px;
+    line-height: 1.5;
+    max-height: 320px;
+  }
+  .log-line {
+    flex-direction: column;
+    gap: 1px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    padding-bottom: 4px;
+  }
+  .log-line:last-child {
+    margin-bottom: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .log-stage {
+    font-size: 10px;
+    opacity: 0.9;
+  }
+  .log-msg {
+    padding-left: 2px;
+  }
 }
 
 /* Ko-fi overlay widget inside container */

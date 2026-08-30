@@ -21,7 +21,7 @@ export function Databases() {
 		<div className="mx-auto max-w-6xl space-y-7">
 			<div className="flex flex-col justify-between gap-4 border-b border-border pb-6 sm:flex-row sm:items-end">
 				<div><p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-amber-500">Data services</p><h1 className="text-2xl font-semibold text-zinc-100">Managed databases</h1><p className="mt-2 max-w-2xl text-sm text-zinc-500">Provision persistent databases independently, or attach one to a project at creation time. Every database receives an internal endpoint and credential-protected public endpoint.</p></div>
-				<Button onClick={() => setIsCreating(true)}><Plus className="mr-2 h-4 w-4" /> New database</Button>
+				<Button onClick={() => setIsCreating(true)} className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" /> New database</Button>
 			</div>
 
 			{databases.isError ? (
