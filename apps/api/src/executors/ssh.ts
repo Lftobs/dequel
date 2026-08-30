@@ -114,7 +114,11 @@ const deployComposeRemote = async (
 
   let customMappings: { serviceName: string; port: number | string; subdomain?: string }[] = [];
   if (project.composeServices) {
-    try { customMappings = JSON.parse(project.composeServices); } catch {}
+    if (typeof project.composeServices === "string") {
+      try { customMappings = JSON.parse(project.composeServices); } catch {}
+    } else if (Array.isArray(project.composeServices)) {
+      customMappings = project.composeServices;
+    }
   }
 
   const webServices: { name: string; container: string; port: number }[] = [];
