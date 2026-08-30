@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
 import { useCreateProject } from '../hooks/useProjects';
 import { Button } from '../components/ui/button';
 import * as api from '../api/client';
@@ -11,12 +12,20 @@ import { SourceSelectionSection } from '../components/project/create/SourceSelec
 import { ProjectNameSection } from '../components/project/create/ProjectNameSection';
 import { BuildStrategySection, ComposeServiceRow } from '../components/project/create/BuildStrategySection';
 import { EnvVarsSection, StagedEnv } from '../components/project/create/EnvVarsSection';
+import { DeploymentTargetSection, getDeploymentTargets } from '../components/project/create/DeploymentTargetSection';
 import { ArrowLeft, Rocket, Server, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
-import type { GithubRepo, CreateProjectInput } from '../types';
+import type { GithubRepo, CreateProjectInput, Server as DequelServer } from '../types';
 
 export function CreateProjectPage() {
   const navigate = useNavigate();
   const createProject = useCreateProject();
+
+  // Deployment servers
+  const { data: servers = [] } = useQuery({
+    queryKey: ['servers'],
+    queryFn: () => api.listServers().catch(() => [] as DequelServer[]),
+    staleTime: 30_000,
+  });
 
   // Source State
   const [sourceType, setSourceType] = useState<'git' | 'upload'>('git');
@@ -31,6 +40,7 @@ export function CreateProjectPage() {
   // Form State
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [serverId, setServerId] = useState('local');
 
   // Build & Runtime Strategy State
   const [buildType, setBuildType] = useState<'railpack' | 'compose'>('railpack');
@@ -159,6 +169,7 @@ export function CreateProjectPage() {
       const projectPayload: CreateProjectInput = {
         name: name.trim(),
         description: description.trim() || undefined,
+        serverId: getDeploymentTargets(servers).some((s) => s.id === serverId) ? serverId : 'local',
         sourceType,
         repoUrl: finalRepoUrl,
         repoBranch: repoBranch.trim() || undefined,
@@ -257,6 +268,13 @@ export function CreateProjectPage() {
             setName={setName}
             description={description}
             setDescription={setDescription}
+          />
+
+          {/* Deployment Target */}
+          <DeploymentTargetSection
+            serverId={serverId}
+            setServerId={setServerId}
+            servers={servers}
           />
 
           {/* Build Strategy & Application Preset (with SVG logos) */}

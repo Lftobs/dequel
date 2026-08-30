@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { listServers, updateServerStatus, getServerById } from '../db/repo';
+import { listServerConnections, updateServerStatus } from '../db/repo';
 
 const run = (cmd: string, args: string[]) =>
   new Promise<string>((resolve, reject) => {
@@ -32,8 +32,9 @@ class ServerManager {
 
   private async heartbeat() {
     try {
-      const servers = await listServers();
+      const servers = await listServerConnections();
       for (const server of servers) {
+        if (server.mode === 'agent') continue; // Handled via WebSocket heartbeats
         await this.checkServer(server);
       }
     } catch (err) {
@@ -41,11 +42,13 @@ class ServerManager {
     }
   }
 
-  private async checkServer(server: { id: string; host: string; port: number; authToken: string }) {
+  private async checkServer(server: { id: string; host: string; port: number; mode: string; sshUser?: string | null }) {
     try {
-      // Use Docker API via CLI with -H flag to check remote server
+      let dockerTarget = `unix:///var/run/docker.sock`;
+      if (server.mode === 'ssh') dockerTarget = `ssh://${server.sshUser || 'root'}@${server.host}:${server.port || 22}`;
+
       const info = await tryRun('docker', [
-        '-H', `tcp://${server.host}:${server.port}`,
+        '-H', dockerTarget,
         'info',
         '--format', '{{json .}}',
       ]);
@@ -61,12 +64,6 @@ class ServerManager {
         cpuUsedPercent: null,
         memoryUsedMb: null,
       };
-
-      // Try to get container stats for resource usage
-      const stats = await tryRun('docker', [
-        '-H', `tcp://${server.host}:${server.port}`,
-        'stats', '--no-stream', '--format', '{{json .}}',
-      ]);
 
       await updateServerStatus(server.id, 'connected', resources);
     } catch {

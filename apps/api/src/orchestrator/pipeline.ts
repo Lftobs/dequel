@@ -570,6 +570,7 @@ export class PipelineOrchestrator {
 				appPort = project.port;
 			}
 
+			const targetServer = project?.serverId ? await getServerById(project.serverId) : null;
 			let runtimeContainerName = "";
 			let runtimeLiveUrl = "";
 
@@ -614,6 +615,7 @@ export class PipelineOrchestrator {
 						cpuLimit,
 						memoryLimitMb,
 						appPort: appPort ?? undefined,
+						targetServer,
 					},
 				);
 				runtimeContainerName = runtime.containerName;

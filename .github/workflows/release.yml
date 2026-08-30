@@ -28,6 +28,7 @@ jobs:
           REPO_LC="${REPO,,}"
           echo "API_IMAGE=ghcr.io/${REPO_LC}/api" >> $GITHUB_ENV
           echo "WEB_IMAGE=ghcr.io/${REPO_LC}/web" >> $GITHUB_ENV
+          echo "AGENT_IMAGE=ghcr.io/${REPO_LC}/agent" >> $GITHUB_ENV
         env:
           REPO: ${{ github.repository }}
 
@@ -62,6 +63,17 @@ jobs:
           tags: |
             ${{ env.WEB_IMAGE }}:${{ steps.version.outputs.VERSION }}
             ${{ env.WEB_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Agent image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/agent
+          push: true
+          tags: |
+            ${{ env.AGENT_IMAGE }}:${{ steps.version.outputs.VERSION }}
+            ${{ env.AGENT_IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

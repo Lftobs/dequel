@@ -7,11 +7,13 @@ export type DomainType = 'base' | 'custom';
 export type DomainValidationStatus = 'pending' | 'verified' | 'failed';
 export type SslStatus = 'pending' | 'provisioned' | 'failed';
 export type ServerStatus = 'pending' | 'connected' | 'disconnected' | 'failed';
+export type ServerMode = 'local' | 'ssh' | 'agent';
 export type AlertChannel = 'email' | 'slack' | 'webhook';
 export type AlertType = 'cpu' | 'memory' | 'error_rate' | 'downtime' | 'cert_expiry';
 
 export interface Project {
   id: string;
+  serverId: string | null;
   name: string;
   description: string | null;
   repoUrl: string | null;
@@ -49,6 +51,7 @@ export interface GithubIntegration {
 
 export interface CreateProjectInput {
   name: string;
+  serverId?: string | null;
   description?: string;
   repoUrl?: string;
   repoBranch?: string;
@@ -190,7 +193,13 @@ export interface Server {
   name: string;
   host: string;
   port: number;
-  authToken: string;
+  mode: ServerMode;
+  sshUser?: string | null;
+  sshKeyEncrypted?: string | null;
+  agentId: string | null;
+  agentVersion: string | null;
+  capabilities: Record<string, unknown>;
+  labels: Record<string, string>;
   status: ServerStatus;
   cpuTotal: number | null;
   memoryTotalMb: number | null;
@@ -198,6 +207,8 @@ export interface Server {
   cpuUsedPercent: number | null;
   memoryUsedMb: number | null;
   lastHeartbeat: string | null;
+  registeredAt: string | null;
+  revokedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -206,7 +217,11 @@ export interface CreateServerInput {
   name: string;
   host: string;
   port?: number;
-  authToken: string;
+  authToken?: string;
+  mode?: ServerMode;
+  sshUser?: string;
+  sshKey?: string;
+  sshPassword?: string;
 }
 
 export interface ApiKey {
@@ -247,6 +262,7 @@ export interface CreateAlertInput {
 export interface Deployment {
   id: string;
   projectId: string | null;
+  serverId: string | null;
   sourceType: SourceType;
   sourceRef: string;
   status: DeploymentStatus;
@@ -274,6 +290,7 @@ export interface PaginatedResult<T> {
 
 export interface CreateDeploymentInput {
   projectId?: string;
+  serverId?: string | null;
   sourceType: SourceType;
   sourceRef: string;
   branch?: string;

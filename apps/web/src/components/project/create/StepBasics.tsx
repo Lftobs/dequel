@@ -1,6 +1,6 @@
 import { Input } from "../../ui/input";
 import { Box } from "lucide-react";
-import type { GithubRepo } from "../../../types";
+import type { GithubRepo, Server as DequelServer } from "../../../types";
 import { StepBasicsGeneralSettings } from "./StepBasicsGeneralSettings";
 import { StepBasicsSourceSection } from "./StepBasicsSourceSection";
 import type { FrameworkPreset } from "../../../utils/presets";
@@ -32,6 +32,9 @@ interface StepBasicsProps {
 	setZipFile: (v: File | null) => void;
 	selectedPresetId: string;
 	onSelectPreset: (preset: FrameworkPreset) => void;
+	serverId: string;
+	setServerId: (v: string) => void;
+	servers: DequelServer[];
 }
 
 export function StepBasics({
@@ -61,6 +64,9 @@ export function StepBasics({
 	setZipFile,
 	selectedPresetId,
 	onSelectPreset,
+	serverId,
+	setServerId,
+	servers,
 }: StepBasicsProps) {
 	return (
 		<div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
@@ -75,6 +81,9 @@ export function StepBasics({
 				setProjectType={setProjectType}
 				selectedPresetId={selectedPresetId}
 				onSelectPreset={onSelectPreset}
+				serverId={serverId}
+				setServerId={setServerId}
+				servers={servers}
 			/>
 
 			<StepBasicsSourceSection
