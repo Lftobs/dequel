@@ -126,24 +126,24 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 			<Card className="bg-[#0c0c0e]/60 border-[#222227] rounded-xl overflow-hidden">
 				<CardContent className="p-6">
 					<form onSubmit={handleSave} className="space-y-6">
-						<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#222227] pb-5">
+						<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-[#222227]">
 							<div>
 								<h3 className="text-zinc-200 font-bold text-base">Build & Execution Settings</h3>
 								<p className="text-zinc-500 text-xs mt-1">
 									Configure how Dequel resolves, builds, and launches your codebase.
 								</p>
 							</div>
-							<div className="flex items-center gap-3">
+							<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
 								{saveSuccess && (
 									<div className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
-										<CheckCircle className="h-4 w-4" />
+										<CheckCircle className="h-4 w-4 shrink-0" />
 										Settings saved successfully
 									</div>
 								)}
 								<Button
 									type="submit"
 									disabled={updateProjectMutation.isPending}
-									className="bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/50 text-white font-semibold text-xs h-9 px-4 rounded-lg flex items-center gap-1.5 transition-all shadow-md active:scale-95"
+									className="bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/50 text-white font-semibold text-xs h-9 px-4 rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 w-full sm:w-auto"
 								>
 									<Save className="h-3.5 w-3.5" />
 									{updateProjectMutation.isPending ? "Saving..." : "Save Settings"}

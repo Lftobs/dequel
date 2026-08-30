@@ -266,7 +266,7 @@ export function BuildStrategySection({
       {/* Docker Compose Service Gateway Mapping */}
       {buildType === 'compose' && (
         <div className="space-y-4 pt-4 border-t border-[#1a1a22]">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h4 className="text-xs font-bold text-zinc-200">Compose Ingress Service Mapping</h4>
               <p className="text-[11px] text-zinc-400 mt-0.5">
@@ -276,7 +276,7 @@ export function BuildStrategySection({
             <Button
               type="button"
               onClick={addComposeServiceRow}
-              className="bg-[#1c1c24] hover:bg-[#262632] text-orange-400 text-xs border border-[#2e2e3c]"
+              className="bg-[#1c1c24] hover:bg-[#262632] text-orange-400 text-xs border border-[#2e2e3c] w-full sm:w-auto"
             >
               <Plus className="h-3.5 w-3.5 mr-1" /> Add Service
             </Button>

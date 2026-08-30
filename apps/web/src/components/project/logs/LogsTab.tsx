@@ -12,17 +12,10 @@ import {
 	X,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
-
-function stripAnsi(str: string): string {
-	// Strip full ANSI escape sequences (ESC + bracket + params + terminator)
-	let s = str.replace(
-		/[\u001b\u009b]\[[\d;]*[A-Za-z]/g,
-		"",
-	);
-	// Strip orphaned bracket sequences where ESC byte was already removed (e.g. "[35m", "[0m")
-	s = s.replace(/\[(\d+;)*\d*m/g, "");
-	return s;
-}
+import { LogsTimelineDistribution } from "./LogsTimelineDistribution";
+import { LogsEventsTable } from "./LogsEventsTable";
+import { LogDetailSheet } from "./LogDetailSheet";
+import { parseLogEntry } from "./parseLogEntry";
 
 interface LogsTabProps {
 	projectId: string;
@@ -95,97 +88,10 @@ export function LogsTab({
 	const [showError, setShowError] =
 		useState(true);
 
-	// Drawer state
 	const [selectedLog, setSelectedLog] =
 		useState<any | null>(null);
 
-	// Parse logs
-	const parsedLogs = logs.map((log) => {
-		let message = stripAnsi(log.message);
-		let level = "info";
-		let status = "";
-		let host = "localhost";
-		let request = "";
-		let duration: string | null = null;
-		let size: string | null = null;
-		let raw = log.message;
-
-		if (
-			message.startsWith("{") &&
-			message.endsWith("}")
-		) {
-			try {
-				const obj = JSON.parse(message);
-				if (obj.level)
-					level =
-						obj.level.toLowerCase();
-				if (obj.status) {
-					status = String(obj.status);
-					const statusNum = Number(
-						obj.status,
-					);
-					if (statusNum >= 500)
-						level = "error";
-					else if (statusNum >= 400)
-						level = "warning";
-				}
-				if (obj.request) {
-					host =
-						obj.request.host || host;
-					request = `${obj.request.method || ""} ${obj.request.uri || ""}`;
-					duration = obj.duration
-						? `${(obj.duration * 1000).toFixed(2)}ms`
-						: null;
-					size = obj.size
-						? `${obj.size} B`
-						: null;
-					message =
-						obj.msg ||
-						obj.message ||
-						obj.error ||
-						message;
-					if (
-						!message ||
-						message === '""'
-					) {
-						message = `${obj.request.method || ""} ${obj.request.uri || ""}`;
-					}
-				} else {
-					message =
-						obj.msg ||
-						obj.message ||
-						message;
-				}
-				raw = JSON.stringify(
-					obj,
-					null,
-					2,
-				);
-			} catch {}
-		} else {
-			const upper = message.toUpperCase();
-			if (
-				upper.includes("ERROR") ||
-				upper.includes("CRITICAL") ||
-				upper.includes("FAIL")
-			)
-				level = "error";
-			else if (upper.includes("WARN"))
-				level = "warning";
-		}
-
-		return {
-			...log,
-			parsedMessage: message,
-			level,
-			status,
-			host,
-			request,
-			duration,
-			size,
-			raw,
-		};
-	});
+	const parsedLogs = logs.map(parseLogEntry);
 
 	const filteredLogs = parsedLogs.filter(
 		(log) => {
@@ -258,10 +164,10 @@ export function LogsTab({
 	return (
 		<div className="space-y-6">
 			{/* Top Filters Header */}
-			<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 border border-[#1a1a1f] bg-[#0c0c0e] rounded-xl select-none">
-				<div className="flex flex-wrap items-center gap-4">
+			<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 border border-[#1a1a1f] bg-[#0c0c0e] rounded-xl select-none">
+				<div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
 					{/* Log Source Selector */}
-					<div className="flex items-center bg-[#141417] p-1 rounded-lg border border-[#222227] mr-2">
+					<div className="flex items-center justify-center bg-[#141417] p-1 rounded-lg border border-[#222227]">
 						<button
 							onClick={() =>
 								setLogSource(
@@ -269,7 +175,7 @@ export function LogsTab({
 								)
 							}
 							className={cn(
-								"px-3 py-1 text-xs font-semibold rounded-md transition-all",
+								"flex-1 sm:flex-none px-3 py-1 text-xs font-semibold rounded-md transition-all text-center",
 								logSource ===
 									"request"
 									? "bg-[#1c1c22] text-amber-500 border border-[#2c2c35] shadow"
@@ -285,7 +191,7 @@ export function LogsTab({
 								)
 							}
 							className={cn(
-								"px-3 py-1 text-xs font-semibold rounded-md transition-all",
+								"flex-1 sm:flex-none px-3 py-1 text-xs font-semibold rounded-md transition-all text-center",
 								logSource ===
 									"runtime"
 									? "bg-[#1c1c22] text-amber-500 border border-[#2c2c35] shadow"
@@ -297,7 +203,7 @@ export function LogsTab({
 					</div>
 
 					{/* Search message */}
-					<div className="relative w-64">
+					<div className="relative w-full sm:w-64">
 						<Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
 						<Input
 							placeholder="Search logs..."
@@ -363,12 +269,12 @@ export function LogsTab({
 					</div>
 				</div>
 
-				<div className="flex items-center gap-3">
+				<div className="flex items-center justify-between sm:justify-end gap-3 pt-2 lg:pt-0 border-t lg:border-t-0 border-[#1a1a1f]">
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={() => refetch()}
-						className="h-8 border-[#222227] text-zinc-450 hover:bg-[#1a1a1f]"
+						className="h-8 border-[#222227] text-zinc-400 hover:bg-[#1a1a1f] flex-1 sm:flex-none"
 					>
 						<RefreshCw className="h-3 w-3 mr-1" />{" "}
 						Reload
@@ -382,7 +288,7 @@ export function LogsTab({
 							endDate !== ""
 						}
 						className={cn(
-							"h-8 text-xs font-semibold px-3 py-1.5 rounded-lg border flex items-center gap-1.5 transition-all shadow-md",
+							"h-8 text-xs font-semibold px-3 py-1.5 rounded-lg border flex items-center justify-center gap-1.5 transition-all shadow-md flex-1 sm:flex-none",
 							startDate !== "" ||
 								endDate !== ""
 								? "bg-[#141417] border-[#222227] text-zinc-650 cursor-not-allowed opacity-55"
@@ -482,311 +388,27 @@ export function LogsTab({
 			)}
 
 			{/* Log count Timeline Chart */}
-			<div className="rounded-xl border border-[#1a1a1f] bg-[#0c0c0e] p-4 space-y-1">
-				<div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider select-none">
-					{logSource === "request"
-						? "Request Count Distribution (Last 30 Minutes)"
-						: "Log Count Distribution (Last 30 Minutes)"}
-				</div>
-				<div className="h-12 flex items-end gap-1.5 pt-4 select-none">
-					{bins.map((bin, idx) => (
-						<div
-							key={idx}
-							className="flex-1 rounded-sm bg-zinc-800 hover:bg-amber-500/50 transition-colors relative group"
-							style={{
-								height: `${(bin.count / maxCount) * 100}%`,
-								minHeight: "2px",
-							}}
-						>
-							<div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-[#111113] border border-[#27272a] text-[10px] text-zinc-200 px-2 py-0.5 rounded shadow-xl whitespace-nowrap z-30 font-mono">
-								{bin.count} logs
-							</div>
-						</div>
-					))}
-				</div>
-			</div>
+			<LogsTimelineDistribution
+				logSource={logSource}
+				bins={bins}
+				maxCount={maxCount}
+			/>
 
 			{/* Logs Table Layout */}
 			<div className="flex gap-4 items-start relative min-h-[400px]">
-				<div className="flex-1 overflow-hidden border border-[#1a1a1f] bg-[#0c0c0e] rounded-xl">
-					<div className="overflow-x-auto max-h-[500px] overflow-y-auto font-mono text-[11px] leading-relaxed">
-						<table className="w-full text-left border-collapse">
-							<thead>
-								<tr className="border-b border-[#18181c] bg-[#111113] text-zinc-500 select-none">
-									<th className="py-2.5 px-4 font-semibold w-24">
-										Time
-									</th>
-									<th className="py-2.5 px-3 font-semibold w-20">
-										Level
-									</th>
-								{logSource ===
-									"request" && (
-									<>
-										<th className="py-2.5 px-3 font-semibold w-16">
-											Status
-										</th>
-										<th className="py-2.5 px-3 font-semibold w-28">
-											Host
-										</th>
-										<th className="py-2.5 px-3 font-semibold w-36">
-											Request
-										</th>
-									</>
-								)}
-									<th className="py-2.5 px-4 font-semibold">
-										Message
-									</th>
-								</tr>
-							</thead>
-							<tbody className="divide-y divide-[#121216]">
-								{isLoading ? (
-									<tr>
-										<td
-											colSpan={
-												5
-											}
-											className="py-8 text-center text-zinc-600"
-										>
-											Loading
-											logs...
-										</td>
-									</tr>
-								) : filteredLogs.length ===
-								  0 ? (
-									<tr>
-										<td
-											colSpan={
-												5
-											}
-											className="py-8 text-center text-zinc-500"
-										>
-											{logSource ===
-											"request"
-												? "No request logs found."
-												: "No runtime logs found."}
-										</td>
-									</tr>
-								) : (
-									filteredLogs.map(
-										(
-											log,
-											idx,
-										) => (
-											<tr
-												key={
-													idx
-												}
-												onClick={() =>
-													setSelectedLog(
-														log,
-													)
-												}
-												className={cn(
-													"hover:bg-[#141418] cursor-pointer transition-colors border-l-2",
-													log.level ===
-														"error"
-														? "border-l-red-500 hover:border-l-red-400"
-														: log.level ===
-															  "warning"
-															? "border-l-amber-500 hover:border-l-amber-400"
-															: "border-l-transparent hover:border-l-zinc-700",
-													selectedLog?.id ===
-														log.id &&
-														"bg-[#16161b] hover:bg-[#16161b]",
-												)}
-											>
-												<td className="py-2 px-4 text-zinc-500 whitespace-nowrap">
-													{new Date(
-														(
-															log as any
-														)
-															.timestamp ||
-															log.createdAt,
-													).toLocaleTimeString()}
-												</td>
-												<td className="py-2 px-3">
-													<span
-														className={cn(
-															"px-1.5 py-0.5 rounded text-[9px] font-bold uppercase",
-															log.level ===
-																"error"
-																? "bg-red-500/10 text-red-400 border border-red-500/20"
-																: log.level ===
-																	  "warning"
-																	? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-																	: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-														)}
-													>
-														{
-															log.level
-														}
-													</span>
-												</td>
-												{logSource ===
-													"request" && (
-													<>
-														<td className="py-2 px-3">
-															{log.status ? (
-																<span className={cn(
-																	"inline-block px-1.5 py-0.5 rounded text-[9px] font-bold font-sans",
-																	Number(log.status) >= 500
-																		? "bg-red-500/10 text-red-400 border border-red-500/20"
-																		: Number(log.status) >= 400
-																			? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-																			: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-																)}>
-																	{log.status}
-																</span>
-															) : (
-																<span className="text-zinc-600">—</span>
-															)}
-														</td>
-														<td className="py-2 px-3 text-zinc-400 truncate max-w-[110px]">
-															{
-																log.host
-															}
-														</td>
-														<td className="py-2 px-3 text-zinc-400 truncate max-w-[140px]">
-															{
-																log.request
-															}
-														</td>
-													</>
-												)}
-												<td className="py-2 px-4 text-zinc-300 break-all max-w-lg truncate">
-													{
-														log.parsedMessage
-													}
-												</td>
-											</tr>
-										),
-									)
-								)}
-							</tbody>
-						</table>
-					</div>
-				</div>
+				<LogsEventsTable
+					logSource={logSource}
+					isLoading={isLoading}
+					filteredLogs={filteredLogs}
+					selectedLog={selectedLog}
+					onSelectLog={(log) => setSelectedLog(log)}
+				/>
 
-				{selectedLog && (
-					<div className="w-[360px] border border-[#27272a] bg-[#111113] rounded-xl p-5 space-y-4 animate-in slide-in-from-right-3 duration-250 shrink-0 shadow-2xl relative">
-						<button
-							onClick={() =>
-								setSelectedLog(
-									null,
-								)
-							}
-							className="absolute top-4 right-4 w-6 h-6 rounded-md hover:bg-zinc-800 text-zinc-500 hover:text-zinc-250 flex items-center justify-center transition-colors"
-						>
-							<X className="h-3.5 w-3.5" />
-						</button>
-
-						<div>
-							<h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
-								Log Event Details
-							</h4>
-							<span
-								className={cn(
-									"px-2 py-0.5 rounded text-[10px] font-bold uppercase",
-									selectedLog.level ===
-										"error"
-										? "bg-red-500/10 text-red-400 border border-red-500/20"
-										: selectedLog.level ===
-											  "warning"
-											? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-											: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-								)}
-							>
-								{
-									selectedLog.level
-								}
-							</span>
-						</div>
-
-						<div className="space-y-3 font-mono text-[11px]">
-							<div className="space-y-1">
-								<div className="text-zinc-500 text-[10px] uppercase font-sans">
-									Timestamp
-								</div>
-								<div className="text-zinc-300">
-									{new Date(
-										(
-											selectedLog as any
-										)
-											.timestamp ||
-											selectedLog.createdAt,
-									).toLocaleString()}
-								</div>
-							</div>
-
-							{logSource === "request" && selectedLog.status && (
-								<div className="space-y-1">
-									<div className="text-zinc-500 text-[10px] uppercase font-sans">
-										Status
-									</div>
-									<div className="text-zinc-300">
-										{selectedLog.status}
-									</div>
-								</div>
-							)}
-
-							{logSource === "request" && selectedLog.request && (
-								<div className="space-y-1">
-									<div className="text-zinc-500 text-[10px] uppercase font-sans">
-										Request
-									</div>
-									<div className="text-zinc-300">
-										{selectedLog.request}
-									</div>
-								</div>
-							)}
-
-							{logSource === "request" && selectedLog.duration && (
-								<div className="space-y-1">
-									<div className="text-zinc-500 text-[10px] uppercase font-sans">
-										Duration
-									</div>
-									<div className="text-zinc-300">
-										{selectedLog.duration}
-									</div>
-								</div>
-							)}
-
-							{logSource === "request" && selectedLog.size && (
-								<div className="space-y-1">
-									<div className="text-zinc-500 text-[10px] uppercase font-sans">
-										Size
-									</div>
-									<div className="text-zinc-300">
-										{selectedLog.size}
-									</div>
-								</div>
-							)}
-
-							<div className="space-y-1">
-								<div className="text-zinc-500 text-[10px] uppercase font-sans">
-									Message
-								</div>
-								<div className="text-zinc-300 break-all">
-									{
-										selectedLog.parsedMessage
-									}
-								</div>
-							</div>
-
-							<div className="space-y-1">
-								<div className="text-zinc-500 text-[10px] uppercase font-sans">
-									Raw JSON
-									payload
-								</div>
-								<pre className="p-3 rounded bg-[#070708] border border-[#1e1e22] text-[10px] text-zinc-400 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-[220px]">
-									{
-										selectedLog.raw
-									}
-								</pre>
-							</div>
-						</div>
-					</div>
-				)}
+				<LogDetailSheet
+					selectedLog={selectedLog}
+					onClose={() => setSelectedLog(null)}
+					logSource={logSource}
+				/>
 			</div>
 		</div>
 	);

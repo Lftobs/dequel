@@ -15,37 +15,39 @@ export function Header({
 	setSidebarOpen,
 }: HeaderProps) {
 	return (
-		<header className="h-14 border-b border-[#1a1a1f] bg-[#0c0c0e] flex items-center px-4 sm:px-6 gap-2 text-xs text-zinc-500">
-			<button
-				onClick={() => setSidebarOpen(true)}
-				className="lg:hidden p-1.5 -ml-1 mr-1 rounded-md hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
-				aria-label="Open sidebar"
-			>
-				<Menu className="h-4.5 w-4.5" />
-			</button>
+		<header className="h-14 border-b border-[#1a1a1f] bg-[#0c0c0e] flex items-center justify-between px-3.5 sm:px-6 gap-2 text-xs text-zinc-500 sticky top-0 z-30">
+			<div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+				<button
+					onClick={() => setSidebarOpen(true)}
+					className="lg:hidden p-2 -ml-1 mr-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+					aria-label="Open sidebar"
+				>
+					<Menu className="h-5 w-5" />
+				</button>
 
-			<Link to="/" className="hover:text-zinc-200 transition-colors">
-				Workspace
-			</Link>
-			<ChevronRight className="h-3 w-3 text-zinc-600" />
-			{currentProject ? (
-				<>
-					<Link
-						to="/project/$projectId"
-						params={{ projectId: currentProjectId! }}
-						search={{ tab: "deployments" }}
-						className="hover:text-zinc-200 transition-colors font-medium text-zinc-300"
-					>
-						{currentProject.name}
-					</Link>
-					<ChevronRight className="h-3 w-3 text-zinc-600" />
-					<span className="text-zinc-100 font-bold uppercase tracking-wider text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded">
-						{new URLSearchParams(location.search).get("tab") || "deployments"}
-					</span>
-				</>
-			) : (
-				<span className="text-zinc-300 font-medium">Dashboard</span>
-			)}
+				<Link to="/" className="hover:text-zinc-200 transition-colors shrink-0">
+					Workspace
+				</Link>
+				<ChevronRight className="h-3 w-3 text-zinc-600 shrink-0" />
+				{currentProject ? (
+					<>
+						<Link
+							to="/project/$projectId"
+							params={{ projectId: currentProjectId! }}
+							search={{ tab: "deployments" }}
+							className="hover:text-zinc-200 transition-colors font-medium text-zinc-300 truncate max-w-[110px] sm:max-w-[200px]"
+						>
+							{currentProject.name}
+						</Link>
+						<ChevronRight className="h-3 w-3 text-zinc-600 shrink-0" />
+						<span className="text-zinc-100 font-bold uppercase tracking-wider text-[9px] sm:text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded shrink-0">
+							{new URLSearchParams(location.search).get("tab") || "deployments"}
+						</span>
+					</>
+				) : (
+					<span className="text-zinc-300 font-medium truncate">Dashboard</span>
+				)}
+			</div>
 		</header>
 	);
 }

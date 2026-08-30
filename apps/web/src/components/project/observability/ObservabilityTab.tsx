@@ -71,15 +71,15 @@ function AreaChart({
 	width = 500,
 	height = 180,
 }: AreaChartProps) {
-	const padding = { top: 20, right: 20, bottom: 30, left: 90 };
+	const padding = { top: 20, right: 15, bottom: 30, left: 55 };
 
 	if (isLoading || points.length === 0) {
 		return (
 			<Card className="border-[#1c1c21] bg-[#0c0c0e]">
-				<CardHeader className="pb-2">
+				<CardHeader className="p-4 pb-2">
 					<CardTitle className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{title}</CardTitle>
 				</CardHeader>
-				<CardContent className="h-[200px] flex items-center justify-center text-zinc-500 text-xs">
+				<CardContent className="h-[180px] flex items-center justify-center text-zinc-500 text-xs p-4">
 					<div className="flex flex-col items-center gap-2">
 						<div className="w-5 h-5 border-2 border-zinc-700 border-t-amber-500 rounded-full animate-spin" />
 						<span>Analyzing metrics...</span>
@@ -123,13 +123,13 @@ function AreaChart({
 
 	return (
 		<Card className="border-[#1c1c21] bg-[#0c0c0e] hover:border-zinc-800 transition-colors">
-			<CardHeader className="pb-1 flex flex-row items-center justify-between">
+			<CardHeader className="p-3.5 sm:p-4 pb-1 flex flex-row items-center justify-between">
 				<CardTitle className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{title}</CardTitle>
 				<span className="text-xs font-mono font-bold text-zinc-350">
 					{formatter(points[points.length - 1]?.y ?? 0)}
 				</span>
 			</CardHeader>
-			<CardContent className="p-0">
+			<CardContent className="p-2 sm:p-4 pt-0">
 				<svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible select-none">
 					<defs>
 						<linearGradient id={`grad-${title.replace(/\s+/g, "")}`} x1="0" y1="0" x2="0" y2="1">

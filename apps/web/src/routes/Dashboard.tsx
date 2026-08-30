@@ -125,18 +125,18 @@ export function Dashboard() {
               Node Allocation
             </h3>
             
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3">
               {/* API Traffic */}
               <div className="relative group/stat overflow-hidden rounded-xl border border-[#1c1c21] bg-[#101012] p-3.5 transition-all duration-300 hover:border-amber-500/20 hover:bg-[#131316]">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">API Traffic</span>
-                    <div className="text-lg font-bold text-zinc-100 font-mono tracking-tight">
+                    <div className="text-lg font-bold text-zinc-100 font-mono tracking-tight truncate">
                       {metricsLoading ? '...' : (metrics?.requestsTotal ?? 0)}
                       <span className="text-xs font-normal text-zinc-500 ml-1">requests</span>
                     </div>
                   </div>
-                  <div className="h-9 w-9 rounded-lg bg-amber-500/5 border border-amber-500/10 flex items-center justify-center text-amber-500">
+                  <div className="h-9 w-9 rounded-lg bg-amber-500/5 border border-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
                     <Activity className="h-4 w-4 animate-pulse" />
                   </div>
                 </div>
@@ -145,14 +145,14 @@ export function Dashboard() {
               {/* Active Deployments */}
               <div className="relative group/stat overflow-hidden rounded-xl border border-[#1c1c21] bg-[#101012] p-3.5 transition-all duration-300 hover:border-amber-500/20 hover:bg-[#131316]">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Active Deployments</span>
-                    <div className="text-lg font-bold text-zinc-100 font-mono tracking-tight flex items-center gap-1.5">
+                    <div className="text-lg font-bold text-zinc-100 font-mono tracking-tight flex items-center gap-1.5 truncate">
                       {metricsLoading ? '...' : (metrics?.activeDeployments ?? 0)}
                       <span className="text-xs font-normal text-zinc-500">running</span>
                     </div>
                   </div>
-                  <div className="h-9 w-9 rounded-lg bg-rose-500/5 border border-rose-500/10 flex items-center justify-center text-rose-500">
+                  <div className="h-9 w-9 rounded-lg bg-rose-500/5 border border-rose-500/10 flex items-center justify-center text-rose-500 shrink-0">
                     <Server className="h-4 w-4" />
                   </div>
                 </div>
@@ -161,13 +161,13 @@ export function Dashboard() {
               {/* Cluster Ingress Uptime */}
               <div className="relative group/stat overflow-hidden rounded-xl border border-[#1c1c21] bg-[#101012] p-3.5 transition-all duration-300 hover:border-emerald-500/20 hover:bg-[#131316]">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Cluster Uptime</span>
-                    <div className="text-lg font-bold text-zinc-100 font-mono tracking-tight">
+                    <div className="text-lg font-bold text-zinc-100 font-mono tracking-tight truncate">
                       {metricsLoading ? '...' : formatUptime(metrics?.uptimeSeconds)}
                     </div>
                   </div>
-                  <div className="h-9 w-9 rounded-lg bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-center text-emerald-500">
+                  <div className="h-9 w-9 rounded-lg bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
                     <Clock className="h-4 w-4" />
                   </div>
                 </div>
@@ -202,8 +202,8 @@ export function Dashboard() {
                       className="block group/preview border-b border-[#18181c] pb-3 last:border-0 last:pb-0"
                     >
                       <div className="space-y-1">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-semibold text-zinc-300 truncate max-w-[130px] group-hover/preview:text-amber-400 transition-colors">
+                        <div className="flex justify-between items-center text-xs gap-2">
+                          <span className="font-semibold text-zinc-300 truncate group-hover/preview:text-amber-400 transition-colors">
                             {project ? project.name : 'Unknown Project'}
                           </span>
                           <span className="text-[10px] text-zinc-500 shrink-0 font-mono">
@@ -250,7 +250,7 @@ export function Dashboard() {
 
           {/* Project List / Grid */}
           {filteredProjects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-dashed border-[#222227] bg-[#0c0c0e]/30">
+            <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-dashed border-[#222227] bg-[#0c0c0e]/30 p-4">
               <div className="w-12 h-12 rounded-2xl bg-[#0c0c0e] border border-[#222227] flex items-center justify-center mb-4">
                 <FolderKanban className="h-6 w-6 text-zinc-650" />
               </div>
@@ -265,7 +265,7 @@ export function Dashboard() {
               </Link>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
               {filteredProjects.map(project => (
                 <ProjectGridCard
                   key={project.id}
@@ -307,19 +307,20 @@ function ProjectGridCard({ project, onDelete }: { project: any; onDelete: () => 
         {/* Top Background Gradient Highlight */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-500/0 to-transparent group-hover:via-amber-500/20 transition-all duration-500" />
         
-        {/* Delete button shown only on card hover */}
+        {/* Delete button */}
         <button
-          className="absolute top-4 right-4 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-zinc-500 hover:text-red-500 transition-all duration-200 z-10"
+          className="absolute top-3.5 right-3.5 w-7 h-7 rounded-lg flex items-center justify-center opacity-80 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-500/10 text-zinc-500 hover:text-red-500 transition-all duration-200 z-10"
           onClick={e => {
             e.preventDefault();
             e.stopPropagation();
             setIsDeleteOpen(true);
           }}
+          aria-label="Delete project"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
 
-      <div className="p-5 space-y-4">
+      <div className="p-4 sm:p-5 space-y-4">
         
         {/* Project Header Info */}
         <div className="flex items-start gap-3">
@@ -361,33 +362,33 @@ function ProjectGridCard({ project, onDelete }: { project: any; onDelete: () => 
         </div>
 
         {/* Bottom Metadata: Ingress domain, Git Commit & Deploys count */}
-        <div className="flex items-center gap-4 text-[11px] text-zinc-500 pt-4 border-t border-[#16161a] mt-2 select-none">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 text-[11px] text-zinc-500 pt-3 sm:pt-4 border-t border-[#16161a] mt-2 select-none">
           {project.baseDomain ? (
-            <span className="flex items-center gap-1 max-w-[130px] truncate hover:text-zinc-300">
-              <Globe className="h-3 w-3 text-zinc-500" />
-              {project.baseDomain}
+            <span className="flex items-center gap-1 max-w-[120px] sm:max-w-[140px] truncate hover:text-zinc-300">
+              <Globe className="h-3 w-3 text-zinc-500 shrink-0" />
+              <span className="truncate">{project.baseDomain}</span>
             </span>
           ) : latest?.liveUrl ? (
-            <span className="flex items-center gap-1 max-w-[130px] truncate hover:text-zinc-300">
-              <Globe className="h-3 w-3 text-zinc-500" />
-              {latest.liveUrl.replace('http://', '').replace('https://', '')}
+            <span className="flex items-center gap-1 max-w-[120px] sm:max-w-[140px] truncate hover:text-zinc-300">
+              <Globe className="h-3 w-3 text-zinc-500 shrink-0" />
+              <span className="truncate">{latest.liveUrl.replace('http://', '').replace('https://', '')}</span>
             </span>
           ) : (
             <span className="flex items-center gap-1 hover:text-zinc-300">
-              <Globe className="h-3 w-3 text-zinc-500" />
+              <Globe className="h-3 w-3 text-zinc-500 shrink-0" />
               localhost
             </span>
           )}
 
           {latest?.branch && (
-            <span className="flex items-center gap-1 hover:text-zinc-300 truncate">
-              <GitBranch className="h-3 w-3 text-zinc-500" />
-              {latest.branch}
+            <span className="flex items-center gap-1 hover:text-zinc-300 truncate max-w-[100px]">
+              <GitBranch className="h-3 w-3 text-zinc-500 shrink-0" />
+              <span className="truncate">{latest.branch}</span>
             </span>
           )}
 
           {deployments.length > 0 && (
-            <span className="ml-auto font-medium text-zinc-400 group-hover:text-amber-400 transition-colors">
+            <span className="ml-auto font-medium text-zinc-400 group-hover:text-amber-400 transition-colors shrink-0">
               {deployments.length} deploys
             </span>
           )}

@@ -67,7 +67,7 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 					</Button>
 				</div>
 
-				<div className="grid grid-cols-2 gap-3 text-xs">
+				<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
 					<div className="rounded-lg border border-border bg-black/20 p-3">
 						<p className="text-zinc-500">Internal endpoint</p>
 						<p className="mt-1 break-all font-mono text-zinc-200">{database.internalHost}:{database.internalPort}</p>
@@ -92,20 +92,20 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 
 				<div className="rounded-lg border border-border bg-[#08080a] p-3">
 					<div className="flex items-center justify-between gap-3">
-						<p className="min-w-0 truncate font-mono text-[11px] text-zinc-400">
+						<p className="min-w-0 break-all font-mono text-[11px] text-zinc-400">
 							{credentials?.externalConnectionString ?? credentials?.internalConnectionString ?? "Credentials hidden"}
 						</p>
 						<div className="flex shrink-0 gap-1">
-							<button type="button" onClick={reveal} className="p-1 text-zinc-500 hover:text-zinc-200" aria-label={credentials ? "Hide credentials" : "Reveal credentials"}>
+							<button type="button" onClick={reveal} className="p-1.5 text-zinc-500 hover:text-zinc-200" aria-label={credentials ? "Hide credentials" : "Reveal credentials"}>
 								{credentials ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
 							</button>
-							{credentials && <button type="button" onClick={() => navigator.clipboard.writeText(credentials.externalConnectionString ?? credentials.internalConnectionString)} className="p-1 text-zinc-500 hover:text-zinc-200" aria-label="Copy connection string"><Copy className="h-4 w-4" /></button>}
+							{credentials && <button type="button" onClick={() => navigator.clipboard.writeText(credentials.externalConnectionString ?? credentials.internalConnectionString)} className="p-1.5 text-zinc-500 hover:text-zinc-200" aria-label="Copy connection string"><Copy className="h-4 w-4" /></button>}
 						</div>
 					</div>
 					{credentialsError && <p role="alert" className="mt-2 text-xs text-red-400">{credentialsError}</p>}
 				</div>
 
-				<div className="flex gap-2 border-t border-border pt-4">
+				<div className="flex flex-wrap gap-2 border-t border-border pt-4">
 					{database.status === "stopped" ? (
 						<Button size="sm" disabled={isBusy} onClick={() => lifecycle("start")}><Play className="mr-2 h-3.5 w-3.5" /> Start</Button>
 					) : database.status === "failed" ? (

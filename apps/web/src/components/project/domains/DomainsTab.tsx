@@ -11,7 +11,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "../../ui/table";
-import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
 import { StatusBadge } from "../../StatusBadge";
@@ -23,14 +22,9 @@ import {
 	Copy,
 	Check,
 } from "lucide-react";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogDescription,
-	DialogFooter,
-} from "../../ui/dialog";
+import { AddDomainDialog } from "./AddDomainDialog";
+import { DeleteDomainDialog } from "./DeleteDomainDialog";
+import { DnsInstructionsCard } from "./DnsInstructionsCard";
 
 interface DomainsTabProps {
 	projectId: string;
@@ -155,23 +149,20 @@ export function DomainsTab({
 				</div>
 			) : (
 				<div className="space-y-4">
-					<div className="flex items-center justify-between">
+					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 						<div>
 							<h2 className="text-lg font-semibold text-foreground">
 								Domains
 							</h2>
 							<p className="text-sm text-muted-foreground">
-								Domains and
-								subdomains linked
-								to project
-								endpoints.
+								Domains and subdomains linked to project endpoints.
 							</p>
 						</div>
 						<Button
 							onClick={() =>
 								setIsAddOpen(true)
 							}
-							className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-1.5 px-4 h-9 rounded-xl transition-all text-xs shadow-md"
+							className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center justify-center gap-1.5 px-4 h-9 rounded-xl transition-all text-xs shadow-md w-full sm:w-auto"
 						>
 							<Plus className="h-4.5 w-4.5" />{" "}
 							Add Domain
@@ -179,476 +170,214 @@ export function DomainsTab({
 					</div>
 
 					{lastAdded && (
-						<Card className="border-primary/30 bg-primary/5 shadow-md shadow-primary/5">
-							<CardContent className="p-5 relative">
-								<Button
-									variant="ghost"
-									size="icon"
-									className="absolute top-2 right-2 h-6 w-6 text-muted-foreground hover:text-foreground"
-									onClick={() =>
-										setLastAdded(
-											"",
-										)
-									}
-								>
-									<X className="h-4 w-4" />
-								</Button>
-								<div className="flex items-start gap-3.5">
-									<Globe className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-									<div className="space-y-2.5 text-sm w-full">
-										<p className="font-semibold text-foreground">
-											DNS
-											Configuration
-											Required
-											for{" "}
-											<code className="text-primary font-mono">
-												{
-													lastAdded
-												}
-											</code>
-										</p>
-										{hasBaseDomain ? (
-											<>
-												<p className="text-xs text-muted-foreground">
-													Add
-													a
-													CNAME
-													record
-													at
-													your
-													DNS
-													domain
-													registrar:
-												</p>
-												<div className="rounded-lg border border-border bg-[#070709] overflow-hidden text-[10px] font-mono w-full">
-													<table className="w-full">
-														<thead>
-															<tr className="bg-[#0b0b0f] text-left">
-																<th className="px-3 py-1.5 text-muted-foreground font-semibold">
-																	Type
-																</th>
-																<th className="px-3 py-1.5 text-muted-foreground font-semibold">
-																	Host/Name
-																</th>
-																<th className="px-3 py-1.5 text-muted-foreground font-semibold">
-																	Target/Value
-																</th>
-															</tr>
-														</thead>
-														<tbody>
-															<tr className="border-t border-border/40">
-																<td className="px-3 py-2 text-foreground font-bold">
-																	CNAME
-																</td>
-																<td className="px-3 py-2 text-foreground">
-																	{
-																		dnsName
-																	}
-																</td>
-																<td className="px-3 py-2 text-foreground flex items-center justify-between">
-																	<span className="truncate max-w-[200px]">
-																		{
-																			baseDomain
-																		}
-																	</span>
-																	<button
-																		type="button"
-																		onClick={() =>
-																			copyText(
-																				baseDomain,
-																			)
-																		}
-																		className={`p-1 transition-colors ${copiedTarget ? "text-emerald-400" : "text-muted-foreground hover:text-foreground"}`}
-																	>
-																		{copiedTarget ? (
-																			<Check className="h-3 w-3" />
-																		) : (
-																			<Copy className="h-3 w-3" />
-																		)}
-																	</button>
-																</td>
-															</tr>
-														</tbody>
-													</table>
-												</div>
-												<p className="text-xs text-muted-foreground">
-													Or
-													point
-													an
-													A
-													record
-													directly
-													to
-													target
-													IP:{" "}
-													<code className="text-primary font-mono font-bold bg-[#0d0d11] px-1.5 py-0.5 rounded border border-border/50">
-														{serverIp?.ip ??
-															"../.."}
-													</code>
-												</p>
-											</>
-										) : (
-											<>
-												<p className="text-xs text-muted-foreground">
-													Add
-													an
-													A
-													record
-													at
-													your
-													DNS
-													domain
-													registrar:
-												</p>
-												<div className="rounded-lg border border-border bg-[#070709] overflow-hidden text-[10px] font-mono w-full">
-													<table className="w-full">
-														<thead>
-															<tr className="bg-[#0b0b0f] text-left">
-																<th className="px-3 py-1.5 text-muted-foreground font-semibold">
-																	Type
-																</th>
-																<th className="px-3 py-1.5 text-muted-foreground font-semibold">
-																	Host/Name
-																</th>
-																<th className="px-3 py-1.5 text-muted-foreground font-semibold">
-																	Value
-																</th>
-															</tr>
-														</thead>
-														<tbody>
-															<tr className="border-t border-border/40">
-																<td className="px-3 py-2 text-foreground font-bold">
-																	A
-																</td>
-																<td className="px-3 py-2 text-foreground">
-																	{
-																		dnsName
-																	}
-																</td>
-																<td className="px-3 py-2 text-foreground flex items-center justify-between">
-																	<span>
-																		{serverIp?.ip ??
-																			"../.."}
-																	</span>
-																	{serverIp?.ip && (
-																		<button
-																			type="button"
-																			onClick={() =>
-																				copyText(
-																					serverIp.ip,
-																				)
-																			}
-																			className={`p-1 transition-colors ${copiedTarget ? "text-emerald-400" : "text-muted-foreground hover:text-foreground"}`}
-																		>
-																			{copiedTarget ? (
-																				<Check className="h-3 w-3" />
-																			) : (
-																				<Copy className="h-3 w-3" />
-																			)}
-																		</button>
-																	)}
-																</td>
-															</tr>
-														</tbody>
-													</table>
-												</div>
-											</>
-										)}
-										<p className="text-[10px] text-muted-foreground/80 leading-relaxed">
-											DNS
-											changes
-											can
-											take
-											up to
-											48
-											hours
-											to
-											propagate
-											globally.
-											Dequel
-											will
-											validate
-											ssl
-											cert
-											status
-											automatically.
-										</p>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+						<DnsInstructionsCard
+							lastAdded={lastAdded}
+							onDismiss={() => setLastAdded("")}
+							hasBaseDomain={hasBaseDomain}
+							dnsName={dnsName}
+							baseDomain={baseDomain}
+							serverIp={serverIp}
+							copiedTarget={copiedTarget}
+							onCopy={copyText}
+						/>
 					)}
 
-					<div className="rounded-xl border border-border bg-card/35 backdrop-blur-sm overflow-hidden overflow-x-auto">
-						<Table className="min-w-[600px] md:min-w-full">
-							<TableHeader className="bg-[#0b0b0f]/50">
-								<TableRow className="border-border hover:bg-transparent">
-									<TableHead className="text-xs font-semibold py-3">
-										Domain
-									</TableHead>
-									<TableHead className="text-xs font-semibold py-3">
-										Type
-									</TableHead>
-									<TableHead className="text-xs font-semibold py-3">
-										Validation
-									</TableHead>
-									<TableHead className="text-xs font-semibold py-3">
-										SSL
-									</TableHead>
-									<TableHead className="text-xs font-semibold py-3">
-										DNS
-									</TableHead>
-									<TableHead className="text-xs font-semibold py-3">
-										TLS
-									</TableHead>
-									<TableHead className="w-12 text-right pr-6"></TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{domains.map(
-									(d) => (
-										<TableRow
-											key={
-												d.id
-											}
-											className="border-border hover:bg-[#121217]/30 group transition-all"
-										>
-											<TableCell className="font-semibold py-3.5 text-foreground">
-												{
-													d.domain
+					<div className="rounded-xl border border-border bg-card/35 backdrop-blur-sm overflow-hidden">
+						{/* Mobile Card List View (< md) */}
+						<div className="md:hidden divide-y divide-border">
+							{domains.map((d) => {
+								const st = domainStatuses?.find((s) => s.domain === d.domain);
+								return (
+									<div key={d.id} className="p-3.5 space-y-2.5">
+										<div className="flex items-center justify-between gap-2">
+											<span className="font-semibold text-foreground text-sm break-all">
+												{d.domain}
+											</span>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+												onClick={() => setDeletingDomId(d.id)}
+											>
+												<Trash2 className="h-3.5 w-3.5" />
+											</Button>
+										</div>
+										<div className="flex flex-wrap items-center gap-2 text-xs">
+											<Badge
+												variant="outline"
+												className="text-[10px] uppercase border-border text-muted-foreground bg-secondary/10 px-2 py-0.5"
+											>
+												{d.type}
+											</Badge>
+											<StatusBadge status={d.validationStatus} />
+											<StatusBadge status={d.sslStatus} />
+										</div>
+										{st && (
+											<div className="flex items-center gap-4 text-xs pt-1 border-t border-border/40">
+												<span className="inline-flex items-center gap-1.5">
+													<span className={`h-1.5 w-1.5 rounded-full ${st.dnsOk ? "bg-emerald-400" : "bg-red-400"}`} />
+													<span className={st.dnsOk ? "text-emerald-400 text-[11px]" : "text-red-400 text-[11px]"}>
+														DNS {st.dnsOk ? "Resolved" : "Unresolved"}
+													</span>
+												</span>
+												<span className="inline-flex items-center gap-1.5">
+													<span className={`h-1.5 w-1.5 rounded-full ${st.tlsOk ? "bg-emerald-400" : "bg-amber-400"}`} />
+													<span className={st.tlsOk ? "text-emerald-400 text-[11px]" : "text-amber-400 text-[11px]"}>
+														TLS {st.tlsOk ? "Secured" : "Pending"}
+													</span>
+												</span>
+											</div>
+										)}
+									</div>
+								);
+							})}
+						</div>
+
+						{/* Desktop Table View (>= md) */}
+						<div className="hidden md:block overflow-x-auto">
+							<Table className="w-full">
+								<TableHeader className="bg-[#0b0b0f]/50">
+									<TableRow className="border-border hover:bg-transparent">
+										<TableHead className="text-xs font-semibold py-3">
+											Domain
+										</TableHead>
+										<TableHead className="text-xs font-semibold py-3">
+											Type
+										</TableHead>
+										<TableHead className="text-xs font-semibold py-3">
+											Validation
+										</TableHead>
+										<TableHead className="text-xs font-semibold py-3">
+											SSL
+										</TableHead>
+										<TableHead className="text-xs font-semibold py-3">
+											DNS
+										</TableHead>
+										<TableHead className="text-xs font-semibold py-3">
+											TLS
+										</TableHead>
+										<TableHead className="w-12 text-right pr-6"></TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{domains.map(
+										(d) => (
+											<TableRow
+												key={
+													d.id
 												}
-											</TableCell>
-											<TableCell className="py-3.5">
-												<Badge
-													variant="outline"
-													className="text-[10px] uppercase border-border text-muted-foreground bg-secondary/10 px-2 py-0.5"
-												>
+												className="border-border hover:bg-[#121217]/30 group transition-all"
+											>
+												<TableCell className="font-semibold py-3.5 text-foreground">
 													{
-														d.type
+														d.domain
 													}
-												</Badge>
-											</TableCell>
-											<TableCell className="py-3.5">
-												<StatusBadge
-													status={
-														d.validationStatus
-													}
-												/>
-											</TableCell>
-											<TableCell className="py-3.5">
-												<StatusBadge
-													status={
-														d.sslStatus
-													}
-												/>
-											</TableCell>
-											{(() => {
-												const st = domainStatuses?.find(
-													(s) => s.domain === d.domain,
-												);
-												return (
-													<>
-														<TableCell className="py-3.5">
-															{st ? (
-																<span className="inline-flex items-center gap-1.5 text-xs">
-																	<span className={`h-1.5 w-1.5 rounded-full ${st.dnsOk ? "bg-emerald-400" : "bg-red-400"}`} />
-																	<span className={st.dnsOk ? "text-emerald-400" : "text-red-400"}>
-																		{st.dnsOk ? "Resolved" : "Unresolved"}
+												</TableCell>
+												<TableCell className="py-3.5">
+													<Badge
+														variant="outline"
+														className="text-[10px] uppercase border-border text-muted-foreground bg-secondary/10 px-2 py-0.5"
+													>
+														{
+															d.type
+														}
+													</Badge>
+												</TableCell>
+												<TableCell className="py-3.5">
+													<StatusBadge
+														status={
+															d.validationStatus
+														}
+													/>
+												</TableCell>
+												<TableCell className="py-3.5">
+													<StatusBadge
+														status={
+															d.sslStatus
+														}
+													/>
+												</TableCell>
+												{(() => {
+													const st = domainStatuses?.find(
+														(s) => s.domain === d.domain,
+													);
+													return (
+														<>
+															<TableCell className="py-3.5">
+																{st ? (
+																	<span className="inline-flex items-center gap-1.5 text-xs">
+																		<span className={`h-1.5 w-1.5 rounded-full ${st.dnsOk ? "bg-emerald-400" : "bg-red-400"}`} />
+																		<span className={st.dnsOk ? "text-emerald-400" : "text-red-400"}>
+																			{st.dnsOk ? "Resolved" : "Unresolved"}
+																		</span>
 																	</span>
-																</span>
-															) : (
-																<span className="text-xs text-muted-foreground">—</span>
-															)}
-														</TableCell>
-														<TableCell className="py-3.5">
-															{st ? (
-																<span className="inline-flex items-center gap-1.5 text-xs">
-																	<span className={`h-1.5 w-1.5 rounded-full ${st.tlsOk ? "bg-emerald-400" : "bg-amber-400"}`} />
-																	<span className={st.tlsOk ? "text-emerald-400" : "text-amber-400"}>
-																		{st.tlsOk ? "Secured" : "Pending"}
+																) : (
+																	<span className="text-xs text-muted-foreground">—</span>
+																)}
+															</TableCell>
+															<TableCell className="py-3.5">
+																{st ? (
+																	<span className="inline-flex items-center gap-1.5 text-xs">
+																		<span className={`h-1.5 w-1.5 rounded-full ${st.tlsOk ? "bg-emerald-400" : "bg-amber-400"}`} />
+																		<span className={st.tlsOk ? "text-emerald-400" : "text-amber-400"}>
+																			{st.tlsOk ? "Secured" : "Pending"}
+																		</span>
 																	</span>
-																</span>
-															) : (
-																<span className="text-xs text-muted-foreground">—</span>
-															)}
-														</TableCell>
-													</>
-												);
-											})()}
-											<TableCell className="py-3.5 pr-6 text-right">
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all opacity-80 group-hover:opacity-100"
-													onClick={() =>
-														setDeletingDomId(
-															d.id,
-														)
-													}
-												>
-													<Trash2 className="h-3.5 w-3.5" />
-												</Button>
-											</TableCell>
-										</TableRow>
-									),
-								)}
-							</TableBody>
-						</Table>
+																) : (
+																	<span className="text-xs text-muted-foreground">—</span>
+																)}
+															</TableCell>
+														</>
+													);
+												})()}
+												<TableCell className="py-3.5 pr-6 text-right">
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all opacity-80 group-hover:opacity-100"
+														onClick={() =>
+															setDeletingDomId(
+																d.id,
+															)
+														}
+													>
+														<Trash2 className="h-3.5 w-3.5" />
+													</Button>
+												</TableCell>
+											</TableRow>
+										),
+									)}
+								</TableBody>
+							</Table>
+						</div>
 					</div>
 				</div>
 			)}
 
 			{/* Add Domain Dialog */}
-			<Dialog
+			<AddDomainDialog
 				open={isAddOpen}
 				onOpenChange={setIsAddOpen}
-			>
-				<DialogContent className="sm:max-w-[420px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
-					<DialogHeader>
-						<DialogTitle className="text-lg font-bold text-foreground">
-							Add Custom Domain
-						</DialogTitle>
-						<DialogDescription className="text-xs text-muted-foreground">
-							Attach domain
-							endpoints to route
-							external web requests
-							to your container
-							proxy.
-						</DialogDescription>
-					</DialogHeader>
-					<form
-						onSubmit={add}
-						className="space-y-4 pt-2"
-					>
-						<div className="grid gap-2">
-							<label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-								Domain Address
-							</label>
-							<Input
-								placeholder="e.g. app.mycompany.com"
-								value={domain}
-								onChange={(e) =>
-									setDomain(
-										e.target
-											.value,
-									)
-								}
-								className="h-10 bg-[#0d0d11] border-input focus:ring-2 focus:ring-primary text-sm font-semibold rounded-lg font-mono"
-								required
-							/>
-						</div>
-
-						{(project as any)?.buildType === "compose" && (
-							<div className="grid grid-cols-2 gap-3 pt-1">
-								<div className="grid gap-1.5">
-									<label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-										Service Name
-									</label>
-									<Input
-										placeholder="e.g. api or web"
-										value={targetService}
-										onChange={(e) => setTargetService(e.target.value)}
-										className="h-9 bg-[#0d0d11] border-input text-xs font-mono rounded-lg"
-									/>
-								</div>
-								<div className="grid gap-1.5">
-									<label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-										Service Port
-									</label>
-									<Input
-										placeholder="e.g. 8080"
-										type="number"
-										value={targetPort}
-										onChange={(e) => setTargetPort(e.target.value)}
-										className="h-9 bg-[#0d0d11] border-input text-xs font-mono rounded-lg"
-									/>
-								</div>
-							</div>
-						)}
-
-						<div className="flex justify-end gap-2 pt-2 border-t border-border/40">
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() =>
-									setIsAddOpen(
-										false,
-									)
-								}
-								className="h-10 text-xs px-4 rounded-xl hover:bg-[#1a1a21]"
-								disabled={
-									isAdding
-								}
-							>
-								Cancel
-							</Button>
-							<Button
-								type="submit"
-								disabled={
-									isAdding
-								}
-								className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10 text-xs px-5 rounded-xl shadow-lg hover:shadow-primary/20 transition-all"
-							>
-								{isAdding
-									? "Adding..."
-									: "Add Domain"}
-							</Button>
-						</div>
-					</form>
-				</DialogContent>
-			</Dialog>
+				domain={domain}
+				setDomain={setDomain}
+				targetService={targetService}
+				setTargetService={setTargetService}
+				targetPort={targetPort}
+				setTargetPort={setTargetPort}
+				isCompose={(project as any)?.buildType === "compose"}
+				isAdding={isAdding}
+				onAdd={add}
+			/>
 
 			{/* Delete Domain Confirmation Dialog */}
-			<Dialog
+			<DeleteDomainDialog
+				domain={selectedDomToDelete?.domain}
 				open={deletingDomId !== null}
-				onOpenChange={(open) =>
-					!open &&
-					setDeletingDomId(null)
-				}
-			>
-				<DialogContent className="sm:max-w-[400px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
-					<DialogHeader>
-						<DialogTitle className="text-lg font-bold text-foreground">
-							Remove Domain
-						</DialogTitle>
-						<DialogDescription className="text-xs text-muted-foreground mt-2">
-							Are you sure you want
-							to remove domain{" "}
-							<span className="font-semibold text-foreground font-mono">
-								{
-									selectedDomToDelete?.domain
-								}
-							</span>
-							? This will stop
-							routing incoming
-							traffic from this path
-							to your running
-							container service.
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter className="flex justify-end gap-2 pt-4 border-t border-border/40">
-						<Button
-							variant="ghost"
-							onClick={() =>
-								setDeletingDomId(
-									null,
-								)
-							}
-							className="h-9 text-xs px-4 rounded-lg hover:bg-[#1a1a21]"
-						>
-							Cancel
-						</Button>
-						<Button
-							onClick={
-								handleDeleteDomain
-							}
-							className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold text-xs h-9 px-4 rounded-lg transition-all"
-						>
-							Remove Domain
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+				onOpenChange={(open) => {
+					if (!open) setDeletingDomId(null);
+				}}
+				onConfirm={handleDeleteDomain}
+			/>
 		</div>
 	);
 }

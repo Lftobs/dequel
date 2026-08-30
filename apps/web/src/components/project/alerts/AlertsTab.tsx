@@ -117,7 +117,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 				</div>
 			) : (
 				<div className="space-y-4">
-					<div className="flex items-center justify-between">
+					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 						<div>
 							<h2 className="text-lg font-semibold text-foreground">
 								Alert Rules
@@ -129,7 +129,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 						</div>
 						<Button
 							onClick={() => setIsOpen(true)}
-							className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-1.5 px-4 h-9 rounded-xl transition-all shadow-md"
+							className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center justify-center gap-1.5 px-4 h-9 rounded-xl transition-all shadow-md w-full sm:w-auto"
 						>
 							<Plus className="h-4.5 w-4.5" /> Add Rule
 						</Button>
@@ -141,15 +141,15 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 							return (
 								<div
 									key={a.id}
-									className="flex items-center justify-between p-4 rounded-xl border border-border bg-card/40 hover:bg-card/80 transition-all gap-4 group"
+									className="flex items-start sm:items-center justify-between p-3.5 sm:p-4 rounded-xl border border-border bg-card/40 hover:bg-card/80 transition-all gap-3 group"
 								>
-									<div className="flex items-center gap-4">
-										<div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/15">
+									<div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
+										<div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/15 mt-0.5 sm:mt-0">
 											<Icon className="h-5 w-5" />
 										</div>
-										<div>
+										<div className="min-w-0">
 											<div className="flex items-center gap-2 flex-wrap">
-												<span className="font-semibold text-sm capitalize text-foreground">
+												<span className="font-semibold text-sm capitalize text-foreground truncate">
 													{a.type.replace(
 														"_",
 														" ",
@@ -162,7 +162,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 													{a.channel}
 												</Badge>
 											</div>
-											<p className="text-xs text-muted-foreground mt-1">
+											<p className="text-xs text-muted-foreground mt-1 leading-relaxed">
 												Triggers when{" "}
 												<span className="capitalize">
 													{a.type.replace(
@@ -178,7 +178,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 											</p>
 										</div>
 									</div>
-									<div className="flex items-center gap-4">
+									<div className="flex items-center gap-2 shrink-0">
 										<button
 											type="button"
 											onClick={() =>
@@ -208,7 +208,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 										<Button
 											variant="ghost"
 											size="icon"
-											className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg opacity-80 group-hover:opacity-100 transition-all"
+											className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg opacity-100 sm:opacity-80 sm:group-hover:opacity-100 transition-all"
 											onClick={() =>
 												setDeletingAlertId(a.id)
 											}
