@@ -109,36 +109,46 @@ const deployComposeRemote = async (
   const current = all.find((d) => d.status === "running" && d.id !== deployment.id);
 
   const slug = slugify(project.name);
-  const serviceName = project.composeService || Object.keys(composeResult.containers)[0];
-  const containerName = composeResult.containers[serviceName] || `deploy-${deployment.id}-${serviceName}-1`;
-  const port = project.composePort || 3000;
+  const primaryServiceName = project.composeService || Object.keys(composeResult.containers)[0];
+  const primaryContainer = composeResult.containers[primaryServiceName] || `deploy-${deployment.id}-${primaryServiceName}-1`;
 
-  const { buildCaddySnippet } = await import("../utils/domain-verifier");
-  let snippet = await buildCaddySnippet(slug, containerName, project.id, undefined, port);
-
-  const rawBaseDomain = config.caddyBaseDomain || "localhost";
-  const baseDomainForCaddy = rawBaseDomain === "localhost" ? `${rawBaseDomain}:80` : rawBaseDomain;
   let customMappings: { serviceName: string; port: number | string; subdomain?: string }[] = [];
   if (project.composeServices) {
     try { customMappings = JSON.parse(project.composeServices); } catch {}
   }
+
+  const webServices: { name: string; container: string; port: number }[] = [];
   for (const [svcName, svcContainer] of Object.entries(composeResult.containers)) {
-    if (svcName === serviceName) continue;
-    const customMatch = customMappings.find((c) => c.serviceName === svcName);
+    const mapping = customMappings.find((c) => c.serviceName === svcName);
+    if (mapping) {
+      webServices.push({ name: svcName, container: svcContainer, port: Number(mapping.port) || 3000 });
+    } else if (svcName === primaryServiceName) {
+      webServices.push({ name: svcName, container: svcContainer, port: project.composePort || 3000 });
+    }
+  }
+
+  const { buildCaddySnippet } = await import("../utils/domain-verifier");
+  const primary = webServices.find((s) => s.name === primaryServiceName) || webServices[0];
+  let snippet = await buildCaddySnippet(slug, primary.container, project.id, undefined, primary.port);
+
+  const rawBaseDomain = config.caddyBaseDomain || "localhost";
+  const baseDomainForCaddy = rawBaseDomain === "localhost" ? `${rawBaseDomain}:80` : rawBaseDomain;
+  for (const svc of webServices) {
+    if (svc.name === primaryServiceName) continue;
+    const customMatch = customMappings.find((c) => c.serviceName === svc.name);
     const domains: string[] = [];
     if (customMatch?.subdomain?.trim()) {
       domains.push(`${customMatch.subdomain.trim()}.${slug}.${baseDomainForCaddy}`);
     } else {
-      domains.push(`${svcName}.${slug}.${baseDomainForCaddy}`);
-      if (svcName === "server" && !domains.includes(`api.${slug}.${baseDomainForCaddy}`)) {
+      domains.push(`${svc.name}.${slug}.${baseDomainForCaddy}`);
+      if (svc.name === "server" && !domains.includes(`api.${slug}.${baseDomainForCaddy}`)) {
         domains.push(`api.${slug}.${baseDomainForCaddy}`);
       }
     }
-    const targetPort = customMatch?.port ? Number(customMatch.port) : port;
-    snippet += `\n${domains.join(", ")} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${svcContainer}:${targetPort} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+    snippet += `\n${domains.join(", ")} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${svc.container}:${svc.port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
   }
 
-  const { shouldRouteViaIngress, projectServerSite, syncIngressRoute, upsertIngressRoute } = await import("../utils/ingress");
+  const { shouldRouteViaIngress, syncIngressRoute, upsertIngressRoute } = await import("../utils/ingress");
   const { baseDomainFor } = await import("../utils/routes");
   const { getIngressServer } = await import("../utils/ingress");
   const { upsertRoute } = await import("../db/repo");
@@ -147,10 +157,16 @@ const deployComposeRemote = async (
   const viaIngress = shouldRouteViaIngress(server, ingressServer);
 
   const hostname = `${slug}.${baseDomainFor()}`;
-  const allContainers = Object.values(composeResult.containers);
-  const effectiveSnippet = viaIngress
-    ? projectServerSite(hostname, port, allContainers, true)
-    : snippet;
+  const primaryPort = primary.port;
+  const allContainerNames = webServices.map((s) => s.container);
+
+  let effectiveSnippet: string;
+  if (viaIngress) {
+    const targets = webServices.map((s) => `${s.container}:${s.port}`).join(" ");
+    effectiveSnippet = `:80 {\n  reverse_proxy ${targets} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+  } else {
+    effectiveSnippet = snippet;
+  }
 
   if (server.mode === "ssh" || server.mode === "docker_tcp") {
     await syncRemoteCaddyRoute(server, `${slug}.caddy`, effectiveSnippet);
@@ -160,8 +176,8 @@ const deployComposeRemote = async (
       projectId: project.id,
       hostname,
       routeFile: `${slug}.caddy`,
-      port,
-      targetContainers: allContainers,
+      port: primaryPort,
+      targetContainers: allContainerNames,
       status: "active",
     });
   }
@@ -169,8 +185,8 @@ const deployComposeRemote = async (
   const routeInfo = {
     hostname,
     routeFile: `${slug}.caddy`,
-    port,
-    containers: allContainers,
+    port: primaryPort,
+    containers: allContainerNames,
   };
   if (viaIngress && ingressServer) {
     await emitLog(deployment.id, "system", `Registering ingress route on ${ingressServer.name} for ${hostname}`);
