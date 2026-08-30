@@ -1,6 +1,7 @@
 import { config } from "../utils/config";
-import { removeRemoteCaddyRoute, runRemoteScript } from "../utils/ssh";
+import { removeRemoteCaddyRoute, runRemoteScript, syncRemoteCaddyRoute } from "../utils/ssh";
 import { buildRemoteDeployScript, parseRemoteBuildResult } from "./ssh-build-script";
+import { buildRemoteComposeScript, parseRemoteComposeResult, buildRemoteComposeDestroyScript } from "./ssh-compose-script";
 import { emitLog } from "./logging";
 import { summarizeDeploymentError } from "../orchestrator/deployment-errors";
 import type { Deployment, Project, Server } from "../types";
@@ -70,6 +71,130 @@ const deployFromImage = async (
   return runtime;
 };
 
+const deployComposeRemote = async (
+  deployment: Deployment,
+  project: Project,
+  server: Server,
+) => {
+  const { listEnvironmentVariablesForDeploy, listDeployments, updateDeploymentStatus } = await getRepo();
+  await updateDeploymentStatus(deployment.id, "building", { failureReason: null });
+  await emitLog(deployment.id, "system", `Deploying compose stack on server ${server.name} over SSH`);
+
+  const envVars = await listEnvironmentVariablesForDeploy(project.id, deployment.environment ?? undefined);
+
+  const script = buildRemoteComposeScript({
+    deploymentId: deployment.id,
+    workspaceRoot: config.workspaceRoot,
+    gitUrl: deployment.sourceRef,
+    branch: deployment.branch,
+    commitSha: deployment.commitSha,
+    projectName: project.name,
+    dockerNetwork: config.dockerNetwork,
+    environmentVariables: envVars,
+    sourceDir: project.sourceDir,
+  });
+
+  const result = await runRemoteScript(server, script, {
+    onLog: async (line) => { await emitLog(deployment.id, "build", line); },
+  });
+  if (result.code !== 0) throw new Error(result.stderr || result.stdout || "Remote compose build failed");
+
+  const composeResult = parseRemoteComposeResult(result.stdout);
+  if (!composeResult) throw new Error("Remote compose completed without a result marker");
+
+  await updateDeploymentStatus(deployment.id, "deploying");
+  await emitLog(deployment.id, "system", "Compose stack started — configuring routes");
+
+  const all = await listDeployments(project.id);
+  const current = all.find((d) => d.status === "running" && d.id !== deployment.id);
+
+  const slug = slugify(project.name);
+  const serviceName = project.composeService || Object.keys(composeResult.containers)[0];
+  const containerName = composeResult.containers[serviceName] || `deploy-${deployment.id}-${serviceName}-1`;
+  const port = project.composePort || 3000;
+
+  const { buildCaddySnippet } = await import("../utils/domain-verifier");
+  let snippet = await buildCaddySnippet(slug, containerName, project.id, undefined, port);
+
+  const rawBaseDomain = config.caddyBaseDomain || "localhost";
+  const baseDomainForCaddy = rawBaseDomain === "localhost" ? `${rawBaseDomain}:80` : rawBaseDomain;
+  let customMappings: { serviceName: string; port: number | string; subdomain?: string }[] = [];
+  if (project.composeServices) {
+    try { customMappings = JSON.parse(project.composeServices); } catch {}
+  }
+  for (const [svcName, svcContainer] of Object.entries(composeResult.containers)) {
+    if (svcName === serviceName) continue;
+    const customMatch = customMappings.find((c) => c.serviceName === svcName);
+    const domains: string[] = [];
+    if (customMatch?.subdomain?.trim()) {
+      domains.push(`${customMatch.subdomain.trim()}.${slug}.${baseDomainForCaddy}`);
+    } else {
+      domains.push(`${svcName}.${slug}.${baseDomainForCaddy}`);
+      if (svcName === "server" && !domains.includes(`api.${slug}.${baseDomainForCaddy}`)) {
+        domains.push(`api.${slug}.${baseDomainForCaddy}`);
+      }
+    }
+    const targetPort = customMatch?.port ? Number(customMatch.port) : port;
+    snippet += `\n${domains.join(", ")} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${svcContainer}:${targetPort} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+  }
+
+  const { shouldRouteViaIngress, projectServerSite, syncIngressRoute, upsertIngressRoute } = await import("../utils/ingress");
+  const { baseDomainFor } = await import("../utils/routes");
+  const { getIngressServer } = await import("../utils/ingress");
+  const { upsertRoute } = await import("../db/repo");
+
+  const ingressServer = await getIngressServer();
+  const viaIngress = shouldRouteViaIngress(server, ingressServer);
+
+  const hostname = `${slug}.${baseDomainFor()}`;
+  const allContainers = Object.values(composeResult.containers);
+  const effectiveSnippet = viaIngress
+    ? projectServerSite(hostname, port, allContainers, true)
+    : snippet;
+
+  if (server.mode === "ssh" || server.mode === "docker_tcp") {
+    await syncRemoteCaddyRoute(server, `${slug}.caddy`, effectiveSnippet);
+    await upsertRoute({
+      serverId: server.id,
+      deploymentId: deployment.id,
+      projectId: project.id,
+      hostname,
+      routeFile: `${slug}.caddy`,
+      port,
+      targetContainers: allContainers,
+      status: "active",
+    });
+  }
+
+  const routeInfo = {
+    hostname,
+    routeFile: `${slug}.caddy`,
+    port,
+    containers: allContainers,
+  };
+  if (viaIngress && ingressServer) {
+    await emitLog(deployment.id, "system", `Registering ingress route on ${ingressServer.name} for ${hostname}`);
+    await syncIngressRoute(ingressServer, server.host, routeInfo);
+    await upsertIngressRoute(ingressServer.id, project.id, deployment.id, server.host, routeInfo);
+  }
+
+  const scheme = rawBaseDomain === "localhost" ? "http" : "https";
+  const liveUrl = `${scheme}://${hostname}`;
+
+  await updateDeploymentStatus(deployment.id, "running", {
+    containerName: composeResult.projectName,
+    liveUrl,
+  });
+  await emitLog(deployment.id, "system", `Deployment is running at ${liveUrl}`);
+
+  if (current) {
+    await updateDeploymentStatus(current.id, "inactive", {
+      failureReason: `Superseded by deployment ${deployment.id.slice(0, 8)}`,
+    });
+    await emitLog(current.id, "system", `Marked inactive (superseded by ${deployment.id.slice(0, 8)})`);
+  }
+};
+
 const markFailed = async (deploymentId: string, error: unknown) => {
   const { updateDeploymentStatus } = await getRepo();
   const message = summarizeDeploymentError(error);
@@ -83,6 +208,11 @@ export const sshExecutor: DeploymentExecutor = {
   async deploy({ deployment, project, server }: ExecutorDeployInput) {
     if (deployment.sourceType !== "git") throw new Error("SSH mode currently supports Git deployments only");
     if (!project) throw new Error("Deployment requires a project");
+
+    if (project.buildType === "compose") {
+      await deployComposeRemote(deployment, project, server);
+      return;
+    }
 
     const { listEnvironmentVariablesForDeploy, listDeployments, updateDeploymentStatus } = await getRepo();
     await updateDeploymentStatus(deployment.id, "building", { failureReason: null });
@@ -128,6 +258,9 @@ export const sshExecutor: DeploymentExecutor = {
   },
 
   async rollback({ deployment, project, server, imageTag }: ExecutorRollbackInput) {
+    if (project?.buildType === "compose") {
+      throw new Error("Rollback is not supported for Docker Compose deployments. Redeploy with the desired commit instead.");
+    }
     const { getProjectById, listDeployments, updateDeploymentStatus } = await getRepo();
     await updateDeploymentStatus(deployment.id, "deploying");
     await emitLog(deployment.id, "system", `Rolling back to this version (image: ${imageTag})`);
@@ -152,7 +285,13 @@ export const sshExecutor: DeploymentExecutor = {
   async destroy({ deployment, project, server }) {
     const { deleteDeploymentAndLogs, deleteRoutesByDeployment } = await getRepo();
     const { tryRun } = await getRuntime();
-    if (deployment.containerName) {
+
+    if (project?.buildType === "compose" && deployment.containerName) {
+      const script = buildRemoteComposeDestroyScript(deployment.containerName);
+      await runRemoteScript(server, script, {
+        onLog: async (line) => { await emitLog(deployment.id, "system", line); },
+      });
+    } else if (deployment.containerName) {
       await tryRun("docker", ["stop", "-t", "5", deployment.containerName], server);
       await tryRun("docker", ["rm", "-f", deployment.containerName], server);
     }
