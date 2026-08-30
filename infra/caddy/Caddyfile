@@ -1,10 +1,10 @@
 {
-  email {$CADDY_EMAIL:admin@dequel.local}
+  email {$CADDY_EMAIL}
 }
 
 import /etc/caddy/routes/*.caddy
 
-:80 {
+{$CADDY_BASE_DOMAIN:localhost} {
   log {
     output stdout
     format json
@@ -33,12 +33,7 @@ import /etc/caddy/routes/*.caddy
   }
 }
 
-{$CADDY_BASE_DOMAIN:localhost}:443 {
-  log {
-    output stdout
-    format json
-  }
-
+http:// {
   encode zstd gzip
 
   handle /api/* {
