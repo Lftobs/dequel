@@ -1,5 +1,7 @@
 FROM oven/bun:1
 
+ARG BUILD_TIME=0
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
