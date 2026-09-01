@@ -232,3 +232,50 @@ export interface GithubIntegrationStatus {
   appName?: string;
   hasWebhookSecret?: boolean;
 }
+
+export type AiProvider = 'openai' | 'gemini' | 'grok' | 'claude';
+
+export interface AiFixSuggestion {
+  title: string;
+  description: string;
+  actionType?: 'command' | 'code' | 'config' | 'env';
+  snippet?: string;
+}
+
+export interface AiDiagnosis {
+  id?: string;
+  deploymentId: string;
+  provider: AiProvider;
+  model: string;
+  summary: string;
+  rootCause: string;
+  explanation: string;
+  suggestedFixes: AiFixSuggestion[];
+  rawResponse?: string | null;
+  createdAt?: string;
+}
+
+export interface AiSettingsStatus {
+  defaultProvider: AiProvider;
+  openaiConfigured: boolean;
+  openaiModel: string;
+  geminiConfigured: boolean;
+  geminiModel: string;
+  grokConfigured: boolean;
+  grokModel: string;
+  claudeConfigured: boolean;
+  claudeModel: string;
+}
+
+export interface AiSettingsInput {
+  defaultProvider?: AiProvider;
+  openaiApiKey?: string;
+  openaiModel?: string;
+  geminiApiKey?: string;
+  geminiModel?: string;
+  grokApiKey?: string;
+  grokModel?: string;
+  claudeApiKey?: string;
+  claudeModel?: string;
+}
+

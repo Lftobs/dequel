@@ -29,6 +29,13 @@
       "when": 1788000000000,
       "tag": "0003_add_server_ssh_key_encryption",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788100000000,
+      "tag": "0004_add_ai_settings_and_diagnoses",
+      "breakpoints": true
     }
   ]
 }

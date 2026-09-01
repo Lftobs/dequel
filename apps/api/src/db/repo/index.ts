@@ -62,3 +62,10 @@ export { getPlatformSettings, setIngressServer } from "./platform-settings";
 export type { Route } from "../../types";
 
 export { createDeploymentEvent, listDeploymentEvents } from "./deployment-events";
+
+export {
+  getAiSettings, getPublicAiSettings, upsertAiSettings, saveAiDiagnosis,
+  getLatestAiDiagnosis, deleteAiDiagnosesByDeployment,
+} from "./ai-settings";
+export type { AiProviderType, AiSettingsData, AiSettingsPublic, AiDiagnosisRecord } from "./ai-settings";
+

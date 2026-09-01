@@ -1,4 +1,4 @@
-import React, {
+import {
 	useState,
 	useEffect,
 	useRef,
@@ -10,7 +10,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "../../ui/card";
-import { Terminal } from "lucide-react";
+import { Button } from "../../ui/button";
+import { Terminal, Sparkles, AlertTriangle } from "lucide-react";
+import { AiBuildFixDialog } from "./AiBuildFixDialog";
 
 export function formatTimeAgo(dateStr: string) {
 	const diff =
@@ -131,79 +133,110 @@ function fmtLogTs(raw: string | undefined) {
 
 export function DeploymentLogs({
 	deployment,
+	projectName,
 }: {
 	deployment: any;
+	projectName?: string;
 }) {
 	const { logs, isLoading } = useDeploymentLogs(
 		deployment.id,
 	);
+	const [showAiDialog, setShowAiDialog] = useState(false);
 	const endRef = useRef<HTMLDivElement>(null);
+
 	useEffect(() => {
 		endRef.current?.scrollIntoView({
 			behavior: "smooth",
 		});
 	}, [logs]);
 
+	const isFailed = deployment.status === "failed";
+
 	return (
-		<Card>
-			<CardHeader className="pb-3">
-				<CardTitle className="text-sm flex items-center justify-between w-full">
-					<span className="flex items-center gap-2">
-						<Terminal className="h-4 w-4" />
-						Build Logs —{" "}
-						{deployment.id.slice(
-							0,
-							8,
-						)}
-					</span>
-					<span className="text-xs font-normal text-muted-foreground flex items-center gap-2 select-none">
-						<span>Duration:</span>
-						<DeploymentDuration
-							deployment={
-								deployment
-							}
-						/>
-					</span>
-				</CardTitle>
-			</CardHeader>
-			<CardContent>
-				{isLoading ? (
-					<div className="text-center py-8 text-muted-foreground text-sm">
-						Loading logs...
-					</div>
-				) : logs.length === 0 ? (
-					<div className="text-center py-8 text-muted-foreground text-sm">
-						No build logs available
-						for this deployment.
-					</div>
-				) : (
-					<div className="log-box">
-						{logs.map((log, i) => (
-							<div
-								key={i}
-								className={`log-line ${isErrorLogLine(log.message) ? "error" : ""}`}
-							>
-								<span className="log-stage">
-									[{log.stage}
-									]-[
-									{fmtLogTs(
-										(
-											log as any
-										)
-											.timestamp ||
-											log.createdAt,
-									)}
-									]
-								</span>
-								<span className="log-msg">
-									{log.message}
-								</span>
+		<>
+			<Card>
+				<CardHeader className="pb-3">
+					<CardTitle className="text-sm flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2">
+						<span className="flex items-center gap-2">
+							<Terminal className="h-4 w-4" />
+							Build Logs — {deployment.id.slice(0, 8)}
+						</span>
+						<div className="flex items-center gap-2">
+							{isFailed && (
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={() => setShowAiDialog(true)}
+									className="h-7 text-xs px-2.5 rounded-lg border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary flex items-center gap-1.5 shadow-sm"
+								>
+									<Sparkles className="h-3.5 w-3.5" />
+									<span>Diagnose with AI</span>
+								</Button>
+							)}
+							<span className="text-xs font-normal text-muted-foreground flex items-center gap-2 select-none">
+								<span>Duration:</span>
+								<DeploymentDuration deployment={deployment} />
+							</span>
+						</div>
+					</CardTitle>
+				</CardHeader>
+				<CardContent className="space-y-3">
+					{isFailed && (
+						<div className="p-3 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+							<div className="flex items-start sm:items-center gap-2">
+								<AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 sm:mt-0 text-red-400" />
+								<div className="text-xs">
+									<span className="font-bold text-foreground">Build or container deployment failed.</span>{" "}
+									<span className="text-muted-foreground">
+										{deployment.failureReason || "Analyze output to identify root cause and get instant fixes."}
+									</span>
+								</div>
 							</div>
-						))}
-						<div ref={endRef} />
-					</div>
-				)}
-			</CardContent>
-		</Card>
+							<Button
+								size="sm"
+								onClick={() => setShowAiDialog(true)}
+								className="h-7 text-xs px-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shrink-0 flex items-center gap-1.5 shadow"
+							>
+								<Sparkles className="h-3.5 w-3.5" />
+								<span>Diagnose with AI</span>
+							</Button>
+						</div>
+					)}
+
+					{isLoading ? (
+						<div className="text-center py-8 text-muted-foreground text-sm">
+							Loading logs...
+						</div>
+					) : logs.length === 0 ? (
+						<div className="text-center py-8 text-muted-foreground text-sm">
+							No build logs available for this deployment.
+						</div>
+					) : (
+						<div className="log-box">
+							{logs.map((log, i) => (
+								<div
+									key={i}
+									className={`log-line ${isErrorLogLine(log.message) ? "error" : ""}`}
+								>
+									<span className="log-stage">
+										[{log.stage}]-[{fmtLogTs((log as any).timestamp || log.createdAt)}]
+									</span>
+									<span className="log-msg">{log.message}</span>
+								</div>
+							))}
+							<div ref={endRef} />
+						</div>
+					)}
+				</CardContent>
+			</Card>
+
+			<AiBuildFixDialog
+				open={showAiDialog}
+				onOpenChange={setShowAiDialog}
+				deploymentId={deployment.id}
+				projectName={projectName}
+				failureReason={deployment.failureReason}
+			/>
+		</>
 	);
 }

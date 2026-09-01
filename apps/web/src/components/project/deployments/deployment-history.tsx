@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
 	Dialog,
 	DialogContent,
@@ -11,9 +11,10 @@ import { StatusBadge } from "../../StatusBadge";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
-import { RefreshCw, ChevronLeft, ChevronRight, History } from "lucide-react";
+import { RefreshCw, ChevronLeft, ChevronRight, History, Sparkles } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { formatTimeAgo, depDisplayName, DeploymentDuration, DeploymentLogs } from "./deployment-logs";
+import { AiBuildFixDialog } from "./AiBuildFixDialog";
 
 interface DeploymentHistoryProps {
 	deployments: any[];
@@ -46,6 +47,7 @@ export function DeploymentHistory({
 }: DeploymentHistoryProps) {
 	const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 	const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+	const [diagnoseDep, setDiagnoseDep] = useState<any | null>(null);
 
 	const selectedDeployment = deployments.find((d) => d.id === selectedId);
 
@@ -61,7 +63,7 @@ export function DeploymentHistory({
 							<TableHead>Branch</TableHead>
 							<TableHead>Duration</TableHead>
 							<TableHead>Age</TableHead>
-							<TableHead className="w-24"></TableHead>
+							<TableHead className="w-28 text-right"></TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -107,6 +109,21 @@ export function DeploymentHistory({
 								</TableCell>
 								<TableCell className="text-right">
 									<div className="flex items-center justify-end gap-1">
+										{dep.status === "failed" && (
+											<Button
+												variant="ghost"
+												size="sm"
+												className="h-7 px-2 text-xs text-primary hover:bg-primary/10 flex items-center gap-1"
+												onClick={(e) => {
+													e.stopPropagation();
+													setDiagnoseDep(dep);
+												}}
+												title="Diagnose build failure with AI"
+											>
+												<Sparkles className="h-3.5 w-3.5" />
+												<span className="hidden sm:inline">Diagnose</span>
+											</Button>
+										)}
 										{dep.status === "running" && dep.imageTag && dep.sourceType !== "image" && (
 											<Button
 												variant="ghost"
@@ -177,7 +194,22 @@ export function DeploymentHistory({
 				)}
 			</div>
 
-			{selectedDeployment && <DeploymentLogs deployment={selectedDeployment} />}
+			{selectedDeployment && (
+				<DeploymentLogs
+					deployment={selectedDeployment}
+					projectName={projectName}
+				/>
+			)}
+
+			{diagnoseDep && (
+				<AiBuildFixDialog
+					open={diagnoseDep !== null}
+					onOpenChange={(open) => { if (!open) setDiagnoseDep(null); }}
+					deploymentId={diagnoseDep.id}
+					projectName={projectName}
+					failureReason={diagnoseDep.failureReason}
+				/>
+			)}
 
 			<Dialog open={cancelConfirmId !== null} onOpenChange={(open) => { if (!open) setCancelConfirmId(null); }}>
 				<DialogContent>

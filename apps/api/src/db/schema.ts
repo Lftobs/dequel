@@ -312,3 +312,42 @@ export const routes = pgTable("routes", {
 }, (table) => [
   uniqueIndex("idx_routes_hostname_server").on(table.hostname, table.serverId),
 ]);
+
+export const aiSettings = pgTable("ai_settings", {
+  id: text().primaryKey(),
+  defaultProvider: text("default_provider").notNull().default("openai"),
+  openaiApiKeyEncrypted: text("openai_api_key_encrypted"),
+  openaiApiKeyIv: text("openai_api_key_iv"),
+  openaiApiKeyTag: text("openai_api_key_tag"),
+  openaiModel: text("openai_model").notNull().default("gpt-4o-mini"),
+  geminiApiKeyEncrypted: text("gemini_api_key_encrypted"),
+  geminiApiKeyIv: text("gemini_api_key_iv"),
+  geminiApiKeyTag: text("gemini_api_key_tag"),
+  geminiModel: text("gemini_model").notNull().default("gemini-2.0-flash"),
+  grokApiKeyEncrypted: text("grok_api_key_encrypted"),
+  grokApiKeyIv: text("grok_api_key_iv"),
+  grokApiKeyTag: text("grok_api_key_tag"),
+  grokModel: text("grok_model").notNull().default("grok-2-latest"),
+  claudeApiKeyEncrypted: text("claude_api_key_encrypted"),
+  claudeApiKeyIv: text("claude_api_key_iv"),
+  claudeApiKeyTag: text("claude_api_key_tag"),
+  claudeModel: text("claude_model").notNull().default("claude-3-5-sonnet-20241022"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const aiDiagnoses = pgTable("ai_diagnoses", {
+  id: text().primaryKey(),
+  deploymentId: text("deployment_id").notNull(),
+  provider: text().notNull(),
+  model: text().notNull(),
+  summary: text().notNull(),
+  rootCause: text("root_cause").notNull(),
+  explanation: text().notNull(),
+  suggestedFixes: jsonb("suggested_fixes").notNull().default([]),
+  rawResponse: text("raw_response"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  foreignKey({ columns: [table.deploymentId], foreignColumns: [deployments.id], onDelete: "cascade" }),
+  index("idx_ai_diagnoses_deployment").on(table.deploymentId),
+]);

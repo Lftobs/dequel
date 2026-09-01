@@ -92,4 +92,40 @@ export const settingsRoutes = new Elysia({ prefix: "/settings" })
       set.status = 400;
       return fail(err.message);
     }
+  })
+
+  .get("/ai", async () => {
+    const { getPublicAiSettings } = await import("../../db/repo");
+    const settings = await getPublicAiSettings();
+    return ok(settings);
+  })
+
+  .put("/ai", async ({ body }: any) => {
+    const { upsertAiSettings } = await import("../../db/repo");
+    await upsertAiSettings({
+      defaultProvider: body?.defaultProvider,
+      openaiApiKey: body?.openaiApiKey,
+      openaiModel: body?.openaiModel,
+      geminiApiKey: body?.geminiApiKey,
+      geminiModel: body?.geminiModel,
+      grokApiKey: body?.grokApiKey,
+      grokModel: body?.grokModel,
+      claudeApiKey: body?.claudeApiKey,
+      claudeModel: body?.claudeModel,
+    });
+    return ok(null, "AI settings updated");
+  })
+
+  .post("/ai/test", async ({ body, set }: any) => {
+    const provider = body?.provider || "openai";
+    const apiKey = body?.apiKey;
+    const model = body?.model;
+    const { testAiConnection } = await import("../../ai");
+    const result = await testAiConnection(provider, apiKey, model);
+    if (!result.ok) {
+      set.status = 400;
+      return fail(result.message);
+    }
+    return ok(result);
   });
+
