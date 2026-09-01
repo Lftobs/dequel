@@ -132,7 +132,15 @@ const deployComposeRemote = async (
   }
 
   const { buildCaddySnippet } = await import("../utils/domain-verifier");
+  const { shouldRouteViaIngress, syncIngressRoute, upsertIngressRoute } = await import("../utils/ingress");
+  const { baseDomainFor } = await import("../utils/routes");
+  const { getIngressServer } = await import("../utils/ingress");
+  const { upsertRoute } = await import("../db/repo");
+
+  const ingressServer = await getIngressServer();
+  const viaIngress = shouldRouteViaIngress(server, ingressServer);
   const primary = webServices.find((s) => s.name === primaryServiceName) || webServices[0];
+
   let snippet = await buildCaddySnippet(slug, primary.container, project.id, undefined, primary.port);
 
   const rawBaseDomain = config.caddyBaseDomain || "localhost";
@@ -152,22 +160,21 @@ const deployComposeRemote = async (
     snippet += `\n${domains.join(", ")} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${svc.container}:${svc.port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
   }
 
-  const { shouldRouteViaIngress, syncIngressRoute, upsertIngressRoute } = await import("../utils/ingress");
-  const { baseDomainFor } = await import("../utils/routes");
-  const { getIngressServer } = await import("../utils/ingress");
-  const { upsertRoute } = await import("../db/repo");
-
-  const ingressServer = await getIngressServer();
-  const viaIngress = shouldRouteViaIngress(server, ingressServer);
-
   const hostname = `${slug}.${baseDomainFor()}`;
   const primaryPort = primary.port;
   const allContainerNames = webServices.map((s) => s.container);
 
   let effectiveSnippet: string;
   if (viaIngress) {
-    const targets = webServices.map((s) => `${s.container}:${s.port}`).join(" ");
-    effectiveSnippet = `:80 {\n  reverse_proxy ${targets} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+    const blockRegex = /^([^\n]+?)\s*\{\n([\s\S]*?)\n\}\s*$/gm;
+    effectiveSnippet = snippet.replace(blockRegex, (_match, domainLine: string, body: string) => {
+      const domains = domainLine.split(",").map((d: string) => d.trim());
+      const portedDomains = domains.map((d: string) => {
+        const stripped = d.replace(/:\d+$/, "");
+        return `${stripped}:80`;
+      });
+      return `${portedDomains.join(", ")} {\n${body}\n}`;
+    });
   } else {
     effectiveSnippet = snippet;
   }
