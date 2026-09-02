@@ -78,7 +78,7 @@ export const buildRemoteComposeScript = (input: RemoteComposeScriptInput): strin
     "done",
     "",
     'echo "[compose] Collecting container names"',
-    `docker compose -p deploy-${input.deploymentId} ps --format '{{.Service}}|{{.Name}}'`,
+    `docker compose -p deploy-${input.deploymentId} ps --format '{{.Service}}|{{.Name}}|{{.Ports}}'`,
     "",
     `echo "DONE:deploy-${input.deploymentId}"`,
   ].filter((line) => line !== undefined).join("\n");
@@ -87,6 +87,7 @@ export const buildRemoteComposeScript = (input: RemoteComposeScriptInput): strin
 export interface RemoteComposeResult {
   projectName: string;
   containers: Record<string, string>;
+  ports: Record<string, number>;
 }
 
 export const parseRemoteComposeResult = (stdout: string): RemoteComposeResult | null => {
@@ -96,14 +97,22 @@ export const parseRemoteComposeResult = (stdout: string): RemoteComposeResult | 
   const projectName = doneLine.slice("DONE:".length).trim();
 
   const containers: Record<string, string> = {};
+  const ports: Record<string, number> = {};
   for (const line of stdout.split("\n")) {
     const parts = line.split("|");
-    if (parts.length === 2 && parts[0] && parts[1]) {
-      containers[parts[0].trim()] = parts[1].trim();
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      const svcName = parts[0].trim();
+      containers[svcName] = parts[1].trim();
+      if (parts[2]) {
+        const portMatch = parts[2].trim().match(/:(\d+)->/);
+        if (portMatch) {
+          ports[svcName] = Number(portMatch[1]);
+        }
+      }
     }
   }
 
-  return { projectName, containers };
+  return { projectName, containers, ports };
 };
 
 export const buildRemoteComposeDestroyScript = (projectName: string): string => {

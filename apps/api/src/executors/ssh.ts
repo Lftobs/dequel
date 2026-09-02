@@ -127,9 +127,9 @@ const deployComposeRemote = async (
     if (mapping) {
       webServices.push({ name: svcName, container: svcContainer, port: Number(mapping.port) || 3000 });
     } else if (svcName === primaryServiceName) {
-      webServices.push({ name: svcName, container: svcContainer, port: project.composePort || 3000 });
+      webServices.push({ name: svcName, container: svcContainer, port: project.composePort || composeResult.ports[svcName] || 3000 });
     } else {
-      webServices.push({ name: svcName, container: svcContainer, port: 3000 });
+      webServices.push({ name: svcName, container: svcContainer, port: composeResult.ports[svcName] || 3000 });
     }
   }
 
