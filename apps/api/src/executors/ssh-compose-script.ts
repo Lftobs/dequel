@@ -104,9 +104,9 @@ export const parseRemoteComposeResult = (stdout: string): RemoteComposeResult | 
       const svcName = parts[0].trim();
       containers[svcName] = parts[1].trim();
       if (parts[2]) {
-        const portMatch = parts[2].trim().match(/:(\d+)->/);
+        const portMatch = parts[2].trim().match(/:(\d+)->(\d+)/);
         if (portMatch) {
-          ports[svcName] = Number(portMatch[1]);
+          ports[svcName] = Number(portMatch[2]);
         }
       }
     }
