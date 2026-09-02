@@ -209,6 +209,10 @@ export const buildCaddySnippet = async (
     }
   }
 
+  if (defaultDomains.length === 0 || defaultDomains.every(d => !d.trim())) {
+    defaultDomains = [`${slug}.${baseDomain}`];
+  }
+
   const primaryBlock = `${defaultDomains.join(', ')} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${containerName}:${port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
 
   return [primaryBlock, ...customBlocks].join('\n');

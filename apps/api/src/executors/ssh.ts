@@ -147,6 +147,12 @@ const deployComposeRemote = async (
 
   const rawBaseDomain = config.caddyBaseDomain || "localhost";
   const baseDomainForCaddy = rawBaseDomain === "localhost" ? `${rawBaseDomain}:80` : rawBaseDomain;
+
+  if (!snippet.trim() || snippet.trim().startsWith(':')) {
+    const fallbackDomain = `${slug}.${rawBaseDomain === 'localhost' ? 'localhost' : rawBaseDomain}`;
+    const domain = rawBaseDomain === 'localhost' ? `${fallbackDomain}:80` : fallbackDomain;
+    snippet = `${domain} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${primary.container}:${primary.port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+  }
   for (const svc of webServices) {
     if (svc.name === primaryServiceName) continue;
     const customMatch = customMappings.find((c) => c.serviceName === svc.name);
