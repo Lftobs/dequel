@@ -193,16 +193,21 @@ const deployComposeRemote = async (
     });
   }
 
-  const routeInfo = {
-    hostname,
-    routeFile: `${slug}.caddy`,
-    port: primaryPort,
-    containers: allContainerNames,
-  };
   if (viaIngress && ingressServer) {
-    await emitLog(deployment.id, "system", `Registering ingress route on ${ingressServer.name} for ${hostname}`);
-    await syncIngressRoute(ingressServer, server.host, routeInfo);
-    await upsertIngressRoute(ingressServer.id, project.id, deployment.id, server.host, routeInfo);
+    const { computeComposeIngressHostnames, syncComposeIngressRoutes } = await import("../utils/compose-ingress");
+    const allHostnames = computeComposeIngressHostnames(
+      webServices.map((s) => ({ name: s.name, port: s.port })),
+      primaryServiceName,
+      slug,
+      baseDomainFor(),
+      customMappings,
+    );
+    await emitLog(
+      deployment.id,
+      "system",
+      `Registering ${allHostnames.length} ingress route(s) on ${ingressServer.name}: ${allHostnames.map((h) => h.hostname).join(", ")}`,
+    );
+    await syncComposeIngressRoutes(ingressServer, server, deployment, project, allHostnames);
   }
 
   const scheme = rawBaseDomain === "localhost" ? "http" : "https";
@@ -330,8 +335,19 @@ export const sshExecutor: DeploymentExecutor = {
     const { getIngressServer, removeIngressRouteFile } = await import("../utils/ingress");
     const ingressServer = await getIngressServer();
     if (ingressServer && ingressServer.id !== server.id) {
-      const { baseDomainFor } = await import("../utils/routes");
-      await removeIngressRouteFile(ingressServer, { hostname: `${slug}.${baseDomainFor()}`, routeFile: `${slug}.caddy` });
+      const { listRoutesByDeployment } = await getRepo();
+      const deploymentRoutes = await listRoutesByDeployment(deployment.id);
+      for (const route of deploymentRoutes) {
+        if (route.routeFile !== `${slug}.caddy`) {
+          await removeRemoteCaddyRoute(server, route.routeFile);
+        }
+        if (route.upstreamHost) {
+          await removeIngressRouteFile(ingressServer, {
+            hostname: route.hostname,
+            routeFile: route.routeFile,
+          });
+        }
+      }
     }
     await deleteRoutesByDeployment(deployment.id);
     await deleteDeploymentAndLogs(deployment.id);
