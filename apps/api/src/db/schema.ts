@@ -68,7 +68,7 @@ export const deploymentLogs = pgTable("deployment_logs", {
   message: text().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-  foreignKey({ columns: [table.deploymentId], foreignColumns: [deployments.id] }),
+  foreignKey({ columns: [table.deploymentId], foreignColumns: [deployments.id], onDelete: "cascade" }),
   uniqueIndex("idx_logs_dep_seq").on(table.deploymentId, table.sequence),
 ]);
 
