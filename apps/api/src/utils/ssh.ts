@@ -120,6 +120,20 @@ export const syncRemoteCaddyRoute = (
       resolve(false);
       return;
     }
+
+    const blockPattern = /^([^\n{]+?)\s*\{/gm;
+    let match: RegExpExecArray | null;
+    while ((match = blockPattern.exec(content)) !== null) {
+      const domainLine = match[1].trim();
+      const domains = domainLine.split(',').map((d) => d.trim());
+      for (const d of domains) {
+        if (/^:\d+$/.test(d)) {
+          console.error(`Rejected catch-all Caddy route in ${filename}: "${d}" — must include a hostname`);
+          resolve(false);
+          return;
+        }
+      }
+    }
     const keyPath = ensureSshKey(server);
     const keyArgs = keyPath ? ["-i", keyPath, "-o", "IdentitiesOnly=yes"] : [];
     const user = server.sshUser || "root";
