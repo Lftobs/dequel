@@ -153,8 +153,10 @@ const deployComposeRemote = async (
     const domain = rawBaseDomain === 'localhost' ? `${fallbackDomain}:80` : fallbackDomain;
     snippet = `${domain} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${primary.container}:${primary.port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
   }
+  const { DB_SERVICE_NAMES } = await import("../utils/compose-ingress");
   for (const svc of webServices) {
     if (svc.name === primaryServiceName) continue;
+    if (DB_SERVICE_NAMES.has(svc.name)) continue;
     const customMatch = customMappings.find((c) => c.serviceName === svc.name);
     const domains: string[] = [];
     if (customMatch?.subdomain?.trim()) {

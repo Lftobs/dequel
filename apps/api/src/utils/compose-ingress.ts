@@ -6,7 +6,7 @@ export interface ComposeIngressHostname {
   isPrimary: boolean;
 }
 
-const DB_SERVICE_NAMES = new Set(["db", "postgres", "mysql", "redis", "mongo", "database"]);
+export const DB_SERVICE_NAMES = new Set(["db", "postgres", "mysql", "redis", "mongo", "database"]);
 
 export const computeComposeIngressHostnames = (
   webServices: { name: string; port: number }[],
