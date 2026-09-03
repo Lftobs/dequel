@@ -22,12 +22,14 @@ interface RepoPickerProps {
 	onSelect: (repo: GithubRepo) => void;
 	selected: GithubRepo | null;
 	onDisconnect: () => void;
+	onConnect?: () => void;
 }
 
 export function RepoPicker({
 	onSelect,
 	selected,
 	onDisconnect,
+	onConnect,
 }: RepoPickerProps) {
 	const [repos, setRepos] = useState<
 		GithubRepo[]
@@ -204,15 +206,28 @@ export function RepoPicker({
 					<p className="text-xs text-zinc-500">
 						{error}
 					</p>
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						onClick={fetchRepos}
-						className="h-8 text-xs border-[#222227]"
-					>
-						Retry
-					</Button>
+					<div className="flex items-center gap-2">
+						{onConnect && (
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={onConnect}
+								className="h-8 text-xs border-orange-500/40 text-orange-400 hover:bg-orange-500/10"
+							>
+								Connect GitHub
+							</Button>
+						)}
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={fetchRepos}
+							className="h-8 text-xs border-[#222227]"
+						>
+							Retry
+						</Button>
+					</div>
 				</div>
 			) : filtered.length === 0 ? (
 				<div className="text-center py-8 text-zinc-500 text-xs">
