@@ -53,6 +53,8 @@ export { createAlert, listAlerts, getAlertById, updateAlertEnabled, deleteAlert 
 
 export { getGithubIntegration, setGithubIntegration } from "./github";
 
+export { getGithubSession, createGithubSession, deleteGithubSession } from "./github-sessions";
+
 export { getSmtpSettings, upsertSmtpSettings } from "./settings";
 export type { SmtpSettingsData } from "./settings";
 

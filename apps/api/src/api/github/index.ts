@@ -1,32 +1,8 @@
 import { Elysia } from "elysia";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
-import { getGithubIntegration, setGithubIntegration, createDeployment, listProjects } from "../../db/repo";
+import { getGithubIntegration, setGithubIntegration, createDeployment, listProjects, getGithubSession, createGithubSession, deleteGithubSession } from "../../db/repo";
 import { orchestrator } from "../../orchestrator";
 import { config } from "../../utils/config";
 import { ok, fail } from "../response";
-
-const SESSIONS_FILE = join(process.env.DATA_DIR ?? "./data", ".github-sessions.json");
-
-let SESSIONS = new Map<string, { token: string }>();
-
-const loadSessions = () => {
-	try {
-		const raw = readFileSync(SESSIONS_FILE, "utf-8");
-		const entries: [string, { token: string }][] = JSON.parse(raw);
-		SESSIONS = new Map(entries);
-	} catch {}
-};
-
-const saveSessions = () => {
-	try {
-		const dir = SESSIONS_FILE.substring(0, SESSIONS_FILE.lastIndexOf("/"));
-		mkdirSync(dir, { recursive: true });
-		writeFileSync(SESSIONS_FILE, JSON.stringify([...SESSIONS]), "utf-8");
-	} catch {}
-};
-
-loadSessions();
 
 const validateToken = async (token: string): Promise<boolean> => {
 	try {
@@ -43,21 +19,19 @@ const getSession = async (cookie: string | null): Promise<string | null> => {
 	if (!cookie) return null;
 	const match = cookie.match(/github_session=([^;]+)/);
 	if (!match) return null;
-	const session = SESSIONS.get(match[1]);
-	if (!session) return null;
-	const valid = await validateToken(session.token);
+	const token = await getGithubSession(match[1]);
+	if (!token) return null;
+	const valid = await validateToken(token);
 	if (!valid) {
-		SESSIONS.delete(match[1]);
-		saveSessions();
+		await deleteGithubSession(match[1]);
 		return null;
 	}
-	return session.token;
+	return token;
 };
 
-const createSession = (token: string): string => {
+const createSession = async (token: string): Promise<string> => {
 	const id = crypto.randomUUID();
-	SESSIONS.set(id, { token });
-	saveSessions();
+	await createGithubSession(id, token);
 	return id;
 };
 
@@ -188,7 +162,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 			set.headers["Location"] = `${origin}/?github=error=${msg}`;
 			return;
 		}
-		const sessionId = createSession(data.access_token);
+		const sessionId = await createSession(data.access_token);
 		set.status = 302;
 		set.headers["Set-Cookie"] = `github_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=315360000`;
 		set.headers["Location"] = `${origin}/?github=connected`;
@@ -324,8 +298,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		const cookie = request.headers.get("cookie");
 		const match = cookie?.match(/github_session=([^;]+)/);
 		if (match) {
-			SESSIONS.delete(match[1]);
-			saveSessions();
+			await deleteGithubSession(match[1]);
 		}
 		set.headers["Set-Cookie"] = "github_session=; Path=/; Max-Age=0";
 		return ok(null, "GitHub disconnected");

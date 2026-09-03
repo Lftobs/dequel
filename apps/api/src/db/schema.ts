@@ -1,5 +1,13 @@
 import { pgTable, text, integer, real, boolean, serial, jsonb, timestamp, foreignKey, uniqueIndex, index } from "drizzle-orm/pg-core";
 
+export const githubSessions = pgTable("github_sessions", {
+  id: text().primaryKey(),
+  accessTokenEncrypted: text("access_token_encrypted").notNull(),
+  accessTokenIv: text("access_token_iv").notNull(),
+  accessTokenTag: text("access_token_tag").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const githubIntegrations = pgTable("github_integrations", {
   id: text().primaryKey(),
   clientId: text("client_id").notNull(),
