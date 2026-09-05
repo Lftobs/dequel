@@ -1,12 +1,12 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { Trash2, Eye, EyeOff, Share2 } from "lucide-react";
+import { Eye, EyeOff, Share2, Trash2 } from "lucide-react";
+import { useState } from "react";
 import * as api from "../../api/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Input } from "../ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 export function SharedEnvVarsSection() {
 	const { data: vars = [], refetch } = useQuery({
@@ -23,7 +23,11 @@ export function SharedEnvVarsSection() {
 	const add = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!key.trim() || !value.trim()) return;
-		await api.createSharedEnvVar({ key: key.trim(), value: value.trim(), description: description.trim() || undefined });
+		await api.createSharedEnvVar({
+			key: key.trim(),
+			value: value.trim(),
+			description: description.trim() || undefined,
+		});
 		setKey("");
 		setValue("");
 		setDescription("");
@@ -59,18 +63,45 @@ export function SharedEnvVarsSection() {
 			<CardContent>
 				<form onSubmit={add} className="flex flex-wrap items-end gap-3 mb-4">
 					<div className="grid gap-1.5">
-						<label className="text-xs font-medium text-muted-foreground">Key</label>
-						<Input placeholder="DATABASE_URL" value={key} onChange={(e) => setKey(e.target.value)} className="w-48" />
+						<label htmlFor="shared-env-key" className="text-xs font-medium text-muted-foreground">
+							Key
+						</label>
+						<Input
+							id="shared-env-key"
+							placeholder="DATABASE_URL"
+							value={key}
+							onChange={(e) => setKey(e.target.value)}
+							className="w-48"
+						/>
 					</div>
 					<div className="grid gap-1.5">
-						<label className="text-xs font-medium text-muted-foreground">Value</label>
-						<Input placeholder="postgres://..." value={value} onChange={(e) => setValue(e.target.value)} className="w-64" type="password" />
+						<label htmlFor="shared-env-value" className="text-xs font-medium text-muted-foreground">
+							Value
+						</label>
+						<Input
+							id="shared-env-value"
+							placeholder="postgres://..."
+							value={value}
+							onChange={(e) => setValue(e.target.value)}
+							className="w-64"
+							type="password"
+						/>
 					</div>
 					<div className="grid gap-1.5">
-						<label className="text-xs font-medium text-muted-foreground">Description</label>
-						<Input placeholder="Main database URL" value={description} onChange={(e) => setDescription(e.target.value)} className="w-48" />
+						<label htmlFor="shared-env-desc" className="text-xs font-medium text-muted-foreground">
+							Description
+						</label>
+						<Input
+							id="shared-env-desc"
+							placeholder="Main database URL"
+							value={description}
+							onChange={(e) => setDescription(e.target.value)}
+							className="w-48"
+						/>
 					</div>
-					<Button type="submit" size="sm">Add</Button>
+					<Button type="submit" size="sm">
+						Add
+					</Button>
 				</form>
 				{vars.length > 0 && (
 					<div className="rounded-xl border border-border overflow-hidden overflow-x-auto">
@@ -94,12 +125,20 @@ export function SharedEnvVarsSection() {
 										<TableCell className="text-xs text-muted-foreground">{v.environment}</TableCell>
 										<TableCell className="text-xs text-muted-foreground">{v.description || "—"}</TableCell>
 										<TableCell className="text-right flex gap-1 justify-end">
-											<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground"
-												onClick={() => handleReveal(v.id)}>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-7 w-7 text-muted-foreground hover:text-foreground"
+												onClick={() => handleReveal(v.id)}
+											>
 												{revealedId === v.id ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
 											</Button>
-											<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-												onClick={() => setDeletingId(v.id)}>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-7 w-7 text-muted-foreground hover:text-destructive"
+												onClick={() => setDeletingId(v.id)}
+											>
 												<Trash2 className="h-3.5 w-3.5" />
 											</Button>
 										</TableCell>
@@ -110,7 +149,12 @@ export function SharedEnvVarsSection() {
 					</div>
 				)}
 			</CardContent>
-			<Dialog open={deletingId !== null} onOpenChange={(open) => { if (!open) setDeletingId(null); }}>
+			<Dialog
+				open={deletingId !== null}
+				onOpenChange={(open) => {
+					if (!open) setDeletingId(null);
+				}}
+			>
 				<DialogContent className="sm:max-w-[400px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
 					<DialogHeader>
 						<DialogTitle className="text-lg font-bold text-foreground">Delete Shared Variable</DialogTitle>
@@ -119,10 +163,19 @@ export function SharedEnvVarsSection() {
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="flex justify-end gap-2 pt-4 border-t border-border/40">
-						<Button variant="ghost" onClick={() => setDeletingId(null)}
-							className="h-10 text-xs px-4 rounded-xl hover:bg-[#1a1a21]">Cancel</Button>
-						<Button onClick={handleDelete}
-							className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold h-10 text-xs px-5 rounded-xl shadow-lg transition-all">Delete</Button>
+						<Button
+							variant="ghost"
+							onClick={() => setDeletingId(null)}
+							className="h-10 text-xs px-4 rounded-xl hover:bg-[#1a1a21]"
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={handleDelete}
+							className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold h-10 text-xs px-5 rounded-xl shadow-lg transition-all"
+						>
+							Delete
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

@@ -1,19 +1,19 @@
 import { Link } from "@tanstack/react-router";
 import {
-	Box,
-	Settings,
 	Activity,
-	Terminal,
-	Sliders,
-	Globe,
-	Database,
-	Bell,
-	Layers,
 	ArrowUpRight,
-	TrendingUp,
-	Laptop,
+	Bell,
+	Box,
+	Database,
+	Globe,
 	KeyRound,
+	Laptop,
+	Layers,
+	Settings,
 	Share2,
+	Sliders,
+	Terminal,
+	TrendingUp,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -24,24 +24,16 @@ interface SidebarNavProps {
 	navigate: (opts: any) => void;
 }
 
-export function SidebarNav({
-	currentProjectId,
-	currentProject,
-	location,
-	navigate,
-}: SidebarNavProps) {
+export function SidebarNav({ currentProjectId, currentProject, location, navigate }: SidebarNavProps) {
 	const isTabActive = (tabName: string) => {
-		const activeTab =
-			new URLSearchParams(location.search).get("tab") || "deployments";
+		const activeTab = new URLSearchParams(location.search).get("tab") || "deployments";
 		return activeTab === tabName;
 	};
 
 	return (
 		<div className="flex-1 overflow-y-auto p-3 space-y-6">
 			<div>
-				<h4 className="px-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-					Dashboards
-				</h4>
+				<h4 className="px-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Dashboards</h4>
 				<nav className="space-y-0.5">
 					<Link
 						to="/"
@@ -109,15 +101,14 @@ export function SidebarNav({
 			{currentProject && (
 				<div className="animate-in fade-in slide-in-from-left-2 duration-200">
 					<div className="flex items-center justify-between px-3 mb-2">
-						<h4 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-							Project Control
-						</h4>
+						<h4 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Project Control</h4>
 						<span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold uppercase tracking-tight scale-90">
 							Active
 						</span>
 					</div>
 					<nav className="space-y-0.5">
 						<button
+							type="button"
 							onClick={() =>
 								navigate({
 									to: `/project/${currentProjectId}`,
@@ -136,6 +127,7 @@ export function SidebarNav({
 						</button>
 
 						<button
+							type="button"
 							onClick={() =>
 								navigate({
 									to: `/project/${currentProjectId}`,
@@ -154,6 +146,7 @@ export function SidebarNav({
 						</button>
 
 						<button
+							type="button"
 							onClick={() =>
 								navigate({
 									to: `/project/${currentProjectId}`,
@@ -172,6 +165,7 @@ export function SidebarNav({
 						</button>
 
 						<button
+							type="button"
 							onClick={() =>
 								navigate({
 									to: `/project/${currentProjectId}`,
@@ -190,6 +184,7 @@ export function SidebarNav({
 						</button>
 
 						<button
+							type="button"
 							onClick={() =>
 								navigate({
 									to: `/project/${currentProjectId}`,
@@ -212,11 +207,10 @@ export function SidebarNav({
 
 			{currentProject && (
 				<div className="animate-in fade-in slide-in-from-left-2 duration-200">
-					<h4 className="px-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-						Observability
-					</h4>
+					<h4 className="px-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Observability</h4>
 					<nav className="space-y-0.5">
 						<button
+							type="button"
 							onClick={() =>
 								navigate({
 									to: `/project/${currentProjectId}`,
@@ -234,6 +228,7 @@ export function SidebarNav({
 							Overview Metrics
 						</button>
 						<button
+							type="button"
 							onClick={() =>
 								navigate({
 									to: `/project/${currentProjectId}`,

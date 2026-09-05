@@ -1,17 +1,7 @@
-import { useState } from "react";
+import { Check, Copy, Eye, EyeOff, Lock, Pencil, Trash2 } from "lucide-react";
+import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
-import { Badge } from "../../ui/badge";
-import {
-	Lock,
-	Pencil,
-	Eye,
-	EyeOff,
-	Copy,
-	Check,
-	Trash2,
-} from "lucide-react";
-import * as api from "../../../api/client";
 
 interface EnvVar {
 	id: string;
@@ -66,21 +56,11 @@ export function EnvVarRow({
 				{editing ? (
 					<Input
 						value={editingValue}
-						onChange={(e) =>
-							onEditingValueChange(e.target.value)
-						}
+						onChange={(e) => onEditingValueChange(e.target.value)}
 						className="h-8 bg-[#09090c] border-input text-xs font-mono"
 					/>
 				) : (
-					<span
-						className={
-							revealed
-								? "text-foreground font-semibold"
-								: "opacity-45"
-						}
-					>
-						{revealed ?? "••••••••"}
-					</span>
+					<span className={revealed ? "text-foreground font-semibold" : "opacity-45"}>{revealed ?? "••••••••"}</span>
 				)}
 			</td>
 			<td className="py-3.5 px-4">
@@ -92,9 +72,7 @@ export function EnvVarRow({
 						{ev.environment}
 					</Badge>
 				) : (
-					<span className="text-muted-foreground/60 text-xs">
-						all (default)
-					</span>
+					<span className="text-muted-foreground/60 text-xs">all (default)</span>
 				)}
 			</td>
 			<td className="py-3.5 pr-6 text-right">
@@ -109,12 +87,7 @@ export function EnvVarRow({
 							>
 								Save
 							</Button>
-							<Button
-								size="sm"
-								variant="ghost"
-								onClick={onCancelEdit}
-								className="h-7 text-[10px] px-2 rounded-md"
-							>
+							<Button size="sm" variant="ghost" onClick={onCancelEdit} className="h-7 text-[10px] px-2 rounded-md">
 								Cancel
 							</Button>
 						</>
@@ -134,19 +107,11 @@ export function EnvVarRow({
 								variant="ghost"
 								size="icon"
 								className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-secondary/40 rounded-md transition-all"
-								onClick={() =>
-									revealed ? onHide(ev.id) : onReveal(ev.id)
-								}
-								title={
-									revealed ? "Hide value" : "Reveal value"
-								}
+								onClick={() => (revealed ? onHide(ev.id) : onReveal(ev.id))}
+								title={revealed ? "Hide value" : "Reveal value"}
 								disabled={revealing}
 							>
-								{revealed ? (
-									<EyeOff className="h-3.5 w-3.5" />
-								) : (
-									<Eye className="h-3.5 w-3.5" />
-								)}
+								{revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
 							</Button>
 							<Button
 								variant="ghost"
@@ -160,11 +125,7 @@ export function EnvVarRow({
 								title="Copy value"
 								disabled={revealing}
 							>
-								{copied ? (
-									<Check className="h-3.5 w-3.5" />
-								) : (
-									<Copy className="h-3.5 w-3.5" />
-								)}
+								{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
 							</Button>
 						</>
 					)}

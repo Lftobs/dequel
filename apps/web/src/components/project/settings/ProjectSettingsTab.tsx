@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { Box, CheckCircle, Globe, Plus, Save, Trash2 } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { useProject, useUpdateProject } from "../../../hooks/useProjects";
+import { cn } from "../../../lib/utils";
+import { Button } from "../../ui/button";
 import { Card, CardContent } from "../../ui/card";
 import { Input } from "../../ui/input";
-import { Button } from "../../ui/button";
-import { Box, Globe, Save, CheckCircle, Plus, Trash2 } from "lucide-react";
-import { cn } from "../../../lib/utils";
 import { DeleteProjectCard } from "./DeleteProjectCard";
 
 interface ProjectSettingsTabProps {
@@ -29,9 +30,9 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 
 	const [saveSuccess, setSaveSuccess] = useState(false);
 
-	const [composeServicesList, setComposeServicesList] = useState<{ id: string; serviceName: string; port: string; subdomain: string }[]>([
-		{ id: '1', serviceName: '', port: '', subdomain: '' }
-	]);
+	const [composeServicesList, setComposeServicesList] = useState<
+		{ id: string; serviceName: string; port: string; subdomain: string }[]
+	>([{ id: "1", serviceName: "", port: "", subdomain: "" }]);
 
 	useEffect(() => {
 		if (project) {
@@ -52,26 +53,23 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 			const rawServices = (project as any).composeServices;
 			if (rawServices) {
 				try {
-					const parsed = typeof rawServices === 'string' ? JSON.parse(rawServices) : rawServices;
+					const parsed = typeof rawServices === "string" ? JSON.parse(rawServices) : rawServices;
 					if (Array.isArray(parsed) && parsed.length > 0) {
 						setComposeServicesList(parsed);
 					} else {
-						setComposeServicesList([{ id: '1', serviceName: svc, port: prt, subdomain: '' }]);
+						setComposeServicesList([{ id: "1", serviceName: svc, port: prt, subdomain: "" }]);
 					}
-				} catch (e) {
-					setComposeServicesList([{ id: '1', serviceName: svc, port: prt, subdomain: '' }]);
+				} catch (_e) {
+					setComposeServicesList([{ id: "1", serviceName: svc, port: prt, subdomain: "" }]);
 				}
 			} else {
-				setComposeServicesList([{ id: '1', serviceName: svc, port: prt, subdomain: '' }]);
+				setComposeServicesList([{ id: "1", serviceName: svc, port: prt, subdomain: "" }]);
 			}
 		}
 	}, [project, projectId]);
 
 	const addComposeServiceRow = () => {
-		setComposeServicesList((prev) => [
-			...prev,
-			{ id: String(Date.now()), serviceName: '', port: '', subdomain: '' }
-		]);
+		setComposeServicesList((prev) => [...prev, { id: String(Date.now()), serviceName: "", port: "", subdomain: "" }]);
 	};
 
 	const removeComposeServiceRow = (id: string) => {
@@ -79,10 +77,8 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 		setComposeServicesList((prev) => prev.filter((item) => item.id !== id));
 	};
 
-	const updateComposeServiceRow = (id: string, field: 'serviceName' | 'port' | 'subdomain', value: string) => {
-		setComposeServicesList((prev) =>
-			prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
-		);
+	const updateComposeServiceRow = (id: string, field: "serviceName" | "port" | "subdomain", value: string) => {
+		setComposeServicesList((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
 	};
 
 	const handleSave = async (e: React.FormEvent) => {
@@ -90,7 +86,11 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 		try {
 			const primarySvc = composeServicesList[0];
 			const finalSvc = primarySvc?.serviceName.trim() || composeService.trim() || null;
-			const finalPrt = primarySvc?.port.trim() ? Number(primarySvc.port) || null : composePort.trim() ? Number(composePort) || null : null;
+			const finalPrt = primarySvc?.port.trim()
+				? Number(primarySvc.port) || null
+				: composePort.trim()
+					? Number(composePort) || null
+					: null;
 
 			const payload: any = {
 				id: projectId,
@@ -153,58 +153,54 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 						</div>
 
 						{buildType !== "compose" && (
-						<div className="space-y-2.5">
-							<label className="font-semibold text-xs text-zinc-400">
-								Project Type
-							</label>
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-								<button
-									type="button"
-									onClick={() => setProjectType("web")}
-									aria-pressed={projectType === "web"}
-									className={cn(
-										"flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all select-none active:scale-[0.98]",
-										projectType === "web"
-											? "border-orange-500/30 bg-orange-500/5 text-zinc-200"
-											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
-									)}
-								>
-									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
-										<Globe className="h-4 w-4 text-orange-500" />
-										Web Service
-									</div>
-									<span className="text-[10px] text-zinc-500 leading-relaxed">
-										Node.js, Elysia, Express, Next.js (SSR), Go, Python dynamic server container.
-									</span>
-								</button>
-								<button
-									type="button"
-									onClick={() => setProjectType("static")}
-									aria-pressed={projectType === "static"}
-									className={cn(
-										"flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all select-none active:scale-[0.98]",
-										projectType === "static"
-											? "border-emerald-500/30 bg-emerald-500/5 text-zinc-200"
-											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
-									)}
-								>
-									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
-										<Box className="h-4 w-4 text-emerald-500" />
-										Static Site / SPA
-									</div>
-									<span className="text-[10px] text-zinc-500 leading-relaxed">
-										React, Vite, Astro, HTML static export served via lightweight HTTP file server.
-									</span>
-								</button>
+							<div className="space-y-2.5">
+								<label className="font-semibold text-xs text-zinc-400">Project Type</label>
+								<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+									<button
+										type="button"
+										onClick={() => setProjectType("web")}
+										aria-pressed={projectType === "web"}
+										className={cn(
+											"flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all select-none active:scale-[0.98]",
+											projectType === "web"
+												? "border-orange-500/30 bg-orange-500/5 text-zinc-200"
+												: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400",
+										)}
+									>
+										<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
+											<Globe className="h-4 w-4 text-orange-500" />
+											Web Service
+										</div>
+										<span className="text-[10px] text-zinc-500 leading-relaxed">
+											Node.js, Elysia, Express, Next.js (SSR), Go, Python dynamic server container.
+										</span>
+									</button>
+									<button
+										type="button"
+										onClick={() => setProjectType("static")}
+										aria-pressed={projectType === "static"}
+										className={cn(
+											"flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all select-none active:scale-[0.98]",
+											projectType === "static"
+												? "border-emerald-500/30 bg-emerald-500/5 text-zinc-200"
+												: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400",
+										)}
+									>
+										<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
+											<Box className="h-4 w-4 text-emerald-500" />
+											Static Site / SPA
+										</div>
+										<span className="text-[10px] text-zinc-500 leading-relaxed">
+											React, Vite, Astro, HTML static export served via lightweight HTTP file server.
+										</span>
+									</button>
+								</div>
 							</div>
-						</div>
 						)}
 
 						{/* Build Strategy */}
 						<div className="space-y-2.5">
-							<label className="font-semibold text-xs text-zinc-400">
-								Build Strategy
-							</label>
+							<label className="font-semibold text-xs text-zinc-400">Build Strategy</label>
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 								<button
 									type="button"
@@ -213,7 +209,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 										"flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all select-none active:scale-[0.98]",
 										buildType === "railpack"
 											? "border-orange-500/30 bg-orange-500/5 text-zinc-200"
-											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
+											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400",
 									)}
 								>
 									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
@@ -231,7 +227,7 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 										"flex flex-col items-start gap-2 p-4 rounded-xl border text-left transition-all select-none active:scale-[0.98]",
 										buildType === "compose"
 											? "border-orange-500/30 bg-orange-500/5 text-zinc-200"
-											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
+											: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400",
 									)}
 								>
 									<div className="flex items-center gap-1.5 font-bold text-xs text-zinc-200">
@@ -249,7 +245,11 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 							<div className="p-4 rounded-xl bg-[#141418] border border-[#222227] space-y-4">
 								<div className="text-xs font-bold text-zinc-200">Docker Compose Services</div>
 								<p className="text-xs text-zinc-400">
-									Configure your services and bind subdomains (e.g. Service: <code className="text-orange-400">server</code>, Port: <code className="text-orange-400">3001</code>, Subdomain: <code className="text-orange-400">api</code> points <code className="text-orange-400">api.&lt;projectliveurl&gt;</code> to <code className="text-orange-400">server:3001</code>).
+									Configure your services and bind subdomains (e.g. Service:{" "}
+									<code className="text-orange-400">server</code>, Port: <code className="text-orange-400">3001</code>,
+									Subdomain: <code className="text-orange-400">api</code> points{" "}
+									<code className="text-orange-400">api.&lt;projectliveurl&gt;</code> to{" "}
+									<code className="text-orange-400">server:3001</code>).
 								</p>
 								<div className="space-y-3">
 									{composeServicesList.map((item, index) => (
@@ -279,25 +279,21 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 											</div>
 											<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 												<div>
-													<label className="block text-[11px] font-semibold text-zinc-400 mb-1">
-														Service Name
-													</label>
+													<label className="block text-[11px] font-semibold text-zinc-400 mb-1">Service Name</label>
 													<Input
 														placeholder="e.g. server or web"
 														value={item.serviceName}
-														onChange={(e) => updateComposeServiceRow(item.id, 'serviceName', e.target.value)}
+														onChange={(e) => updateComposeServiceRow(item.id, "serviceName", e.target.value)}
 														className="bg-[#141418] border-[#222227] text-zinc-200 text-xs h-9 font-mono focus:border-orange-500"
 													/>
 												</div>
 												<div>
-													<label className="block text-[11px] font-semibold text-zinc-400 mb-1">
-														Service Port
-													</label>
+													<label className="block text-[11px] font-semibold text-zinc-400 mb-1">Service Port</label>
 													<Input
 														placeholder="e.g. 3001 or 8080"
 														type="number"
 														value={item.port}
-														onChange={(e) => updateComposeServiceRow(item.id, 'port', e.target.value)}
+														onChange={(e) => updateComposeServiceRow(item.id, "port", e.target.value)}
 														className="bg-[#141418] border-[#222227] text-zinc-200 text-xs h-9 font-mono focus:border-orange-500"
 													/>
 												</div>
@@ -307,14 +303,16 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 													</label>
 													{index === 0 ? (
 														<div className="flex items-center gap-1.5 h-9 px-3 bg-[#141418]/80 border border-[#222227] rounded-lg text-xs text-zinc-400 font-mono">
-															<span className="px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[10px] font-bold">ENTRY</span>
+															<span className="px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[10px] font-bold">
+																ENTRY
+															</span>
 															<span className="text-zinc-500 text-[11px]">Primary Project Domain</span>
 														</div>
 													) : (
 														<Input
 															placeholder="e.g. api"
 															value={item.subdomain}
-															onChange={(e) => updateComposeServiceRow(item.id, 'subdomain', e.target.value)}
+															onChange={(e) => updateComposeServiceRow(item.id, "subdomain", e.target.value)}
 															className="bg-[#141418] border-[#222227] text-zinc-200 text-xs h-9 font-mono focus:border-orange-500"
 														/>
 													)}

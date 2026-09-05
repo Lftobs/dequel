@@ -1,8 +1,8 @@
-import { describe, test, expect } from "bun:test";
-import { parseComposeTarget, parseContainerTargetPort, extractComposeServices, parseAllComposeServices } from "../compose";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { parseAllComposeServices, parseComposeTarget, parseContainerTargetPort } from "../compose";
 
 describe("parseContainerTargetPort", () => {
 	test("parses number ports", () => {

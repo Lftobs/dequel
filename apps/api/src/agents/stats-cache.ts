@@ -7,45 +7,47 @@ const STATS_TTL_SECONDS = 120;
 export type CachedContainerStat = AgentContainerStat;
 
 class AgentStatsCache {
-  private redis: Redis;
+	private redis: Redis;
 
-  constructor() {
-    this.redis = new Redis(config.redisUrl, { maxRetriesPerRequest: null, enableOfflineQueue: false });
-  }
+	constructor() {
+		this.redis = new Redis(config.redisUrl, { maxRetriesPerRequest: null, enableOfflineQueue: false });
+	}
 
-  private key(serverId: string) {
-    return `dequel:agent-stats:${serverId}`;
-  }
+	private key(serverId: string) {
+		return `dequel:agent-stats:${serverId}`;
+	}
 
-  async set(serverId: string, containers: AgentContainerStat[]) {
-    const payload = JSON.stringify({ updatedAt: new Date().toISOString(), containers: containers ?? [] });
-    await this.redis.set(this.key(serverId), payload, "EX", STATS_TTL_SECONDS).catch(() => {});
-  }
+	async set(serverId: string, containers: AgentContainerStat[]) {
+		const payload = JSON.stringify({ updatedAt: new Date().toISOString(), containers: containers ?? [] });
+		await this.redis.set(this.key(serverId), payload, "EX", STATS_TTL_SECONDS).catch(() => {});
+	}
 
-  async get(serverId: string): Promise<Map<string, CachedContainerStat>> {
-    const raw = await this.redis.get(this.key(serverId)).catch(() => null);
-    const result = new Map<string, CachedContainerStat>();
-    if (!raw) return result;
-    try {
-      const parsed = JSON.parse(raw) as { containers?: AgentContainerStat[] };
-      for (const container of parsed.containers ?? []) {
-        result.set(container.containerName, container);
-      }
-    } catch {
-      return result;
-    }
-    return result;
-  }
+	async get(serverId: string): Promise<Map<string, CachedContainerStat>> {
+		const raw = await this.redis.get(this.key(serverId)).catch(() => null);
+		const result = new Map<string, CachedContainerStat>();
+		if (!raw) return result;
+		try {
+			const parsed = JSON.parse(raw) as { containers?: AgentContainerStat[] };
+			for (const container of parsed.containers ?? []) {
+				result.set(container.containerName, container);
+			}
+		} catch {
+			return result;
+		}
+		return result;
+	}
 
-  async getAll(): Promise<Map<string, Map<string, CachedContainerStat>>> {
-    const keys = await this.redis.keys("dequel:agent-stats:*").catch(() => [] as string[]);
-    const result = new Map<string, Map<string, CachedContainerStat>>();
-    await Promise.all(keys.map(async (key) => {
-      const serverId = key.slice("dequel:agent-stats:".length);
-      result.set(serverId, await this.get(serverId));
-    }));
-    return result;
-  }
+	async getAll(): Promise<Map<string, Map<string, CachedContainerStat>>> {
+		const keys = await this.redis.keys("dequel:agent-stats:*").catch(() => [] as string[]);
+		const result = new Map<string, Map<string, CachedContainerStat>>();
+		await Promise.all(
+			keys.map(async (key) => {
+				const serverId = key.slice("dequel:agent-stats:".length);
+				result.set(serverId, await this.get(serverId));
+			}),
+		);
+		return result;
+	}
 }
 
 export const agentStatsCache = new AgentStatsCache();

@@ -1,39 +1,23 @@
 import { spawn } from "node:child_process";
-import { join } from "node:path";
+import type { Server } from "../types";
 import { dockerBin } from "../utils/docker-bin";
 import { generateDynamicRailpackJson } from "./railpack-config-utils";
-import type { Server } from "../types";
 
 export interface RailpackBuildResult {
 	imageTag: string;
 }
 
-const buildTimeoutMs = Number(
-	process.env.RAILPACK_BUILD_TIMEOUT_MS ??
-		"600000",
-);
+const buildTimeoutMs = Number(process.env.RAILPACK_BUILD_TIMEOUT_MS ?? "600000");
 
-const cleanBuildkitLine = (
-	raw: string,
-): string => {
+const cleanBuildkitLine = (raw: string): string => {
 	const line = raw.trim();
 	if (!line) return "";
 
 	// Drop Docker layer download/upload/extract progress lines (sha256 digests with byte counts)
-	if (
-		/^(sha256:)?[0-9a-f]{40,}\s+[\d.]+\s*(B|KB|MB|GB)\s*\/\s*[\d.]+\s*(B|KB|MB|GB)/i.test(
-			line,
-		)
-	)
-		return "";
+	if (/^(sha256:)?[0-9a-f]{40,}\s+[\d.]+\s*(B|KB|MB|GB)\s*\/\s*[\d.]+\s*(B|KB|MB|GB)/i.test(line)) return "";
 
 	// Drop resolver/registry metadata lines
-	if (
-		/^(resolve|resolving)\s+(docker|image)/i.test(
-			line,
-		)
-	)
-		return "";
+	if (/^(resolve|resolving)\s+(docker|image)/i.test(line)) return "";
 	if (
 		/^(sha256:)?[0-9a-f]{40,}\s*(done|already exists|pulling|download|extract|waiting|verifying|comparing|preparing)?$/i.test(
 			line,
@@ -50,32 +34,19 @@ const cleanBuildkitLine = (
 		return "";
 
 	// Drop lines that are purely byte progress like "14.68MB / 48.50MB"
-	if (
-		/^[\d.]+\s*(B|KB|MB|GB)\s*\/\s*[\d.]+\s*(B|KB|MB|GB)\s*$/i.test(
-			line,
-		)
-	)
-		return "";
+	if (/^[\d.]+\s*(B|KB|MB|GB)\s*\/\s*[\d.]+\s*(B|KB|MB|GB)\s*$/i.test(line)) return "";
 
 	// Strip trailing timestamps like "5.4s done" from DONE lines
-	const noTime = line.replace(
-		/\s+[\d.]+s?\s*(done|error|failed|canceled|DONE|ERROR|FAILED|CANCELED)?\s*$/i,
-		"",
-	);
+	const noTime = line.replace(/\s+[\d.]+s?\s*(done|error|failed|canceled|DONE|ERROR|FAILED|CANCELED)?\s*$/i, "");
 	if (!noTime) return "";
 
 	// Strip all #N prefixes and whitespace
-	const stripped = noTime
-		.replace(/^#\d+\s*/i, "")
-		.trim();
+	const stripped = noTime.replace(/^#\d+\s*/i, "").trim();
 	if (!stripped) return "";
 
 	// Strip trailing time from DONE lines that are still there
 	const clean = stripped
-		.replace(
-			/\s+[\d.]+s?\s*(done|error|failed|canceled|DONE|ERROR|FAILED|CANCELED)?\s*$/i,
-			"",
-		)
+		.replace(/\s+[\d.]+s?\s*(done|error|failed|canceled|DONE|ERROR|FAILED|CANCELED)?\s*$/i, "")
 		.trim();
 	if (!clean) return "";
 
@@ -83,8 +54,7 @@ const cleanBuildkitLine = (
 	if (/^#\d+$/i.test(clean)) return "";
 
 	// Drop sha256 lines that survived earlier filters (after #N stripping)
-	if (/^(sha256:)?[0-9a-f]{40,}/i.test(clean))
-		return "";
+	if (/^(sha256:)?[0-9a-f]{40,}/i.test(clean)) return "";
 
 	return clean;
 };
@@ -130,10 +100,7 @@ const spawnAsync = (
 					child.kill("SIGKILL");
 				}
 			}, 5000);
-			finish(
-				undefined,
-				new CancelledError(),
-			);
+			finish(undefined, new CancelledError());
 		};
 
 		if (opts?.signal) {
@@ -141,11 +108,7 @@ const spawnAsync = (
 				onAbort();
 				return;
 			}
-			opts.signal.addEventListener(
-				"abort",
-				onAbort,
-				{ once: true },
-			);
+			opts.signal.addEventListener("abort", onAbort, { once: true });
 		}
 
 		const timeout =
@@ -156,17 +119,10 @@ const spawnAsync = (
 						child.kill("SIGTERM");
 						setTimeout(() => {
 							if (!settled) {
-								child.kill(
-									"SIGKILL",
-								);
+								child.kill("SIGKILL");
 							}
 						}, 5000);
-						finish(
-							undefined,
-							new Error(
-								`${cmd} timed out after ${opts.timeoutMs}ms`,
-							),
-						);
+						finish(undefined, new Error(`${cmd} timed out after ${opts.timeoutMs}ms`));
 					}, opts.timeoutMs)
 				: null;
 
@@ -182,10 +138,7 @@ const spawnAsync = (
 			settled = true;
 			if (timeout) clearTimeout(timeout);
 			if (opts?.signal) {
-				opts.signal.removeEventListener(
-					"abort",
-					onAbort,
-				);
+				opts.signal.removeEventListener("abort", onAbort);
 			}
 			if (error) {
 				reject(error);
@@ -218,21 +171,10 @@ const spawnAsync = (
 				}
 			}
 		});
-		child.on("error", (error) =>
-			finish(undefined, error),
-		);
+		child.on("error", (error) => finish(undefined, error));
 		child.on("close", (code) => {
-			if (
-				opts?.timeoutMs &&
-				opts.timeoutMs > 0 &&
-				code === 143
-			) {
-				finish(
-					undefined,
-					new Error(
-						`${cmd} timed out after ${opts.timeoutMs}ms`,
-					),
-				);
+			if (opts?.timeoutMs && opts.timeoutMs > 0 && code === 143) {
+				finish(undefined, new Error(`${cmd} timed out after ${opts.timeoutMs}ms`));
 				return;
 			}
 			finish({
@@ -245,15 +187,9 @@ const spawnAsync = (
 };
 
 const ensureBuilder = async (dockerHost?: string): Promise<void> => {
-	const hostArgs = dockerHost ? ['-H', dockerHost] : [];
-	const ls = await spawnAsync(dockerBin, [
-		...hostArgs,
-		"buildx",
-		"ls",
-	]);
-	const hasBuilder = ls.stdout.includes(
-		"railpack-builder",
-	);
+	const hostArgs = dockerHost ? ["-H", dockerHost] : [];
+	const ls = await spawnAsync(dockerBin, [...hostArgs, "buildx", "ls"]);
+	const hasBuilder = ls.stdout.includes("railpack-builder");
 
 	if (!hasBuilder) {
 		await spawnAsync(dockerBin, [
@@ -266,15 +202,9 @@ const ensureBuilder = async (dockerHost?: string): Promise<void> => {
 			"docker-container",
 			"--bootstrap",
 		]);
-		await spawnAsync(dockerBin, [
-			...hostArgs,
-			"buildx",
-			"use",
-			"railpack-builder",
-		]);
+		await spawnAsync(dockerBin, [...hostArgs, "buildx", "use", "railpack-builder"]);
 	}
 };
-
 
 export const buildWithRailpack = async (
 	workspace: string,
@@ -294,13 +224,10 @@ export const buildWithRailpack = async (
 		server?: Server | null;
 	},
 ): Promise<RailpackBuildResult> => {
-	await onLog(
-		`Starting Railpack CLI build for image: ${imageTag}`,
-	);
+	await onLog(`Starting Railpack CLI build for image: ${imageTag}`);
 
-	const dockerHost = opts?.server?.mode === 'docker_tcp'
-		? `tcp://${opts.server.host}:${opts.server.port || 2376}`
-		: undefined;
+	const dockerHost =
+		opts?.server?.mode === "docker_tcp" ? `tcp://${opts.server.host}:${opts.server.port || 2376}` : undefined;
 
 	await ensureBuilder(dockerHost);
 
@@ -316,12 +243,8 @@ export const buildWithRailpack = async (
 		await onLog(`Bypassing cache for clean build (cacheKey: ${cacheKey})`);
 	}
 
-	const cleanSourceDir = opts?.sourceDir
-		? opts.sourceDir.replace(/^\//, "")
-		: null;
-	await onLog(
-		`Generating dynamic railpack.json for caching and monorepo resolution...`,
-	);
+	const cleanSourceDir = opts?.sourceDir ? opts.sourceDir.replace(/^\//, "") : null;
+	await onLog(`Generating dynamic railpack.json for caching and monorepo resolution...`);
 	await generateDynamicRailpackJson(
 		workspace,
 		cleanSourceDir,
@@ -375,56 +298,34 @@ export const buildWithRailpack = async (
 
 	args.push(workspace);
 
-	const build = await spawnAsync(
-		"railpack",
-		args,
-		{
-			env: {
-				...process.env,
-				BUILDKIT_HOST:
-					process.env.BUILDKIT_HOST,
-			},
-			timeoutMs:
-				buildTimeoutMs > 0
-					? buildTimeoutMs
-					: undefined,
-			onTimeout: () => {
-				void onLog(
-					`Railpack build timed out after ${Math.floor(buildTimeoutMs / 1000)}s`,
-				);
-			},
-			onLine: (line) => {
-				const cleaned =
-					cleanBuildkitLine(line);
-				if (cleaned) {
-					void onLog(cleaned);
-				}
-			},
-			signal: opts?.signal,
+	const build = await spawnAsync("railpack", args, {
+		env: {
+			...process.env,
+			BUILDKIT_HOST: process.env.BUILDKIT_HOST,
 		},
-	);
+		timeoutMs: buildTimeoutMs > 0 ? buildTimeoutMs : undefined,
+		onTimeout: () => {
+			void onLog(`Railpack build timed out after ${Math.floor(buildTimeoutMs / 1000)}s`);
+		},
+		onLine: (line) => {
+			const cleaned = cleanBuildkitLine(line);
+			if (cleaned) {
+				void onLog(cleaned);
+			}
+		},
+		signal: opts?.signal,
+	});
 
 	if (build.code !== 0) {
-		throw new Error(
-			`railpack build failed: ${build.stderr || build.stdout}`,
-		);
+		throw new Error(`railpack build failed: ${build.stderr || build.stdout}`);
 	}
 
-	if (
-		build.stdout.includes(
-			"No start command detected",
-		) ||
-		build.stderr.includes(
-			"No start command detected",
-		)
-	) {
+	if (build.stdout.includes("No start command detected") || build.stderr.includes("No start command detected")) {
 		throw new Error(
 			"Railpack build failed: No start command detected. Specify a start script in your package.json, a main field, or an index.ts/js file.",
 		);
 	}
 
-	await onLog(
-		`Railpack build completed: ${imageTag}`,
-	);
+	await onLog(`Railpack build completed: ${imageTag}`);
 	return { imageTag };
 };

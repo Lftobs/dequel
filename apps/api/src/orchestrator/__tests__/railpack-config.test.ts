@@ -1,8 +1,8 @@
-import { describe, test, expect } from "bun:test";
-import { generateDynamicRailpackJson } from "../railpack-config-utils";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { describe, expect, test } from "bun:test";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { generateDynamicRailpackJson } from "../railpack-config-utils";
 
 const setupWorkspace = () => {
 	const dir = mkdtempSync(join(tmpdir(), "dequel-railpack-config-"));
@@ -16,14 +16,7 @@ describe("generateDynamicRailpackJson static subdirectory detection", () => {
 		try {
 			writeFileSync(join(dir, "client", "index.html"), "<html></html>");
 			const logs: string[] = [];
-			await generateDynamicRailpackJson(
-				dir,
-				"client",
-				"static",
-				null,
-				null,
-				async (line) => logs.push(line),
-			);
+			await generateDynamicRailpackJson(dir, "client", "static", null, null, async (line) => logs.push(line));
 			const serveScript = join(dir, "dequel-serve.js");
 			const railpackJson = join(dir, "railpack.json");
 			expect(existsSync(serveScript)).toBe(true);
@@ -40,14 +33,7 @@ describe("generateDynamicRailpackJson static subdirectory detection", () => {
 		try {
 			writeFileSync(join(dir, "client", "index.html"), "<html></html>");
 			writeFileSync(join(dir, "Staticfile"), "root: public\n");
-			await generateDynamicRailpackJson(
-				dir,
-				"client",
-				"railpack",
-				null,
-				null,
-				async () => {},
-			);
+			await generateDynamicRailpackJson(dir, "client", "railpack", null, null, async () => {});
 			expect(readFileSync(join(dir, "Staticfile"), "utf8")).toBe("root: public\n");
 		} finally {
 			cleanup();
@@ -58,16 +44,12 @@ describe("generateDynamicRailpackJson static subdirectory detection", () => {
 		const { dir, cleanup } = setupWorkspace();
 		try {
 			writeFileSync(join(dir, "client", "index.html"), "<html></html>");
-			writeFileSync(join(dir, "client", "package.json"), JSON.stringify({ name: "app", scripts: { start: "node dist/index.js" } }));
-			const logs: string[] = [];
-			await generateDynamicRailpackJson(
-				dir,
-				"client",
-				"railpack",
-				null,
-				null,
-				async (line) => logs.push(line),
+			writeFileSync(
+				join(dir, "client", "package.json"),
+				JSON.stringify({ name: "app", scripts: { start: "node dist/index.js" } }),
 			);
+			const logs: string[] = [];
+			await generateDynamicRailpackJson(dir, "client", "railpack", null, null, async (line) => logs.push(line));
 			expect(existsSync(join(dir, "Staticfile"))).toBe(false);
 			expect(logs.some((l) => l.includes("Detected static site"))).toBe(false);
 		} finally {

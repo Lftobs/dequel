@@ -1,3 +1,3 @@
-import { orchestrator } from './pipeline';
+import { orchestrator } from "./pipeline";
 
 export { orchestrator };

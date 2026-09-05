@@ -1,11 +1,11 @@
-import React, { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useProject, useDeleteProject } from "../../../hooks/useProjects";
-import { Card, CardContent } from "../../ui/card";
+import { AlertTriangle, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useDeleteProject, useProject } from "../../../hooks/useProjects";
 import { Button } from "../../ui/button";
+import { Card, CardContent } from "../../ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { Input } from "../../ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../ui/dialog";
-import { Trash2, AlertTriangle } from "lucide-react";
 
 interface DeleteProjectCardProps {
 	projectId: string;
@@ -50,7 +50,8 @@ export function DeleteProjectCard({ projectId }: DeleteProjectCardProps) {
 						<div>
 							<h3 className="text-zinc-200 font-bold text-base">Danger Zone</h3>
 							<p className="text-zinc-500 text-xs mt-1">
-								Permanently delete this project and all associated containers, volumes, databases, routes, and deployment history.
+								Permanently delete this project and all associated containers, volumes, databases, routes, and
+								deployment history.
 							</p>
 						</div>
 					</div>
@@ -64,7 +65,12 @@ export function DeleteProjectCard({ projectId }: DeleteProjectCardProps) {
 					</Button>
 				</div>
 
-				<Dialog open={open} onOpenChange={(v) => { if (!v) setOpen(false); }}>
+				<Dialog
+					open={open}
+					onOpenChange={(v) => {
+						if (!v) setOpen(false);
+					}}
+				>
 					<DialogContent className="sm:max-w-[440px] bg-[#0c0c10] border-red-500/30 text-foreground rounded-2xl shadow-2xl p-5">
 						<DialogHeader className="space-y-2">
 							<div className="h-10 w-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mx-auto sm:mx-0">
@@ -74,7 +80,9 @@ export function DeleteProjectCard({ projectId }: DeleteProjectCardProps) {
 								Delete Project &ldquo;{project.name}&rdquo;?
 							</DialogTitle>
 							<DialogDescription className="text-xs text-muted-foreground leading-relaxed">
-								This action is <strong className="text-red-400">permanent and irreversible</strong>. Deleting this project will stop and remove all associated Docker containers, volumes, database instances, custom routes, and deployment history.
+								This action is <strong className="text-red-400">permanent and irreversible</strong>. Deleting this
+								project will stop and remove all associated Docker containers, volumes, database instances, custom
+								routes, and deployment history.
 							</DialogDescription>
 						</DialogHeader>
 

@@ -1,5 +1,5 @@
-import { config } from "./config";
 import { listDomains } from "../db/repo";
+import { config } from "./config";
 
 interface GrafanaDashboard {
 	dashboard: {
@@ -41,10 +41,7 @@ async function grafanaLogin(): Promise<string | null> {
 	}
 }
 
-async function grafanaPost(
-	path: string,
-	body: unknown,
-): Promise<unknown | null> {
+async function grafanaPost(path: string, body: unknown): Promise<unknown | null> {
 	const cookie = await grafanaLogin();
 	if (!cookie) return null;
 	try {
@@ -76,7 +73,7 @@ export async function ensureProjectDashboard(
 	const domains = [`${slug}.${config.caddyBaseDomain}`];
 	try {
 		const projectDomains = await listDomains(projectId);
-		const verified = projectDomains.filter(d => d.validationStatus === 'verified');
+		const verified = projectDomains.filter((d) => d.validationStatus === "verified");
 		for (const d of verified) {
 			domains.push(d.domain);
 		}
@@ -84,7 +81,7 @@ export async function ensureProjectDashboard(
 		console.warn("[Grafana] Failed to list domains for dashboard query:", e);
 	}
 
-	const regexEscaped = domains.map(d => d.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\\\$&')).join('|');
+	const regexEscaped = domains.map((d) => d.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\\\$&")).join("|");
 
 	const dashboard: GrafanaDashboard = {
 		dashboard: {
@@ -112,20 +109,20 @@ export async function ensureProjectDashboard(
 						defaults: {
 							unit: "none",
 							color: { mode: "fixed" },
-							fixedColor: "blue"
-						}
+							fixedColor: "blue",
+						},
 					},
 					options: {
 						graphMode: "area",
-						reduceOptions: { calcs: ["lastNotNull"] }
+						reduceOptions: { calcs: ["lastNotNull"] },
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [$__range]))`,
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					id: 6,
@@ -142,22 +139,22 @@ export async function ensureProjectDashboard(
 								steps: [
 									{ color: "red", value: null },
 									{ color: "yellow", value: 90 },
-									{ color: "green", value: 95 }
-								]
-							}
-						}
+									{ color: "green", value: 95 },
+								],
+							},
+						},
 					},
 					options: {
 						graphMode: "area",
-						reduceOptions: { calcs: ["lastNotNull"] }
+						reduceOptions: { calcs: ["lastNotNull"] },
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `(sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 100 and status < 400 [$__range])) / sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [$__range])) * 100) or 0`,
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					id: 7,
@@ -174,22 +171,22 @@ export async function ensureProjectDashboard(
 								steps: [
 									{ color: "green", value: null },
 									{ color: "yellow", value: 0.5 },
-									{ color: "red", value: 2.0 }
-								]
-							}
-						}
+									{ color: "red", value: 2.0 },
+								],
+							},
+						},
 					},
 					options: {
 						graphMode: "area",
-						reduceOptions: { calcs: ["lastNotNull"] }
+						reduceOptions: { calcs: ["lastNotNull"] },
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `avg_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | unwrap duration [$__range])`,
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					id: 8,
@@ -201,20 +198,20 @@ export async function ensureProjectDashboard(
 						defaults: {
 							unit: "none",
 							color: { mode: "fixed" },
-							fixedColor: "blue"
-						}
+							fixedColor: "blue",
+						},
 					},
 					options: {
 						graphMode: "line",
-						reduceOptions: { calcs: ["lastNotNull"] }
+						reduceOptions: { calcs: ["lastNotNull"] },
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [2m]))`,
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					id: 9,
@@ -231,22 +228,22 @@ export async function ensureProjectDashboard(
 								steps: [
 									{ color: "red", value: null },
 									{ color: "yellow", value: 90 },
-									{ color: "green", value: 95 }
-								]
-							}
-						}
+									{ color: "green", value: 95 },
+								],
+							},
+						},
 					},
 					options: {
 						graphMode: "area",
-						reduceOptions: { calcs: ["lastNotNull"] }
+						reduceOptions: { calcs: ["lastNotNull"] },
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `(sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 100 and status < 400 [2m])) / sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [2m])) * 100) or 0`,
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					id: 10,
@@ -258,20 +255,20 @@ export async function ensureProjectDashboard(
 						defaults: {
 							unit: "none",
 							color: { mode: "fixed" },
-							fixedColor: "green"
-						}
+							fixedColor: "green",
+						},
 					},
 					options: {
 						graphMode: "line",
-						reduceOptions: { calcs: ["lastNotNull"] }
+						reduceOptions: { calcs: ["lastNotNull"] },
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 100 and status < 300 [2m]))`,
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					id: 11,
@@ -283,20 +280,20 @@ export async function ensureProjectDashboard(
 						defaults: {
 							unit: "none",
 							color: { mode: "fixed" },
-							fixedColor: "orange"
-						}
+							fixedColor: "orange",
+						},
 					},
 					options: {
 						graphMode: "line",
-						reduceOptions: { calcs: ["lastNotNull"] }
+						reduceOptions: { calcs: ["lastNotNull"] },
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 300 and status < 400 [2m]))`,
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					id: 12,
@@ -308,20 +305,20 @@ export async function ensureProjectDashboard(
 						defaults: {
 							unit: "none",
 							color: { mode: "fixed" },
-							fixedColor: "yellow"
-						}
+							fixedColor: "yellow",
+						},
 					},
 					options: {
 						graphMode: "line",
-						reduceOptions: { calcs: ["lastNotNull"] }
+						reduceOptions: { calcs: ["lastNotNull"] },
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 400 and status < 500 [2m]))`,
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					id: 13,
@@ -333,20 +330,20 @@ export async function ensureProjectDashboard(
 						defaults: {
 							unit: "none",
 							color: { mode: "fixed" },
-							fixedColor: "red"
-						}
+							fixedColor: "red",
+						},
 					},
 					options: {
 						graphMode: "line",
-						reduceOptions: { calcs: ["lastNotNull"] }
+						reduceOptions: { calcs: ["lastNotNull"] },
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 500 [2m]))`,
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					type: "row",
@@ -363,17 +360,17 @@ export async function ensureProjectDashboard(
 					fieldConfig: {
 						defaults: {
 							unit: "reqps",
-							custom: { fillOpacity: 10, lineWidth: 1.5 }
-						}
+							custom: { fillOpacity: 10, lineWidth: 1.5 },
+						},
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `sum(rate({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [$__interval])) by (request_host)`,
 							legendFormat: "{{request_host}}",
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					id: 15,
@@ -384,17 +381,17 @@ export async function ensureProjectDashboard(
 					fieldConfig: {
 						defaults: {
 							unit: "reqps",
-							custom: { fillOpacity: 10, lineWidth: 1.5 }
-						}
+							custom: { fillOpacity: 10, lineWidth: 1.5 },
+						},
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `sum(rate({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [$__interval])) by (status)`,
 							legendFormat: "HTTP {{status}}",
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					id: 16,
@@ -405,17 +402,17 @@ export async function ensureProjectDashboard(
 					fieldConfig: {
 						defaults: {
 							unit: "none",
-							custom: { fillOpacity: 25, lineWidth: 1 }
-						}
+							custom: { fillOpacity: 25, lineWidth: 1 },
+						},
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [$__interval]))`,
 							legendFormat: "Requests",
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					type: "row",
@@ -432,35 +429,35 @@ export async function ensureProjectDashboard(
 					fieldConfig: {
 						defaults: {
 							unit: "s",
-							custom: { fillOpacity: 10, lineWidth: 1.5 }
-						}
+							custom: { fillOpacity: 10, lineWidth: 1.5 },
+						},
 					},
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `quantile_over_time(0.99, {container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | unwrap duration [$__interval])`,
 							legendFormat: "p99",
-							refId: "A"
+							refId: "A",
 						},
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `quantile_over_time(0.95, {container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | unwrap duration [$__interval])`,
 							legendFormat: "p95",
-							refId: "B"
+							refId: "B",
 						},
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `quantile_over_time(0.50, {container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | unwrap duration [$__interval])`,
 							legendFormat: "p50 (median)",
-							refId: "C"
+							refId: "C",
 						},
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `avg_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | unwrap duration [$__interval])`,
 							legendFormat: "Average",
-							refId: "D"
-						}
-					]
+							refId: "D",
+						},
+					],
 				},
 				{
 					id: 18,
@@ -472,9 +469,9 @@ export async function ensureProjectDashboard(
 						{
 							datasource: { type: "loki", uid: "loki" },
 							expr: `log_histogram({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | unwrap duration [$__interval])`,
-							refId: "A"
-						}
-					]
+							refId: "A",
+						},
+					],
 				},
 				{
 					type: "row",
@@ -605,12 +602,8 @@ export async function ensureProjectDashboard(
 
 	const result = await grafanaPost("/dashboards/db", dashboard);
 	if (result) {
-		console.log(
-			`[Grafana] Dashboard created/updated for ${projectName}`,
-		);
+		console.log(`[Grafana] Dashboard created/updated for ${projectName}`);
 	} else {
-		console.warn(
-			`[Grafana] Failed to create dashboard for ${projectName}`,
-		);
+		console.warn(`[Grafana] Failed to create dashboard for ${projectName}`);
 	}
 }

@@ -1,12 +1,12 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { Trash2, Key } from "lucide-react";
+import { Key, Trash2 } from "lucide-react";
+import { useState } from "react";
 import * as api from "../../api/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Input } from "../ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 export function ApiKeysSection() {
 	const { data: apiKeys = [], refetch } = useQuery({
@@ -53,23 +53,38 @@ export function ApiKeysSection() {
 						<label className="text-xs font-medium text-muted-foreground">Key Name</label>
 						<Input placeholder="ci-cd-token" value={name} onChange={(e) => setName(e.target.value)} className="w-56" />
 					</div>
-					<Button type="submit" size="sm">Generate Key</Button>
+					<Button type="submit" size="sm">
+						Generate Key
+					</Button>
 				</form>
 				{apiKeys.length > 0 && (
 					<div className="rounded-xl border border-border overflow-hidden overflow-x-auto">
 						<Table className="min-w-[500px] md:min-w-full">
 							<TableHeader>
-								<TableRow><TableHead>Name</TableHead><TableHead>Key Hash</TableHead><TableHead>Created</TableHead><TableHead className="w-12"></TableHead></TableRow>
+								<TableRow>
+									<TableHead>Name</TableHead>
+									<TableHead>Key Hash</TableHead>
+									<TableHead>Created</TableHead>
+									<TableHead className="w-12"></TableHead>
+								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{apiKeys.map((k) => (
 									<TableRow key={k.id}>
 										<TableCell className="font-medium">{k.name}</TableCell>
-										<TableCell className="font-mono text-xs text-muted-foreground">{k.keyHash?.slice(0, 12)}...</TableCell>
-										<TableCell className="text-muted-foreground text-xs">{new Date(k.createdAt).toLocaleDateString()}</TableCell>
+										<TableCell className="font-mono text-xs text-muted-foreground">
+											{k.keyHash?.slice(0, 12)}...
+										</TableCell>
+										<TableCell className="text-muted-foreground text-xs">
+											{new Date(k.createdAt).toLocaleDateString()}
+										</TableCell>
 										<TableCell className="text-right">
-											<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-												onClick={() => setDeletingKeyId(k.id)}>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-7 w-7 text-muted-foreground hover:text-destructive"
+												onClick={() => setDeletingKeyId(k.id)}
+											>
 												<Trash2 className="h-3.5 w-3.5" />
 											</Button>
 										</TableCell>
@@ -81,7 +96,12 @@ export function ApiKeysSection() {
 				)}
 			</CardContent>
 
-			<Dialog open={deletingKeyId !== null} onOpenChange={(open) => { if (!open) setDeletingKeyId(null); }}>
+			<Dialog
+				open={deletingKeyId !== null}
+				onOpenChange={(open) => {
+					if (!open) setDeletingKeyId(null);
+				}}
+			>
 				<DialogContent className="sm:max-w-[400px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
 					<DialogHeader>
 						<DialogTitle className="text-lg font-bold text-foreground">Delete API Key</DialogTitle>
@@ -90,10 +110,19 @@ export function ApiKeysSection() {
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="flex justify-end gap-2 pt-4 border-t border-border/40">
-						<Button variant="ghost" onClick={() => setDeletingKeyId(null)}
-							className="h-10 text-xs px-4 rounded-xl hover:bg-[#1a1a21]">Cancel</Button>
-						<Button onClick={handleDeleteKey}
-							className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold h-10 text-xs px-5 rounded-xl shadow-lg transition-all">Delete Key</Button>
+						<Button
+							variant="ghost"
+							onClick={() => setDeletingKeyId(null)}
+							className="h-10 text-xs px-4 rounded-xl hover:bg-[#1a1a21]"
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={handleDeleteKey}
+							className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold h-10 text-xs px-5 rounded-xl shadow-lg transition-all"
+						>
+							Delete Key
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

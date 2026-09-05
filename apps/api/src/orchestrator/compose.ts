@@ -1,6 +1,6 @@
+import { spawn } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
-import { spawn } from "node:child_process";
 import { dockerBin } from "../utils/docker-bin";
 import { CancelledError } from "./railpack";
 
@@ -51,12 +51,12 @@ export interface ExtractedComposeService {
 
 export const parseContainerTargetPort = (entry: any): number | null => {
 	if (typeof entry === "number") {
-		return isNaN(entry) || entry <= 0 ? null : entry;
+		return Number.isNaN(entry) || entry <= 0 ? null : entry;
 	}
 	if (typeof entry === "object" && entry !== null) {
 		if ("target" in entry) {
 			const num = Number(entry.target);
-			return !isNaN(num) && num > 0 ? num : null;
+			return !Number.isNaN(num) && num > 0 ? num : null;
 		}
 	}
 	if (typeof entry === "string") {
@@ -66,15 +66,12 @@ export const parseContainerTargetPort = (entry: any): number | null => {
 		const parts = str.split(":");
 		const lastPart = parts[parts.length - 1]?.trim();
 		const num = Number(lastPart);
-		return !isNaN(num) && num > 0 ? num : null;
+		return !Number.isNaN(num) && num > 0 ? num : null;
 	}
 	return null;
 };
 
-export const extractComposeServices = (
-	workspacePath: string,
-	sourceDir?: string | null,
-): ExtractedComposeService[] => {
+export const extractComposeServices = (workspacePath: string, sourceDir?: string | null): ExtractedComposeService[] => {
 	const composeFile = findComposeFilePath(workspacePath, sourceDir);
 	if (!composeFile) return [];
 
@@ -96,7 +93,7 @@ export const extractComposeServices = (
 	for (const [serviceName, serviceConfig] of serviceEntries) {
 		if (!serviceName) continue;
 		let detectedPort: number | null = null;
-		const configObj = (serviceConfig && typeof serviceConfig === "object") ? serviceConfig : {};
+		const configObj = serviceConfig && typeof serviceConfig === "object" ? serviceConfig : {};
 
 		if (Array.isArray((configObj as any).ports)) {
 			for (const portEntry of (configObj as any).ports) {
@@ -189,7 +186,7 @@ export const parseAllComposeServices = (
 
 	return services.map((s) => ({
 		serviceName: s.serviceName,
-		port: s.serviceName === primaryTarget.serviceName ? primaryTarget.port : (s.port || 3000),
+		port: s.serviceName === primaryTarget.serviceName ? primaryTarget.port : s.port || 3000,
 		isPrimary: s.serviceName === primaryTarget.serviceName,
 	}));
 };
@@ -242,7 +239,10 @@ const spawnComposeCommand = (
 			const str = String(chunk);
 			stdout += str;
 			if (onLog) {
-				for (const line of str.split("\n").map((l) => l.trim()).filter(Boolean)) {
+				for (const line of str
+					.split("\n")
+					.map((l) => l.trim())
+					.filter(Boolean)) {
 					void onLog(line);
 				}
 			}
@@ -252,7 +252,10 @@ const spawnComposeCommand = (
 			const str = String(chunk);
 			stderr += str;
 			if (onLog) {
-				for (const line of str.split("\n").map((l) => l.trim()).filter(Boolean)) {
+				for (const line of str
+					.split("\n")
+					.map((l) => l.trim())
+					.filter(Boolean)) {
 					void onLog(line);
 				}
 			}
@@ -305,7 +308,13 @@ export const deployWithCompose = async (
 	const cwd = dirname(composeFile);
 	await onLog(`Starting Docker Compose services (project: ${projectName})...`);
 
-	const res = await spawnComposeCommand(["-f", composeFile, "-p", projectName, "up", "-d"], cwd, envVars, onLog, signal);
+	const res = await spawnComposeCommand(
+		["-f", composeFile, "-p", projectName, "up", "-d"],
+		cwd,
+		envVars,
+		onLog,
+		signal,
+	);
 	if (res.code !== 0) {
 		throw new Error(`docker compose up failed: ${res.stderr || res.stdout}`);
 	}
@@ -323,9 +332,7 @@ export const destroyComposeStack = async (projectName: string): Promise<void> =>
 	await runDocker(["network", "rm", `${projectName}_default`]).catch(() => {});
 };
 
-export const getComposeContainerNames = async (
-	projectName: string,
-): Promise<Map<string, string>> => {
+export const getComposeContainerNames = async (projectName: string): Promise<Map<string, string>> => {
 	const res = await runDocker([
 		"ps",
 		"-a",
@@ -342,9 +349,7 @@ export const getComposeContainerNames = async (
 	return map;
 };
 
-const runDocker = (
-	args: string[],
-): Promise<{ code: number; stdout: string; stderr: string }> => {
+const runDocker = (args: string[]): Promise<{ code: number; stdout: string; stderr: string }> => {
 	return new Promise((resolve, reject) => {
 		const child = spawn(dockerBin, args, {
 			stdio: ["ignore", "pipe", "pipe"],

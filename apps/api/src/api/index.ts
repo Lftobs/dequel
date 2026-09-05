@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
-import { alertsRoutes } from "./alerts";
 import { agentRoutes } from "./agents";
+import { alertsRoutes } from "./alerts";
 import { apiKeysRoutes } from "./api-keys";
 import { authRoutes } from "./auth";
 import { databasesRoutes } from "./databases";
@@ -11,16 +11,26 @@ import { githubRoutes } from "./github";
 import { healthRoutes } from "./health";
 import { projectsRoutes } from "./projects";
 import { prometheusRoutes } from "./prometheus";
+import { routesRoutes } from "./routes";
 import { scalingRoutes } from "./scaling";
 import { serverInfoRoutes } from "./server-info";
 import { serversRoutes } from "./servers";
-import { volumesRoutes } from "./volumes";
 import { settingsRoutes } from "./settings";
-import { routesRoutes } from "./routes";
-import { sharedEnvVarsRoutes, sharedEnvLinksRoutes } from "./shared-env-vars";
+import { sharedEnvLinksRoutes, sharedEnvVarsRoutes } from "./shared-env-vars";
 import { sshKeysRoutes } from "./ssh-keys";
+import { volumesRoutes } from "./volumes";
 
-const BYPASS_PATHS = new Set(["/api/auth/login", "/api/auth/logout", "/api/auth/refresh", "/api/auth/me", "/api/health", "/api/github/callback", "/api/github/webhook", "/api/agents/register", "/api/agents/p2p-sync"]);
+const BYPASS_PATHS = new Set([
+	"/api/auth/login",
+	"/api/auth/logout",
+	"/api/auth/refresh",
+	"/api/auth/me",
+	"/api/health",
+	"/api/github/callback",
+	"/api/github/webhook",
+	"/api/agents/register",
+	"/api/agents/p2p-sync",
+]);
 
 const authMiddleware = (app: Elysia) =>
 	app.onBeforeHandle(async ({ request, set, path }) => {

@@ -1,15 +1,8 @@
+import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
-import {
-	Sheet,
-	SheetContent,
-	SheetHeader,
-	SheetTitle,
-	SheetDescription,
-	SheetFooter,
-} from "../../ui/sheet";
-import { Plus, Trash2 } from "lucide-react";
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "../../ui/sheet";
 
 interface EnvVarEntry {
 	key: string;
@@ -23,20 +16,12 @@ interface AddEnvVarSheetProps {
 	onSubmit: (vars: EnvVarEntry[]) => Promise<void>;
 }
 
-export function AddEnvVarSheet({
-	open,
-	onOpenChange,
-	onSubmit,
-}: AddEnvVarSheetProps) {
-	const [newVars, setNewVars] = useState<EnvVarEntry[]>([
-		{ key: "", value: "", env: "" },
-	]);
+export function AddEnvVarSheet({ open, onOpenChange, onSubmit }: AddEnvVarSheetProps) {
+	const [newVars, setNewVars] = useState<EnvVarEntry[]>([{ key: "", value: "", env: "" }]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		const validVars = newVars.filter(
-			(v) => v.key.trim() && v.value.trim(),
-		);
+		const validVars = newVars.filter((v) => v.key.trim() && v.value.trim());
 		if (validVars.length === 0) return;
 		await onSubmit(validVars);
 		setNewVars([{ key: "", value: "", env: "" }]);
@@ -48,26 +33,15 @@ export function AddEnvVarSheet({
 	};
 
 	const addRow = () => {
-		setNewVars((prev) => [
-			...prev,
-			{ key: "", value: "", env: "" },
-		]);
+		setNewVars((prev) => [...prev, { key: "", value: "", env: "" }]);
 	};
 
 	const removeRow = (index: number) => {
 		setNewVars((prev) => prev.filter((_, i) => i !== index));
 	};
 
-	const updateRow = (
-		index: number,
-		field: keyof EnvVarEntry,
-		val: string,
-	) => {
-		setNewVars((prev) =>
-			prev.map((item, i) =>
-				i === index ? { ...item, [field]: val } : item,
-			),
-		);
+	const updateRow = (index: number, field: keyof EnvVarEntry, val: string) => {
+		setNewVars((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: val } : item)));
 	};
 
 	return (
@@ -76,21 +50,15 @@ export function AddEnvVarSheet({
 				<SheetHeader>
 					<SheetTitle>Add Environment Variables</SheetTitle>
 					<SheetDescription>
-						Store configuration keys that will be injected into your
-						service deployments. You can add multiple variables at once.
+						Store configuration keys that will be injected into your service deployments. You can add multiple variables
+						at once.
 					</SheetDescription>
 				</SheetHeader>
 
-				<form
-					onSubmit={handleSubmit}
-					className="flex flex-col flex-1 min-h-0"
-				>
+				<form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
 					<div className="flex-1 overflow-y-auto pr-1 space-y-4 py-2">
 						{newVars.map((v, index) => (
-							<div
-								key={index}
-								className="p-4 rounded-xl bg-[#0a0a0d] border border-border/60 relative space-y-3 group"
-							>
+							<div key={index} className="p-4 rounded-xl bg-[#0a0a0d] border border-border/60 relative space-y-3 group">
 								{newVars.length > 1 && (
 									<Button
 										type="button"
@@ -112,13 +80,7 @@ export function AddEnvVarSheet({
 									<Input
 										placeholder="e.g. DATABASE_URL"
 										value={v.key}
-										onChange={(e) =>
-											updateRow(
-												index,
-												"key",
-												e.target.value,
-											)
-										}
+										onChange={(e) => updateRow(index, "key", e.target.value)}
 										className="h-9 bg-[#0d0d11] border-input focus:ring-1 focus:ring-primary text-xs font-semibold rounded-lg font-mono"
 										required
 									/>
@@ -131,13 +93,7 @@ export function AddEnvVarSheet({
 									<Input
 										placeholder="e.g. postgresql://user:pass@host:5432/db"
 										value={v.value}
-										onChange={(e) =>
-											updateRow(
-												index,
-												"value",
-												e.target.value,
-											)
-										}
+										onChange={(e) => updateRow(index, "value", e.target.value)}
 										className="h-9 bg-[#0d0d11] border-input focus:ring-1 focus:ring-primary text-xs font-semibold rounded-lg"
 										required
 									/>
@@ -149,27 +105,13 @@ export function AddEnvVarSheet({
 									</label>
 									<select
 										value={v.env}
-										onChange={(e) =>
-											updateRow(
-												index,
-												"env",
-												e.target.value,
-											)
-										}
+										onChange={(e) => updateRow(index, "env", e.target.value)}
 										className="flex h-9 w-full rounded-lg border border-input bg-[#0d0d11] px-3 py-1.5 text-xs shadow-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent"
 									>
-										<option value="">
-											All Environments
-										</option>
-										<option value="production">
-											Production
-										</option>
-										<option value="preview">
-											Preview
-										</option>
-										<option value="development">
-											Development
-										</option>
+										<option value="">All Environments</option>
+										<option value="production">Production</option>
+										<option value="preview">Preview</option>
+										<option value="development">Development</option>
 									</select>
 								</div>
 							</div>

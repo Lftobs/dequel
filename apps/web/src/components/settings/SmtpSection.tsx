@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Mail } from "lucide-react";
+import { useEffect, useState } from "react";
 import * as api from "../../api/client";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
 
 export function SmtpSection() {
 	const { data, refetch } = useQuery({
@@ -38,7 +38,7 @@ export function SmtpSection() {
 			setSaveResult("Settings saved");
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
-			setSaveResult("error: " + message);
+			setSaveResult(`error: ${message}`);
 		}
 	};
 
@@ -49,7 +49,7 @@ export function SmtpSection() {
 			setTestResult("Test email sent successfully");
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
-			setTestResult("error: " + message);
+			setTestResult(`error: ${message}`);
 		}
 	};
 
@@ -65,7 +65,12 @@ export function SmtpSection() {
 				<form onSubmit={save} className="flex flex-wrap items-end gap-3 mb-4">
 					<div className="grid gap-1.5">
 						<label className="text-xs font-medium text-muted-foreground">Host</label>
-						<Input placeholder="smtp.example.com" value={host} onChange={(e) => setHost(e.target.value)} className="w-44" />
+						<Input
+							placeholder="smtp.example.com"
+							value={host}
+							onChange={(e) => setHost(e.target.value)}
+							className="w-44"
+						/>
 					</div>
 					<div className="grid gap-1.5">
 						<label className="text-xs font-medium text-muted-foreground">Port</label>
@@ -77,22 +82,41 @@ export function SmtpSection() {
 					</div>
 					<div className="grid gap-1.5">
 						<label className="text-xs font-medium text-muted-foreground">Password</label>
-						<Input type="password" placeholder={data?.configured ? "(unchanged)" : ""} value={pass} onChange={(e) => setPass(e.target.value)} className="w-36" />
+						<Input
+							type="password"
+							placeholder={data?.configured ? "(unchanged)" : ""}
+							value={pass}
+							onChange={(e) => setPass(e.target.value)}
+							className="w-36"
+						/>
 					</div>
 					<div className="grid gap-1.5">
 						<label className="text-xs font-medium text-muted-foreground">From Address</label>
-						<Input placeholder="dequel@example.com" value={fromAddress} onChange={(e) => setFromAddress(e.target.value)} className="w-44" />
+						<Input
+							placeholder="dequel@example.com"
+							value={fromAddress}
+							onChange={(e) => setFromAddress(e.target.value)}
+							className="w-44"
+						/>
 					</div>
 					<div className="flex gap-2">
-						<Button type="submit" size="sm">Save</Button>
-						<Button type="button" size="sm" variant="secondary" onClick={test} disabled={!data?.configured}>Test</Button>
+						<Button type="submit" size="sm">
+							Save
+						</Button>
+						<Button type="button" size="sm" variant="secondary" onClick={test} disabled={!data?.configured}>
+							Test
+						</Button>
 					</div>
 				</form>
 				{saveResult && (
-					<p className={`text-xs ${saveResult.startsWith("error") ? "text-red-400" : "text-emerald-400"}`}>{saveResult}</p>
+					<p className={`text-xs ${saveResult.startsWith("error") ? "text-red-400" : "text-emerald-400"}`}>
+						{saveResult}
+					</p>
 				)}
 				{testResult && (
-					<p className={`text-xs ${testResult.startsWith("error") ? "text-red-400" : "text-emerald-400"}`}>{testResult}</p>
+					<p className={`text-xs ${testResult.startsWith("error") ? "text-red-400" : "text-emerald-400"}`}>
+						{testResult}
+					</p>
 				)}
 			</CardContent>
 		</Card>

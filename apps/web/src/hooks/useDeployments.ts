@@ -1,50 +1,57 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { listDeployments, createDeployment, rollbackDeployment, redeployDeployment, cancelDeployment, deleteDeployment } from '../api/client';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	cancelDeployment,
+	createDeployment,
+	deleteDeployment,
+	listDeployments,
+	redeployDeployment,
+	rollbackDeployment,
+} from "../api/client";
 
 export function useDeployments(projectId?: string, page = 0, pageSize = 10) {
-  return useQuery({
-    queryKey: ['deployments', projectId, page, pageSize],
-    queryFn: () => listDeployments(projectId, page * pageSize, pageSize),
-    refetchInterval: 5000,
-  });
+	return useQuery({
+		queryKey: ["deployments", projectId, page, pageSize],
+		queryFn: () => listDeployments(projectId, page * pageSize, pageSize),
+		refetchInterval: 5000,
+	});
 }
 
 export function useCreateDeployment() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (form: FormData) => createDeployment(form),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['deployments'] }),
-  });
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (form: FormData) => createDeployment(form),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ["deployments"] }),
+	});
 }
 
 export function useRollbackDeployment() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => rollbackDeployment(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['deployments'] }),
-  });
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (id: string) => rollbackDeployment(id),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ["deployments"] }),
+	});
 }
 
 export function useRedeployDeployment() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => redeployDeployment(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['deployments'] }),
-  });
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (id: string) => redeployDeployment(id),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ["deployments"] }),
+	});
 }
 
 export function useCancelDeployment() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => cancelDeployment(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['deployments'] }),
-  });
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (id: string) => cancelDeployment(id),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ["deployments"] }),
+	});
 }
 
 export function useDeleteDeployment() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => deleteDeployment(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['deployments'] }),
-  });
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (id: string) => deleteDeployment(id),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ["deployments"] }),
+	});
 }

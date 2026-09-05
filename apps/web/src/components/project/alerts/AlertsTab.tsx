@@ -1,28 +1,12 @@
-import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle, BellOff, Cpu, Layers, Plus, ShieldAlert, Trash2, WifiOff } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
 import * as api from "../../../api/client";
-import { Card, CardContent } from "../../ui/card";
-import { Input } from "../../ui/input";
-import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
-import {
-	Trash2,
-	BellOff,
-	Cpu,
-	Layers,
-	AlertTriangle,
-	WifiOff,
-	ShieldAlert,
-	Plus,
-} from "lucide-react";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogDescription,
-	DialogFooter,
-} from "../../ui/dialog";
+import { Button } from "../../ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../ui/dialog";
+import { Input } from "../../ui/input";
 
 interface AlertsTabProps {
 	projectId: string;
@@ -100,12 +84,9 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 						<div className="absolute inset-0 bg-primary/10 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 						<BellOff className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
 					</div>
-					<h3 className="text-lg font-semibold text-foreground mb-2">
-						No Alert Rules Configured
-					</h3>
+					<h3 className="text-lg font-semibold text-foreground mb-2">No Alert Rules Configured</h3>
 					<p className="text-sm text-muted-foreground max-w-sm mb-6 leading-relaxed">
-						Monitor system health and receive notifications when
-						CPU, memory, error rates, or certificate status cross
+						Monitor system health and receive notifications when CPU, memory, error rates, or certificate status cross
 						your limits.
 					</p>
 					<Button
@@ -119,12 +100,9 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 				<div className="space-y-4">
 					<div className="flex items-center justify-between">
 						<div>
-							<h2 className="text-lg font-semibold text-foreground">
-								Alert Rules
-							</h2>
+							<h2 className="text-lg font-semibold text-foreground">Alert Rules</h2>
 							<p className="text-sm text-muted-foreground">
-								Configure notifications for resource utilization
-								spikes and uptime changes.
+								Configure notifications for resource utilization spikes and uptime changes.
 							</p>
 						</div>
 						<Button
@@ -150,10 +128,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 										<div>
 											<div className="flex items-center gap-2 flex-wrap">
 												<span className="font-semibold text-sm capitalize text-foreground">
-													{a.type.replace(
-														"_",
-														" ",
-													)}
+													{a.type.replace("_", " ")}
 												</span>
 												<Badge
 													variant="outline"
@@ -163,14 +138,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 												</Badge>
 											</div>
 											<p className="text-xs text-muted-foreground mt-1">
-												Triggers when{" "}
-												<span className="capitalize">
-													{a.type.replace(
-														"_",
-														" ",
-													)}
-												</span>{" "}
-												exceeds{" "}
+												Triggers when <span className="capitalize">{a.type.replace("_", " ")}</span> exceeds{" "}
 												<span className="font-semibold text-foreground">
 													{a.threshold}
 													{getUnit(a.type)}
@@ -181,26 +149,15 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 									<div className="flex items-center gap-4">
 										<button
 											type="button"
-											onClick={() =>
-												api
-													.toggleAlert(
-														a.id,
-														!a.enabled,
-													)
-													.then(() => refetch())
-											}
+											onClick={() => api.toggleAlert(a.id, !a.enabled).then(() => refetch())}
 											className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background ${
-												a.enabled
-													? "bg-primary"
-													: "bg-muted"
+												a.enabled ? "bg-primary" : "bg-muted"
 											}`}
 											aria-label="Toggle Alert Rule"
 										>
 											<span
 												className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-md ring-0 transition duration-200 ease-in-out ${
-													a.enabled
-														? "translate-x-4"
-														: "translate-x-0"
+													a.enabled ? "translate-x-4" : "translate-x-0"
 												}`}
 											/>
 										</button>
@@ -209,9 +166,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 											variant="ghost"
 											size="icon"
 											className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg opacity-80 group-hover:opacity-100 transition-all"
-											onClick={() =>
-												setDeletingAlertId(a.id)
-											}
+											onClick={() => setDeletingAlertId(a.id)}
 										>
 											<Trash2 className="h-4 w-4" />
 										</Button>
@@ -226,12 +181,9 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 			<Dialog open={isOpen} onOpenChange={setIsOpen}>
 				<DialogContent className="sm:max-w-[420px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
 					<DialogHeader>
-						<DialogTitle className="text-lg font-bold text-foreground">
-							Create Alert Rule
-						</DialogTitle>
+						<DialogTitle className="text-lg font-bold text-foreground">Create Alert Rule</DialogTitle>
 						<DialogDescription className="text-xs text-muted-foreground">
-							Set up monitoring for your project. Notifications
-							will be triggered when thresholds are crossed.
+							Set up monitoring for your project. Notifications will be triggered when thresholds are crossed.
 						</DialogDescription>
 					</DialogHeader>
 					<form onSubmit={add} className="space-y-4 pt-2">
@@ -246,32 +198,22 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 							>
 								<option value="cpu">CPU Usage</option>
 								<option value="memory">Memory Usage</option>
-								<option value="error_rate">
-									HTTP Error Rate
-								</option>
-								<option value="downtime">
-									Downtime Detect
-								</option>
-								<option value="cert_expiry">
-									SSL Cert Expiry
-								</option>
+								<option value="error_rate">HTTP Error Rate</option>
+								<option value="downtime">Downtime Detect</option>
+								<option value="cert_expiry">SSL Cert Expiry</option>
 							</select>
 						</div>
 
 						<div className="grid gap-2">
 							<label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-								Threshold{" "}
-								{getUnit(type) &&
-									`(${getUnit(type).trim()})`}
+								Threshold {getUnit(type) && `(${getUnit(type).trim()})`}
 							</label>
 							<div className="relative flex items-center">
 								<Input
 									type="number"
 									min={1}
 									value={threshold}
-									onChange={(e) =>
-										setThreshold(e.target.value)
-									}
+									onChange={(e) => setThreshold(e.target.value)}
 									className="h-10 bg-[#0d0d11] border-input focus:ring-2 focus:ring-primary text-sm font-semibold rounded-lg pr-10"
 									required
 								/>
@@ -324,12 +266,10 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 			>
 				<DialogContent className="sm:max-w-[400px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
 					<DialogHeader>
-						<DialogTitle className="text-lg font-bold text-foreground">
-							Delete Alert Rule
-						</DialogTitle>
+						<DialogTitle className="text-lg font-bold text-foreground">Delete Alert Rule</DialogTitle>
 						<DialogDescription className="text-xs text-muted-foreground mt-2">
-							Are you sure you want to delete this alert rule? You will
-							no longer receive notifications for this condition.
+							Are you sure you want to delete this alert rule? You will no longer receive notifications for this
+							condition.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="flex justify-end gap-2 pt-4 border-t border-border/40">

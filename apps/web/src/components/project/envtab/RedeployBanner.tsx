@@ -1,5 +1,5 @@
-import { Button } from "../../ui/button";
 import { RefreshCw } from "lucide-react";
+import { Button } from "../../ui/button";
 
 interface RedeployBannerProps {
 	show: boolean;
@@ -9,13 +9,7 @@ interface RedeployBannerProps {
 	onRedeploy: () => Promise<void>;
 }
 
-export function RedeployBanner({
-	show,
-	runningDeploymentId,
-	isPending,
-	onDismiss,
-	onRedeploy,
-}: RedeployBannerProps) {
+export function RedeployBanner({ show, runningDeploymentId, isPending, onDismiss, onRedeploy }: RedeployBannerProps) {
 	if (!show || !runningDeploymentId) return null;
 
 	return (
@@ -25,12 +19,10 @@ export function RedeployBanner({
 					<RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
 				</div>
 				<div>
-					<h4 className="text-sm font-semibold text-foreground">
-						Redeployment Required
-					</h4>
+					<h4 className="text-sm font-semibold text-foreground">Redeployment Required</h4>
 					<p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-						You have added or updated environment variables. Redeploy the active
-						configuration to apply the new settings.
+						You have added or updated environment variables. Redeploy the active configuration to apply the new
+						settings.
 					</p>
 				</div>
 			</div>

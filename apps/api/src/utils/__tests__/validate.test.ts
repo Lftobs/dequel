@@ -1,5 +1,5 @@
-import { describe, it, expect } from "bun:test";
-import { validateComposeServices, validateComposeServiceMapping } from "../validate";
+import { describe, expect, it } from "bun:test";
+import { validateComposeServiceMapping, validateComposeServices } from "../validate";
 
 describe("validateComposeServiceMapping", () => {
 	it("accepts a valid mapping", () => {
@@ -13,7 +13,9 @@ describe("validateComposeServiceMapping", () => {
 	});
 
 	it("rejects subdomain injection attempts", () => {
-		expect(validateComposeServiceMapping({ serviceName: "web", subdomain: "x} { respond \"owned\" } {.x" })).not.toBeNull();
+		expect(
+			validateComposeServiceMapping({ serviceName: "web", subdomain: 'x} { respond "owned" } {.x' }),
+		).not.toBeNull();
 		expect(validateComposeServiceMapping({ serviceName: "web", subdomain: "UPPER" })).not.toBeNull();
 		expect(validateComposeServiceMapping({ serviceName: "web", subdomain: "-bad" })).not.toBeNull();
 		expect(validateComposeServiceMapping({ serviceName: "web", subdomain: "ok-label" })).toBeNull();
@@ -44,7 +46,7 @@ describe("validateComposeServices", () => {
 	});
 
 	it("rejects invalid JSON", () => {
-		const result = validateComposeServices('{not json');
+		const result = validateComposeServices("{not json");
 		expect(result.ok).toBe(false);
 	});
 
@@ -54,7 +56,7 @@ describe("validateComposeServices", () => {
 	});
 
 	it("rejects an array with an injection payload", () => {
-		const result = validateComposeServices([{ serviceName: "web", subdomain: "x} { respond \"owned\" } {.x" }]);
+		const result = validateComposeServices([{ serviceName: "web", subdomain: 'x} { respond "owned" } {.x' }]);
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
 			expect(result.error).toContain("subdomain");

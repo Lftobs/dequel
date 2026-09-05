@@ -1,17 +1,14 @@
-import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import * as api from "../../../api/client";
-import {
-	useDeployments,
-	useRedeployDeployment,
-} from "../../../hooks/useDeployments";
-import { RedeployBanner } from "./RedeployBanner";
+import { useDeployments, useRedeployDeployment } from "../../../hooks/useDeployments";
+import { AddEnvVarSheet } from "./AddEnvVarSheet";
+import { DeleteEnvVarDialog } from "./DeleteEnvVarDialog";
 import { EmptyEnvState } from "./EmptyEnvState";
 import { EnvVarTable } from "./EnvVarTable";
-import { AddEnvVarSheet } from "./AddEnvVarSheet";
 import { ImportEnvFileDialog } from "./ImportEnvFileDialog";
-import { DeleteEnvVarDialog } from "./DeleteEnvVarDialog";
+import { RedeployBanner } from "./RedeployBanner";
 
 interface EnvVarsTabProps {
 	projectId: string;
@@ -26,8 +23,7 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 	const { data: deploymentsData } = useDeployments(projectId, 0, 5);
 	const redeploy = useRedeployDeployment();
 	const navigate = useNavigate();
-	const runningDeployment =
-		deploymentsData?.items?.find((d) => d.status === "running");
+	const runningDeployment = deploymentsData?.items?.find((d) => d.status === "running");
 
 	const [isAddOpen, setIsAddOpen] = useState(false);
 	const [isImportOpen, setIsImportOpen] = useState(false);
@@ -110,9 +106,7 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 		});
 	};
 
-	const handleAddVars = async (
-		vars: { key: string; value: string; env: string }[],
-	) => {
+	const handleAddVars = async (vars: { key: string; value: string; env: string }[]) => {
 		await Promise.all(
 			vars.map((v) =>
 				api.createEnvVar(projectId, {
@@ -127,12 +121,8 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 		refetch();
 	};
 
-	const handleImportVars = async (
-		vars: { key: string; value: string }[],
-	) => {
-		await Promise.all(
-			vars.map((entry) => api.createEnvVar(projectId, entry)),
-		);
+	const handleImportVars = async (vars: { key: string; value: string }[]) => {
+		await Promise.all(vars.map((entry) => api.createEnvVar(projectId, entry)));
 		await refetch();
 		setShowRedeployPrompt(true);
 	};
@@ -158,10 +148,7 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 			/>
 
 			{envVars.length === 0 ? (
-				<EmptyEnvState
-					onAdd={() => setIsAddOpen(true)}
-					onImport={() => setIsImportOpen(true)}
-				/>
+				<EmptyEnvState onAdd={() => setIsAddOpen(true)} onImport={() => setIsImportOpen(true)} />
 			) : (
 				<EnvVarTable
 					envVars={envVars}
@@ -187,17 +174,9 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 				/>
 			)}
 
-			<AddEnvVarSheet
-				open={isAddOpen}
-				onOpenChange={setIsAddOpen}
-				onSubmit={handleAddVars}
-			/>
+			<AddEnvVarSheet open={isAddOpen} onOpenChange={setIsAddOpen} onSubmit={handleAddVars} />
 
-			<ImportEnvFileDialog
-				open={isImportOpen}
-				onOpenChange={setIsImportOpen}
-				onImport={handleImportVars}
-			/>
+			<ImportEnvFileDialog open={isImportOpen} onOpenChange={setIsImportOpen} onImport={handleImportVars} />
 
 			<DeleteEnvVarDialog
 				open={deletingEvId !== null}

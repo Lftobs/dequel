@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { StatusBadge } from "../StatusBadge";
-import { Trash2, Server, Copy } from "lucide-react";
+import { Copy, Server, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import * as api from "../../api/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
+import { StatusBadge } from "../StatusBadge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Input } from "../ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 export function ServersSection() {
 	const { data: servers = [], refetch } = useQuery({
@@ -58,7 +58,7 @@ export function ServersSection() {
 			try {
 				const event = JSON.parse((e as MessageEvent).data);
 				setPrepareDone(true);
-				setPrepareError(event.ok ? null : (event.error || "Preparation failed"));
+				setPrepareError(event.ok ? null : event.error || "Preparation failed");
 				setPreparingId(null);
 				refetch();
 			} catch {}
@@ -103,7 +103,9 @@ export function ServersSection() {
 		try {
 			const result = await api.createAgentRegistrationToken({ name: agentName.trim() });
 			const controlPlane = window.location.origin;
-			setRegistrationCommand(`docker run -d --name dequel-agent --cap-add=NET_ADMIN --device /dev/net/tun --restart unless-stopped -e DEQUEL_CONTROL_PLANE=${controlPlane} -e DEQUEL_REGISTRATION_TOKEN=${result.token} -v dequel-agent-data:/root/.dequel -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/lftobs/dequel/agent:latest`);
+			setRegistrationCommand(
+				`docker run -d --name dequel-agent --cap-add=NET_ADMIN --device /dev/net/tun --restart unless-stopped -e DEQUEL_CONTROL_PLANE=${controlPlane} -e DEQUEL_REGISTRATION_TOKEN=${result.token} -v dequel-agent-data:/root/.dequel -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/lftobs/dequel/agent:latest`,
+			);
 		} catch (err) {
 			setRegistrationError(err instanceof Error ? err.message : "Could not create registration token");
 		}
@@ -123,98 +125,178 @@ export function ServersSection() {
 						<Server className="mt-0.5 h-4 w-4 text-orange-500" />
 						<div>
 							<h3 className="text-sm font-semibold">Connect a Server (Direct SSH)</h3>
-							<p className="mt-1 text-xs text-muted-foreground">Add any remote cloud VPS (Hetzner, DigitalOcean, AWS). Dequel deploys over SSH directly without installing software on the target server.</p>
+							<p className="mt-1 text-xs text-muted-foreground">
+								Add any remote cloud VPS (Hetzner, DigitalOcean, AWS). Dequel deploys over SSH directly without
+								installing software on the target server.
+							</p>
 						</div>
 					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
 						<div className="grid gap-1.5">
-							<label className="text-xs font-medium text-muted-foreground">Server Name</label>
-							<Input placeholder="prod-node-1" value={name} onChange={(e) => setName(e.target.value)} />
+							<label htmlFor="server-name" className="text-xs font-medium text-muted-foreground">
+								Server Name
+							</label>
+							<Input
+								id="server-name"
+								placeholder="prod-node-1"
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+							/>
 						</div>
 						<div className="grid gap-1.5">
-							<label className="text-xs font-medium text-muted-foreground">Host / IP Address</label>
-							<Input placeholder="192.168.1.10" value={host} onChange={(e) => setHost(e.target.value)} />
+							<label htmlFor="server-host" className="text-xs font-medium text-muted-foreground">
+								Host / IP Address
+							</label>
+							<Input
+								id="server-host"
+								placeholder="192.168.1.10"
+								value={host}
+								onChange={(e) => setHost(e.target.value)}
+							/>
 						</div>
 						<div className="grid gap-1.5">
-							<label className="text-xs font-medium text-muted-foreground">SSH Port</label>
-							<Input type="number" placeholder="22" value={port} onChange={(e) => setPort(e.target.value)} />
+							<label htmlFor="server-port" className="text-xs font-medium text-muted-foreground">
+								SSH Port
+							</label>
+							<Input
+								id="server-port"
+								type="number"
+								placeholder="22"
+								value={port}
+								onChange={(e) => setPort(e.target.value)}
+							/>
 						</div>
 						<div className="grid gap-1.5">
-							<label className="text-xs font-medium text-muted-foreground">SSH User</label>
-							<Input placeholder="root" value={sshUser} onChange={(e) => setSshUser(e.target.value)} />
+							<label htmlFor="server-user" className="text-xs font-medium text-muted-foreground">
+								SSH User
+							</label>
+							<Input id="server-user" placeholder="root" value={sshUser} onChange={(e) => setSshUser(e.target.value)} />
 						</div>
 					</div>
-				<div className="mt-3 grid gap-1.5">
-					<label className="text-xs font-medium text-muted-foreground">SSH Key</label>
-					<select
-						className="rounded-md border border-border bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
-						value={selectedKeyId}
-						onChange={(e) => setSelectedKeyId(e.target.value)}
-					>
-						<option value="">No key (inline fallback)</option>
-						{sshKeys.map((k) => (
-							<option key={k.id} value={k.id}>
-								{k.name} — {k.fingerprint}
-							</option>
-						))}
-					</select>
-					{sshKeys.length === 0 && (
-						<p className="text-[10px] text-muted-foreground/60">
-							No keys in pool. Go to <a href="/keys" className="underline hover:text-foreground">Keys & Tokens</a> to add one.
-						</p>
-					)}
-				</div>
+					<div className="mt-3 grid gap-1.5">
+						<label htmlFor="server-ssh-key" className="text-xs font-medium text-muted-foreground">
+							SSH Key
+						</label>
+						<select
+							id="server-ssh-key"
+							className="rounded-md border border-border bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+							value={selectedKeyId}
+							onChange={(e) => setSelectedKeyId(e.target.value)}
+						>
+							<option value="">No key (inline fallback)</option>
+							{sshKeys.map((k) => (
+								<option key={k.id} value={k.id}>
+									{k.name} — {k.fingerprint}
+								</option>
+							))}
+						</select>
+						{sshKeys.length === 0 && (
+							<p className="text-[10px] text-muted-foreground/60">
+								No keys in pool. Go to{" "}
+								<a href="/keys" className="underline hover:text-foreground">
+									Keys & Tokens
+								</a>{" "}
+								to add one.
+							</p>
+						)}
+					</div>
 					<div className="mt-4 flex justify-end">
-						<Button type="submit" size="sm" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold">Add SSH Server</Button>
+						<Button type="submit" size="sm" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold">
+							Add SSH Server
+						</Button>
 					</div>
 				</form>
 
 				<details className="mb-4 rounded-lg border border-border px-4 py-3">
-					<summary className="cursor-pointer text-xs font-medium text-muted-foreground">Alternative: Direct P2P WireGuard Agent (For Firewalled Nodes)</summary>
+					<summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+						Alternative: Direct P2P WireGuard Agent (For Firewalled Nodes)
+					</summary>
 					<form onSubmit={createRegistration} className="mt-3 space-y-3">
-						<p className="text-xs text-muted-foreground">Establishes an encrypted Direct P2P WireGuard tunnel for firewalled nodes or homelabs without open SSH ports.</p>
+						<p className="text-xs text-muted-foreground">
+							Establishes an encrypted Direct P2P WireGuard tunnel for firewalled nodes or homelabs without open SSH
+							ports.
+						</p>
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-end">
 							<div className="grid flex-1 gap-1.5">
-								<label htmlFor="agent-server-name" className="text-xs font-medium text-muted-foreground">Agent Server Name</label>
-								<Input id="agent-server-name" placeholder="homelab-node" value={agentName} onChange={(e) => setAgentName(e.target.value)} />
+								<label htmlFor="agent-server-name" className="text-xs font-medium text-muted-foreground">
+									Agent Server Name
+								</label>
+								<Input
+									id="agent-server-name"
+									placeholder="homelab-node"
+									value={agentName}
+									onChange={(e) => setAgentName(e.target.value)}
+								/>
 							</div>
-							<Button type="submit" size="sm" variant="outline">Generate P2P Agent Command</Button>
+							<Button type="submit" size="sm" variant="outline">
+								Generate P2P Agent Command
+							</Button>
 						</div>
 						{registrationCommand && (
 							<div className="mt-3 flex items-start gap-2 rounded-md border border-border bg-background p-3">
 								<code className="min-w-0 flex-1 break-all text-xs text-zinc-300">{registrationCommand}</code>
-								<Button type="button" variant="ghost" size="icon" aria-label="Copy registration command" onClick={() => navigator.clipboard.writeText(registrationCommand)}>
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									aria-label="Copy registration command"
+									onClick={() => navigator.clipboard.writeText(registrationCommand)}
+								>
 									<Copy className="h-4 w-4" />
 								</Button>
 							</div>
 						)}
-						{registrationError && <p role="alert" className="mt-2 text-xs text-red-400">{registrationError}</p>}
+						{registrationError && (
+							<p role="alert" className="mt-2 text-xs text-red-400">
+								{registrationError}
+							</p>
+						)}
 					</form>
 				</details>
 				{servers.length > 0 && (
 					<div className="rounded-xl border border-border overflow-hidden overflow-x-auto">
 						<Table className="min-w-[500px] md:min-w-full">
 							<TableHeader>
-								<TableRow><TableHead>Name</TableHead><TableHead>Host / Connection</TableHead><TableHead>Status</TableHead><TableHead className="w-12"></TableHead><TableHead className="w-12"></TableHead></TableRow>
+								<TableRow>
+									<TableHead>Name</TableHead>
+									<TableHead>Host / Connection</TableHead>
+									<TableHead>Status</TableHead>
+									<TableHead className="w-12"></TableHead>
+									<TableHead className="w-12"></TableHead>
+								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{servers.map((s) => (
 									<TableRow key={s.id}>
 										<TableCell className="font-medium">{s.name}</TableCell>
-										<TableCell className="font-mono text-xs">{s.mode === "agent" ? `P2P WireGuard Agent ${s.agentVersion || ""}` : `SSH (${s.sshUser || "root"}@${s.host}:${s.port})${s.sshKey ? " [key]" : ""}`}</TableCell>
-										<TableCell><StatusBadge status={s.status || "active"} /></TableCell>
+										<TableCell className="font-mono text-xs">
+											{s.mode === "agent"
+												? `P2P WireGuard Agent ${s.agentVersion || ""}`
+												: `SSH (${s.sshUser || "root"}@${s.host}:${s.port})${s.sshKey || s.sshKeyId ? " [key]" : ""}`}
+										</TableCell>
+										<TableCell>
+											<StatusBadge status={s.status || "active"} />
+										</TableCell>
 										<TableCell className="text-right">
 											{s.mode !== "local" && (
-												<Button variant="outline" size="sm" className="h-7 text-xs"
+												<Button
+													variant="outline"
+													size="sm"
+													className="h-7 text-xs"
 													disabled={preparingId !== null}
-													onClick={() => handlePrepare(s.id)}>
+													onClick={() => handlePrepare(s.id)}
+												>
 													{preparingId === s.id ? "Preparing..." : "Prepare"}
 												</Button>
 											)}
 										</TableCell>
 										<TableCell className="text-right">
-											<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-												onClick={() => setDeletingServerId(s.id)}>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-7 w-7 text-muted-foreground hover:text-destructive"
+												onClick={() => setDeletingServerId(s.id)}
+											>
 												<Trash2 className="h-3.5 w-3.5" />
 											</Button>
 										</TableCell>
@@ -228,7 +310,9 @@ export function ServersSection() {
 					<div className="mt-4 rounded-lg border border-border bg-black/30 p-3">
 						<div className="mb-2 flex items-center gap-2">
 							<div className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
-							<span className="text-xs font-medium text-foreground">Preparing server... {prepareLogs.length} steps</span>
+							<span className="text-xs font-medium text-foreground">
+								Preparing server... {prepareLogs.length} steps
+							</span>
 						</div>
 						<div className="max-h-52 overflow-y-auto space-y-1 font-mono text-[11px]">
 							{prepareLogs.map((entry, i) => (
@@ -241,13 +325,22 @@ export function ServersSection() {
 					</div>
 				)}
 				{prepareDone && (
-					<div className={`mt-4 rounded-lg border p-3 text-xs ${prepareError ? "border-red-500/40 text-red-400" : "border-emerald-500/40 text-emerald-400"}`}>
-						{prepareError ? `Preparation failed: ${prepareError}` : "Server prepared successfully. You can now deploy to it."}
+					<div
+						className={`mt-4 rounded-lg border p-3 text-xs ${prepareError ? "border-red-500/40 text-red-400" : "border-emerald-500/40 text-emerald-400"}`}
+					>
+						{prepareError
+							? `Preparation failed: ${prepareError}`
+							: "Server prepared successfully. You can now deploy to it."}
 					</div>
 				)}
 			</CardContent>
 
-			<Dialog open={deletingServerId !== null} onOpenChange={(open) => { if (!open) setDeletingServerId(null); }}>
+			<Dialog
+				open={deletingServerId !== null}
+				onOpenChange={(open) => {
+					if (!open) setDeletingServerId(null);
+				}}
+			>
 				<DialogContent className="sm:max-w-[400px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
 					<DialogHeader>
 						<DialogTitle className="text-lg font-bold text-foreground">Remove Server</DialogTitle>
@@ -256,10 +349,19 @@ export function ServersSection() {
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="flex justify-end gap-2 pt-4 border-t border-border/40">
-						<Button variant="ghost" onClick={() => setDeletingServerId(null)}
-							className="h-10 text-xs px-4 rounded-xl hover:bg-[#1a1a21]">Cancel</Button>
-						<Button onClick={handleDeleteServer}
-							className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold h-10 text-xs px-5 rounded-xl shadow-lg transition-all">Remove Server</Button>
+						<Button
+							variant="ghost"
+							onClick={() => setDeletingServerId(null)}
+							className="h-10 text-xs px-4 rounded-xl hover:bg-[#1a1a21]"
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={handleDeleteServer}
+							className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold h-10 text-xs px-5 rounded-xl shadow-lg transition-all"
+						>
+							Remove Server
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

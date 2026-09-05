@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { proxyConfig, publicProxyName, resolveDbImage } from "../manager";
 import type { Database } from "../../types";
+import { proxyConfig, publicProxyName, resolveDbImage } from "../manager";
 
 const baseRecord = (overrides: Partial<Database> = {}): Database => ({
 	id: "db-1234",
