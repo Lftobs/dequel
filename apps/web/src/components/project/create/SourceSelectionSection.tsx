@@ -150,6 +150,7 @@ export function SourceSelectionSection({
               selected={selectedRepo}
               onSelect={onSelectRepo}
               onDisconnect={onDisconnectGithub}
+              onConnect={onConnectGithub}
             />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-[#121215] border border-[#22222a]">

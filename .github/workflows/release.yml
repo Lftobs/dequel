@@ -54,11 +54,13 @@ jobs:
         with:
           context: apps/api
           push: true
+          build-args: |
+            BUILD_TIME=${{ github.sha }}
           tags: |
             ${{ env.API_IMAGE }}:${{ steps.version.outputs.VERSION }}
             ${{ steps.version.outputs.IS_PRERELEASE == 'false' && format('{0}:latest', env.API_IMAGE) || format('{0}:next', env.API_IMAGE) }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=api-${{ github.sha }}
+          cache-to: type=gha,scope=api-${{ github.sha }},mode=max
 
       - name: Build and push Web image
         uses: docker/build-push-action@v6
@@ -67,22 +69,25 @@ jobs:
           push: true
           build-args: |
             DEQUEL_VERSION=${{ steps.version.outputs.VERSION }}
+            BUILD_TIME=${{ github.sha }}
           tags: |
             ${{ env.WEB_IMAGE }}:${{ steps.version.outputs.VERSION }}
             ${{ steps.version.outputs.IS_PRERELEASE == 'false' && format('{0}:latest', env.WEB_IMAGE) || format('{0}:next', env.WEB_IMAGE) }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=web-${{ github.sha }}
+          cache-to: type=gha,scope=web-${{ github.sha }},mode=max
 
       - name: Build and push Agent image
         uses: docker/build-push-action@v6
         with:
           context: apps/agent
           push: true
+          build-args: |
+            BUILD_TIME=${{ github.sha }}
           tags: |
             ${{ env.AGENT_IMAGE }}:${{ steps.version.outputs.VERSION }}
             ${{ steps.version.outputs.IS_PRERELEASE == 'false' && format('{0}:latest', env.AGENT_IMAGE) || format('{0}:next', env.AGENT_IMAGE) }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=agent-${{ github.sha }}
+          cache-to: type=gha,scope=agent-${{ github.sha }},mode=max
 
       - name: Build config tarball
         run: |

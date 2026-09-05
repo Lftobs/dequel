@@ -209,6 +209,22 @@ export const buildCaddySnippet = async (
     }
   }
 
+  if (defaultDomains.length === 0 || defaultDomains.every(d => !d.trim())) {
+    defaultDomains = [`${slug}.${baseDomain}`];
+  }
+
+  const allDomains = [...defaultDomains, ...customBlocks.flatMap((b) => {
+    const m = b.match(/^([^\n{]+?)\s*\{/);
+    return m ? m[1].split(',').map((d) => d.trim()) : [];
+  })];
+  for (const d of allDomains) {
+    if (/^:\d+$/.test(d)) {
+      console.error(`buildCaddySnippet: rejected bare catch-all domain "${d}" — falling back to ${slug}.${baseDomain}`);
+      defaultDomains = [`${slug}.${baseDomain}`];
+      break;
+    }
+  }
+
   const primaryBlock = `${defaultDomains.join(', ')} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${containerName}:${port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
 
   return [primaryBlock, ...customBlocks].join('\n');

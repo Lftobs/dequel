@@ -33,7 +33,7 @@ export const validateComposeServiceMapping = (mapping: unknown): string | null =
 	if (typeof m.serviceName !== "string" || !SERVICE_NAME_RE.test(m.serviceName)) {
 		return "serviceName may only contain letters, numbers, underscores and hyphens";
 	}
-	if (m.subdomain !== undefined && m.subdomain !== null) {
+	if (m.subdomain !== undefined && m.subdomain !== null && m.subdomain !== "") {
 		if (typeof m.subdomain !== "string" || !SUBDOMAIN_RE.test(m.subdomain)) {
 			return "subdomain must be a valid hostname label (lowercase letters, numbers, hyphens)";
 		}
