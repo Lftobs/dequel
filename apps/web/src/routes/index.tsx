@@ -6,6 +6,8 @@ import { Settings } from './Settings';
 import { ProjectDetail } from './ProjectDetail';
 import { CreateProjectPage } from './CreateProjectPage';
 import { Databases } from './Databases';
+import { Keys } from './Keys';
+import { SharedEnv } from './SharedEnv';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -45,6 +47,18 @@ const databasesRoute = createRoute({
   component: Databases,
 });
 
+const keysRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/keys',
+  component: Keys,
+});
+
+const sharedEnvRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/shared-env',
+  component: SharedEnv,
+});
+
 const ProjectPage = () => {
   const { projectId } = projectRoute.useParams();
   return <ProjectDetail projectId={projectId} />;
@@ -59,7 +73,7 @@ const projectRoute = createRoute({
   }),
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute, settingsRoute, databasesRoute, projectRoute, createProjectRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, loginRoute, settingsRoute, databasesRoute, keysRoute, sharedEnvRoute, projectRoute, createProjectRoute]);
 
 export const router = createRouter({ routeTree });
 

@@ -14,12 +14,31 @@ const SSH_KEYS_DIR = join(tmpdir(), "dequel_ssh_keys");
 
 export const ensureSshKey = (server: { host: string; port?: number; sshUser?: string | null; sshKey?: string | null; id?: string }): string | null => {
   if (!server.sshKey) return null;
+  return writeKeyToDisk(server.host, server.sshKey, server.id);
+};
+
+export const ensureSshKeyAsync = async (server: { host: string; port?: number; sshUser?: string | null; sshKey?: string | null; sshKeyId?: string | null; id?: string }): Promise<string | null> => {
+  if (server.sshKeyId) {
+    const { resolveServerSshKey } = await import("../db/repo/ssh-keys");
+    const resolved = await resolveServerSshKey({
+      sshKeyId: server.sshKeyId,
+      sshKey: server.sshKey ?? undefined,
+      sshKeyIv: undefined,
+      sshKeyTag: undefined,
+    });
+    if (resolved) return writeKeyToDisk(server.host, resolved, server.id);
+  }
+  if (server.sshKey) return writeKeyToDisk(server.host, server.sshKey, server.id);
+  return null;
+};
+
+const writeKeyToDisk = (host: string, sshKey: string, id?: string): string | null => {
   if (!existsSync(SSH_KEYS_DIR)) {
     mkdirSync(SSH_KEYS_DIR, { recursive: true, mode: 0o700 });
   }
-  const keyIdentifier = (server.id || server.host).replace(/[^a-zA-Z0-9_-]/g, "_");
+  const keyIdentifier = (id || host).replace(/[^a-zA-Z0-9_-]/g, "_");
   const keyPath = join(SSH_KEYS_DIR, `id_${keyIdentifier}`);
-  writeFileSync(keyPath, server.sshKey.trim() + "\n", { mode: 0o600 });
+  writeFileSync(keyPath, sshKey.trim() + "\n", { mode: 0o600 });
 
   const homeDir = process.env.HOME || "/root";
   const sshDir = join(homeDir, ".ssh");
@@ -27,12 +46,12 @@ export const ensureSshKey = (server: { host: string; port?: number; sshUser?: st
     mkdirSync(sshDir, { recursive: true, mode: 0o700 });
   }
   const configPath = join(sshDir, "config");
-  const hostEntry = `\nHost ${server.host}\n  IdentityFile ${keyPath}\n  StrictHostKeyChecking no\n  IdentitiesOnly yes\n`;
+  const hostEntry = `\nHost ${host}\n  IdentityFile ${keyPath}\n  StrictHostKeyChecking no\n  IdentitiesOnly yes\n`;
   let currentConfig = "";
   if (existsSync(configPath)) {
     currentConfig = new TextDecoder().decode(Bun.spawnSync(["cat", configPath]).stdout);
   }
-  if (!currentConfig.includes(`Host ${server.host}`)) {
+  if (!currentConfig.includes(`Host ${host}`)) {
     writeFileSync(configPath, currentConfig + hostEntry, { mode: 0o600 });
   }
 

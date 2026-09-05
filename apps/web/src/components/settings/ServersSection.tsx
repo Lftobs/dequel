@@ -14,11 +14,15 @@ export function ServersSection() {
 		queryKey: ["servers"],
 		queryFn: () => api.listServers().catch(() => []),
 	});
+	const { data: sshKeys = [] } = useQuery({
+		queryKey: ["ssh-keys"],
+		queryFn: () => api.listSshKeys().catch(() => []),
+	});
 	const [name, setName] = useState("");
 	const [host, setHost] = useState("");
 	const [port, setPort] = useState("22");
 	const [sshUser, setSshUser] = useState("root");
-	const [sshKey, setSshKey] = useState("");
+	const [selectedKeyId, setSelectedKeyId] = useState("");
 	const [agentName, setAgentName] = useState("");
 	const [registrationCommand, setRegistrationCommand] = useState("");
 	const [registrationError, setRegistrationError] = useState("");
@@ -82,13 +86,13 @@ export function ServersSection() {
 			port: Number(port) || 22,
 			mode: "ssh",
 			sshUser: sshUser.trim() || "root",
-			sshKey: sshKey.trim() || undefined,
+			sshKeyId: selectedKeyId || undefined,
 		});
 		setName("");
 		setHost("");
 		setPort("22");
 		setSshUser("root");
-		setSshKey("");
+		setSelectedKeyId("");
 		refetch();
 	};
 
@@ -140,15 +144,26 @@ export function ServersSection() {
 							<Input placeholder="root" value={sshUser} onChange={(e) => setSshUser(e.target.value)} />
 						</div>
 					</div>
-					<div className="mt-3 grid gap-1.5">
-						<label className="text-xs font-medium text-muted-foreground">SSH Private Key <span className="text-muted-foreground/60">(optional — paste PEM content)</span></label>
-						<textarea
-							className="min-h-[80px] rounded-md border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
-							placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
-							value={sshKey}
-							onChange={(e) => setSshKey(e.target.value)}
-						/>
-					</div>
+				<div className="mt-3 grid gap-1.5">
+					<label className="text-xs font-medium text-muted-foreground">SSH Key</label>
+					<select
+						className="rounded-md border border-border bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+						value={selectedKeyId}
+						onChange={(e) => setSelectedKeyId(e.target.value)}
+					>
+						<option value="">No key (inline fallback)</option>
+						{sshKeys.map((k) => (
+							<option key={k.id} value={k.id}>
+								{k.name} — {k.fingerprint}
+							</option>
+						))}
+					</select>
+					{sshKeys.length === 0 && (
+						<p className="text-[10px] text-muted-foreground/60">
+							No keys in pool. Go to <a href="/keys" className="underline hover:text-foreground">Keys & Tokens</a> to add one.
+						</p>
+					)}
+				</div>
 					<div className="mt-4 flex justify-end">
 						<Button type="submit" size="sm" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold">Add SSH Server</Button>
 					</div>

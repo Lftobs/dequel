@@ -17,6 +17,8 @@ import { serversRoutes } from "./servers";
 import { volumesRoutes } from "./volumes";
 import { settingsRoutes } from "./settings";
 import { routesRoutes } from "./routes";
+import { sharedEnvVarsRoutes, sharedEnvLinksRoutes } from "./shared-env-vars";
+import { sshKeysRoutes } from "./ssh-keys";
 
 const BYPASS_PATHS = new Set(["/api/auth/login", "/api/auth/logout", "/api/auth/refresh", "/api/auth/me", "/api/health", "/api/github/callback", "/api/github/webhook", "/api/agents/register", "/api/agents/p2p-sync"]);
 
@@ -60,6 +62,9 @@ export const apiRoutes = new Elysia({
 	.use(projectsRoutes)
 	.use(deploymentsRoutes)
 	.use(envVarsRoutes)
+	.use(sharedEnvVarsRoutes)
+	.use(sharedEnvLinksRoutes)
+	.use(sshKeysRoutes)
 	.use(volumesRoutes)
 	.use(databasesRoutes)
 	.use(domainsRoutes)

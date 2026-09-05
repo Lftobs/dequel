@@ -96,12 +96,19 @@ export const listEnvironmentVariablesForDeploy = async (projectId: string, envir
     valueIv: environmentVariables.valueIv,
     valueTag: environmentVariables.valueTag,
   }).from(environmentVariables).where(cond).orderBy(asc(environmentVariables.key)).execute();
-  return rows.map((row) => {
+  const localVars = rows.map((row) => {
     if (row.valueEncrypted && row.valueIv && row.valueTag) {
       return { key: row.key, value: decryptValue(row.valueEncrypted, row.valueIv, row.valueTag, config.envEncryptionKey) };
     }
     return { key: row.key, value: row.value ?? "" };
   });
+
+  const { listSharedEnvVarsForDeploy } = await import("./shared-env-vars");
+  const sharedVars = await listSharedEnvVarsForDeploy(projectId, environment);
+
+  const localKeys = new Set(localVars.map((v) => v.key));
+  const merged = [...sharedVars.filter((v) => !localKeys.has(v.key)), ...localVars];
+  return merged;
 };
 
 export const deleteEnvironmentVariable = async (id: string): Promise<boolean> => {

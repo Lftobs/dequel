@@ -17,6 +17,7 @@ const mapServer = (row: typeof servers.$inferSelect): Server => ({
   sshKey: row.sshKey && row.sshKeyIv && row.sshKeyTag
     ? decryptValue(row.sshKey, row.sshKeyIv, row.sshKeyTag, config.envEncryptionKey)
     : row.sshKey ?? null,
+  sshKeyId: row.sshKeyId ?? null,
   sshPassword: row.sshPassword ?? null,
   agentId: row.agentId,
   agentVersion: row.agentVersion,
@@ -61,6 +62,7 @@ export const createServer = async (input: CreateServerInput): Promise<Server> =>
     sshKey: encrypted?.encrypted ?? null,
     sshKeyIv: encrypted?.iv ?? null,
     sshKeyTag: encrypted?.tag ?? null,
+    sshKeyId: input.sshKeyId ?? null,
     sshPassword: input.sshPassword ?? null,
     mode: input.mode ?? "ssh",
     status: "pending",
@@ -85,6 +87,7 @@ export interface ServerConnection {
   sshKey?: string | null;
   sshKeyIv?: string | null;
   sshKeyTag?: string | null;
+  sshKeyId?: string | null;
 }
 
 export const listServerConnections = async (): Promise<ServerConnection[]> => {
@@ -98,6 +101,7 @@ export const listServerConnections = async (): Promise<ServerConnection[]> => {
     sshKey: servers.sshKey,
     sshKeyIv: servers.sshKeyIv,
     sshKeyTag: servers.sshKeyTag,
+    sshKeyId: servers.sshKeyId,
     mode: servers.mode,
   }).from(servers).execute();
   return rows.map((row) => ({
@@ -106,6 +110,7 @@ export const listServerConnections = async (): Promise<ServerConnection[]> => {
     sshKey: row.sshKey && row.sshKeyIv && row.sshKeyTag
       ? decryptValue(row.sshKey, row.sshKeyIv, row.sshKeyTag, config.envEncryptionKey)
       : row.sshKey ?? null,
+    sshKeyId: row.sshKeyId ?? null,
   }));
 };
 

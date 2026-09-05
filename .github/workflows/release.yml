@@ -104,9 +104,12 @@ jobs:
       - name: Extract changelog entry for this version
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
-          awk '/^## \['"$VERSION"'\] -/{flag=1; next} /^## \[/{if(flag) exit} flag' CHANGELOG.md > release-notes.md
-          if [ ! -s release-notes.md ]; then
-            echo "No changelog entry for v$VERSION, will use auto-generated notes"
+          CHANGELOG="apps/docs/src/content/changelogs/v${VERSION}.md"
+          if [ -f "$CHANGELOG" ]; then
+            sed '1,/^---$/d' "$CHANGELOG" | sed '1,/^---$/d' > release-notes.md
+            echo "Extracted changelog from $CHANGELOG"
+          else
+            echo "No changelog file at $CHANGELOG, will use auto-generated notes"
           fi
 
       - name: Create GitHub Release

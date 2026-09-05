@@ -5,6 +5,7 @@ import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
 import { Box, Globe, Save, CheckCircle, Plus, Trash2 } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import { DeleteProjectCard } from "./DeleteProjectCard";
 
 interface ProjectSettingsTabProps {
 	projectId: string;
@@ -448,6 +449,8 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 					</form>
 				</CardContent>
 			</Card>
+
+			<DeleteProjectCard projectId={projectId} />
 		</div>
 	);
 }

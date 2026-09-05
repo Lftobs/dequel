@@ -32,16 +32,17 @@ export const serversRoutes = new Elysia()
 				set.status = 400;
 				return fail("port must be between 1 and 65535");
 			}
-			return created(await createServer({
-				name: body.name,
-				host: body.host,
-				port: body.port ? Number(body.port) : (body.mode === "ssh" ? 22 : 2375),
-				mode: body.mode ?? "ssh",
-				sshUser: body.sshUser ?? "root",
-				sshKey: body.sshKey,
-				sshPassword: body.sshPassword,
-				authToken: body.authToken,
-			}));
+		return created(await createServer({
+			name: body.name,
+			host: body.host,
+			port: body.port ? Number(body.port) : (body.mode === "ssh" ? 22 : 2375),
+			mode: body.mode ?? "ssh",
+			sshUser: body.sshUser ?? "root",
+			sshKey: body.sshKey,
+			sshKeyId: body.sshKeyId,
+			sshPassword: body.sshPassword,
+			authToken: body.authToken,
+		}));
 		},
 	)
 	.get(

@@ -456,6 +456,7 @@ export const createServer = (data: {
 	mode?: string;
 	sshUser?: string;
 	sshKey?: string;
+	sshKeyId?: string;
 	sshPassword?: string;
 	authToken?: string;
 }) =>
@@ -603,3 +604,29 @@ export const uploadSourceZip = (file: File) => {
 		body: formData,
 	});
 };
+
+// Shared Environment Variables
+export const listSharedEnvVars = (environment?: string) =>
+	apiFetch<any[]>(`/shared-env-vars${environment ? `?environment=${environment}` : ""}`);
+export const createSharedEnvVar = (data: { key: string; value: string; environment?: string; description?: string; tags?: string[] }) =>
+	apiFetch<any>("/shared-env-vars", { method: "POST", body: JSON.stringify(data) });
+export const updateSharedEnvVar = (id: string, value: string) =>
+	apiFetch<any>(`/shared-env-vars/${id}`, { method: "PATCH", body: JSON.stringify({ value }) });
+export const revealSharedEnvVar = (id: string) =>
+	apiFetch<{ value: string }>(`/shared-env-vars/${id}/reveal`);
+export const deleteSharedEnvVar = (id: string) =>
+	apiFetch<void>(`/shared-env-vars/${id}`, { method: "DELETE" });
+export const listLinkedSharedEnvVars = (projectId: string) =>
+	apiFetch<any[]>(`/projects/${projectId}/shared-env-links`);
+export const linkSharedEnvVars = (projectId: string, sharedEnvVarIds: string[]) =>
+	apiFetch<void>(`/projects/${projectId}/shared-env-links`, { method: "POST", body: JSON.stringify({ sharedEnvVarIds }) });
+export const unlinkSharedEnvVar = (projectId: string, linkId: string) =>
+	apiFetch<void>(`/projects/${projectId}/shared-env-links/${linkId}`, { method: "DELETE" });
+
+// SSH Key Pool
+export const listSshKeys = () =>
+	apiFetch<any[]>("/ssh-keys");
+export const createSshKey = (data: { name: string; privateKey: string; tags?: string[] }) =>
+	apiFetch<any>("/ssh-keys", { method: "POST", body: JSON.stringify(data) });
+export const deleteSshKey = (id: string) =>
+	apiFetch<void>(`/ssh-keys/${id}`, { method: "DELETE" });

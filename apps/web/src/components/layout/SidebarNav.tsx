@@ -12,6 +12,8 @@ import {
 	ArrowUpRight,
 	TrendingUp,
 	Laptop,
+	KeyRound,
+	Share2,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -64,6 +66,30 @@ export function SidebarNav({
 					>
 						<Database className="h-4 w-4" />
 						Databases
+					</Link>
+					<Link
+						to="/keys"
+						className={cn(
+							"flex items-center gap-2.5 px-3 py-2 rounded-md text-xs transition-all duration-200",
+							location.pathname.startsWith("/keys")
+								? "bg-zinc-800/60 text-zinc-100 font-medium shadow-inner"
+								: "text-zinc-400 hover:text-zinc-200 hover:bg-[#141417]",
+						)}
+					>
+						<KeyRound className="h-4 w-4" />
+						Keys & Tokens
+					</Link>
+					<Link
+						to="/shared-env"
+						className={cn(
+							"flex items-center gap-2.5 px-3 py-2 rounded-md text-xs transition-all duration-200",
+							location.pathname.startsWith("/shared-env")
+								? "bg-zinc-800/60 text-zinc-100 font-medium shadow-inner"
+								: "text-zinc-400 hover:text-zinc-200 hover:bg-[#141417]",
+						)}
+					>
+						<Share2 className="h-4 w-4" />
+						Shared Env
 					</Link>
 					<Link
 						to="/settings"

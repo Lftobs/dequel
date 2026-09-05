@@ -196,6 +196,7 @@ export interface Server {
   mode: ServerMode;
   sshUser?: string | null;
   sshKey?: string | null;
+  sshKeyId?: string | null;
   sshPassword?: string | null;
   sshKeyEncrypted?: string | null;
   agentId: string | null;
@@ -223,6 +224,7 @@ export interface CreateServerInput {
   mode?: ServerMode;
   sshUser?: string;
   sshKey?: string;
+  sshKeyId?: string;
   sshPassword?: string;
 }
 
@@ -348,4 +350,50 @@ export interface UpsertRouteInput {
   upstreamHost?: string | null;
   status?: RouteStatus;
   lastError?: string | null;
+}
+
+export interface SharedEnvVar {
+  id: string;
+  key: string;
+  value: string;
+  environment: string;
+  description: string | null;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSharedEnvVarInput {
+  key: string;
+  value: string;
+  environment?: string;
+  description?: string;
+  tags?: string[];
+}
+
+export interface SshKey {
+  id: string;
+  name: string;
+  fingerprint: string;
+  publicKey: string | null;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSshKeyInput {
+  name: string;
+  privateKey: string;
+  tags?: string[];
+}
+
+export interface Permission {
+  action: string;
+  resource: string;
+}
+
+export interface AuthContext {
+  type: "session" | "api-key";
+  apiKeyId?: string;
+  permissions?: Permission[];
 }

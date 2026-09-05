@@ -49,6 +49,18 @@ export {
 
 export { createApiKey, listApiKeys, deleteApiKey, validateApiKey } from "./api-keys";
 
+export {
+  createSharedEnvVar, listSharedEnvVars, getSharedEnvVarById,
+  getSharedEnvVarPlaintext, updateSharedEnvVar, deleteSharedEnvVar,
+  linkSharedEnvVarsToProject, unlinkSharedEnvVarFromProject, listLinkedSharedEnvVars,
+  listSharedEnvVarsForDeploy,
+} from "./shared-env-vars";
+
+export {
+  createSshKey, listSshKeys, getSshKeyById, getSshKeyPrivateKey,
+  deleteSshKey, resolveServerSshKey,
+} from "./ssh-keys";
+
 export { createAlert, listAlerts, getAlertById, updateAlertEnabled, deleteAlert } from "./alerts";
 
 export { getGithubIntegration, setGithubIntegration } from "./github";

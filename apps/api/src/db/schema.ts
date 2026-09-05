@@ -190,6 +190,7 @@ export const servers = pgTable("servers", {
   sshKeyIv: text("ssh_key_iv"),
   sshKeyTag: text("ssh_key_tag"),
   sshPassword: text("ssh_password"),
+  sshKeyId: text("ssh_key_id"),
   mode: text().notNull().default("ssh"),
   agentId: text("agent_id").unique(),
   agentVersion: text("agent_version"),
@@ -299,6 +300,44 @@ export const smtpSettings = pgTable("smtp_settings", {
 export const platformSettings = pgTable("platform_settings", {
   id: text().primaryKey(),
   ingressServerId: text("ingress_server_id"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const sharedEnvVars = pgTable("shared_env_vars", {
+  id: text().primaryKey(),
+  key: text().notNull(),
+  value: text().notNull(),
+  valueEncrypted: text("value_encrypted"),
+  valueIv: text("value_iv"),
+  valueTag: text("value_tag"),
+  environment: text().notNull().default("production"),
+  description: text(),
+  tags: jsonb().notNull().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const projectSharedEnvLinks = pgTable("project_shared_env_links", {
+  id: text().primaryKey(),
+  projectId: text("project_id").notNull(),
+  sharedEnvVarId: text("shared_env_var_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  foreignKey({ columns: [table.projectId], foreignColumns: [projects.id], onDelete: "cascade" }),
+  foreignKey({ columns: [table.sharedEnvVarId], foreignColumns: [sharedEnvVars.id], onDelete: "cascade" }),
+  uniqueIndex("idx_proj_shared_var").on(table.projectId, table.sharedEnvVarId),
+]);
+
+export const sshKeys = pgTable("ssh_keys", {
+  id: text().primaryKey(),
+  name: text().notNull(),
+  fingerprint: text().notNull().unique(),
+  privateKeyEncrypted: text("private_key_encrypted").notNull(),
+  privateKeyIv: text("private_key_iv").notNull(),
+  privateKeyTag: text("private_key_tag").notNull(),
+  publicKey: text("public_key"),
+  tags: jsonb().notNull().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
