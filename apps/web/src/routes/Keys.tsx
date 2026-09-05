@@ -25,3 +25,4 @@ export function Keys() {
 		</div>
 	);
 }
+const x = { a: 1 };
