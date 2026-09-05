@@ -198,6 +198,12 @@ export const listRoutesByDeployment = async (deploymentId: string): Promise<Rout
 	return rows.map(mapRoute);
 };
 
+export const listRoutesByDeployment = async (deploymentId: string): Promise<Route[]> => {
+	const db = await getDb();
+	const rows = await db.select().from(routes).where(eq(routes.deploymentId, deploymentId)).execute();
+	return rows.map(mapRoute);
+};
+
 export const deleteRoute = async (id: string): Promise<void> => {
 	const db = await getDb();
 	await db.delete(routes).where(eq(routes.id, id)).execute();
