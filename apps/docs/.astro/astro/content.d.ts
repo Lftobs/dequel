@@ -169,6 +169,13 @@ declare module 'astro:content' {
   collection: "changelogs";
   data: any
 } & { render(): Render[".md"] };
+"v0.3.0.md": {
+	id: "v0.3.0.md";
+  slug: "v030";
+  body: string;
+  collection: "changelogs";
+  data: any
+} & { render(): Render[".md"] };
 };
 "docs": {
 "agent-caddy-routes.md": {
