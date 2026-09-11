@@ -1,11 +1,11 @@
-import { Input } from "../../ui/input";
-import { Globe, Box } from "lucide-react";
+import { Box, Globe } from "lucide-react";
 import { cn } from "../../../lib/utils";
-import { FrameworkSelect } from "../../ui/FrameworkSelect";
+import type { Server as DequelServer } from "../../../types";
 import type { FrameworkPreset } from "../../../utils/presets";
 import { FRAMEWORK_PRESETS } from "../../../utils/presets";
+import { FrameworkSelect } from "../../ui/FrameworkSelect";
+import { Input } from "../../ui/input";
 import { DeploymentTargetSelect } from "./DeploymentTargetSection";
-import type { Server as DequelServer } from "../../../types";
 
 interface StepBasicsGeneralSettingsProps {
 	name: string;
@@ -55,10 +55,7 @@ export function StepBasicsGeneralSettings({
 			</h4>
 			<div className="grid gap-3.5 sm:grid-cols-2 text-xs">
 				<div className="grid gap-1.5 sm:col-span-2">
-					<label
-						htmlFor="name"
-						className="font-semibold text-zinc-400"
-					>
+					<label htmlFor="name" className="font-semibold text-zinc-400">
 						Project Name *
 					</label>
 					<Input
@@ -66,17 +63,12 @@ export function StepBasicsGeneralSettings({
 						placeholder="e.g. my-awesome-app"
 						className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9"
 						value={name}
-						onChange={(e) =>
-							setName(e.target.value)
-						}
+						onChange={(e) => setName(e.target.value)}
 						autoFocus
 					/>
 				</div>
 				<div className="grid gap-1.5 sm:col-span-2">
-					<label
-						htmlFor="desc"
-						className="font-semibold text-zinc-400"
-					>
+					<label htmlFor="desc" className="font-semibold text-zinc-400">
 						Description
 					</label>
 					<Input
@@ -84,34 +76,21 @@ export function StepBasicsGeneralSettings({
 						placeholder="e.g. Frontend React static dashboard"
 						className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9"
 						value={description}
-						onChange={(e) =>
-							setDescription(e.target.value)
-						}
+						onChange={(e) => setDescription(e.target.value)}
 					/>
 				</div>
 
 				<div className="grid gap-1.5 sm:col-span-2">
-					<label className="font-semibold text-zinc-400">
-						Application Framework Preset
-					</label>
-					<FrameworkSelect
-						selectedPresetId={selectedPresetId}
-						onSelectPreset={onSelectPreset}
-					/>
+					<label className="font-semibold text-zinc-400">Application Framework Preset</label>
+					<FrameworkSelect selectedPresetId={selectedPresetId} onSelectPreset={onSelectPreset} />
 				</div>
 
 				<div className="sm:col-span-2">
-					<DeploymentTargetSelect
-						serverId={serverId}
-						setServerId={setServerId}
-						servers={servers}
-					/>
+					<DeploymentTargetSelect serverId={serverId} setServerId={setServerId} servers={servers} />
 				</div>
 
 				<div className="grid gap-1.5 sm:col-span-2">
-					<label className="font-semibold text-zinc-400">
-						Project Type
-					</label>
+					<label className="font-semibold text-zinc-400">Project Type</label>
 					<div className="grid grid-cols-2 gap-2 mt-0.5">
 						<button
 							type="button"
@@ -120,7 +99,7 @@ export function StepBasicsGeneralSettings({
 								"flex flex-col items-start gap-2 p-3 rounded-lg border text-left transition-all select-none active:scale-[0.98]",
 								projectType === "web"
 									? "border-amber-500/30 bg-amber-500/5 text-zinc-200"
-									: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
+									: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400",
 							)}
 						>
 							<div className="flex items-center gap-1.5 font-semibold text-xs text-zinc-200">
@@ -138,7 +117,7 @@ export function StepBasicsGeneralSettings({
 								"flex flex-col items-start gap-2 p-3 rounded-lg border text-left transition-all select-none active:scale-[0.98]",
 								projectType === "static"
 									? "border-amber-500/30 bg-amber-500/5 text-zinc-200"
-									: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400"
+									: "border-[#222227] bg-[#141418] hover:bg-[#1a1a20] text-zinc-400",
 							)}
 						>
 							<div className="flex items-center gap-1.5 font-semibold text-xs text-zinc-200">
@@ -152,27 +131,18 @@ export function StepBasicsGeneralSettings({
 					</div>
 				</div>
 				<div className="grid gap-1.5 sm:col-span-2">
-					<label
-						htmlFor="domain"
-						className="font-semibold text-zinc-400"
-					>
-						Custom Ingress Base
-						Domain
+					<label htmlFor="domain" className="font-semibold text-zinc-400">
+						Custom Ingress Base Domain
 					</label>
 					<Input
 						id="domain"
 						placeholder="e.g. app.mycompany.com"
 						className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9"
 						value={baseDomain}
-						onChange={(e) =>
-							setBaseDomain(e.target.value)
-						}
+						onChange={(e) => setBaseDomain(e.target.value)}
 					/>
 					<span className="text-[10px] text-zinc-500">
-						Leave empty to
-						auto-assign a default
-						hostname on localhost
-						caddy ingress router.
+						Leave empty to auto-assign a default hostname on localhost caddy ingress router.
 					</span>
 				</div>
 			</div>

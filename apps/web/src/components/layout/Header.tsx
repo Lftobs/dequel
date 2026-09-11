@@ -8,12 +8,7 @@ interface HeaderProps {
 	setSidebarOpen: (open: boolean) => void;
 }
 
-export function Header({
-	currentProject,
-	currentProjectId,
-	location,
-	setSidebarOpen,
-}: HeaderProps) {
+export function Header({ currentProject, currentProjectId, location, setSidebarOpen }: HeaderProps) {
 	return (
 		<header className="h-14 border-b border-[#1a1a1f] bg-[#0c0c0e] flex items-center justify-between px-3.5 sm:px-6 gap-2 text-xs text-zinc-500 sticky top-0 z-30">
 			<div className="flex items-center gap-1.5 sm:gap-2 min-w-0">

@@ -49,7 +49,10 @@ export const validateDatabaseCreate = (
 	const publicAccess = body.publicAccess !== false;
 	const allowPublicAccessFromAnywhere = body.allowPublicAccessFromAnywhere === true;
 	const allowedCidrs = Array.isArray(body.allowedCidrs)
-		? body.allowedCidrs.map(String).map((value) => value.trim()).filter(Boolean)
+		? body.allowedCidrs
+				.map(String)
+				.map((value) => value.trim())
+				.filter(Boolean)
 		: [];
 	if (allowedCidrs.length > MAX_ALLOWED_CIDRS) {
 		return { ok: false, error: `allowedCidrs must contain at most ${MAX_ALLOWED_CIDRS} ranges` };

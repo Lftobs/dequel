@@ -1,10 +1,7 @@
-import { join } from "node:path";
 import { readdir } from "node:fs/promises";
+import { join } from "node:path";
 
-export const rewriteLocalhostBinding = async (
-	dir: string,
-	onLog: (line: string) => Promise<void>,
-): Promise<void> => {
+export const rewriteLocalhostBinding = async (dir: string, onLog: (line: string) => Promise<void>): Promise<void> => {
 	const ignoreDirs = new Set([
 		"node_modules",
 		"target",
@@ -16,63 +13,28 @@ export const rewriteLocalhostBinding = async (
 		".svelte-kit",
 		"vendor",
 	]);
-	const allowedExts = new Set([
-		"rs",
-		"go",
-		"js",
-		"ts",
-		"py",
-		"java",
-		"json",
-		"yaml",
-		"yml",
-		"toml",
-	]);
+	const allowedExts = new Set(["rs", "go", "js", "ts", "py", "java", "json", "yaml", "yml", "toml"]);
 
 	try {
 		const entries = await readdir(dir, {
 			withFileTypes: true,
 		});
 		for (const entry of entries) {
-			const fullPath = join(
-				dir,
-				entry.name,
-			);
+			const fullPath = join(dir, entry.name);
 			if (entry.isDirectory()) {
 				if (ignoreDirs.has(entry.name)) {
 					continue;
 				}
-				await rewriteLocalhostBinding(
-					fullPath,
-					onLog,
-				);
+				await rewriteLocalhostBinding(fullPath, onLog);
 			} else if (entry.isFile()) {
-				const ext = entry.name
-					.split(".")
-					.pop();
+				const ext = entry.name.split(".").pop();
 				if (ext && allowedExts.has(ext)) {
 					try {
-						let content =
-							await Bun.file(
-								fullPath,
-							).text();
-						if (
-							content.includes(
-								"127.0.0.1",
-							)
-						) {
-							content =
-								content.replaceAll(
-									"127.0.0.1",
-									"0.0.0.0",
-								);
-							await Bun.write(
-								fullPath,
-								content,
-							);
-							await onLog(
-								`Auto-rewrote 127.0.0.1 to 0.0.0.0 in ${entry.name} for container compatibility.`,
-							);
+						let content = await Bun.file(fullPath).text();
+						if (content.includes("127.0.0.1")) {
+							content = content.replaceAll("127.0.0.1", "0.0.0.0");
+							await Bun.write(fullPath, content);
+							await onLog(`Auto-rewrote 127.0.0.1 to 0.0.0.0 in ${entry.name} for container compatibility.`);
 						}
 					} catch {
 						// Ignore read errors
@@ -112,24 +74,12 @@ export const generateDynamicRailpackJson = async (
 	installCommandOverride?: string | null,
 	outputDirOverride?: string | null,
 ): Promise<void> => {
-	const cleanSourceDir = sourceDir
-		? sourceDir.replace(/^\//, "")
-		: "";
-	const cleanOutputDir = outputDirOverride
-		? outputDirOverride.replace(/^\//, "")
-		: "";
-	const buildDir = cleanSourceDir
-		? join(workspace, cleanSourceDir)
-		: workspace;
-	await rewriteLocalhostBinding(
-		buildDir,
-		onLog,
-	);
+	const cleanSourceDir = sourceDir ? sourceDir.replace(/^\//, "") : "";
+	const cleanOutputDir = outputDirOverride ? outputDirOverride.replace(/^\//, "") : "";
+	const buildDir = cleanSourceDir ? join(workspace, cleanSourceDir) : workspace;
+	await rewriteLocalhostBinding(buildDir, onLog);
 	await fixPnpmWorkspaceIfNeeded(workspace, onLog);
-	const configPath = join(
-		workspace,
-		"railpack.json",
-	);
+	const configPath = join(workspace, "railpack.json");
 
 	// Default configuration template
 	const config: Record<string, any> = {
@@ -143,55 +93,39 @@ export const generateDynamicRailpackJson = async (
 	if (cleanSourceDir && !(await Bun.file(join(workspace, "package.json")).exists())) {
 		const sourcePkgExists = await Bun.file(join(workspace, cleanSourceDir, "package.json")).exists();
 		if (sourcePkgExists) {
-			await Bun.write(join(workspace, "package.json"), JSON.stringify({
-				name: "dequel-monorepo-root",
-				private: true,
-				workspaces: [cleanSourceDir]
-			}, null, 2));
+			await Bun.write(
+				join(workspace, "package.json"),
+				JSON.stringify(
+					{
+						name: "dequel-monorepo-root",
+						private: true,
+						workspaces: [cleanSourceDir],
+					},
+					null,
+					2,
+				),
+			);
 		}
 	}
 
-	const hasPackageJson = await Bun.file(
-		join(buildDir, "package.json"),
-	).exists();
+	const hasPackageJson = await Bun.file(join(buildDir, "package.json")).exists();
 	if (hasPackageJson) {
 		try {
-			const packageJson = await Bun.file(
-				join(buildDir, "package.json"),
-			).json();
-			const scripts =
-				packageJson.scripts || {};
+			const packageJson = await Bun.file(join(buildDir, "package.json")).json();
+			const scripts = packageJson.scripts || {};
 
 			let pm = "npm";
-			if (
-				await Bun.file(
-					join(
-						workspace,
-						"pnpm-lock.yaml",
-					),
-				).exists()
-			) {
+			if (await Bun.file(join(workspace, "pnpm-lock.yaml")).exists()) {
 				pm = "pnpm";
-			} else if (
-				await Bun.file(
-					join(workspace, "yarn.lock"),
-				).exists()
-			) {
+			} else if (await Bun.file(join(workspace, "yarn.lock")).exists()) {
 				pm = "yarn";
-			} else if (
-				await Bun.file(
-					join(workspace, "bun.lockb"),
-				).exists()
-			) {
+			} else if (await Bun.file(join(workspace, "bun.lockb")).exists()) {
 				pm = "bun";
 			}
 
-			await onLog(
-				`Configuring Node.js project using ${pm}`,
-			);
+			await onLog(`Configuring Node.js project using ${pm}`);
 
-			const hasNext = (packageJson.dependencies && packageJson.dependencies.next) ||
-				(packageJson.devDependencies && packageJson.devDependencies.next);
+			const hasNext = packageJson.dependencies?.next || packageJson.devDependencies?.next;
 
 			if (pm === "pnpm") {
 				config.caches.pnpm_store = {
@@ -215,8 +149,6 @@ export const generateDynamicRailpackJson = async (
 				};
 			}
 
-
-
 			if (scripts.build) {
 				const buildCmds = [
 					cleanSourceDir
@@ -224,9 +156,7 @@ export const generateDynamicRailpackJson = async (
 						: `${pm} run build`,
 				];
 				if (hasNext) {
-					const nextCacheDir = cleanSourceDir
-						? `${cleanSourceDir}/.next/cache`
-						: ".next/cache";
+					const nextCacheDir = cleanSourceDir ? `${cleanSourceDir}/.next/cache` : ".next/cache";
 					config.caches.next_cache = {
 						directory: nextCacheDir,
 						type: "shared",
@@ -243,97 +173,50 @@ export const generateDynamicRailpackJson = async (
 			}
 
 			if (scripts.start) {
-				config.deploy.startCommand =
-					cleanSourceDir
-						? `cd ${cleanSourceDir} && ${pm} run start`
-						: `${pm} run start`;
+				config.deploy.startCommand = cleanSourceDir ? `cd ${cleanSourceDir} && ${pm} run start` : `${pm} run start`;
 			} else if (scripts.server) {
-				config.deploy.startCommand =
-					cleanSourceDir
-						? `cd ${cleanSourceDir} && ${pm} run server`
-						: `${pm} run server`;
+				config.deploy.startCommand = cleanSourceDir ? `cd ${cleanSourceDir} && ${pm} run server` : `${pm} run server`;
 			} else {
-				config.deploy.startCommand =
-					cleanSourceDir
-						? `cd ${cleanSourceDir} && node dist/index.js`
-						: "node dist/index.js";
+				config.deploy.startCommand = cleanSourceDir
+					? `cd ${cleanSourceDir} && node dist/index.js`
+					: "node dist/index.js";
 			}
 
 			configured = true;
 		} catch (err) {
-			await onLog(
-				`Error parsing package.json: ${err}`,
-			);
+			await onLog(`Error parsing package.json: ${err}`);
 		}
 	}
 
-
-
-	const hasCargoToml = await Bun.file(
-		join(buildDir, "Cargo.toml"),
-	).exists();
+	const hasCargoToml = await Bun.file(join(buildDir, "Cargo.toml")).exists();
 	if (hasCargoToml && !configured) {
 		try {
-			let cargoContent = await Bun.file(
-				join(buildDir, "Cargo.toml"),
-			).text();
+			let cargoContent = await Bun.file(join(buildDir, "Cargo.toml")).text();
 
 			let hasWorkspaceRoot = false;
 			let currentDir = buildDir;
-			while (
-				currentDir.startsWith(workspace)
-			) {
-				const parentCargo = join(
-					currentDir,
-					"Cargo.toml",
-				);
-				if (
-					currentDir !== buildDir &&
-					(await Bun.file(
-						parentCargo,
-					).exists())
-				) {
-					const content =
-						await Bun.file(
-							parentCargo,
-						).text();
-					if (
-						content.includes(
-							"[workspace]",
-						)
-					) {
+			while (currentDir.startsWith(workspace)) {
+				const parentCargo = join(currentDir, "Cargo.toml");
+				if (currentDir !== buildDir && (await Bun.file(parentCargo).exists())) {
+					const content = await Bun.file(parentCargo).text();
+					if (content.includes("[workspace]")) {
 						hasWorkspaceRoot = true;
 						break;
 					}
 				}
-				const nextDir = join(
-					currentDir,
-					"..",
-				);
-				if (
-					nextDir === currentDir ||
-					!nextDir.startsWith(workspace)
-				)
-					break;
+				const nextDir = join(currentDir, "..");
+				if (nextDir === currentDir || !nextDir.startsWith(workspace)) break;
 				currentDir = nextDir;
 			}
 
 			if (
 				!hasWorkspaceRoot &&
-				(cargoContent.includes(
-					".workspace = true",
-				) ||
-					cargoContent.includes(
-						"workspace = true",
-					))
+				(cargoContent.includes(".workspace = true") || cargoContent.includes("workspace = true"))
 			) {
 				await onLog(
 					`Detected workspace inheritance in Cargo.toml without workspace root. Resolving workspace variables...`,
 				);
-				const commonDeps: Record<
-					string,
-					string
-				> = {
+				const commonDeps: Record<string, string> = {
 					"actix-web": '"4"',
 					"actix-files": '"0.6"',
 					"actix-rt": '"2.9"',
@@ -345,101 +228,52 @@ export const generateDynamicRailpackJson = async (
 					env_logger: '"0.11"',
 					uuid: '{"version": "1", "features": ["v4"]}',
 					chrono: '"0.4"',
-					reqwest:
-						'{"version": "0.12", "features": ["json"]}',
+					reqwest: '{"version": "0.12", "features": ["json"]}',
 					anyhow: '"1"',
 					thiserror: '"1"',
 				};
 
-				cargoContent =
-					cargoContent.replace(
-						/edition\.workspace\s*=\s*true/g,
-						'edition = "2021"',
-					);
-				cargoContent =
-					cargoContent.replace(
-						/rust-version\.workspace\s*=\s*true/g,
-						'rust-version = "1.89"',
-					);
-				cargoContent =
-					cargoContent.replace(
-						/version\.workspace\s*=\s*true/g,
-						'version = "0.1.0"',
-					);
+				cargoContent = cargoContent.replace(/edition\.workspace\s*=\s*true/g, 'edition = "2021"');
+				cargoContent = cargoContent.replace(/rust-version\.workspace\s*=\s*true/g, 'rust-version = "1.89"');
+				cargoContent = cargoContent.replace(/version\.workspace\s*=\s*true/g, 'version = "0.1.0"');
 
-				const lines =
-					cargoContent.split("\n");
-				for (
-					let i = 0;
-					i < lines.length;
-					i++
-				) {
+				const lines = cargoContent.split("\n");
+				for (let i = 0; i < lines.length; i++) {
 					const line = lines[i];
-					const matchSimple =
-						line.match(
-							/^(\s*)([a-zA-Z0-9_-]+)\.workspace\s*=\s*true/,
-						);
+					const matchSimple = line.match(/^(\s*)([a-zA-Z0-9_-]+)\.workspace\s*=\s*true/);
 					if (matchSimple) {
-						const indent =
-							matchSimple[1];
-						const name =
-							matchSimple[2];
-						const ver =
-							commonDeps[name] ||
-							'"*"';
-						lines[i] =
-							`${indent}${name} = ${ver}`;
+						const indent = matchSimple[1];
+						const name = matchSimple[2];
+						const ver = commonDeps[name] || '"*"';
+						lines[i] = `${indent}${name} = ${ver}`;
 						continue;
 					}
-					const matchComplex =
-						line.match(
-							/^(\s*)([a-zA-Z0-9_-]+)\s*=\s*\{\s*workspace\s*=\s*true\s*,?\s*(.*)\}/,
-						);
+					const matchComplex = line.match(/^(\s*)([a-zA-Z0-9_-]+)\s*=\s*\{\s*workspace\s*=\s*true\s*,?\s*(.*)\}/);
 					if (matchComplex) {
-						const indent =
-							matchComplex[1];
-						const name =
-							matchComplex[2];
-						const rest =
-							matchComplex[3].trim();
-						const restComma = rest
-							? `, ${rest}`
-							: "";
-						lines[i] =
-							`${indent}${name} = { version = "*"${restComma} }`;
-						continue;
+						const indent = matchComplex[1];
+						const name = matchComplex[2];
+						const rest = matchComplex[3].trim();
+						const restComma = rest ? `, ${rest}` : "";
+						lines[i] = `${indent}${name} = { version = "*"${restComma} }`;
 					}
 				}
 				cargoContent = lines.join("\n");
-				await Bun.write(
-					join(buildDir, "Cargo.toml"),
-					cargoContent,
-				);
-				await onLog(
-					`Wrote standalone Cargo.toml to resolve workspace inheritance.`,
-				);
+				await Bun.write(join(buildDir, "Cargo.toml"), cargoContent);
+				await onLog(`Wrote standalone Cargo.toml to resolve workspace inheritance.`);
 			}
 
-			const match = cargoContent.match(
-				/\[package\][^]*?name\s*=\s*"([^"]+)"/,
-			);
-			const pkgName = match
-				? match[1]
-				: null;
+			const match = cargoContent.match(/\[package\][^]*?name\s*=\s*"([^"]+)"/);
+			const pkgName = match ? match[1] : null;
 
 			if (pkgName) {
-				await onLog(
-					`Configuring Rust project: ${pkgName}`,
-				);
+				await onLog(`Configuring Rust project: ${pkgName}`);
 				config.caches = {
 					cargo_registry: {
-						directory:
-							"/root/.cargo/registry",
+						directory: "/root/.cargo/registry",
 						type: "shared",
 					},
 					cargo_git: {
-						directory:
-							"/root/.cargo/git",
+						directory: "/root/.cargo/git",
 						type: "shared",
 					},
 					cargo_target: {
@@ -448,52 +282,33 @@ export const generateDynamicRailpackJson = async (
 					},
 				};
 				config.steps.build = {
-					commands: [
-						`cargo build --release -p ${pkgName}`,
-						"mkdir -p bin",
-						`cp target/release/${pkgName} bin/`,
-					],
-					caches: [
-						"cargo_registry",
-						"cargo_git",
-						"cargo_target",
-					],
+					commands: [`cargo build --release -p ${pkgName}`, "mkdir -p bin", `cp target/release/${pkgName} bin/`],
+					caches: ["cargo_registry", "cargo_git", "cargo_target"],
 				};
 				config.deploy.startCommand = `./bin/${pkgName}`;
 				configured = true;
 			}
 		} catch (err) {
-			await onLog(
-				`Error parsing Cargo.toml: ${err}`,
-			);
+			await onLog(`Error parsing Cargo.toml: ${err}`);
 		}
 	}
 
 	let hasGoMod = false;
 	let currentDir = buildDir;
 	while (currentDir.startsWith(workspace)) {
-		if (
-			await Bun.file(
-				join(currentDir, "go.mod"),
-			).exists()
-		) {
+		if (await Bun.file(join(currentDir, "go.mod")).exists()) {
 			hasGoMod = true;
 			break;
 		}
 		const nextDir = join(currentDir, "..");
-		if (
-			nextDir === currentDir ||
-			!nextDir.startsWith(workspace)
-		)
-			break;
+		if (nextDir === currentDir || !nextDir.startsWith(workspace)) break;
 		currentDir = nextDir;
 	}
 	if (hasGoMod && !configured) {
 		await onLog(`Configuring Go project`);
 		config.caches = {
 			go_build: {
-				directory:
-					"/root/.cache/go-build",
+				directory: "/root/.cache/go-build",
 				type: "shared",
 			},
 			go_mod: {
@@ -502,21 +317,19 @@ export const generateDynamicRailpackJson = async (
 			},
 		};
 		config.steps.build = {
-			commands: [
-				cleanSourceDir
-					? `cd ${cleanSourceDir} && go build -o bin/app .`
-					: "go build -o bin/app .",
-			],
+			commands: [cleanSourceDir ? `cd ${cleanSourceDir} && go build -o bin/app .` : "go build -o bin/app ."],
 			caches: ["go_build", "go_mod"],
 		};
-		config.deploy.startCommand =
-			cleanSourceDir
-				? `cd ${cleanSourceDir} && ./bin/app`
-				: "./bin/app";
+		config.deploy.startCommand = cleanSourceDir ? `cd ${cleanSourceDir} && ./bin/app` : "./bin/app";
 		configured = true;
 	}
 
-	if (projectType === "static" || (!configured && ((await Bun.file(join(buildDir, "index.html")).exists()) || (await Bun.file(join(workspace, "index.html")).exists())))) {
+	if (
+		projectType === "static" ||
+		(!configured &&
+			((await Bun.file(join(buildDir, "index.html")).exists()) ||
+				(await Bun.file(join(workspace, "index.html")).exists())))
+	) {
 		const serveScript = `
 const fs = require("fs");
 const path = require("path");
@@ -587,13 +400,20 @@ Bun.serve({
 		await Bun.write(join(workspace, "dequel-serve.js"), serveScript);
 		const rootPkgPath = join(workspace, "package.json");
 		if (!(await Bun.file(rootPkgPath).exists())) {
-			await Bun.write(rootPkgPath, JSON.stringify({
-				name: "dequel-static-app",
-				private: true,
-				scripts: {
-					start: "bun dequel-serve.js"
-				}
-			}, null, 2));
+			await Bun.write(
+				rootPkgPath,
+				JSON.stringify(
+					{
+						name: "dequel-static-app",
+						private: true,
+						scripts: {
+							start: "bun dequel-serve.js",
+						},
+					},
+					null,
+					2,
+				),
+			);
 		}
 		config.steps.build = config.steps.build || { commands: [] };
 		config.deploy.startCommand = "bun dequel-serve.js";
@@ -601,15 +421,18 @@ Bun.serve({
 	}
 
 	if (!configured) {
-		await onLog(
-			`Relying on default Railpack language auto-detection`,
-		);
+		await onLog(`Relying on default Railpack language auto-detection`);
 	}
 
 	if (buildCommandOverride || startCommandOverride || installCommandOverride) {
 		await onLog("Applying custom build/start/install settings");
 		if (installCommandOverride) {
-			const hasCustomInstall = installCommandOverride !== "npm install" && installCommandOverride !== "npm ci" && installCommandOverride !== "pnpm install" && installCommandOverride !== "yarn install" && installCommandOverride !== "bun install";
+			const hasCustomInstall =
+				installCommandOverride !== "npm install" &&
+				installCommandOverride !== "npm ci" &&
+				installCommandOverride !== "pnpm install" &&
+				installCommandOverride !== "yarn install" &&
+				installCommandOverride !== "bun install";
 			if (hasCustomInstall) {
 				config.steps.install = config.steps.install || {};
 				config.steps.install.commands = [installCommandOverride];
@@ -618,9 +441,7 @@ Bun.serve({
 		if (buildCommandOverride) {
 			config.steps.build = config.steps.build || {};
 			config.steps.build.commands = [
-				cleanSourceDir
-					? `cd ${cleanSourceDir} && ${buildCommandOverride}`
-					: buildCommandOverride,
+				cleanSourceDir ? `cd ${cleanSourceDir} && ${buildCommandOverride}` : buildCommandOverride,
 			];
 		}
 		if (startCommandOverride) {
@@ -630,11 +451,6 @@ Bun.serve({
 		}
 	}
 
-	await Bun.write(
-		configPath,
-		JSON.stringify(config, null, 2),
-	);
-	await onLog(
-		`Wrote dynamic railpack.json for caching and monorepo resolution`,
-	);
+	await Bun.write(configPath, JSON.stringify(config, null, 2));
+	await onLog(`Wrote dynamic railpack.json for caching and monorepo resolution`);
 };

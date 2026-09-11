@@ -1,9 +1,9 @@
-import { Input } from "../../ui/input";
 import { Box } from "lucide-react";
-import type { GithubRepo, Server as DequelServer } from "../../../types";
+import type { Server as DequelServer, GithubRepo } from "../../../types";
+import type { FrameworkPreset } from "../../../utils/presets";
+import { Input } from "../../ui/input";
 import { StepBasicsGeneralSettings } from "./StepBasicsGeneralSettings";
 import { StepBasicsSourceSection } from "./StepBasicsSourceSection";
-import type { FrameworkPreset } from "../../../utils/presets";
 
 interface StepBasicsProps {
 	name: string;
@@ -111,10 +111,7 @@ export function StepBasics({
 				</h4>
 				<div className="grid gap-3.5 sm:grid-cols-2 text-xs">
 					<div className="grid gap-1.5 sm:col-span-2">
-						<label
-							htmlFor="port"
-							className="font-semibold text-zinc-400"
-						>
+						<label htmlFor="port" className="font-semibold text-zinc-400">
 							Application Port *
 						</label>
 						<Input
@@ -125,23 +122,14 @@ export function StepBasics({
 							placeholder="e.g. 3000"
 							className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9"
 							value={port}
-							onChange={(e) =>
-								setPort(e.target.value)
-							}
+							onChange={(e) => setPort(e.target.value)}
 						/>
 					</div>
 				</div>
 				<div className="p-3 rounded-lg border border-amber-500/20 bg-amber-500/5 text-[11px] text-zinc-300 leading-relaxed">
-					<strong className="text-amber-400">
-						Important:
-					</strong>{" "}
-					Set this to the port your application
-					listens on inside the container. If the
-					port doesn't match, you'll get a{" "}
-					<strong className="text-red-400">
-						502 Bad Gateway
-					</strong>{" "}
-					error from the reverse proxy.
+					<strong className="text-amber-400">Important:</strong> Set this to the port your application listens on inside
+					the container. If the port doesn't match, you'll get a{" "}
+					<strong className="text-red-400">502 Bad Gateway</strong> error from the reverse proxy.
 				</div>
 			</div>
 		</div>

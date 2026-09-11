@@ -7,16 +7,17 @@ export const SERVER_HOST_RE = /^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$|^\[[\
 export const isPort = (value: unknown): value is number =>
 	typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 65535;
 
-const PRIVATE_HOST_RE = /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+|169\.254\.\d+\.\d+|\[::1\]|0\.0\.0\.0)$/;
+const PRIVATE_HOST_RE =
+	/^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+|169\.254\.\d+\.\d+|\[::1\]|0\.0\.0\.0)$/;
 
 export const isPrivateGitUrl = (url: string): boolean => {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
-    return PRIVATE_HOST_RE.test(parsed.hostname);
-  } catch {
-    return false;
-  }
+	try {
+		const parsed = new URL(url);
+		if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+		return PRIVATE_HOST_RE.test(parsed.hostname);
+	} catch {
+		return false;
+	}
 };
 
 export interface ComposeServiceMapping {
@@ -47,7 +48,9 @@ export const validateComposeServiceMapping = (mapping: unknown): string | null =
 	return null;
 };
 
-export const validateComposeServices = (value: unknown): { ok: true; services: ComposeServiceMapping[] } | { ok: false; error: string } => {
+export const validateComposeServices = (
+	value: unknown,
+): { ok: true; services: ComposeServiceMapping[] } | { ok: false; error: string } => {
 	let parsed: unknown = value;
 	if (typeof value === "string") {
 		try {

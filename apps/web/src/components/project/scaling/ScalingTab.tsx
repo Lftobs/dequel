@@ -1,19 +1,16 @@
-import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useProject } from "../../../hooks/useProjects";
+import { useEffect, useState } from "react";
 import * as api from "../../../api/client";
-import { ResourceLimitsCard } from "./ResourceLimitsCard";
+import { useProject } from "../../../hooks/useProjects";
 import { AutoscalingPolicyCard } from "./AutoscalingPolicyCard";
+import { ResourceLimitsCard } from "./ResourceLimitsCard";
 
 interface ScalingTabProps {
 	projectId: string;
 }
 
 export function ScalingTab({ projectId }: ScalingTabProps) {
-	const {
-		data: project,
-		refetch: refetchProject,
-	} = useProject(projectId);
+	const { data: project, refetch: refetchProject } = useProject(projectId);
 	const { data: policy, refetch } = useQuery({
 		queryKey: ["scaling", projectId],
 		queryFn: () => api.getScalingPolicy(projectId).catch(() => null),

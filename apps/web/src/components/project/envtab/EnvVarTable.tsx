@@ -1,8 +1,8 @@
-import { Button } from "../../ui/button";
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "../../ui/table";
-import { Plus, Upload, Lock, Pencil, Eye, EyeOff, Copy, Check, Trash2 } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, Lock, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "../../ui/table";
 import { EnvVarRow } from "./EnvVarRow";
 
 interface EnvVar {
@@ -55,12 +55,8 @@ export function EnvVarTable({
 		<div className="space-y-4">
 			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 				<div>
-					<h2 className="text-lg font-semibold text-foreground">
-						Environment Variables
-					</h2>
-					<p className="text-sm text-muted-foreground">
-						Secure, encrypted settings injected into deployments.
-					</p>
+					<h2 className="text-lg font-semibold text-foreground">Environment Variables</h2>
+					<p className="text-sm text-muted-foreground">Secure, encrypted settings injected into deployments.</p>
 				</div>
 				<div className="flex items-center gap-2 w-full sm:w-auto">
 					<Button
@@ -80,7 +76,6 @@ export function EnvVarTable({
 			</div>
 
 			<div className="rounded-xl border border-border bg-card/35 backdrop-blur-sm overflow-hidden">
-				{/* Mobile Card List View (< md) */}
 				<div className="md:hidden divide-y divide-border">
 					{envVars.map((ev) => {
 						const isEditing = editingId === ev.id;
@@ -157,7 +152,7 @@ export function EnvVarTable({
 													variant="ghost"
 													size="icon"
 													className="h-8 w-8 text-muted-foreground hover:text-foreground"
-													onClick={() => isRevealed ? onHide(ev.id) : onReveal(ev.id)}
+													onClick={() => (isRevealed ? onHide(ev.id) : onReveal(ev.id))}
 													title={isRevealed ? "Hide value" : "Reveal value"}
 													disabled={isRevealing}
 												>
@@ -190,20 +185,13 @@ export function EnvVarTable({
 					})}
 				</div>
 
-				{/* Desktop Table View (>= md) */}
 				<div className="hidden md:block overflow-x-auto">
 					<Table className="w-full">
 						<TableHeader className="bg-[#0b0b0f]/50">
 							<TableRow className="border-border hover:bg-transparent">
-								<TableHead className="text-xs font-semibold py-3">
-									Key
-								</TableHead>
-								<TableHead className="text-xs font-semibold py-3">
-									Value
-								</TableHead>
-								<TableHead className="text-xs font-semibold py-3">
-									Environment
-								</TableHead>
+								<TableHead className="text-xs font-semibold py-3">Key</TableHead>
+								<TableHead className="text-xs font-semibold py-3">Value</TableHead>
+								<TableHead className="text-xs font-semibold py-3">Environment</TableHead>
 								<TableHead className="w-32 text-right pr-6"></TableHead>
 							</TableRow>
 						</TableHeader>

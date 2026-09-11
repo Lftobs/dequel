@@ -23,14 +23,13 @@ export function ClearCacheToggle({
 				className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-zinc-950 cursor-pointer"
 			/>
 			<div className="flex flex-col cursor-pointer select-none" onClick={() => onChange(!checked)}>
-				<label htmlFor={id} className={`cursor-pointer ${description ? "text-xs font-semibold text-zinc-300" : "text-xs text-zinc-400"}`}>
+				<label
+					htmlFor={id}
+					className={`cursor-pointer ${description ? "text-xs font-semibold text-zinc-300" : "text-xs text-zinc-400"}`}
+				>
 					{label}
 				</label>
-				{description && (
-					<span className="text-[10px] text-zinc-500 leading-normal">
-						{description}
-					</span>
-				)}
+				{description && <span className="text-[10px] text-zinc-500 leading-normal">{description}</span>}
 			</div>
 		</div>
 	);
