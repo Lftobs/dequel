@@ -1,3 +1,4 @@
+import { Database, HardDrive, ShieldAlert, Cpu } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as api from "../../api/client";
 import type { DatabaseType, Project } from "../../types";
@@ -68,36 +69,46 @@ export function CreateDatabaseDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-h-[90vh] overflow-y-auto border-border bg-card sm:max-w-[560px]">
-				<DialogHeader>
-					<DialogTitle>Create managed database</DialogTitle>
-					<DialogDescription>
-						Public access is enabled by default and protected by database credentials plus the network allowlist.
-					</DialogDescription>
+			<DialogContent className="max-h-[90vh] overflow-y-auto border-border/80 bg-card/95 backdrop-blur-xl sm:max-w-[560px] rounded-3xl shadow-2xl">
+				<DialogHeader className="border-b border-border/40 pb-4">
+					<div className="flex items-center gap-3">
+						<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500 ring-1 ring-orange-500/20">
+							<Database className="h-5 w-5" />
+						</div>
+						<div>
+							<DialogTitle className="text-lg font-bold text-foreground">Provision Managed Database</DialogTitle>
+							<DialogDescription className="text-xs text-muted-foreground mt-0.5">
+								Public access endpoint enabled with optional CIDR network IP allowlisting.
+							</DialogDescription>
+						</div>
+					</div>
 				</DialogHeader>
+
 				<div className="space-y-5 pt-2">
-					<div className="grid gap-2">
-						<label htmlFor="database-name" className="text-xs font-medium text-zinc-400">
-							Name
+					<div className="space-y-1.5">
+						<label htmlFor="database-name" className="text-xs font-medium text-foreground">
+							Database Display Name
 						</label>
 						<Input
 							id="database-name"
 							value={name}
 							onChange={(event) => setName(event.target.value)}
-							placeholder="Production Database"
+							placeholder="e.g. Production PostgreSQL DB"
+							className="bg-background/50 border-border/80 text-xs focus:ring-orange-500/50"
 						/>
 					</div>
+
 					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-						<div className="grid gap-2">
-							<label htmlFor="database-project" className="text-xs font-medium text-zinc-400">
-								Attach to project
+						<div className="space-y-1.5">
+							<label htmlFor="database-project" className="text-xs font-medium text-foreground">
+								Project Attachment
 							</label>
 							<Select value={projectId} onValueChange={setProjectId}>
-								<SelectTrigger id="database-project">
+								<SelectTrigger id="database-project" className="bg-background/50 border-border/80 text-xs">
 									<SelectValue />
 								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="standalone">No project</SelectItem>
+								<SelectContent className="bg-card border-border text-xs">
+									<SelectItem value="standalone">Standalone Database</SelectItem>
 									{projects.map((project) => (
 										<SelectItem key={project.id} value={project.id}>
 											{project.name}
@@ -106,99 +117,129 @@ export function CreateDatabaseDialog({
 								</SelectContent>
 							</Select>
 						</div>
-						<div className="grid gap-2">
-							<label htmlFor="database-engine" className="text-xs font-medium text-zinc-400">
+
+						<div className="space-y-1.5">
+							<label htmlFor="database-engine" className="text-xs font-medium text-foreground">
 								Database Engine
 							</label>
 							<DatabaseSelect id="database-engine" value={type} onValueChange={(val) => setType(val)} />
 						</div>
 					</div>
-					<div className="grid gap-2">
-						<label htmlFor="database-version" className="text-xs font-medium text-zinc-400">
-							Version
+
+					<div className="space-y-1.5">
+						<label htmlFor="database-version" className="text-xs font-medium text-foreground">
+							Engine Tag / Version
 						</label>
-						<Input id="database-version" value={version} onChange={(event) => setVersion(event.target.value)} />
+						<Input
+							id="database-version"
+							value={version}
+							onChange={(event) => setVersion(event.target.value)}
+							className="bg-background/50 border-border/80 text-xs font-mono"
+						/>
 					</div>
-					<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-						<div className="grid gap-2">
-							<label htmlFor="database-cpu" className="text-xs font-medium text-zinc-400">
-								CPU cores
-							</label>
-							<Input
-								id="database-cpu"
-								type="number"
-								min="0.1"
-								step="0.1"
-								value={cpu}
-								onChange={(event) => setCpu(event.target.value)}
-							/>
-						</div>
-						<div className="grid gap-2">
-							<label htmlFor="database-memory" className="text-xs font-medium text-zinc-400">
-								Memory MB
-							</label>
-							<Input
-								id="database-memory"
-								type="number"
-								min="64"
-								value={memory}
-								onChange={(event) => setMemory(event.target.value)}
-							/>
-						</div>
-						<div className="grid gap-2">
-							<label htmlFor="database-storage" className="text-xs font-medium text-zinc-400">
-								Storage limit MB
-							</label>
-							<Input
-								id="database-storage"
-								type="number"
-								min="64"
-								value={storage}
-								onChange={(event) => setStorage(event.target.value)}
-							/>
-							<p className="text-[11px] text-zinc-500">Alerts at 80% and 100% usage; not a hard cap.</p>
+
+					<div className="rounded-2xl border border-border/60 bg-black/30 p-4 space-y-3">
+						<span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+							<Cpu className="h-3.5 w-3.5 text-orange-400" />
+							Resource Limits & Storage Allocation
+						</span>
+						<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+							<div className="space-y-1">
+								<label htmlFor="database-cpu" className="text-[11px] font-medium text-muted-foreground">
+									CPU Cores
+								</label>
+								<Input
+									id="database-cpu"
+									type="number"
+									min="0.1"
+									step="0.1"
+									value={cpu}
+									onChange={(event) => setCpu(event.target.value)}
+									className="bg-background/50 border-border/80 text-xs font-mono"
+								/>
+							</div>
+							<div className="space-y-1">
+								<label htmlFor="database-memory" className="text-[11px] font-medium text-muted-foreground">
+									RAM (MB)
+								</label>
+								<Input
+									id="database-memory"
+									type="number"
+									min="64"
+									value={memory}
+									onChange={(event) => setMemory(event.target.value)}
+									className="bg-background/50 border-border/80 text-xs font-mono"
+								/>
+							</div>
+							<div className="space-y-1">
+								<label htmlFor="database-storage" className="text-[11px] font-medium text-muted-foreground">
+									Storage (MB)
+								</label>
+								<Input
+									id="database-storage"
+									type="number"
+									min="64"
+									value={storage}
+									onChange={(event) => setStorage(event.target.value)}
+									className="bg-background/50 border-border/80 text-xs font-mono"
+								/>
+							</div>
 						</div>
 					</div>
-					<div className="rounded-lg border border-border bg-black/20 p-4">
+
+					<div className="rounded-2xl border border-border/80 bg-black/40 p-4 space-y-3">
 						<div className="flex items-center justify-between gap-4">
 							<div>
-								<p className="text-sm font-medium">Allow access from anywhere</p>
-								<p className="mt-1 text-xs text-zinc-500">Disable this to require source IP/CIDR matching.</p>
+								<p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+									<HardDrive className="h-3.5 w-3.5 text-blue-400" />
+									Allow Access From Anywhere
+								</p>
+								<p className="mt-0.5 text-[11px] text-muted-foreground">
+									Uncheck to restrict connection requests to specific IP ranges.
+								</p>
 							</div>
 							<input
 								type="checkbox"
 								checked={allowAnywhere}
 								onChange={(event) => setAllowAnywhere(event.target.checked)}
-								className="h-4 w-4 accent-amber-500"
+								className="h-4 w-4 accent-orange-500 rounded"
 								aria-label="Allow public database access from anywhere"
 							/>
 						</div>
+
 						{!allowAnywhere && (
-							<div className="mt-4 grid gap-2">
-								<label htmlFor="database-cidrs" className="text-xs font-medium text-zinc-400">
-									Allowed IPs or CIDRs
+							<div className="space-y-1.5 pt-2 border-t border-border/40">
+								<label htmlFor="database-cidrs" className="text-xs font-medium text-foreground">
+									Allowed CIDR Addresses / IPs
 								</label>
 								<Input
 									id="database-cidrs"
 									value={cidrs}
 									onChange={(event) => setCidrs(event.target.value)}
 									placeholder="203.0.113.4/32, 10.0.0.0/8"
+									className="bg-background/50 border-border/80 font-mono text-xs"
 								/>
-								<p className="text-[11px] text-zinc-500">At least one address is required.</p>
 							</div>
 						)}
 					</div>
+
 					{error && (
-						<p role="alert" className="text-sm text-red-400">
+						<p role="alert" className="text-xs text-red-400 flex items-center gap-1.5">
+							<ShieldAlert className="h-3.5 w-3.5" />
 							{error}
 						</p>
 					)}
-					<div className="flex justify-end gap-2 border-t border-border pt-4">
-						<Button variant="ghost" onClick={() => onOpenChange(false)}>
+
+					<div className="flex justify-end gap-2 border-t border-border/40 pt-4">
+						<Button variant="ghost" onClick={() => onOpenChange(false)} className="text-xs text-muted-foreground">
 							Cancel
 						</Button>
-						<Button disabled={isCreating || !name.trim() || (!allowAnywhere && !cidrs.trim())} onClick={create}>
-							{isCreating ? "Creating..." : "Create database"}
+						<Button
+							disabled={isCreating || !name.trim() || (!allowAnywhere && !cidrs.trim())}
+							onClick={create}
+							className="bg-orange-500 hover:bg-orange-600 text-white font-medium text-xs px-5 shadow-md"
+						>
+							{isCreating ? "Provisioning..." : "Provision Database"}
 						</Button>
 					</div>
 				</div>

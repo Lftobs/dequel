@@ -201,7 +201,7 @@ const spawnComposeCommand = (
 	return new Promise((resolve, reject) => {
 		const child = spawn(dockerBin, ["compose", ...args], {
 			cwd,
-			env: { ...process.env, ...(envVars || {}) },
+			env: envVars || {},
 			stdio: ["ignore", "pipe", "pipe"],
 		});
 
