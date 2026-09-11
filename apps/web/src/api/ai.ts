@@ -1,13 +1,12 @@
-import { apiFetch } from "./core";
+import { apiFetch } from "./client";
 import type {
-	AiSettingsStatus,
-	AiSettingsInput,
 	AiDiagnosis,
 	AiProvider,
+	AiSettingsInput,
+	AiSettingsStatus,
 } from "../types";
 
-export const getAiSettings = () =>
-	apiFetch<AiSettingsStatus>("/settings/ai");
+export const getAiSettings = () => apiFetch<AiSettingsStatus>("/settings/ai");
 
 export const updateAiSettings = (data: AiSettingsInput) =>
 	apiFetch<void>("/settings/ai", {
@@ -20,13 +19,10 @@ export const testAiConnection = (data: {
 	apiKey?: string;
 	model?: string;
 }) =>
-	apiFetch<{ ok: boolean; message: string; provider: AiProvider; model: string }>(
-		"/settings/ai/test",
-		{
-			method: "POST",
-			body: JSON.stringify(data),
-		},
-	);
+	apiFetch<{ ok: boolean; message: string; provider: AiProvider; model: string }>("/settings/ai/test", {
+		method: "POST",
+		body: JSON.stringify(data),
+	});
 
 export const diagnoseDeploymentFailure = (
 	deploymentId: string,

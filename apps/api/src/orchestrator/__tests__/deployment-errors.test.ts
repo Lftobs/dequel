@@ -24,9 +24,7 @@ unrecognized image format`);
 	});
 
 	test("keeps an already concise error", () => {
-		expect(summarizeDeploymentError(new Error("Container exited with code 1"))).toBe(
-			"Container exited with code 1",
-		);
+		expect(summarizeDeploymentError(new Error("Container exited with code 1"))).toBe("Container exited with code 1");
 	});
 
 	test("uses a generic message when output has no useful error", () => {

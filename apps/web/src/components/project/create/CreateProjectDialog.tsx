@@ -1,6 +1,12 @@
-import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import * as api from "../../../api/client";
+import { getGithubIntegration } from "../../../api/client";
 import { useCreateProject } from "../../../hooks/useProjects";
+import { cn } from "../../../lib/utils";
+import type { DatabaseType, Server as DequelServer, GithubRepo } from "../../../types";
+import type { FrameworkPreset } from "../../../utils/presets";
 import { Button } from "../../ui/button";
 import {
 	Dialog,
@@ -11,58 +17,36 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "../../ui/dialog";
-import { cn } from "../../../lib/utils";
-import { Plus } from "lucide-react";
-import * as api from "../../../api/client";
-import { getGithubIntegration } from "../../../api/client";
-import type { GithubRepo, DatabaseType, Server as DequelServer } from "../../../types";
-import type { FrameworkPreset } from "../../../utils/presets";
+import { CreationStatusOverlay } from "./CreationStatusOverlay";
 import { getDeploymentTargets } from "./DeploymentTargetSection";
-
 import { StepBasics } from "./StepBasics";
 import { StepEnvironment } from "./StepEnvironment";
 import { StepResources } from "./StepResources";
-import { CreationStatusOverlay } from "./CreationStatusOverlay";
 
 interface CreateProjectDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }
 
-export function CreateProjectDialog({
-	open,
-	onOpenChange,
-}: CreateProjectDialogProps) {
+export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogProps) {
 	const createProject = useCreateProject();
 	const [step, setStep] = useState(1);
 
 	const { data: servers = [] } = useQuery({
 		queryKey: ["servers"],
-		queryFn: () =>
-			api
-				.listServers()
-				.catch(() => [] as DequelServer[]),
+		queryFn: () => api.listServers().catch(() => [] as DequelServer[]),
 		staleTime: 30_000,
 	});
 
 	const [name, setName] = useState("");
-	const [description, setDescription] =
-		useState("");
-	const [serverId, setServerId] =
-		useState("local");
-	const [baseDomain, setBaseDomain] =
-		useState("");
+	const [description, setDescription] = useState("");
+	const [serverId, setServerId] = useState("local");
+	const [baseDomain, setBaseDomain] = useState("");
 	const [repoUrl, setRepoUrl] = useState("");
-	const [repoBranch, setRepoBranch] =
-		useState("");
-	const [selectedRepo, setSelectedRepo] =
-		useState<GithubRepo | null>(null);
-	const [githubConnected, setGithubConnected] =
-		useState(false);
-	const [
-		githubConfigured,
-		setGithubConfigured,
-	] = useState(false);
+	const [repoBranch, setRepoBranch] = useState("");
+	const [selectedRepo, setSelectedRepo] = useState<GithubRepo | null>(null);
+	const [githubConnected, setGithubConnected] = useState(false);
+	const [githubConfigured, setGithubConfigured] = useState(false);
 
 	const [stagedEnvs, setStagedEnvs] = useState<
 		Array<{
@@ -72,77 +56,48 @@ export function CreateProjectDialog({
 		}>
 	>([]);
 
-	const [sourceType, setSourceType] =
-		useState("git");
-	const [projectType, setProjectType] =
-		useState("web");
-	const [selectedPresetId, setSelectedPresetId] =
-		useState("");
-	const [zipFile, setZipFile] =
-		useState<File | null>(null);
+	const [sourceType, setSourceType] = useState("git");
+	const [projectType, setProjectType] = useState("web");
+	const [selectedPresetId, setSelectedPresetId] = useState("");
+	const [zipFile, setZipFile] = useState<File | null>(null);
 	const [cpuLimit, setCpuLimit] = useState("");
-	const [memoryLimitMb, setMemoryLimitMb] =
-		useState("");
+	const [memoryLimitMb, setMemoryLimitMb] = useState("");
 	const [port, setPort] = useState("");
-	const [sourceDir, setSourceDir] =
-		useState("");
-	const [buildCommand, setBuildCommand] =
-		useState("");
-	const [installCommand, setInstallCommand] =
-		useState("");
-	const [startCommand, setStartCommand] =
-		useState("");
-	const [outputDir, setOutputDir] =
-		useState("");
+	const [sourceDir, setSourceDir] = useState("");
+	const [buildCommand, setBuildCommand] = useState("");
+	const [installCommand, setInstallCommand] = useState("");
+	const [startCommand, setStartCommand] = useState("");
+	const [outputDir, setOutputDir] = useState("");
 	const provisionDb = false;
 	const setProvisionDb = (_value: boolean) => {};
 	const [dbType, setDbType] = useState<DatabaseType>("postgresql");
-	const [dbVersion, setDbVersion] =
-		useState("");
+	const [dbVersion, setDbVersion] = useState("");
 	const [dbCpu, setDbCpu] = useState("");
 	const [dbMemory, setDbMemory] = useState("");
 
-	const [
-		submittingStatus,
-		setSubmittingStatus,
-	] = useState<
-		| "idle"
-		| "creating_project"
-		| "creating_envs"
-		| "creating_db"
-		| "done"
-		| "error"
+	const [submittingStatus, setSubmittingStatus] = useState<
+		"idle" | "creating_project" | "creating_envs" | "creating_db" | "done" | "error"
 	>("idle");
-	const [errorMessage, setErrorMessage] =
-		useState("");
+	const [errorMessage, setErrorMessage] = useState("");
 
 	useEffect(() => {
 		getGithubIntegration()
 			.then((status) => {
 				if ((status as any).configured) {
 					setGithubConfigured(true);
-					api.getGithubUser()
-						.then(() =>
-							setGithubConnected(
-								true,
-							),
-						)
-						.catch(() => { });
+					api
+						.getGithubUser()
+						.then(() => setGithubConnected(true))
+						.catch(() => {});
 				} else {
 					setGithubConfigured(false);
-					setSourceType((prev) =>
-						prev === "git"
-							? "upload"
-							: prev,
-					);
+					setSourceType((prev) => (prev === "git" ? "upload" : prev));
 				}
 			})
-			.catch(() => { });
+			.catch(() => {});
 	}, [open]);
 
-	const handleSelectPreset = (
-		preset: FrameworkPreset,
-	) => {
+	const handleSelectPreset = (preset: FrameworkPreset) => {
 		setSelectedPresetId(preset.id);
 		setProjectType(preset.projectType);
 		setBuildCommand(preset.buildCommand || "");
@@ -152,9 +107,7 @@ export function CreateProjectDialog({
 		if (preset.defaultPort) setPort(String(preset.defaultPort));
 	};
 
-	const handleOpenChange = (
-		isOpen: boolean,
-	) => {
+	const handleOpenChange = (isOpen: boolean) => {
 		onOpenChange(isOpen);
 		if (!isOpen) {
 			setStep(1);
@@ -177,9 +130,7 @@ export function CreateProjectDialog({
 		}
 	};
 
-	const handleCreate = async (
-		e: React.FormEvent,
-	) => {
+	const handleCreate = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!name.trim()) return;
 
@@ -194,64 +145,32 @@ export function CreateProjectDialog({
 		let project: any = null;
 
 		try {
-			project =
-				await createProject.mutateAsync({
-					name: name.trim(),
-					description:
-						description.trim() ||
-						undefined,
-					serverId: getDeploymentTargets(
-						servers,
-					).some((s) => s.id === serverId)
-						? serverId
-						: "local",
-					baseDomain:
-						baseDomain.trim() ||
-						undefined,
-					repoUrl:
-						repoUrl.trim() ||
-						undefined,
-					repoBranch:
-						repoBranch.trim() ||
-						undefined,
-				port: port.trim()
-					? Number(port) || null
-					: undefined,
-					sourceDir:
-						sourceDir.trim() ||
-						undefined,
-					sourceType,
-					projectType,
-					buildCommand:
-						buildCommand.trim() ||
-						undefined,
-					installCommand:
-						installCommand.trim() ||
-						undefined,
-					startCommand:
-						startCommand.trim() ||
-						undefined,
-					outputDir:
-						outputDir.trim() ||
-						undefined,
-				});
+			project = await createProject.mutateAsync({
+				name: name.trim(),
+				description: description.trim() || undefined,
+				serverId: getDeploymentTargets(servers).some((s) => s.id === serverId) ? serverId : "local",
+				baseDomain: baseDomain.trim() || undefined,
+				repoUrl: repoUrl.trim() || undefined,
+				repoBranch: repoBranch.trim() || undefined,
+				port: port.trim() ? Number(port) || null : undefined,
+				sourceDir: sourceDir.trim() || undefined,
+				sourceType,
+				projectType,
+				buildCommand: buildCommand.trim() || undefined,
+				installCommand: installCommand.trim() || undefined,
+				startCommand: startCommand.trim() || undefined,
+				outputDir: outputDir.trim() || undefined,
+			});
 
 			if (stagedEnvs.length > 0) {
-				setSubmittingStatus(
-					"creating_envs",
-				);
+				setSubmittingStatus("creating_envs");
 				await Promise.all(
 					stagedEnvs.map((env) =>
-						api.createEnvVar(
-							project.id,
-							{
-								key: env.key.trim(),
-								value: env.value.trim(),
-								environment:
-									env.environment ||
-									"production",
-							},
-						),
+						api.createEnvVar(project.id, {
+							key: env.key.trim(),
+							value: env.value.trim(),
+							environment: env.environment || "production",
+						}),
 					),
 				);
 			}
@@ -272,30 +191,25 @@ export function CreateProjectDialog({
 			}, 1000);
 		} catch (err: any) {
 			if (project) {
-				api.deleteProject(project.id).catch(() => { });
+				api.deleteProject(project.id).catch(() => {});
 			} else {
-				// switch to a better approach 
-				api.listProjects()
+				// switch to a better approach
+				api
+					.listProjects()
 					.then((all) => {
 						const orphan = all.find((p) => p.name === name.trim());
-						if (orphan) api.deleteProject(orphan.id).catch(() => { });
+						if (orphan) api.deleteProject(orphan.id).catch(() => {});
 					})
-					.catch(() => { });
+					.catch(() => {});
 			}
 			console.error(err);
-			setErrorMessage(
-				err.message ||
-				"An unexpected error occurred during creation.",
-			);
+			setErrorMessage(err.message || "An unexpected error occurred during creation.");
 			setSubmittingStatus("error");
 		}
 	};
 
 	return (
-		<Dialog
-			open={open}
-			onOpenChange={handleOpenChange}
-		>
+		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogTrigger asChild>
 				<Button className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-medium text-xs px-4 py-2 rounded-lg shadow-lg shadow-amber-500/10 border-0 flex items-center gap-1.5 transition-all">
 					<Plus className="h-4 w-4" />
@@ -305,38 +219,17 @@ export function CreateProjectDialog({
 			<DialogContent className="bg-[#0f0f12] border-[#222227] text-zinc-200 max-w-3xl">
 				{submittingStatus !== "idle" ? (
 					<CreationStatusOverlay
-						submittingStatus={
-							submittingStatus
-						}
-						errorMessage={
-							errorMessage
-						}
-						hasEnvs={
-							stagedEnvs.length > 0
-						}
-						onRetry={() =>
-							setSubmittingStatus(
-								"idle",
-							)
-						}
+						submittingStatus={submittingStatus}
+						errorMessage={errorMessage}
+						hasEnvs={stagedEnvs.length > 0}
+						onRetry={() => setSubmittingStatus("idle")}
 					/>
 				) : (
-					<form
-						onSubmit={handleCreate}
-						className="space-y-4"
-					>
+					<form onSubmit={handleCreate} className="space-y-4">
 						<DialogHeader>
-							<DialogTitle className="text-zinc-100 font-bold">
-								Create New Project
-							</DialogTitle>
+							<DialogTitle className="text-zinc-100 font-bold">Create New Project</DialogTitle>
 							<DialogDescription className="text-zinc-500 text-xs">
-								Set up your
-								project details,
-								configure
-								variables, and
-								optionally
-								provision a
-								database instance.
+								Set up your project details, configure variables, and optionally provision a database instance.
 							</DialogDescription>
 						</DialogHeader>
 
@@ -345,20 +238,13 @@ export function CreateProjectDialog({
 								<span
 									className={cn(
 										"w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-										step === 1
-											? "bg-amber-500 text-black shadow-lg shadow-amber-500/20"
-											: "bg-zinc-800 text-zinc-400",
+										step === 1 ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20" : "bg-zinc-800 text-zinc-400",
 									)}
 								>
 									1
 								</span>
 								<span
-									className={cn(
-										"text-xs font-medium hidden sm:inline",
-										step === 1
-											? "text-zinc-200"
-											: "text-zinc-500",
-									)}
+									className={cn("text-xs font-medium hidden sm:inline", step === 1 ? "text-zinc-200" : "text-zinc-500")}
 								>
 									Basics & Git
 								</span>
@@ -368,20 +254,13 @@ export function CreateProjectDialog({
 								<span
 									className={cn(
 										"w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-										step === 2
-											? "bg-amber-500 text-black shadow-lg shadow-amber-500/20"
-											: "bg-zinc-800 text-zinc-400",
+										step === 2 ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20" : "bg-zinc-800 text-zinc-400",
 									)}
 								>
 									2
 								</span>
 								<span
-									className={cn(
-										"text-xs font-medium hidden sm:inline",
-										step === 2
-											? "text-zinc-200"
-											: "text-zinc-500",
-									)}
+									className={cn("text-xs font-medium hidden sm:inline", step === 2 ? "text-zinc-200" : "text-zinc-500")}
 								>
 									Environment
 								</span>
@@ -391,20 +270,13 @@ export function CreateProjectDialog({
 								<span
 									className={cn(
 										"w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-										step === 3
-											? "bg-amber-500 text-black shadow-lg shadow-amber-500/20"
-											: "bg-zinc-800 text-zinc-400",
+										step === 3 ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20" : "bg-zinc-800 text-zinc-400",
 									)}
 								>
 									3
 								</span>
 								<span
-									className={cn(
-										"text-xs font-medium hidden sm:inline",
-										step === 3
-											? "text-zinc-200"
-											: "text-zinc-500",
-									)}
+									className={cn("text-xs font-medium hidden sm:inline", step === 3 ? "text-zinc-200" : "text-zinc-500")}
 								>
 									Resources & DB
 								</span>
@@ -416,134 +288,65 @@ export function CreateProjectDialog({
 								key="step-basics"
 								name={name}
 								setName={setName}
-								description={
-									description
-								}
-								setDescription={
-									setDescription
-								}
-								baseDomain={
-									baseDomain
-								}
-								setBaseDomain={
-									setBaseDomain
-								}
+								description={description}
+								setDescription={setDescription}
+								baseDomain={baseDomain}
+								setBaseDomain={setBaseDomain}
 								repoUrl={repoUrl}
-								setRepoUrl={
-									setRepoUrl
-								}
-								repoBranch={
-									repoBranch
-								}
-								setRepoBranch={
-									setRepoBranch
-								}
-								sourceDir={
-									sourceDir
-								}
-								setSourceDir={
-									setSourceDir
-								}
-								selectedRepo={
-									selectedRepo
-								}
-								setSelectedRepo={
-									setSelectedRepo
-								}
-								onGithubConnected={() =>
-									githubConnected
-								}
-								githubConfigured={
-									githubConfigured
-								}
-								sourceType={
-									sourceType
-								}
-								setSourceType={
-									setSourceType
-								}
-								projectType={
-									projectType
-								}
-								setProjectType={
-									setProjectType
-								}
-							port={port}
-							setPort={setPort}
-						zipFile={zipFile}
-						setZipFile={setZipFile}
-						selectedPresetId={selectedPresetId}
-						onSelectPreset={handleSelectPreset}
-						serverId={serverId}
-						setServerId={setServerId}
-						servers={servers}
-					/>
+								setRepoUrl={setRepoUrl}
+								repoBranch={repoBranch}
+								setRepoBranch={setRepoBranch}
+								sourceDir={sourceDir}
+								setSourceDir={setSourceDir}
+								selectedRepo={selectedRepo}
+								setSelectedRepo={setSelectedRepo}
+								onGithubConnected={() => githubConnected}
+								githubConfigured={githubConfigured}
+								sourceType={sourceType}
+								setSourceType={setSourceType}
+								projectType={projectType}
+								setProjectType={setProjectType}
+								port={port}
+								setPort={setPort}
+								zipFile={zipFile}
+								setZipFile={setZipFile}
+								selectedPresetId={selectedPresetId}
+								onSelectPreset={handleSelectPreset}
+								serverId={serverId}
+								setServerId={setServerId}
+								servers={servers}
+							/>
 						)}
 
 						{step === 2 && (
-							<StepEnvironment
-								key="step-environment"
-								stagedEnvs={
-									stagedEnvs
-								}
-								setStagedEnvs={
-									setStagedEnvs
-								}
-							/>
+							<StepEnvironment key="step-environment" stagedEnvs={stagedEnvs} setStagedEnvs={setStagedEnvs} />
 						)}
 
 						{step === 3 && (
 							<StepResources
 								key="step-resources"
-								cpuLimit={
-									cpuLimit
-								}
-								setCpuLimit={
-									setCpuLimit
-								}
-								memoryLimitMb={
-									memoryLimitMb
-								}
-								setMemoryLimitMb={
-									setMemoryLimitMb
-								}
-								provisionDb={
-									provisionDb
-								}
-								setProvisionDb={
-									setProvisionDb
-								}
+								cpuLimit={cpuLimit}
+								setCpuLimit={setCpuLimit}
+								memoryLimitMb={memoryLimitMb}
+								setMemoryLimitMb={setMemoryLimitMb}
+								provisionDb={provisionDb}
+								setProvisionDb={setProvisionDb}
 								dbType={dbType}
-								setDbType={
-									setDbType
-								}
-								dbVersion={
-									dbVersion
-								}
-								setDbVersion={
-									setDbVersion
-								}
+								setDbType={setDbType}
+								dbVersion={dbVersion}
+								setDbVersion={setDbVersion}
 								dbCpu={dbCpu}
-								setDbCpu={
-									setDbCpu
-								}
-								dbMemory={
-									dbMemory
-								}
-								setDbMemory={
-									setDbMemory
-								}
+								setDbCpu={setDbCpu}
+								dbMemory={dbMemory}
+								setDbMemory={setDbMemory}
 							/>
 						)}
 
 						<DialogFooter className="pt-4 border-t border-[#1a1a1f] flex justify-between items-center sm:space-x-0 select-none">
 							<div className="text-zinc-500 text-[10px]">
-								{step === 1 &&
-									"Step 1 of 3: General & Git settings"}
-								{step === 2 &&
-									"Step 2 of 3: Staging env variables"}
-								{step === 3 &&
-									"Step 3 of 3: Port, resource limits & Databases"}
+								{step === 1 && "Step 1 of 3: General & Git settings"}
+								{step === 2 && "Step 2 of 3: Staging env variables"}
+								{step === 3 && "Step 3 of 3: Port, resource limits & Databases"}
 							</div>
 							<div className="flex gap-2">
 								{step > 1 && (
@@ -551,12 +354,7 @@ export function CreateProjectDialog({
 										type="button"
 										variant="outline"
 										className="border-[#222227] text-zinc-400 hover:bg-[#1a1a1f] h-9"
-										onClick={() =>
-											setStep(
-												step -
-												1,
-											)
-										}
+										onClick={() => setStep(step - 1)}
 									>
 										Back
 									</Button>
@@ -566,11 +364,7 @@ export function CreateProjectDialog({
 										type="button"
 										variant="outline"
 										className="border-[#222227] text-zinc-400 hover:bg-[#1a1a1f] h-9"
-										onClick={() =>
-											handleOpenChange(
-												false,
-											)
-										}
+										onClick={() => handleOpenChange(false)}
 									>
 										Cancel
 									</Button>
@@ -579,18 +373,9 @@ export function CreateProjectDialog({
 								{step < 3 ? (
 									<Button
 										type="button"
-										onClick={() =>
-											setStep(
-												step +
-												1,
-											)
-										}
+										onClick={() => setStep(step + 1)}
 										className="bg-amber-500 hover:bg-amber-600 text-white font-medium h-9"
-										disabled={
-											step ===
-											1 &&
-											!name.trim()
-										}
+										disabled={step === 1 && !name.trim()}
 									>
 										Continue
 									</Button>
@@ -598,13 +383,9 @@ export function CreateProjectDialog({
 									<Button
 										type="submit"
 										className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-medium h-9 px-6 shadow-lg shadow-amber-500/10 border-0"
-										disabled={
-											!name.trim() ||
-											createProject.isPending
-										}
+										disabled={!name.trim() || createProject.isPending}
 									>
-										Configure
-										& Create
+										Configure & Create
 									</Button>
 								)}
 							</div>

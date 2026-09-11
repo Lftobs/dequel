@@ -1,10 +1,10 @@
+import { X } from "lucide-react";
+import { cn } from "../../lib/utils";
 import { DequelLogo } from "../DequelLogo";
+import { NodeStatusCard } from "./NodeStatusCard";
 import { ProjectSelector } from "./ProjectSelector";
 import { SidebarNav } from "./SidebarNav";
-import { NodeStatusCard } from "./NodeStatusCard";
 import { SupportSection } from "./SupportSection";
-import { cn } from "../../lib/utils";
-import { X } from "lucide-react";
 
 interface Project {
 	id: string;
@@ -50,7 +50,7 @@ export function Sidebar({
 				className={cn(
 					"w-64 border-r border-[#1a1a1f] bg-[#0c0c0e] shrink-0 flex flex-col justify-between select-none overflow-y-auto overflow-x-hidden",
 					"fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out",
-					sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+					sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
 				)}
 			>
 				<div className="flex flex-col flex-1 min-h-0">

@@ -1,42 +1,31 @@
-import { rm, writeFile } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
-import { deployments } from "../db/schema";
 import {
 	appendLog,
+	createDeploymentEvent,
 	deleteDeploymentAndLogs,
+	deleteRoutesByDeployment,
 	getDeploymentById,
 	getProjectById,
 	getServerById,
-	listDeployments,
 	listAllDatabases,
-	updateDeploymentStatus,
-	updateDeploymentCommitSha,
+	listDeployments,
+	listEnvironmentVariablesForDeploy,
 	listVolumes,
-	deleteRoutesByDeployment,
-	createDeploymentEvent,
+	updateDeploymentCommitSha,
+	updateDeploymentStatus,
 } from "../db/repo";
-import { listEnvironmentVariablesForDeploy } from "../db/repo";
-import { logBus } from "./log-bus";
-import { DeploymentQueue } from "./queue";
-import { buildWithRailpack, CancelledError } from "./railpack";
-import {
-	prepareSourceWorkspace,
-	prepareUploadWorkspace,
-	cleanupWorkspace,
-	getHeadSha,
-} from "./source";
-import {
-	cleanupFailedDeployment,
-	deployContainer,
-	ensureContainerRunning,
-	reloadCaddy,
-	tryRun,
-} from "./runtime";
+import { deployments } from "../db/schema";
 import { ensureProjectDashboard } from "../utils/grafana";
 import { buildWithCompose, destroyComposeStack } from "./compose";
 import { deployComposeStack } from "./compose-deploy";
 import { summarizeDeploymentError } from "./deployment-errors";
+import { logBus } from "./log-bus";
+import { DeploymentQueue } from "./queue";
+import { buildWithRailpack, CancelledError } from "./railpack";
+import { cleanupFailedDeployment, deployContainer, ensureContainerRunning, reloadCaddy, tryRun } from "./runtime";
+import { cleanupWorkspace, getHeadSha, prepareSourceWorkspace, prepareUploadWorkspace } from "./source";
 
 const now = () =>
 	new Date()
@@ -44,17 +33,9 @@ const now = () =>
 		.replace("T", " ")
 		.replace(/\.\d{3}Z$/, "");
 
-const emitLog = async (
-	deploymentId: string,
-	stage: "build" | "deploy" | "system",
-	message: string,
-) => {
+const emitLog = async (deploymentId: string, stage: "build" | "deploy" | "system", message: string) => {
 	const timestamp = now();
-	const saved = await appendLog(
-		deploymentId,
-		stage,
-		message,
-	);
+	const saved = await appendLog(deploymentId, stage, message);
 	logBus.publish({
 		deploymentId,
 		sequence: saved.sequence,
@@ -85,38 +66,19 @@ export class PipelineOrchestrator {
 		this.started = true;
 		this.queue
 			.start(async (deploymentId) => {
-				return this.runDeployment(
-					deploymentId,
-				);
+				return this.runDeployment(deploymentId);
 			})
-			.catch((error) =>
-				console.error(
-					"Queue worker failed",
-					error,
-				),
-			);
+			.catch((error) => console.error("Queue worker failed", error));
 	}
 
 	enqueue(deploymentId: string) {
-		this.queue
-			.enqueue(deploymentId)
-			.catch((error) =>
-				console.error(
-					"Queue enqueue failed",
-					error,
-				),
-			);
+		this.queue.enqueue(deploymentId).catch((error) => console.error("Queue enqueue failed", error));
 	}
 
 	async cancelDeployment(deploymentId: string) {
-		const deployment =
-			await getDeploymentById(deploymentId);
+		const deployment = await getDeploymentById(deploymentId);
 		if (!deployment) return;
-		if (
-			deployment.status !== "pending" &&
-			deployment.status !== "building"
-		)
-			return;
+		if (deployment.status !== "pending" && deployment.status !== "building") return;
 
 		const controller = this.abortControllers.get(deploymentId);
 		if (controller) {
@@ -126,16 +88,8 @@ export class PipelineOrchestrator {
 
 		await Promise.all([
 			this.queue.remove(deploymentId),
-			updateDeploymentStatus(
-				deploymentId,
-				"failed",
-				{ failureReason: "Cancelled" },
-			),
-			appendLog(
-				deploymentId,
-				"system",
-				"Deployment cancelled by user",
-			),
+			updateDeploymentStatus(deploymentId, "failed", { failureReason: "Cancelled" }),
+			appendLog(deploymentId, "system", "Deployment cancelled by user"),
 			createDeploymentEvent({
 				deploymentId,
 				type: "cancelled",
@@ -146,45 +100,27 @@ export class PipelineOrchestrator {
 			deploymentId,
 			sequence: 0,
 			stage: "system",
-			message:
-				"Deployment cancelled by user",
+			message: "Deployment cancelled by user",
 			timestamp: now(),
 		});
 	}
 
 	async deleteDeployment(deploymentId: string) {
-		const deployment =
-			await getDeploymentById(deploymentId);
+		const deployment = await getDeploymentById(deploymentId);
 		if (!deployment) return;
 
 		await this.queue.remove(deploymentId);
 
-		const project = deployment.projectId
-			? await getProjectById(deployment.projectId)
-			: null;
+		const project = deployment.projectId ? await getProjectById(deployment.projectId) : null;
 
 		if (project?.buildType === "compose") {
-			await destroyComposeStack(
-				`deploy-${deploymentId}`,
-			).catch((e) =>
-				console.warn(
-					`[Pipeline] Compose teardown failed for ${deploymentId}:`,
-					e,
-				),
+			await destroyComposeStack(`deploy-${deploymentId}`).catch((e) =>
+				console.warn(`[Pipeline] Compose teardown failed for ${deploymentId}:`, e),
 			);
 		} else {
 			if (deployment.containerName) {
-				await tryRun("docker", [
-					"stop",
-					"-t",
-					"5",
-					deployment.containerName,
-				]);
-				await tryRun("docker", [
-					"rm",
-					"-f",
-					deployment.containerName,
-				]);
+				await tryRun("docker", ["stop", "-t", "5", deployment.containerName]);
+				await tryRun("docker", ["rm", "-f", deployment.containerName]);
 			}
 
 			if (deployment.imageTag && deployment.sourceType !== "image") {
@@ -193,89 +129,60 @@ export class PipelineOrchestrator {
 		}
 
 		const slug = (project?.name || deployment.projectId || deploymentId)
-			.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
+			.toLowerCase()
+			.replace(/[^a-z0-9-]+/g, "-")
+			.replace(/^-+|-+$/g, "")
+			.slice(0, 63);
 		const routeFile = join(config.caddyRoutesDir, `${slug}.caddy`);
 		await rm(routeFile, { force: true }).catch(() => {});
-		const { getIngressServer, removeIngressRouteFile } = await import('../utils/ingress');
+		const { getIngressServer, removeIngressRouteFile } = await import("../utils/ingress");
 		const ingressServer = await getIngressServer();
-		if (ingressServer && ingressServer.id !== 'local') {
-			const { baseDomainFor } = await import('../utils/routes');
-			await removeIngressRouteFile(ingressServer, { hostname: `${slug}.${baseDomainFor()}`, routeFile: `${slug}.caddy` });
+		if (ingressServer && ingressServer.id !== "local") {
+			const { baseDomainFor } = await import("../utils/routes");
+			await removeIngressRouteFile(ingressServer, {
+				hostname: `${slug}.${baseDomainFor()}`,
+				routeFile: `${slug}.caddy`,
+			});
 		}
 		await deleteRoutesByDeployment(deploymentId);
 
-		await deleteDeploymentAndLogs(
-			deploymentId,
-		);
+		await deleteDeploymentAndLogs(deploymentId);
 	}
 
 	async reconcileState() {
-		console.log(
-			"Reconciling deployment state...",
-		);
+		console.log("Reconciling deployment state...");
 
-		const deployments =
-			await listDeployments();
-		const running = deployments.filter(
-			(d) => d.status === "running",
-		);
+		const deployments = await listDeployments();
+		const running = deployments.filter((d) => d.status === "running");
 		for (const deployment of running) {
 			if (deployment.containerName) {
-				console.log(
-					`Ensuring container ${deployment.containerName} is running`,
-				);
-				await ensureContainerRunning(
-					deployment.containerName,
-				);
+				console.log(`Ensuring container ${deployment.containerName} is running`);
+				await ensureContainerRunning(deployment.containerName);
 			}
 		}
 
 		const resumable = deployments
-			.filter(
-				(d) =>
-					d.status === "pending" ||
-					d.status === "building" ||
-					d.status === "deploying",
-			)
-			.sort((a, b) =>
-				new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-			);
+			.filter((d) => d.status === "pending" || d.status === "building" || d.status === "deploying")
+			.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 		if (resumable.length > 0) {
-			console.log(
-				`Requeuing ${resumable.length} deployments after restart`,
-			);
+			console.log(`Requeuing ${resumable.length} deployments after restart`);
 			for (const deployment of resumable) {
-				await emitLog(
-					deployment.id,
-					"system",
-					`Resuming deployment after restart (status was ${deployment.status})`,
-				);
+				await emitLog(deployment.id, "system", `Resuming deployment after restart (status was ${deployment.status})`);
 				this.enqueue(deployment.id);
 			}
 		}
 		try {
 			await reloadCaddy();
-			console.log(
-				"Caddy reloaded during reconciliation",
-			);
+			console.log("Caddy reloaded during reconciliation");
 		} catch {
-			console.log(
-				"Caddy not ready for reload during reconciliation",
-			);
+			console.log("Caddy not ready for reload during reconciliation");
 		}
 
-		const databases =
-			await listAllDatabases();
-		const runningDbs = databases.filter(
-			(d) => d.status === "running",
-		);
+		const databases = await listAllDatabases();
+		const runningDbs = databases.filter((d) => d.status === "running");
 		for (const db of runningDbs) {
-			console.log(
-				`Ensuring database container ${db.internalHost} is running`,
-			);
-			await ensureContainerRunning(
-				db.internalHost,
-			);
+			console.log(`Ensuring database container ${db.internalHost} is running`);
+			await ensureContainerRunning(db.internalHost);
 		}
 	}
 
@@ -287,244 +194,136 @@ export class PipelineOrchestrator {
 			.slice(0, 63);
 	}
 
-	private async resolveProjectSlug(
-		deploymentId: string,
-	): Promise<string> {
-		const dep =
-			await getDeploymentById(deploymentId);
-		if (!dep?.projectId)
-			return dep?.id ?? deploymentId;
-		const proj = await getProjectById(
-			dep.projectId,
-		);
-		return proj
-			? this.slugify(proj.name)
-			: dep.id;
-	}
-
-	private async resolveImageTag(
-		deployment: Deployment,
-	): Promise<string> {
-		if (deployment.sourceType === "image")
-			return deployment.sourceRef;
+	private async resolveImageTag(deployment: Deployment): Promise<string> {
+		if (deployment.sourceType === "image") return deployment.sourceRef;
 		const slug = deployment.projectId
-			? this.slugify(
-					(
-						await getProjectById(
-							deployment.projectId,
-						)
-					)?.name ?? deployment.id,
-				)
+			? this.slugify((await getProjectById(deployment.projectId))?.name ?? deployment.id)
 			: deployment.id;
 		return `${slug}-${deployment.id.slice(0, 8)}:latest`;
 	}
 
-	private async runDeployment(
-		deploymentId: string,
-	): Promise<boolean> {
-		const deployment =
-			await getDeploymentById(deploymentId);
+	private async runDeployment(deploymentId: string): Promise<boolean> {
+		const deployment = await getDeploymentById(deploymentId);
 		if (!deployment) return true;
-		if (deployment.status === "failed")
-			return true;
+		if (deployment.status === "failed") return true;
 
 		const controller = new AbortController();
 		this.abortControllers.set(deploymentId, controller);
 
 		let workspacePath = "";
-		let uploadedArchivePath: string | null =
-			null;
+		let uploadedArchivePath: string | null = null;
 		let imageTag: string | undefined;
 		let projectName: string | undefined;
 		let project: import("../../types").Project | null = null;
 		let deployed = false;
 
 		try {
-			await emitLog(
-				deploymentId,
-				"system",
-				"Deployment enqueued",
-			);
+			await emitLog(deploymentId, "system", "Deployment enqueued");
 
-			imageTag =
-				await this.resolveImageTag(
-					deployment,
-				);
+			imageTag = await this.resolveImageTag(deployment);
 
-			project = deployment.projectId ? await getProjectById(
-				deployment.projectId,
-			) : null;
+			project = deployment.projectId ? await getProjectById(deployment.projectId) : null;
 
 			const targetServer = project?.serverId ? await getServerById(project.serverId) : null;
 
-			if (
-				deployment.sourceType !== "image"
-			) {
-				await updateDeploymentStatus(
-					deploymentId,
-					"building",
-					{ failureReason: null },
-				);
+			if (deployment.sourceType !== "image") {
+				await updateDeploymentStatus(deploymentId, "building", { failureReason: null });
 				await createDeploymentEvent({
 					deploymentId,
 					type: "started",
 					message: "Deployment started",
 				});
 
-				if (
-					deployment.sourceType ===
-					"git"
-				) {
+				if (deployment.sourceType === "git") {
 					const commitLabel = deployment.commitSha
 						? ` (commit ${deployment.commitSha.slice(0, 7)})`
 						: deployment.branch
 							? ` (branch ${deployment.branch})`
 							: "";
-					await emitLog(
+					await emitLog(deploymentId, "build", `Cloning git repository: ${deployment.sourceRef}${commitLabel}`);
+					workspacePath = await prepareSourceWorkspace(
 						deploymentId,
-						"build",
-						`Cloning git repository: ${deployment.sourceRef}${commitLabel}`,
+						deployment.sourceRef,
+						deployment.branch ?? undefined,
+						deployment.commitSha ?? undefined,
 					);
-					workspacePath =
-						await prepareSourceWorkspace(
-							deploymentId,
-							deployment.sourceRef,
-							deployment.branch ??
-								undefined,
-							deployment.commitSha ??
-								undefined,
-						);
-					const sha = await getHeadSha(
-						workspacePath,
-					);
+					const sha = await getHeadSha(workspacePath);
 					if (sha) {
-						await updateDeploymentCommitSha(
-							deploymentId,
-							sha,
-						);
-						await emitLog(
-							deploymentId,
-							"build",
-							`Commit: ${sha.slice(0, 7)}`,
-						);
+						await updateDeploymentCommitSha(deploymentId, sha);
+						await emitLog(deploymentId, "build", `Commit: ${sha.slice(0, 7)}`);
 					}
 				} else {
-					await emitLog(
-						deploymentId,
-						"build",
-						`Extracting archive: ${deployment.sourceRef}`,
-					);
-					uploadedArchivePath =
-						deployment.sourceRef;
-					workspacePath =
-						await prepareUploadWorkspace(
-							deploymentId,
-							deployment.sourceRef,
-						);
+					await emitLog(deploymentId, "build", `Extracting archive: ${deployment.sourceRef}`);
+					uploadedArchivePath = deployment.sourceRef;
+					workspacePath = await prepareUploadWorkspace(deploymentId, deployment.sourceRef);
 				}
 
 				await this.checkCancelled(deploymentId);
 
-				await emitLog(
-					deploymentId,
-					"build",
-					`Source prepared at: ${workspacePath}`,
-				);
-				const cacheKey =
-					deployment.projectId ||
-					deploymentId;
-			const envVars = deployment.projectId ? await listEnvironmentVariablesForDeploy(deployment.projectId, deployment.environment ?? "production") : [];
-			if (project?.buildType === "compose") {
-				const envMap: Record<string, string> = {};
-				for (const v of envVars) envMap[v.key] = v.value;
-				await buildWithCompose(
-					workspacePath,
-					`deploy-${deploymentId}`,
-					async (line) => {
-						await emitLog(
-							deploymentId,
-							"build",
-							line,
-						);
-					},
-					project?.sourceDir,
-					envMap,
-					controller.signal,
-				);
-			} else {
-				await buildWithRailpack(
-					workspacePath,
-					imageTag,
-					async (line) => {
-						await emitLog(
-							deploymentId,
-							"build",
-							line,
-						);
-					},
-					{
-						cacheKey,
-						sourceDir: project?.sourceDir,
-						projectType: project?.projectType,
-						buildCommand: project?.buildCommand,
-						installCommand: project?.installCommand,
-						outputDir: project?.outputDir,
-						startCommand: project?.startCommand,
-						environmentVariables: envVars,
-						signal: controller.signal,
-						clearCache: deployment.clearCache,
-						server: targetServer,
-					},
-				);
-			}
-		} else {
-			await emitLog(
-				deploymentId,
-				"build",
-				`Rolling back to existing image: ${imageTag}`,
-			);
-		}
-
-		await createDeploymentEvent({
-			deploymentId,
-			type: "build_completed",
-			message: `Image built: ${imageTag}`,
-		});
-
-			await this.checkCancelled(deploymentId);
-
-			await updateDeploymentStatus(
-				deploymentId,
-				"deploying",
-				{ imageTag },
-			);
-			await emitLog(
-				deploymentId,
-				"deploy",
-				"Starting container deployment",
-			);
-
-			await this.checkCancelled(deploymentId);
-
-			let envVars:
-				| Record<string, string>
-				| undefined;
-			if (deployment.projectId) {
-				const vars =
-					await listEnvironmentVariablesForDeploy(
-						deployment.projectId,
-						deployment.environment ??
-							undefined,
+				await emitLog(deploymentId, "build", `Source prepared at: ${workspacePath}`);
+				const cacheKey = deployment.projectId || deploymentId;
+				const envVars = deployment.projectId
+					? await listEnvironmentVariablesForDeploy(deployment.projectId, deployment.environment ?? "production")
+					: [];
+				if (project?.buildType === "compose") {
+					const envMap: Record<string, string> = {};
+					for (const v of envVars) envMap[v.key] = v.value;
+					await buildWithCompose(
+						workspacePath,
+						`deploy-${deploymentId}`,
+						async (line) => {
+							await emitLog(deploymentId, "build", line);
+						},
+						project?.sourceDir,
+						envMap,
+						controller.signal,
 					);
+				} else {
+					await buildWithRailpack(
+						workspacePath,
+						imageTag,
+						async (line) => {
+							await emitLog(deploymentId, "build", line);
+						},
+						{
+							cacheKey,
+							sourceDir: project?.sourceDir,
+							projectType: project?.projectType,
+							buildCommand: project?.buildCommand,
+							installCommand: project?.installCommand,
+							outputDir: project?.outputDir,
+							startCommand: project?.startCommand,
+							environmentVariables: envVars,
+							signal: controller.signal,
+							clearCache: deployment.clearCache,
+							server: targetServer,
+						},
+					);
+				}
+			} else {
+				await emitLog(deploymentId, "build", `Rolling back to existing image: ${imageTag}`);
+			}
+
+			await createDeploymentEvent({
+				deploymentId,
+				type: "build_completed",
+				message: `Image built: ${imageTag}`,
+			});
+
+			await this.checkCancelled(deploymentId);
+
+			await updateDeploymentStatus(deploymentId, "deploying", { imageTag });
+			await emitLog(deploymentId, "deploy", "Starting container deployment");
+
+			await this.checkCancelled(deploymentId);
+
+			let envVars: Record<string, string> | undefined;
+			if (deployment.projectId) {
+				const vars = await listEnvironmentVariablesForDeploy(deployment.projectId, deployment.environment ?? undefined);
 				if (vars.length > 0) {
 					envVars = {};
-					for (const v of vars)
-						envVars[v.key] = v.value;
-					await emitLog(
-						deploymentId,
-						"deploy",
-						`Injecting ${vars.length} environment variables`,
-					);
+					for (const v of vars) envVars[v.key] = v.value;
+					await emitLog(deploymentId, "deploy", `Injecting ${vars.length} environment variables`);
 				}
 			}
 
@@ -535,44 +334,25 @@ export class PipelineOrchestrator {
 				  }[]
 				| undefined;
 			if (deployment.projectId) {
-				const vols = await listVolumes(
-					deployment.projectId,
-				);
+				const vols = await listVolumes(deployment.projectId);
 				if (vols.length > 0) {
 					volumes = vols.map((v) => ({
-						volumeName:
-							v.dockerVolumeName ??
-							`vol-${v.id.slice(0, 12)}`,
+						volumeName: v.dockerVolumeName ?? `vol-${v.id.slice(0, 12)}`,
 						mountPath: v.mountPath,
 					}));
-					await emitLog(
-						deploymentId,
-						"deploy",
-						`Mounting ${vols.length} persistent volumes`,
-					);
+					await emitLog(deploymentId, "deploy", `Mounting ${vols.length} persistent volumes`);
 				}
 			}
 
-			let oldContainerName:
-				| string
-				| undefined;
-			let oldDeploymentId:
-				| string
-				| undefined;
+			let oldContainerName: string | undefined;
+			let oldDeploymentId: string | undefined;
 			if (deployment.projectId) {
-				const all = await listDeployments(
-					deployment.projectId,
-				);
+				const all = await listDeployments(deployment.projectId);
 				const prev = all.find(
-					(d) =>
-						d.projectId ===
-							deployment.projectId &&
-						d.status === "running" &&
-						d.id !== deploymentId,
+					(d) => d.projectId === deployment.projectId && d.status === "running" && d.id !== deploymentId,
 				);
 				if (prev?.containerName) {
-					oldContainerName =
-						prev.containerName;
+					oldContainerName = prev.containerName;
 					oldDeploymentId = prev.id;
 					await emitLog(
 						deploymentId,
@@ -584,23 +364,13 @@ export class PipelineOrchestrator {
 
 			await this.checkCancelled(deploymentId);
 
-			let cpuLimit:
-				| number
-				| null
-				| undefined;
-			let memoryLimitMb:
-				| number
-				| null
-				| undefined;
-			let appPort:
-				| number
-				| null
-				| undefined;
+			let cpuLimit: number | null | undefined;
+			let memoryLimitMb: number | null | undefined;
+			let appPort: number | null | undefined;
 			if (project) {
 				projectName = project.name;
 				cpuLimit = project.cpuLimit;
-				memoryLimitMb =
-					project.memoryLimitMb;
+				memoryLimitMb = project.memoryLimitMb;
 				appPort = project.port;
 			}
 
@@ -631,16 +401,10 @@ export class PipelineOrchestrator {
 					deploymentId,
 					imageTag,
 					async (line) => {
-						await emitLog(
-							deploymentId,
-							"deploy",
-							line,
-						);
+						await emitLog(deploymentId, "deploy", line);
 					},
 					{
-						projectId:
-							deployment.projectId ||
-							undefined,
+						projectId: deployment.projectId || undefined,
 						projectName,
 						baseDomain: project?.baseDomain,
 						oldContainerName,
@@ -658,16 +422,12 @@ export class PipelineOrchestrator {
 
 			deployed = true;
 
-			await updateDeploymentStatus(
-				deploymentId,
-				"running",
-				{
-					imageTag,
-					containerName: runtimeContainerName,
-					liveUrl: runtimeLiveUrl,
-					failureReason: null,
-				},
-			);
+			await updateDeploymentStatus(deploymentId, "running", {
+				imageTag,
+				containerName: runtimeContainerName,
+				liveUrl: runtimeLiveUrl,
+				failureReason: null,
+			});
 
 			if (projectName) {
 				const dashSlug = projectName
@@ -676,53 +436,23 @@ export class PipelineOrchestrator {
 					.replace(/^-+|-+$/g, "")
 					.slice(0, 63);
 				const containerRegex = `${dashSlug}-.*`;
-				ensureProjectDashboard(
-					deployment.projectId!,
-					projectName,
-					containerRegex,
-				).catch((e) =>
-					console.warn(
-						"[Pipeline] Grafana dashboard creation failed:",
-						e,
-					),
+				ensureProjectDashboard(deployment.projectId!, projectName, containerRegex).catch((e) =>
+					console.warn("[Pipeline] Grafana dashboard creation failed:", e),
 				);
 			}
 
-			if (
-				oldContainerName &&
-				deployment.projectId
-			) {
-				const all = await listDeployments(
-					deployment.projectId,
-				);
-				const prev = all.find(
-					(d) =>
-						d.containerName ===
-							oldContainerName &&
-						d.id !== deploymentId,
-				);
+			if (oldContainerName && deployment.projectId) {
+				const all = await listDeployments(deployment.projectId);
+				const prev = all.find((d) => d.containerName === oldContainerName && d.id !== deploymentId);
 				if (prev) {
-					await updateDeploymentStatus(
-						prev.id,
-						"inactive",
-						{
-							failureReason:
-								"Superseded by new deployment",
-						},
-					);
-					await emitLog(
-						prev.id,
-						"system",
-						`Deployment marked inactive (superseded by ${deploymentId})`,
-					);
+					await updateDeploymentStatus(prev.id, "inactive", {
+						failureReason: "Superseded by new deployment",
+					});
+					await emitLog(prev.id, "system", `Deployment marked inactive (superseded by ${deploymentId})`);
 				}
 			}
 
-			await emitLog(
-				deploymentId,
-				"system",
-				"Deployment is running",
-			);
+			await emitLog(deploymentId, "system", "Deployment is running");
 			await createDeploymentEvent({
 				deploymentId,
 				type: "deployed",
@@ -734,20 +464,9 @@ export class PipelineOrchestrator {
 				return true;
 			}
 			const message = summarizeDeploymentError(error);
-			console.error(
-				`[Orchestrator] Deployment ${deploymentId} failed:`,
-				error,
-			);
-			await emitLog(
-				deploymentId,
-				"system",
-				`Deployment failed: ${message}`,
-			);
-			await updateDeploymentStatus(
-				deploymentId,
-				"failed",
-				{ failureReason: message },
-			);
+			console.error(`[Orchestrator] Deployment ${deploymentId} failed:`, error);
+			await emitLog(deploymentId, "system", `Deployment failed: ${message}`);
+			await updateDeploymentStatus(deploymentId, "failed", { failureReason: message });
 			await createDeploymentEvent({
 				deploymentId,
 				type: "failed",
@@ -756,15 +475,9 @@ export class PipelineOrchestrator {
 			});
 
 			if (!deployed) {
-				await emitLog(
-					deploymentId,
-					"system",
-					"Cleaning up Docker resources from failed deployment",
-				);
+				await emitLog(deploymentId, "system", "Cleaning up Docker resources from failed deployment");
 				if (project?.buildType === "compose") {
-					await destroyComposeStack(
-						`deploy-${deploymentId}`,
-					).catch((e) =>
+					await destroyComposeStack(`deploy-${deploymentId}`).catch((e) =>
 						console.warn(`[Cleanup] Failed to tear down compose stack for ${deploymentId}:`, e),
 					);
 				} else {
@@ -773,43 +486,26 @@ export class PipelineOrchestrator {
 						deployment.sourceType === "image" ? undefined : imageTag,
 						projectName,
 						deployment.projectId,
-					).catch(e =>
-						console.warn(`[Cleanup] Failed to clean deployment ${deploymentId}:`, e),
-					);
+					).catch((e) => console.warn(`[Cleanup] Failed to clean deployment ${deploymentId}:`, e));
 				}
 			}
 
 			if (deployment.projectId) {
 				try {
-					const dbs =
-						await listAllDatabases(
-							deployment.projectId,
-						);
+					const dbs = await listAllDatabases(deployment.projectId);
 					for (const db of dbs) {
-						if (
-							db.status !==
-							"running"
-						)
-							continue;
-						await ensureContainerRunning(
-							db.internalHost,
-						);
+						if (db.status !== "running") continue;
+						await ensureContainerRunning(db.internalHost);
 					}
 				} catch (dbErr) {
-					console.error(
-						`[Orchestrator] DB reconcile failed for ${deploymentId}:`,
-						dbErr,
-					);
+					console.error(`[Orchestrator] DB reconcile failed for ${deploymentId}:`, dbErr);
 				}
 			}
 			return false;
 		} finally {
 			this.abortControllers.delete(deploymentId);
 			try {
-				if (workspacePath)
-					await cleanupWorkspace(
-						workspacePath,
-					);
+				if (workspacePath) await cleanupWorkspace(workspacePath);
 			} catch {
 				// cleanup failures must never mask the deployment result
 			}
@@ -824,82 +520,36 @@ export class PipelineOrchestrator {
 		}
 	}
 
-	async rollbackTo(
-		targetDeploymentId: string,
-	): Promise<void> {
-		const target = await getDeploymentById(
-			targetDeploymentId,
-		);
-		if (
-			!target ||
-			!target.imageTag ||
-			!target.projectId
-		) {
-			throw new Error(
-				"Invalid rollback target: missing image or project",
-			);
+	async rollbackTo(targetDeploymentId: string): Promise<void> {
+		const target = await getDeploymentById(targetDeploymentId);
+		if (!target?.imageTag || !target.projectId) {
+			throw new Error("Invalid rollback target: missing image or project");
 		}
 
-		const proj = await getProjectById(
-			target.projectId,
-		);
+		const proj = await getProjectById(target.projectId);
 		if (proj?.buildType === "compose") {
-			throw new Error(
-				"Rollback is not supported for Docker Compose deployments",
-			);
+			throw new Error("Rollback is not supported for Docker Compose deployments");
 		}
-		const slug = proj
-			? this.slugify(proj.name)
-			: target.id;
+		const _slug = proj ? this.slugify(proj.name) : target.id;
 
-		const all = await listDeployments(
-			target.projectId,
-		);
-		const current = all.find(
-			(d) =>
-				d.status === "running" &&
-				d.id !== targetDeploymentId,
-		);
+		const all = await listDeployments(target.projectId);
+		const current = all.find((d) => d.status === "running" && d.id !== targetDeploymentId);
 
-		await updateDeploymentStatus(
-			targetDeploymentId,
-			"deploying",
-		);
-		await emitLog(
-			targetDeploymentId,
-			"system",
-			`Rolling back to this version (image: ${target.imageTag})`,
-		);
+		await updateDeploymentStatus(targetDeploymentId, "deploying");
+		await emitLog(targetDeploymentId, "system", `Rolling back to this version (image: ${target.imageTag})`);
 
 		try {
 			if (target.containerName) {
-				await emitLog(
-					targetDeploymentId,
-					"deploy",
-					`Removing old container: ${target.containerName}`,
-				);
-				const { dockerBin } =
-					await import("../utils/docker-bin");
-				await tryRun(dockerBin, [
-					"rm",
-					"-f",
-					target.containerName,
-				]);
+				await emitLog(targetDeploymentId, "deploy", `Removing old container: ${target.containerName}`);
+				const { dockerBin } = await import("../utils/docker-bin");
+				await tryRun(dockerBin, ["rm", "-f", target.containerName]);
 			}
 
-			let envVars:
-				| Record<string, string>
-				| undefined;
-			const vars =
-				await listEnvironmentVariablesForDeploy(
-					target.projectId,
-					target.environment ??
-						undefined,
-				);
+			let envVars: Record<string, string> | undefined;
+			const vars = await listEnvironmentVariablesForDeploy(target.projectId, target.environment ?? undefined);
 			if (vars.length > 0) {
 				envVars = {};
-				for (const v of vars)
-					envVars[v.key] = v.value;
+				for (const v of vars) envVars[v.key] = v.value;
 			}
 
 			let volumes:
@@ -908,14 +558,10 @@ export class PipelineOrchestrator {
 						mountPath: string;
 				  }[]
 				| undefined;
-			const vols = await listVolumes(
-				target.projectId,
-			);
+			const vols = await listVolumes(target.projectId);
 			if (vols.length > 0) {
 				volumes = vols.map((v) => ({
-					volumeName:
-						v.dockerVolumeName ??
-						`vol-${v.id.slice(0, 12)}`,
+					volumeName: v.dockerVolumeName ?? `vol-${v.id.slice(0, 12)}`,
 					mountPath: v.mountPath,
 				}));
 			}
@@ -924,84 +570,44 @@ export class PipelineOrchestrator {
 				targetDeploymentId,
 				target.imageTag,
 				async (line) => {
-					await emitLog(
-						targetDeploymentId,
-						"deploy",
-						line,
-					);
+					await emitLog(targetDeploymentId, "deploy", line);
 				},
 				{
 					projectId: target.projectId,
 					projectName: proj?.name,
-					oldContainerName:
-						current?.containerName ||
-						undefined,
+					oldContainerName: current?.containerName || undefined,
 					envVars,
 					volumes,
 					cpuLimit: proj?.cpuLimit,
-					memoryLimitMb:
-						proj?.memoryLimitMb,
+					memoryLimitMb: proj?.memoryLimitMb,
 				},
 			);
 
-			await updateDeploymentStatus(
-				targetDeploymentId,
-				"running",
-				{
-					containerName:
-						runtime.containerName,
-					liveUrl: runtime.liveUrl,
-				},
-			);
+			await updateDeploymentStatus(targetDeploymentId, "running", {
+				containerName: runtime.containerName,
+				liveUrl: runtime.liveUrl,
+			});
 
-			const { getDb } =
-				await import("../db/client");
+			const { getDb } = await import("../db/client");
 			const db = await getDb();
-			await db.update(deployments)
-				.set({ failureReason: null })
-				.where(eq(deployments.id, targetDeploymentId))
-				.execute();
+			await db.update(deployments).set({ failureReason: null }).where(eq(deployments.id, targetDeploymentId)).execute();
 
 			if (current) {
-				await updateDeploymentStatus(
-					current.id,
-					"inactive",
-					{
-						failureReason: `Superseded by rollback to ${targetDeploymentId.slice(0, 8)}`,
-					},
-				);
-				await emitLog(
-					current.id,
-					"system",
-					`Marked inactive (rolled back to ${targetDeploymentId.slice(0, 8)})`,
-				);
+				await updateDeploymentStatus(current.id, "inactive", {
+					failureReason: `Superseded by rollback to ${targetDeploymentId.slice(0, 8)}`,
+				});
+				await emitLog(current.id, "system", `Marked inactive (rolled back to ${targetDeploymentId.slice(0, 8)})`);
 			}
 
-			await emitLog(
-				targetDeploymentId,
-				"system",
-				"Rollback complete — deployment is running",
-			);
+			await emitLog(targetDeploymentId, "system", "Rollback complete — deployment is running");
 		} catch (error) {
 			const message = summarizeDeploymentError(error);
-			console.error(
-				`[Orchestrator] Rollback of ${targetDeploymentId} failed:`,
-				error,
-			);
-			await emitLog(
-				targetDeploymentId,
-				"system",
-				`Rollback failed: ${message}`,
-			);
-			await updateDeploymentStatus(
-				targetDeploymentId,
-				"failed",
-				{ failureReason: message },
-			);
+			console.error(`[Orchestrator] Rollback of ${targetDeploymentId} failed:`, error);
+			await emitLog(targetDeploymentId, "system", `Rollback failed: ${message}`);
+			await updateDeploymentStatus(targetDeploymentId, "failed", { failureReason: message });
 			throw error;
 		}
 	}
 }
 
-export const orchestrator =
-	new PipelineOrchestrator();
+export const orchestrator = new PipelineOrchestrator();

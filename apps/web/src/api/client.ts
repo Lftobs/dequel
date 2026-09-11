@@ -1,27 +1,61 @@
 import type {
-	Project,
-	Deployment,
+	Alert,
+	ApiKey,
 	CreateProjectInput,
-	EnvironmentVariable,
-	Volume,
 	Database,
+	Deployment,
 	Domain,
+	EnvironmentVariable,
+	GithubIntegrationStatus,
+	GithubRepo,
+	Log,
+	Project,
 	ScalingPolicy,
 	Server,
-	ApiKey,
-	Alert,
-	Log,
+	SmtpSettingsStatus,
+	Volume,
 } from "../types";
-import { apiFetch, BASE, ApiError } from "./core";
 
-export { BASE, ApiError, apiFetch };
+export const BASE = "/api";
+
+export class ApiError extends Error {
+	status: number;
+	constructor(msg: string, status: number) {
+		super(msg);
+		this.status = status;
+	}
+}
+
+export const apiFetch = async <T>(path: string, opts?: RequestInit): Promise<T> => {
+	const isFormData = opts?.body instanceof FormData;
+	const headers: Record<string, string> = {};
+	if (!isFormData) headers["Content-Type"] = "application/json";
+	const res = await fetch(`${BASE}${path}`, {
+		...opts,
+		headers: {
+			...headers,
+			...(opts?.headers as Record<string, string>),
+		},
+	});
+	if (!res.ok) {
+		const body = await res.json().catch(() => ({
+			message: res.statusText,
+		}));
+		throw new ApiError(body.message ?? body.error ?? "Request failed", res.status);
+	}
+	if (res.headers.get("content-type")?.includes("text/event-stream")) return res as unknown as T;
+	if (res.headers.get("content-type")?.includes("text/plain")) return res.text() as unknown as T;
+	const json = await res.json();
+	if (json && typeof json === "object" && "status" in json && "data" in json) return json.data as T;
+	return json as T;
+};
+
+// AI helpers
 export * from "./ai";
-export * from "./settings";
 
-export const listProjects = () =>
-	apiFetch<Project[]>("/projects");
-export const getProject = (id: string) =>
-	apiFetch<Project>(`/projects/${id}`);
+// Projects
+export const listProjects = () => apiFetch<Project[]>("/projects");
+export const getProject = (id: string) => apiFetch<Project>(`/projects/${id}`);
 export const createProject = (data: CreateProjectInput) =>
 	apiFetch<Project>("/projects", {
 		method: "POST",
@@ -49,11 +83,8 @@ export const deleteProject = (id: string) =>
 		method: "DELETE",
 	});
 
-export const listDeployments = (
-	projectId?: string,
-	offset = 0,
-	limit = 50,
-) => {
+// Deployments
+export const listDeployments = (projectId?: string, offset = 0, limit = 50) => {
 	const params = new URLSearchParams();
 	if (projectId) params.set("projectId", projectId);
 	params.set("offset", String(offset));
@@ -65,47 +96,22 @@ export const listDeployments = (
 		limit: number;
 	}>(`/deployments?${params.toString()}`);
 };
-export const getDeployment = (id: string) =>
-	apiFetch<Deployment>(`/deployments/${id}`);
-export const createDeployment = (
-	form: FormData,
-) =>
+export const getDeployment = (id: string) => apiFetch<Deployment>(`/deployments/${id}`);
+export const createDeployment = (form: FormData) =>
 	apiFetch<Deployment>("/deployments", {
 		method: "POST",
 		body: form,
 	});
 export const rollbackDeployment = (id: string) =>
-	apiFetch<Deployment>(
-		`/deployments/${id}/rollback`,
-		{ method: "POST" },
-	);
+	apiFetch<Deployment>(`/deployments/${id}/rollback`, { method: "POST" });
 export const redeployDeployment = (id: string) =>
-	apiFetch<Deployment>(
-		`/deployments/${id}/redeploy`,
-		{ method: "POST" },
-	);
-export const cancelDeployment = (id: string) =>
-	apiFetch<void>(
-		`/deployments/${id}/cancel`,
-		{ method: "POST" },
-	);
-export const deleteDeployment = (id: string) =>
-	apiFetch<void>(
-		`/deployments/${id}`,
-		{ method: "DELETE" },
-	);
-export const getLogs = (id: string) =>
-	apiFetch<Log[]>(`/deployments/${id}/logs`);
-export const streamLogsUrl = (id: string) =>
-	`${BASE}/deployments/${id}/logs/stream`;
-export const getRuntimeLogs = (id: string) =>
-	apiFetch<Log[]>(
-		`/deployments/${id}/runtime-logs`,
-	);
-export const streamRuntimeLogsUrl = (
-	id: string,
-) =>
-	`${BASE}/deployments/${id}/runtime-logs/stream`;
+	apiFetch<Deployment>(`/deployments/${id}/redeploy`, { method: "POST" });
+export const cancelDeployment = (id: string) => apiFetch<void>(`/deployments/${id}/cancel`, { method: "POST" });
+export const deleteDeployment = (id: string) => apiFetch<void>(`/deployments/${id}`, { method: "DELETE" });
+export const getLogs = (id: string) => apiFetch<Log[]>(`/deployments/${id}/logs`);
+export const streamLogsUrl = (id: string) => `${BASE}/deployments/${id}/logs/stream`;
+export const getRuntimeLogs = (id: string) => apiFetch<Log[]>(`/deployments/${id}/runtime-logs`);
+export const streamRuntimeLogsUrl = (id: string) => `${BASE}/deployments/${id}/runtime-logs/stream`;
 export const getRequestLogs = (projectId: string, start?: number | null, end?: number | null) => {
 	let url = `/projects/${projectId}/request-logs`;
 	const params = new URLSearchParams();
@@ -115,8 +121,7 @@ export const getRequestLogs = (projectId: string, start?: number | null, end?: n
 	if (qs) url += `?${qs}`;
 	return apiFetch<Log[]>(url);
 };
-export const streamRequestLogsUrl = (projectId: string) =>
-	`${BASE}/projects/${projectId}/request-logs/stream`;
+export const streamRequestLogsUrl = (projectId: string) => `${BASE}/projects/${projectId}/request-logs/stream`;
 export const getProjectRequestMetrics = (projectId: string) =>
 	apiFetch<{
 		status: string;
@@ -129,13 +134,9 @@ export const getProjectRequestMetrics = (projectId: string) =>
 		};
 	}>(`/projects/${projectId}/metrics/requests`);
 
-export const listEnvVars = (
-	projectId: string,
-	environment?: string,
-) =>
-	apiFetch<EnvironmentVariable[]>(
-		`/projects/${projectId}/env-vars${environment ? `?environment=${environment}` : ""}`,
-	);
+// Env Vars
+export const listEnvVars = (projectId: string, environment?: string) =>
+	apiFetch<EnvironmentVariable[]>(`/projects/${projectId}/env-vars${environment ? `?environment=${environment}` : ""}`);
 export const createEnvVar = (
 	projectId: string,
 	data: {
@@ -144,101 +145,72 @@ export const createEnvVar = (
 		environment?: string;
 	},
 ) =>
-	apiFetch<EnvironmentVariable>(
-		`/projects/${projectId}/env-vars`,
-		{
-			method: "POST",
-			body: JSON.stringify(data),
-		},
-	);
-export const updateEnvVar = (
-	id: string,
-	value: string,
-) =>
-	apiFetch<EnvironmentVariable>(
-		`/env-vars/${id}`,
-		{
-			method: "PATCH",
-			body: JSON.stringify({ value }),
-		},
-	);
+	apiFetch<EnvironmentVariable>(`/projects/${projectId}/env-vars`, {
+		method: "POST",
+		body: JSON.stringify(data),
+	});
+export const updateEnvVar = (id: string, value: string) =>
+	apiFetch<EnvironmentVariable>(`/env-vars/${id}`, {
+		method: "PATCH",
+		body: JSON.stringify({ value }),
+	});
 export const deleteEnvVar = (id: string) =>
 	apiFetch<void>(`/env-vars/${id}`, {
 		method: "DELETE",
 	});
-export const revealEnvVar = (id: string) =>
-	apiFetch<{ value: string }>(`/env-vars/${id}/reveal`);
+export const revealEnvVar = (id: string) => apiFetch<{ value: string }>(`/env-vars/${id}/reveal`);
 
-export const listVolumes = (projectId: string) =>
-	apiFetch<Volume[]>(
-		`/projects/${projectId}/volumes`,
-	);
-export const createVolume = (
-	projectId: string,
-	mountPath?: string,
-) =>
-	apiFetch<Volume>(
-		`/projects/${projectId}/volumes`,
-		{
-			method: "POST",
-			body: JSON.stringify({ mountPath }),
-		},
-	);
+// Volumes
+export const listVolumes = (projectId: string) => apiFetch<Volume[]>(`/projects/${projectId}/volumes`);
+export const createVolume = (projectId: string, mountPath?: string) =>
+	apiFetch<Volume>(`/projects/${projectId}/volumes`, {
+		method: "POST",
+		body: JSON.stringify({ mountPath }),
+	});
 export const deleteVolume = (id: string) =>
 	apiFetch<void>(`/volumes/${id}`, {
 		method: "DELETE",
 	});
 
-export const listAllDatabases = () =>
-	apiFetch<Database[]>("/databases");
-export const listDatabases = (projectId: string) =>
-	apiFetch<Database[]>(
-		`/projects/${projectId}/databases`,
-	);
-export const getDatabase = (id: string) =>
-	apiFetch<Database>(`/databases/${id}`);
-export const createDatabase = (data: {
-	name: string;
-	type: string;
-	version?: string;
-	projectId?: string;
-	publicAccess?: boolean;
-	allowPublicAccessFromAnywhere?: boolean;
-	allowedCidrs?: string[];
-}) =>
-	apiFetch<Database>("/databases", {
+// Databases
+export const listAllDatabases = () => apiFetch<Database[]>("/databases");
+export const listDatabases = (projectId: string) => apiFetch<Database[]>(`/projects/${projectId}/databases`);
+export const createDatabase = (
+	projectId: string | null,
+	type: string,
+	options?: {
+		name?: string;
+		version?: string;
+		cpuLimit?: number | null;
+		memoryLimitMb?: number | null;
+		storageLimitMb?: number | null;
+		publicAccess?: boolean;
+		allowPublicAccessFromAnywhere?: boolean;
+		allowedCidrs?: string[];
+	},
+) =>
+	apiFetch<Database>(projectId ? `/projects/${projectId}/databases` : "/databases", {
 		method: "POST",
-		body: JSON.stringify(data),
+		body: JSON.stringify({ type, projectId, ...options }),
 	});
-export const deleteDatabase = (id: string) =>
-	apiFetch<void>(`/databases/${id}`, {
-		method: "DELETE",
-	});
+export const getDatabase = (id: string) => apiFetch<Database>(`/databases/${id}`);
+export const deleteDatabase = (id: string) => apiFetch<void>(`/databases/${id}`, { method: "DELETE" });
 export const getDatabaseCredentials = (id: string) =>
 	apiFetch<{
-		connectionString: string;
-		databaseName: string;
 		username: string;
 		password: string;
-		host: string;
-		port: number;
+		internalConnectionString: string;
 		externalConnectionString: string | null;
 		externalHost: string | null;
 		externalPort: number | null;
 	}>(`/databases/${id}/credentials`);
-export const startDatabase = (id: string) =>
-	apiFetch<Database>(`/databases/${id}/start`, { method: "POST" });
-export const stopDatabase = (id: string) =>
-	apiFetch<Database>(`/databases/${id}/stop`, { method: "POST" });
-export const restartDatabase = (id: string) =>
-	apiFetch<Database>(`/databases/${id}/restart`, { method: "POST" });
-export const retryDatabase = (id: string) =>
-	apiFetch<Database>(`/databases/${id}/retry`, { method: "POST" });
+export const startDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/start`, { method: "POST" });
+export const stopDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/stop`, { method: "POST" });
+export const restartDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/restart`, { method: "POST" });
+export const retryDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/retry`, { method: "POST" });
 
-export const listDomains = (projectId: string) =>
-	apiFetch<Domain[]>(
-		`/projects/${projectId}/domains`,
-	);
+// Domains
+export const listDomains = (projectId: string) => apiFetch<Domain[]>(`/projects/${projectId}/domains`);
 export const createDomain = (
 	projectId: string,
 	domain: string,
@@ -246,71 +218,54 @@ export const createDomain = (
 	targetService?: string,
 	targetPort?: number,
 ) =>
-	apiFetch<Domain>(
-		`/projects/${projectId}/domains`,
-		{
-			method: "POST",
-			body: JSON.stringify({
-				domain,
-				type,
-				targetService,
-				targetPort,
-			}),
-		},
-	);
-export const getDomain = (id: string) =>
-	apiFetch<Domain>(`/domains/${id}`);
+	apiFetch<Domain>(`/projects/${projectId}/domains`, {
+		method: "POST",
+		body: JSON.stringify({
+			domain,
+			type,
+			targetService,
+			targetPort,
+		}),
+	});
+export const getDomain = (id: string) => apiFetch<Domain>(`/domains/${id}`);
 export const deleteDomain = (id: string) =>
 	apiFetch<void>(`/domains/${id}`, {
 		method: "DELETE",
 	});
 export const getDomainStatus = (projectId: string) =>
-	apiFetch<Array<{
-		domain: string;
-		dnsOk: boolean;
-		tlsOk: boolean;
-		lastChecked: string;
-	}>>(`/projects/${projectId}/domains/status`);
+	apiFetch<
+		Array<{
+			domain: string;
+			dnsOk: boolean;
+			tlsOk: boolean;
+			lastChecked: string;
+		}>
+	>(`/projects/${projectId}/domains/status`);
 
-export const getScalingPolicy = (
-	projectId: string,
-) =>
-	apiFetch<ScalingPolicy>(
-		`/projects/${projectId}/scaling`,
-	);
-export const upsertScalingPolicy = (
-	projectId: string,
-	data: Partial<ScalingPolicy>,
-) =>
-	apiFetch<ScalingPolicy>(
-		`/projects/${projectId}/scaling`,
-		{
-			method: "PUT",
-			body: JSON.stringify(data),
-		},
-	);
-export const deleteScalingPolicy = (
-	projectId: string,
-) =>
-	apiFetch<void>(
-		`/projects/${projectId}/scaling`,
-		{ method: "DELETE" },
-	);
+// Scaling
+export const getScalingPolicy = (projectId: string) => apiFetch<ScalingPolicy>(`/projects/${projectId}/scaling`);
+export const upsertScalingPolicy = (projectId: string, data: Partial<ScalingPolicy>) =>
+	apiFetch<ScalingPolicy>(`/projects/${projectId}/scaling`, {
+		method: "PUT",
+		body: JSON.stringify(data),
+	});
+export const deleteScalingPolicy = (projectId: string) =>
+	apiFetch<void>(`/projects/${projectId}/scaling`, { method: "DELETE" });
 
+// Server
 export const getServerIp = () =>
 	apiFetch<{ ip: string; baseDomain: string; resolves: boolean; url: string }>("/server/ip");
 
+// Auth
 export const login = (username: string, password: string) =>
 	apiFetch<{ username: string }>("/auth/login", {
 		method: "POST",
 		body: JSON.stringify({ username, password }),
 	});
 
-export const logout = () =>
-	apiFetch<void>("/auth/logout", { method: "POST" });
+export const logout = () => apiFetch<void>("/auth/logout", { method: "POST" });
 
-export const refreshSession = () =>
-	apiFetch<{ username: string }>("/auth/refresh", { method: "POST" });
+export const refreshSession = () => apiFetch<{ username: string }>("/auth/refresh", { method: "POST" });
 
 export const getMe = async () => {
 	const res = await apiFetch<{ authenticated: boolean; username?: string }>("/auth/me");
@@ -323,6 +278,7 @@ export const getMe = async () => {
 	return res;
 };
 
+// Prometheus
 export const queryPrometheus = (query: string) =>
 	apiFetch<{
 		status: string;
@@ -333,9 +289,7 @@ export const queryPrometheus = (query: string) =>
 				value: [number, string];
 			}>;
 		};
-	}>(
-		`/prometheus/query?query=${encodeURIComponent(query)}`,
-	);
+	}>(`/prometheus/query?query=${encodeURIComponent(query)}`);
 
 export const queryPrometheusRange = (query: string, start: number, end: number, step: string) =>
 	apiFetch<{
@@ -351,22 +305,19 @@ export const queryPrometheusRange = (query: string, start: number, end: number, 
 		`/prometheus/query_range?query=${encodeURIComponent(query)}&start=${start}&end=${end}&step=${encodeURIComponent(step)}`,
 	);
 
+// Metrics
 export const getMetrics = async () => {
 	try {
 		return await apiFetch<string>("/metrics");
 	} catch {
 		const res = await fetch("/metrics");
-		if (!res.ok)
-			throw new ApiError(
-				"Metrics request failed",
-				res.status,
-			);
+		if (!res.ok) throw new ApiError("Metrics request failed", res.status);
 		return res.text();
 	}
 };
 
-export const listServers = () =>
-	apiFetch<Server[]>("/servers");
+// Servers
+export const listServers = () => apiFetch<Server[]>("/servers");
 export const createServer = (data: {
 	name: string;
 	host: string;
@@ -374,6 +325,7 @@ export const createServer = (data: {
 	mode?: string;
 	sshUser?: string;
 	sshKey?: string;
+	sshKeyId?: string;
 	sshPassword?: string;
 	authToken?: string;
 }) =>
@@ -381,33 +333,25 @@ export const createServer = (data: {
 		method: "POST",
 		body: JSON.stringify(data),
 	});
-export const getServer = (id: string) =>
-	apiFetch<Server>(`/servers/${id}`);
+export const getServer = (id: string) => apiFetch<Server>(`/servers/${id}`);
 export const prepareServer = (id: string) =>
 	apiFetch<{ preparing: boolean }>(`/servers/${id}/prepare`, {
 		method: "POST",
 	});
-export const serverPrepareStreamUrl = (id: string) =>
-	`${BASE}/servers/${id}/prepare/stream`;
+export const serverPrepareStreamUrl = (id: string) => `${BASE}/servers/${id}/prepare/stream`;
 export const deleteServer = (id: string) =>
 	apiFetch<void>(`/servers/${id}`, {
 		method: "DELETE",
 	});
-export const createAgentRegistrationToken = (data: {
-	name: string;
-	labels?: Record<string, string>;
-}) =>
+export const createAgentRegistrationToken = (data: { name: string; labels?: Record<string, string> }) =>
 	apiFetch<{ token: string; expiresAt: string }>("/agents/registration-tokens", {
 		method: "POST",
 		body: JSON.stringify(data),
 	});
 
-export const listApiKeys = () =>
-	apiFetch<ApiKey[]>("/api-keys");
-export const createApiKey = (data: {
-	name: string;
-	permissions?: string;
-}) =>
+// API Keys
+export const listApiKeys = () => apiFetch<ApiKey[]>("/api-keys");
+export const createApiKey = (data: { name: string; permissions?: string }) =>
 	apiFetch<ApiKey>("/api-keys", {
 		method: "POST",
 		body: JSON.stringify(data),
@@ -417,31 +361,79 @@ export const deleteApiKey = (id: string) =>
 		method: "DELETE",
 	});
 
-export const listAlerts = (projectId: string) =>
-	apiFetch<Alert[]>(
-		`/projects/${projectId}/alerts`,
-	);
-export const createAlert = (
-	projectId: string,
-	data: Partial<Alert>,
-) =>
-	apiFetch<Alert>(
-		`/projects/${projectId}/alerts`,
-		{
-			method: "POST",
-			body: JSON.stringify(data),
-		},
-	);
-export const toggleAlert = (
-	id: string,
-	enabled: boolean,
-) =>
+// Alerts
+export const listAlerts = (projectId: string) => apiFetch<Alert[]>(`/projects/${projectId}/alerts`);
+export const createAlert = (projectId: string, data: Partial<Alert>) =>
+	apiFetch<Alert>(`/projects/${projectId}/alerts`, {
+		method: "POST",
+		body: JSON.stringify(data),
+	});
+export const toggleAlert = (id: string, enabled: boolean) =>
 	apiFetch<Alert>(`/alerts/${id}`, {
 		method: "PATCH",
 		body: JSON.stringify({ enabled }),
 	});
 export const deleteAlert = (id: string) =>
 	apiFetch<void>(`/alerts/${id}`, {
+		method: "DELETE",
+	});
+
+// ─── GitHub OAuth ───────────────────────────────────────
+
+export const getGithubAuthUrl = () => apiFetch<{ url: string }>("/github/auth-url");
+
+export const getGithubUser = () => apiFetch<{ login: string; avatar_url: string }>("/github/user");
+
+export const getGithubRepos = () => apiFetch<GithubRepo[]>("/github/repos");
+
+export const disconnectGithub = () => apiFetch<void>("/github/disconnect", { method: "POST" });
+
+export const getGithubIntegration = () => apiFetch<GithubIntegrationStatus>("/github/integration");
+
+export const setGithubIntegration = (data: {
+	clientId: string;
+	clientSecret: string;
+	appName?: string;
+	webhookSecret?: string;
+}) =>
+	apiFetch<void>("/github/integration", {
+		method: "PUT",
+		body: JSON.stringify(data),
+	});
+
+export const getSmtpSettings = () => apiFetch<SmtpSettingsStatus>("/settings/smtp");
+
+export const setSmtpSettings = (data: {
+	host: string;
+	port: number;
+	user?: string;
+	pass?: string;
+	fromAddress?: string;
+}) =>
+	apiFetch<void>("/settings/smtp", {
+		method: "PUT",
+		body: JSON.stringify(data),
+	});
+
+export const testSmtpSettings = () =>
+	apiFetch<void>("/settings/smtp/test", {
+		method: "POST",
+	});
+
+// ─── GitHub Webhook ───────────────────────────────────────
+
+export const getRepoHooks = (owner: string, repo: string) =>
+	apiFetch<Array<{ id: number; url: string; active: boolean; events: string[] }>>(
+		`/github/repos/${owner}/${repo}/hooks`,
+	);
+
+export const registerRepoHook = (owner: string, repo: string) =>
+	apiFetch<{ id: number; created: boolean; url: string }>(`/github/repos/${owner}/${repo}/hook`, {
+		method: "POST",
+	});
+
+export const removeRepoHook = (owner: string, repo: string) =>
+	apiFetch<{ removed: boolean }>(`/github/repos/${owner}/${repo}/hook`, {
 		method: "DELETE",
 	});
 
@@ -456,3 +448,33 @@ export const uploadSourceZip = (file: File) => {
 		body: formData,
 	});
 };
+
+// Shared Environment Variables
+export const listSharedEnvVars = (environment?: string) =>
+	apiFetch<any[]>(`/shared-env-vars${environment ? `?environment=${environment}` : ""}`);
+export const createSharedEnvVar = (data: {
+	key: string;
+	value: string;
+	environment?: string;
+	description?: string;
+	tags?: string[];
+}) => apiFetch<any>("/shared-env-vars", { method: "POST", body: JSON.stringify(data) });
+export const updateSharedEnvVar = (id: string, value: string) =>
+	apiFetch<any>(`/shared-env-vars/${id}`, { method: "PATCH", body: JSON.stringify({ value }) });
+export const revealSharedEnvVar = (id: string) => apiFetch<{ value: string }>(`/shared-env-vars/${id}/reveal`);
+export const deleteSharedEnvVar = (id: string) => apiFetch<void>(`/shared-env-vars/${id}`, { method: "DELETE" });
+export const listLinkedSharedEnvVars = (projectId: string) =>
+	apiFetch<any[]>(`/projects/${projectId}/shared-env-links`);
+export const linkSharedEnvVars = (projectId: string, sharedEnvVarIds: string[]) =>
+	apiFetch<void>(`/projects/${projectId}/shared-env-links`, {
+		method: "POST",
+		body: JSON.stringify({ sharedEnvVarIds }),
+	});
+export const unlinkSharedEnvVar = (projectId: string, linkId: string) =>
+	apiFetch<void>(`/projects/${projectId}/shared-env-links/${linkId}`, { method: "DELETE" });
+
+// SSH Key Pool
+export const listSshKeys = () => apiFetch<any[]>("/ssh-keys");
+export const createSshKey = (data: { name: string; privateKey: string; tags?: string[] }) =>
+	apiFetch<any>("/ssh-keys", { method: "POST", body: JSON.stringify(data) });
+export const deleteSshKey = (id: string) => apiFetch<void>(`/ssh-keys/${id}`, { method: "DELETE" });

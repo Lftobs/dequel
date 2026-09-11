@@ -1,0 +1,49 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
+	"files": {
+		"includes": ["apps/**/*.ts", "apps/**/*.tsx"],
+		"ignoreUnknown": true
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 2,
+		"lineWidth": 120
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"correctness": {
+				"noUnusedImports": "warn",
+				"noUnusedVariables": "warn"
+			},
+			"style": {
+				"noNonNullAssertion": "off"
+			},
+			"suspicious": {
+				"noExplicitAny": "off"
+			},
+			"a11y": {
+				"useButtonType": "warn",
+				"noLabelWithoutControl": "warn"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double",
+			"semicolons": "always",
+			"trailingCommas": "all"
+		}
+	},
+	"css": {
+		"formatter": {
+			"enabled": false
+		}
+	},
+	"json": {
+		"formatter": {
+			"enabled": true
+		}
+	}
+}

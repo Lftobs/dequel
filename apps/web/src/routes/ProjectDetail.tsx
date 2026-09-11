@@ -1,33 +1,22 @@
-import React, { useEffect, useRef } from "react";
-import { useProject } from "../hooks/useProjects";
-import { useDeployments } from "../hooks/useDeployments";
-import { useNavigate, useLocation } from "@tanstack/react-router";
-import { Button } from "../components/ui/button";
-import {
-	Tabs,
-	TabsContent,
-	TabsList,
-	TabsTrigger,
-} from "../components/ui/tabs";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, FolderKanban } from "lucide-react";
-
-import { DeploymentsTab } from "../components/project/deployments/DeploymentsTab";
-import { EnvVarsTab } from "../components/project/envtab/EnvVarsTab";
-import { VolumesTab } from "../components/project/volumes/VolumesTab";
-import { DomainsTab } from "../components/project/domains/DomainsTab";
-import { ScalingTab } from "../components/project/scaling/ScalingTab";
+import { useEffect, useRef } from "react";
 import { AlertsTab } from "../components/project/alerts/AlertsTab";
-import { ObservabilityTab } from "../components/project/observability/ObservabilityTab";
+import { DeploymentsTab } from "../components/project/deployments/DeploymentsTab";
+import { DomainsTab } from "../components/project/domains/DomainsTab";
+import { EnvVarsTab } from "../components/project/envtab/EnvVarsTab";
 import { LogsTab } from "../components/project/logs/LogsTab";
+import { ObservabilityTab } from "../components/project/observability/ObservabilityTab";
+import { ScalingTab } from "../components/project/scaling/ScalingTab";
 import { ProjectSettingsTab } from "../components/project/settings/ProjectSettingsTab";
+import { VolumesTab } from "../components/project/volumes/VolumesTab";
+import { Button } from "../components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { useDeployments } from "../hooks/useDeployments";
+import { useProject } from "../hooks/useProjects";
 
-export function ProjectDetail({
-	projectId,
-}: {
-	projectId: string;
-}) {
-	const { data: project, isLoading } =
-		useProject(projectId);
+export function ProjectDetail({ projectId }: { projectId: string }) {
+	const { data: project, isLoading } = useProject(projectId);
 	const { data: deploymentsData } = useDeployments(projectId, 0, 10);
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -36,9 +25,7 @@ export function ProjectDetail({
 
 	useEffect(() => {
 		if (!tabsListRef.current) return;
-		const activeTrigger = tabsListRef.current.querySelector(
-			`[data-value="${activeTab}"]`,
-		) as HTMLElement | null;
+		const activeTrigger = tabsListRef.current.querySelector(`[data-value="${activeTab}"]`) as HTMLElement | null;
 		if (activeTrigger) {
 			activeTrigger.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
 		}
@@ -60,7 +47,8 @@ export function ProjectDetail({
 				</div>
 				<h2 className="text-2xl font-bold text-zinc-100 tracking-tight mb-2">Project Not Found</h2>
 				<p className="text-zinc-500 text-xs max-w-sm leading-normal mb-8">
-					The project you are looking for does not exist, has been deleted, or you might not have access to it in this workspace.
+					The project you are looking for does not exist, has been deleted, or you might not have access to it in this
+					workspace.
 				</p>
 				<Button
 					onClick={() => navigate({ to: "/" })}
@@ -71,7 +59,7 @@ export function ProjectDetail({
 			</div>
 		);
 
-	const activeDeployment = deploymentsData?.items?.find(d => d.status === 'running');
+	const activeDeployment = deploymentsData?.items?.find((d) => d.status === "running");
 	const liveUrl = activeDeployment?.liveUrl;
 
 	return (
@@ -80,23 +68,17 @@ export function ProjectDetail({
 				<Button
 					variant="ghost"
 					size="icon"
-					onClick={() =>
-						navigate({ to: "/" })
-					}
+					onClick={() => navigate({ to: "/" })}
 					className="h-8 w-8 text-muted-foreground"
 				>
 					<ArrowLeft className="h-4 w-4" />
 				</Button>
 				<div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-					{project.name
-						.charAt(0)
-						.toUpperCase()}
+					{project.name.charAt(0).toUpperCase()}
 				</div>
 				<div>
 					<div className="flex items-center gap-3">
-						<h1 className="text-xl font-bold text-foreground">
-							{project.name}
-						</h1>
+						<h1 className="text-xl font-bold text-foreground">{project.name}</h1>
 						{liveUrl && (
 							<a
 								href={liveUrl}
@@ -108,89 +90,97 @@ export function ProjectDetail({
 							</a>
 						)}
 					</div>
-					{project.description && (
-						<p className="text-muted-foreground text-sm mt-0.5">
-							{project.description}
-						</p>
-					)}
+					{project.description && <p className="text-muted-foreground text-sm mt-0.5">{project.description}</p>}
 				</div>
 			</div>
 
 			<Tabs value={activeTab} onValueChange={(val) => navigate({ search: { tab: val } as any })} className="space-y-4">
-				<TabsList ref={tabsListRef} className="mb-6 flex overflow-x-auto whitespace-nowrap justify-start h-auto p-1 bg-[#141417] border border-[#222227] rounded-lg max-w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-					<TabsTrigger value="deployments" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+				<TabsList
+					ref={tabsListRef}
+					className="mb-6 flex overflow-x-auto whitespace-nowrap justify-start h-auto p-1 bg-[#141417] border border-[#222227] rounded-lg max-w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+				>
+					<TabsTrigger
+						value="deployments"
+						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
+					>
 						Deployments
 					</TabsTrigger>
-					<TabsTrigger value="env-vars" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger
+						value="env-vars"
+						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
+					>
 						Env Vars
 					</TabsTrigger>
-					<TabsTrigger value="volumes" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger
+						value="volumes"
+						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
+					>
 						Volumes
 					</TabsTrigger>
-					<TabsTrigger value="domains" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger
+						value="domains"
+						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
+					>
 						Domains
 					</TabsTrigger>
-					<TabsTrigger value="scaling" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger
+						value="scaling"
+						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
+					>
 						Scaling
 					</TabsTrigger>
-					<TabsTrigger value="alerts" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger
+						value="alerts"
+						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
+					>
 						Alerts
 					</TabsTrigger>
-					<TabsTrigger value="observability" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger
+						value="observability"
+						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
+					>
 						Observability
 					</TabsTrigger>
-					<TabsTrigger value="logs" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger
+						value="logs"
+						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
+					>
 						Logs
 					</TabsTrigger>
-					<TabsTrigger value="settings" className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100">
+					<TabsTrigger
+						value="settings"
+						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
+					>
 						Settings
 					</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="deployments">
-					<DeploymentsTab
-						projectId={projectId}
-					/>
+					<DeploymentsTab projectId={projectId} />
 				</TabsContent>
 				<TabsContent value="env-vars">
-					<EnvVarsTab
-						projectId={projectId}
-					/>
+					<EnvVarsTab projectId={projectId} />
 				</TabsContent>
 				<TabsContent value="volumes">
-					<VolumesTab
-						projectId={projectId}
-					/>
+					<VolumesTab projectId={projectId} />
 				</TabsContent>
 				<TabsContent value="domains">
-					<DomainsTab
-						projectId={projectId}
-					/>
+					<DomainsTab projectId={projectId} />
 				</TabsContent>
 				<TabsContent value="scaling">
-					<ScalingTab
-						projectId={projectId}
-					/>
+					<ScalingTab projectId={projectId} />
 				</TabsContent>
 				<TabsContent value="alerts">
-					<AlertsTab
-						projectId={projectId}
-					/>
+					<AlertsTab projectId={projectId} />
 				</TabsContent>
 				<TabsContent value="observability">
-					<ObservabilityTab
-						projectId={projectId}
-					/>
+					<ObservabilityTab projectId={projectId} />
 				</TabsContent>
 				<TabsContent value="logs">
-					<LogsTab
-						projectId={projectId}
-					/>
+					<LogsTab projectId={projectId} />
 				</TabsContent>
 				<TabsContent value="settings">
-					<ProjectSettingsTab
-						projectId={projectId}
-					/>
+					<ProjectSettingsTab projectId={projectId} />
 				</TabsContent>
 			</Tabs>
 		</div>

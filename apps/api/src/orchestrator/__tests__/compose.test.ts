@@ -1,8 +1,8 @@
-import { describe, test, expect } from "bun:test";
-import { parseComposeTarget, parseContainerTargetPort, extractComposeServices, parseAllComposeServices } from "../compose";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { describe, expect, mock, test, afterEach } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { parseAllComposeServices, parseComposeTarget, parseContainerTargetPort } from "../compose";
 
 describe("parseContainerTargetPort", () => {
 	test("parses number ports", () => {
@@ -118,6 +118,95 @@ services:
 			expect(api?.isPrimary).toBe(false);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("spawnComposeCommand env isolation", () => {
+	afterEach(() => {
+		mock.restore();
+	});
+
+	test("does not pass process.env to docker compose subprocess", async () => {
+		process.env.DATABASE_URL = "postgresql://dequel:secret@localhost:5432/dequel";
+		process.env.PORT = "3001";
+		process.env.WORKSPACE_ROOT = "./workspace";
+
+		let capturedEnv: Record<string, string> | undefined;
+		const originalSpawn = (await import("node:child_process")).spawn;
+		mock.module("node:child_process", () => ({
+			spawn: (...args: any[]) => {
+				capturedEnv = args[2]?.env;
+				const child = originalSpawn(...args);
+				setTimeout(() => child.kill("SIGTERM"), 10);
+				return child;
+			},
+		}));
+
+		const dir = mkdtempSync(join(tmpdir(), "dequel-compose-env-test-"));
+		try {
+			writeFileSync(
+				join(dir, "docker-compose.yml"),
+				`version: '3.8'\nservices:\n  app:\n    image: alpine\n    command: echo "hello"`,
+			);
+
+			const { buildWithCompose } = await import("../compose");
+			const projectEnv = { MY_APP_VAR: "hello", ANOTHER_VAR: "world" };
+
+			try {
+				await buildWithCompose(dir, "test-project", async () => {}, null, projectEnv);
+			} catch {
+				// Expected to fail since we're killing the process
+			}
+
+			expect(capturedEnv).toBeDefined();
+			expect(capturedEnv).not.toHaveProperty("DATABASE_URL");
+			expect(capturedEnv).not.toHaveProperty("PORT");
+			expect(capturedEnv).not.toHaveProperty("WORKSPACE_ROOT");
+			expect(capturedEnv).toHaveProperty("MY_APP_VAR", "hello");
+			expect(capturedEnv).toHaveProperty("ANOTHER_VAR", "world");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+			delete process.env.DATABASE_URL;
+			delete process.env.PORT;
+			delete process.env.WORKSPACE_ROOT;
+		}
+	});
+
+	test("passes empty env when no project env vars provided", async () => {
+		process.env.DATABASE_URL = "postgresql://dequel:secret@localhost:5432/dequel";
+
+		let capturedEnv: Record<string, string> | undefined;
+		const originalSpawn = (await import("node:child_process")).spawn;
+		mock.module("node:child_process", () => ({
+			spawn: (...args: any[]) => {
+				capturedEnv = args[2]?.env;
+				const child = originalSpawn(...args);
+				setTimeout(() => child.kill("SIGTERM"), 10);
+				return child;
+			},
+		}));
+
+		const dir = mkdtempSync(join(tmpdir(), "dequel-compose-env-test-"));
+		try {
+			writeFileSync(
+				join(dir, "docker-compose.yml"),
+				`version: '3.8'\nservices:\n  app:\n    image: alpine\n    command: echo "hello"`,
+			);
+
+			const { buildWithCompose } = await import("../compose");
+
+			try {
+				await buildWithCompose(dir, "test-project", async () => {}, null, undefined);
+			} catch {
+				// Expected to fail since we're killing the process
+			}
+
+			expect(capturedEnv).toBeDefined();
+			expect(capturedEnv).toEqual({});
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+			delete process.env.DATABASE_URL;
 		}
 	});
 });

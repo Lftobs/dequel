@@ -1,5 +1,7 @@
 FROM oven/bun:1
 
+ARG BUILD_TIME=0
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -11,6 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.5.1.tgz | tar -xz -C /usr/local/bin --strip-components=1 && \
+    mkdir -p /usr/local/lib/docker/cli-plugins && \
+    curl -fsSL "https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64" -o /usr/local/lib/docker/cli-plugins/docker-compose && \
+    chmod +x /usr/local/lib/docker/cli-plugins/docker-compose && \
     curl -sSL https://railpack.com/install.sh | sh -s -- --bin-dir /usr/local/bin
 
 

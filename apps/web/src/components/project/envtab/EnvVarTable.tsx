@@ -1,6 +1,6 @@
+import { Plus, Upload } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "../../ui/table";
-import { Plus, Upload } from "lucide-react";
 import { EnvVarRow } from "./EnvVarRow";
 
 interface EnvVar {
@@ -53,12 +53,8 @@ export function EnvVarTable({
 		<div className="space-y-4">
 			<div className="flex items-center justify-between">
 				<div>
-					<h2 className="text-lg font-semibold text-foreground">
-						Environment Variables
-					</h2>
-					<p className="text-sm text-muted-foreground">
-						Secure, encrypted settings injected into deployments.
-					</p>
+					<h2 className="text-lg font-semibold text-foreground">Environment Variables</h2>
+					<p className="text-sm text-muted-foreground">Secure, encrypted settings injected into deployments.</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<Button
@@ -81,15 +77,9 @@ export function EnvVarTable({
 				<Table className="min-w-[650px] md:min-w-full">
 					<TableHeader className="bg-[#0b0b0f]/50">
 						<TableRow className="border-border hover:bg-transparent">
-							<TableHead className="text-xs font-semibold py-3">
-								Key
-							</TableHead>
-							<TableHead className="text-xs font-semibold py-3">
-								Value
-							</TableHead>
-							<TableHead className="text-xs font-semibold py-3">
-								Environment
-							</TableHead>
+							<TableHead className="text-xs font-semibold py-3">Key</TableHead>
+							<TableHead className="text-xs font-semibold py-3">Value</TableHead>
+							<TableHead className="text-xs font-semibold py-3">Environment</TableHead>
 							<TableHead className="w-32 text-right pr-6"></TableHead>
 						</TableRow>
 					</TableHeader>

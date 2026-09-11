@@ -1,42 +1,27 @@
-import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useDeployments } from "../../../hooks/useDeployments";
 import * as api from "../../../api/client";
+import { useDeployments } from "../../../hooks/useDeployments";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 
-function promValue(
-	data:
-		| Awaited<
-				ReturnType<
-					typeof api.queryPrometheus
-				>
-		  >
-		| undefined,
-): number | null {
-	const val =
-		data?.data?.result?.[0]?.value?.[1];
+function _promValue(data: Awaited<ReturnType<typeof api.queryPrometheus>> | undefined): number | null {
+	const val = data?.data?.result?.[0]?.value?.[1];
 	return val != null ? Number(val) : null;
 }
 
 function fmtBytes(bytes: number | null): string {
 	if (bytes == null) return "—";
-	if (bytes < 1024)
-		return `${bytes.toFixed(0)} B`;
-	if (bytes < 1024 * 1024)
-		return `${(bytes / 1024).toFixed(1)} KB`;
-	if (bytes < 1024 * 1024 * 1024)
-		return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+	if (bytes < 1024) return `${bytes.toFixed(0)} B`;
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+	if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 	return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
-function fmtBytesPerSec(
-	rate: number | null,
-): string {
+function fmtBytesPerSec(rate: number | null): string {
 	if (rate == null) return "—";
 	return `${fmtBytes(rate)}/s`;
 }
 
-function fmtCpu(cores: number | null): string {
+function _fmtCpu(cores: number | null): string {
 	if (cores == null) return "—";
 	return `${(cores * 100).toFixed(2)}%`;
 }
@@ -95,7 +80,8 @@ function AreaChart({
 	const maxY = Math.max(...points.map((p) => p.y), 1) * 1.15;
 
 	const getX = (x: number) => padding.left + ((x - minX) / (maxX - minX || 1)) * (width - padding.left - padding.right);
-	const getY = (y: number) => height - padding.bottom - ((y - minY) / (maxY - minY || 1)) * (height - padding.top - padding.bottom);
+	const getY = (y: number) =>
+		height - padding.bottom - ((y - minY) / (maxY - minY || 1)) * (height - padding.top - padding.bottom);
 
 	const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${getX(p.x)} ${getY(p.y)}`).join(" ");
 	const areaPath = `${linePath} L ${getX(points[points.length - 1].x)} ${height - padding.bottom} L ${getX(points[0].x)} ${height - padding.bottom} Z`;
@@ -203,12 +189,7 @@ export function ObservabilityTab({ projectId }: ObservabilityTabProps) {
 	// Fetch Memory Range Data
 	const { data: memRangeData, isLoading: memLoading } = useQuery({
 		queryKey: ["prom-mem-range", containerName],
-		queryFn: () => api.queryPrometheusRange(
-			`container_memory_usage_bytes{name="${containerName}"}`,
-			start,
-			end,
-			step,
-		),
+		queryFn: () => api.queryPrometheusRange(`container_memory_usage_bytes{name="${containerName}"}`, start, end, step),
 		enabled: !!containerName,
 		refetchInterval,
 	});
@@ -216,12 +197,13 @@ export function ObservabilityTab({ projectId }: ObservabilityTabProps) {
 	// Fetch CPU Range Data
 	const { data: cpuRangeData, isLoading: cpuLoading } = useQuery({
 		queryKey: ["prom-cpu-range", containerName],
-		queryFn: () => api.queryPrometheusRange(
-			`rate(container_cpu_usage_seconds_total{name="${containerName}",cpu="total"}[2m])`,
-			start,
-			end,
-			step,
-		),
+		queryFn: () =>
+			api.queryPrometheusRange(
+				`rate(container_cpu_usage_seconds_total{name="${containerName}",cpu="total"}[2m])`,
+				start,
+				end,
+				step,
+			),
 		enabled: !!containerName,
 		refetchInterval,
 	});
@@ -229,12 +211,13 @@ export function ObservabilityTab({ projectId }: ObservabilityTabProps) {
 	// Fetch Net In Range Data
 	const { data: netInRangeData, isLoading: netInLoading } = useQuery({
 		queryKey: ["prom-net-in-range", containerName],
-		queryFn: () => api.queryPrometheusRange(
-			`rate(container_network_receive_bytes_total{name="${containerName}"}[2m])`,
-			start,
-			end,
-			step,
-		),
+		queryFn: () =>
+			api.queryPrometheusRange(
+				`rate(container_network_receive_bytes_total{name="${containerName}"}[2m])`,
+				start,
+				end,
+				step,
+			),
 		enabled: !!containerName,
 		refetchInterval,
 	});
@@ -242,12 +225,13 @@ export function ObservabilityTab({ projectId }: ObservabilityTabProps) {
 	// Fetch Net Out Range Data
 	const { data: netOutRangeData, isLoading: netOutLoading } = useQuery({
 		queryKey: ["prom-net-out-range", containerName],
-		queryFn: () => api.queryPrometheusRange(
-			`rate(container_network_transmit_bytes_total{name="${containerName}"}[2m])`,
-			start,
-			end,
-			step,
-		),
+		queryFn: () =>
+			api.queryPrometheusRange(
+				`rate(container_network_transmit_bytes_total{name="${containerName}"}[2m])`,
+				start,
+				end,
+				step,
+			),
 		enabled: !!containerName,
 		refetchInterval,
 	});
@@ -278,14 +262,12 @@ export function ObservabilityTab({ projectId }: ObservabilityTabProps) {
 	const cpuPoints = rawCpu.length > 0 ? rawCpu : getFallbackData(60, 0.45);
 	const netInPoints = rawNetIn.length > 0 ? rawNetIn : getFallbackData(60, 20 * 1024);
 	const netOutPoints = rawNetOut.length > 0 ? rawNetOut : getFallbackData(60, 120 * 1024);
-	
+
 	const rawReqs =
-		requestMetrics?.data?.result?.[0]?.values?.map(
-			([ts, val]: [number, string]) => ({
-				x: Number(ts) * 1000,
-				y: Number(val),
-			}),
-		) || [];
+		requestMetrics?.data?.result?.[0]?.values?.map(([ts, val]: [number, string]) => ({
+			x: Number(ts) * 1000,
+			y: Number(val),
+		})) || [];
 	const requestsPoints = rawReqs.length > 0 ? rawReqs : getFallbackData(60, 0); // start at 0 if no data
 
 	return (
@@ -295,28 +277,28 @@ export function ObservabilityTab({ projectId }: ObservabilityTabProps) {
 				<div className="rounded-xl border border-[#1a1a1f] bg-[#0c0c0e] p-4 space-y-1">
 					<div className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">Memory Allocation</div>
 					<div className="text-xl font-bold text-zinc-100 font-mono">
-						{memPoints.length > 0 ? fmtBytes(memPoints[memPoints.length - 1].y) : '—'}
+						{memPoints.length > 0 ? fmtBytes(memPoints[memPoints.length - 1].y) : "—"}
 					</div>
 					<div className="text-[10px] text-zinc-500">Active container RSS usage</div>
 				</div>
 				<div className="rounded-xl border border-[#1a1a1f] bg-[#0c0c0e] p-4 space-y-1">
 					<div className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">CPU Allocation</div>
 					<div className="text-xl font-bold text-zinc-100 font-mono">
-						{cpuPoints.length > 0 ? `${(cpuPoints[cpuPoints.length - 1].y * 100).toFixed(1)}%` : '—'}
+						{cpuPoints.length > 0 ? `${(cpuPoints[cpuPoints.length - 1].y * 100).toFixed(1)}%` : "—"}
 					</div>
 					<div className="text-[10px] text-zinc-500">Average container compute cores</div>
 				</div>
 				<div className="rounded-xl border border-[#1a1a1f] bg-[#0c0c0e] p-4 space-y-1">
 					<div className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">Bandwidth Ingress</div>
 					<div className="text-xl font-bold text-zinc-100 font-mono">
-						{netInPoints.length > 0 ? fmtBytesPerSec(netInPoints[netInPoints.length - 1].y) : '—'}
+						{netInPoints.length > 0 ? fmtBytesPerSec(netInPoints[netInPoints.length - 1].y) : "—"}
 					</div>
 					<div className="text-[10px] text-zinc-500">Network receive throughput</div>
 				</div>
 				<div className="rounded-xl border border-[#1a1a1f] bg-[#0c0c0e] p-4 space-y-1">
 					<div className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">Bandwidth Egress</div>
 					<div className="text-xl font-bold text-zinc-100 font-mono">
-						{netOutPoints.length > 0 ? fmtBytesPerSec(netOutPoints[netOutPoints.length - 1].y) : '—'}
+						{netOutPoints.length > 0 ? fmtBytesPerSec(netOutPoints[netOutPoints.length - 1].y) : "—"}
 					</div>
 					<div className="text-[10px] text-zinc-500">Network transmit throughput</div>
 				</div>

@@ -1,9 +1,9 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { config } from "../utils/config";
-import { buildCaddySnippet } from "../utils/domain-verifier";
 import { dockerBin } from "../utils/docker-bin";
-import { deployWithCompose, parseAllComposeServices, destroyComposeStack, getComposeContainerNames } from "./compose";
+import { buildCaddySnippet } from "../utils/domain-verifier";
+import { deployWithCompose, destroyComposeStack, getComposeContainerNames, parseAllComposeServices } from "./compose";
 import { reloadCaddy, tryRun } from "./runtime";
 
 export interface ComposeDeployResult {
@@ -26,9 +26,7 @@ export interface ComposeDeployOptions {
 	onLog: (line: string) => Promise<void>;
 }
 
-export const deployComposeStack = async (
-	options: ComposeDeployOptions,
-): Promise<ComposeDeployResult> => {
+export const deployComposeStack = async (options: ComposeDeployOptions): Promise<ComposeDeployResult> => {
 	const {
 		workspacePath,
 		deploymentId,
@@ -49,21 +47,9 @@ export const deployComposeStack = async (
 		await destroyComposeStack(`deploy-${oldDeploymentId}`);
 	}
 
-	await deployWithCompose(
-		workspacePath,
-		`deploy-${deploymentId}`,
-		onLog,
-		sourceDir,
-		envVars,
-		signal,
-	);
+	await deployWithCompose(workspacePath, `deploy-${deploymentId}`, onLog, sourceDir, envVars, signal);
 
-	const allServices = parseAllComposeServices(
-		workspacePath,
-		sourceDir,
-		composeService,
-		composePort,
-	);
+	const allServices = parseAllComposeServices(workspacePath, sourceDir, composeService, composePort);
 
 	const composeContainers = await getComposeContainerNames(`deploy-${deploymentId}`);
 	const containerFor = (serviceName: string) =>
@@ -78,24 +64,22 @@ export const deployComposeStack = async (
 	const containerName = containerFor(target.serviceName);
 
 	const slug = projectName
-		? projectName.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 63)
+		? projectName
+				.toLowerCase()
+				.replace(/[^a-z0-9-]+/g, "-")
+				.replace(/^-+|-+$/g, "")
+				.slice(0, 63)
 		: projectId;
 
-	let snippet = await buildCaddySnippet(
-		slug,
-		containerName,
-		projectId,
-		undefined,
-		target.port,
-	);
+	let snippet = await buildCaddySnippet(slug, containerName, projectId, undefined, target.port);
 
-	const rawBaseDomain = config.caddyBaseDomain || 'localhost';
-	const baseDomainForCaddy = rawBaseDomain === 'localhost' ? `${rawBaseDomain}:80` : rawBaseDomain;
+	const rawBaseDomain = config.caddyBaseDomain || "localhost";
+	const baseDomainForCaddy = rawBaseDomain === "localhost" ? `${rawBaseDomain}:80` : rawBaseDomain;
 	let customMappings: { serviceName: string; port: number | string; subdomain?: string }[] = [];
 	if (composeServicesJson) {
 		try {
 			customMappings = JSON.parse(composeServicesJson);
-		} catch (e) {}
+		} catch (_e) {}
 	}
 
 	for (const s of allServices) {
@@ -123,7 +107,7 @@ export const deployComposeStack = async (
 		console.warn("[Pipeline] Caddy not ready for reload after compose deploy");
 	}
 
-	const liveUrl = rawBaseDomain === 'localhost' ? `http://${slug}.localhost` : `https://${slug}.${rawBaseDomain}`;
+	const liveUrl = rawBaseDomain === "localhost" ? `http://${slug}.localhost` : `https://${slug}.${rawBaseDomain}`;
 
 	return { containerName, liveUrl };
 };

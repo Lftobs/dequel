@@ -1,6 +1,6 @@
 {
   "name": "dequel-api",
-  "version": "0.3.0-rc.8",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -19,8 +19,10 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@esbuild/linux-x64": "^0.28.2",
     "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.23.1",
-    "drizzle-kit": "^0.31.10"
+    "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.28.2"
   }
 }

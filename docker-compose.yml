@@ -28,7 +28,7 @@ services:
             start_period: 5s
 
     api:
-        image: ghcr.io/lftobs/dequel/api:next
+        image: ghcr.io/lftobs/dequel/api
         # build:
         #     context: ./apps/api
         #     dockerfile: Dockerfile
@@ -110,7 +110,7 @@ services:
             start_period: 10s
 
     web:
-        image: ghcr.io/lftobs/dequel/web:next
+        image: ghcr.io/lftobs/dequel/web
         # build:
         #     context: ./apps/web
         #     args:

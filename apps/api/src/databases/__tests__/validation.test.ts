@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { isValidCidr, validateDatabaseCreate } from "../validation";
+
 describe("database input validation", () => {
 	it("accepts public access with an IPv4 allowlist", () => {
 		const result = validateDatabaseCreate({

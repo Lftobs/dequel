@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { Coffee } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function SupportSection() {
 	const [failedToLoad, setFailedToLoad] = useState(false);
@@ -30,7 +30,7 @@ export function SupportSection() {
 					"kofi-widget-container",
 				);
 				setFailedToLoad(false);
-			} catch (e) {
+			} catch (_e) {
 				setFailedToLoad(true);
 			}
 		};

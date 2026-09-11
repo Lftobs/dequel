@@ -1,21 +1,22 @@
-import { useState, useEffect, useRef } from "react";
-import { useProject } from "../../../hooks/useProjects";
-import {
-	useDeployments,
-	useCreateDeployment,
-	useRollbackDeployment,
-	useRedeployDeployment,
-	useCancelDeployment,
-	useDeleteDeployment,
-} from "../../../hooks/useDeployments";
+import { Play, Rocket, Webhook } from "lucide-react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import { getRepoHooks, registerRepoHook, removeRepoHook } from "../../../api/client";
+import {
+	useCancelDeployment,
+	useCreateDeployment,
+	useDeleteDeployment,
+	useDeployments,
+	useRedeployDeployment,
+	useRollbackDeployment,
+} from "../../../hooks/useDeployments";
+import { useProject } from "../../../hooks/useProjects";
 import { Button } from "../../ui/button";
-import { Input } from "../../ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
-import { Rocket, Play, Webhook } from "lucide-react";
-import { ManualDeployDialog } from "./manual-deploy-dialog";
-import { DeploymentHistory } from "./deployment-history";
+import { Input } from "../../ui/input";
 import { ClearCacheToggle } from "./clear-cache-toggle";
+import { DeploymentHistory } from "./deployment-history";
+import { ManualDeployDialog } from "./manual-deploy-dialog";
 
 const PAGE_SIZE = 5;
 
@@ -98,7 +99,11 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 			}
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Failed to update webhook";
-			setWebhookError(message.includes("Not authenticated") ? "GitHub session expired. Reconnect GitHub in Settings, then try again." : message);
+			setWebhookError(
+				message.includes("Not authenticated")
+					? "GitHub session expired. Reconnect GitHub in Settings, then try again."
+					: message,
+			);
 		} finally {
 			setWebhookLoading(false);
 		}
@@ -178,7 +183,8 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 			<Card>
 				<CardHeader className="pb-3">
 					<CardTitle className="text-base flex items-center gap-2">
-						<Rocket className="h-4 w-4" /> Deployment
+						<Rocket className="h-4 w-4" />
+						Deployment
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
@@ -202,8 +208,12 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 							<div className="p-4 rounded-lg bg-[#141417]/50 border border-[#222227] space-y-3">
 								<div className="flex items-center justify-between">
 									<div className="space-y-1">
-										<div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Repository URL</div>
-										<div className="text-sm font-mono text-zinc-200">{project?.repoUrl || "No repository configured"}</div>
+										<div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+											Repository URL
+										</div>
+										<div className="text-sm font-mono text-zinc-200">
+											{project?.repoUrl || "No repository configured"}
+										</div>
 									</div>
 									<div className="text-right space-y-1">
 										<div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Branch</div>
@@ -221,9 +231,10 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 											size="sm"
 											onClick={toggleWebhook}
 											disabled={webhookLoading}
-											className={webhookActive
-												? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-												: "border-zinc-700 text-zinc-400 hover:border-zinc-600"
+											className={
+												webhookActive
+													? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+													: "border-zinc-700 text-zinc-400 hover:border-zinc-600"
 											}
 										>
 											<Webhook className="h-3.5 w-3.5 mr-1.5" />
@@ -261,11 +272,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 								accept=".zip,.tar,.tar.gz,.tgz"
 								className="file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-primary file:text-primary-foreground"
 							/>
-							<ClearCacheToggle
-								checked={clearCache}
-								onChange={setClearCache}
-								id="clearCacheUpload"
-							/>
+							<ClearCacheToggle checked={clearCache} onChange={setClearCache} id="clearCacheUpload" />
 							<div className="flex gap-2">
 								<Input
 									placeholder="Environment (e.g. production)"
@@ -273,10 +280,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 									onChange={(e) => setEnvironment(e.target.value)}
 									className="flex-1"
 								/>
-								<Button
-									type="submit"
-									disabled={createDeployment.isPending || !canUpdateDeployment || isAutoDeploying}
-								>
+								<Button type="submit" disabled={createDeployment.isPending || !canUpdateDeployment || isAutoDeploying}>
 									{createDeployment.isPending || isAutoDeploying ? (
 										"Deploying..."
 									) : (
@@ -302,7 +306,9 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 						<CardTitle className="text-sm text-foreground">Switch deployment source to Git?</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
-						<p className="text-xs text-foreground">Enter the git repository URL to create a new deployment from source.</p>
+						<p className="text-xs text-foreground">
+							Enter the git repository URL to create a new deployment from source.
+						</p>
 						<Input
 							placeholder="https://github.com/user/repo.git"
 							value={switchGitUrl}

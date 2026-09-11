@@ -1,5 +1,6 @@
 import { isIP } from "node:net";
 import { Elysia } from "elysia";
+import { validateDatabaseCreate } from "../../databases/validation";
 import {
 	createDatabase as createDbRecord,
 	deleteDatabase,
@@ -9,10 +10,9 @@ import {
 	listDatabases,
 	updateDatabaseStatus,
 } from "../../db/repo";
-import { resolveServerIp } from "../../utils/dns";
-import { validateDatabaseCreate } from "../../databases/validation";
 import type { Database } from "../../types";
-import { ok, created, fail } from "../response";
+import { resolveServerIp } from "../../utils/dns";
+import { created, fail, ok } from "../response";
 
 const sanitizeDatabase = <T extends { password: string; connectionString: string }>(database: T) => ({
 	...database,
@@ -74,9 +74,7 @@ const createManagedDatabase = async (body: any, projectId: string | null, set: a
 	}
 	const dbRecord = await createDbRecord({ ...validation.input, projectId });
 	const { provisionDatabase } = await import("../../databases/manager");
-	provisionDatabase(dbRecord).catch((err: Error) =>
-		console.error("DB provision failed", err),
-	);
+	provisionDatabase(dbRecord).catch((err: Error) => console.error("DB provision failed", err));
 	return created(sanitizeDatabase(dbRecord));
 };
 
@@ -91,13 +89,9 @@ const findDatabase = async (id: string, set: any) => {
 
 export const databasesRoutes = new Elysia()
 	.get("/databases", async () => ok((await listAllDatabases()).map(sanitizeDatabase)))
-	.post("/databases", async ({ body, set }: any) =>
-		createManagedDatabase(body, body?.projectId || null, set),
-	)
+	.post("/databases", async ({ body, set }: any) => createManagedDatabase(body, body?.projectId || null, set))
 	.get("/projects/:id/databases", async ({ params }) => ok((await listDatabases(params.id)).map(sanitizeDatabase)))
-	.post("/projects/:id/databases", async ({ params, body, set }: any) =>
-		createManagedDatabase(body, params.id, set),
-	)
+	.post("/projects/:id/databases", async ({ params, body, set }: any) => createManagedDatabase(body, params.id, set))
 	.get("/databases/:id", async ({ params: { id }, set }) => {
 		const dbRecord = await findDatabase(id, set);
 		if (!dbRecord) return fail("Database not found");
@@ -111,9 +105,7 @@ export const databasesRoutes = new Elysia()
 	.get("/databases/:id/credentials", async ({ params: { id }, set }) => {
 		const dbRecord = await findDatabase(id, set);
 		if (!dbRecord) return fail("Database not found");
-		const externalHost = dbRecord.publicAccess && dbRecord.externalPort
-			? await resolveServerIp()
-			: null;
+		const externalHost = dbRecord.publicAccess && dbRecord.externalPort ? await resolveServerIp() : null;
 		const usableHost = externalHost && isNonLoopbackIp(externalHost) ? externalHost : null;
 		const externalConnectionString = usableHost
 			? buildConnectionString(dbRecord, usableHost, dbRecord.externalPort!)
@@ -206,11 +198,7 @@ export const databasesRoutes = new Elysia()
 		});
 	});
 
-const buildConnectionString = (
-	dbRecord: DatabaseRecord,
-	host: string,
-	port: number,
-) => {
+const buildConnectionString = (dbRecord: DatabaseRecord, host: string, port: number) => {
 	if (dbRecord.type === "redis") return `redis://:${dbRecord.password}@${host}:${port}`;
 	if (dbRecord.type === "mongodb") {
 		return `mongodb://${dbRecord.username}:${dbRecord.password}@${host}:${port}/${dbRecord.databaseName}?authSource=admin`;

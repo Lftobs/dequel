@@ -1,10 +1,10 @@
+import { Container, GitBranch, Lock, Upload } from "lucide-react";
 import { useState } from "react";
-import { Input } from "../../ui/input";
-import { GitBranch, Upload, Container, Lock } from "lucide-react";
 import { getGithubAuthUrl } from "../../../api/client";
-import { RepoPicker } from "../../github/RepoPicker";
-import type { GithubRepo } from "../../../types";
 import { cn } from "../../../lib/utils";
+import type { GithubRepo } from "../../../types";
+import { RepoPicker } from "../../github/RepoPicker";
+import { Input } from "../../ui/input";
 
 const sourceOptions = [
 	{
@@ -74,9 +74,7 @@ export function StepBasicsSourceSection({
 				new CustomEvent("opencode:notification", {
 					detail: {
 						type: "error",
-						message:
-							err.message ||
-							"GitHub integration is not configured. Add your credentials in Settings.",
+						message: err.message || "GitHub integration is not configured. Add your credentials in Settings.",
 					},
 				}),
 			);
@@ -105,59 +103,38 @@ export function StepBasicsSourceSection({
 					{sourceOptions.map((opt) => {
 						const Icon = opt.icon;
 						const active = sourceType === opt.value;
-						const disabled =
-							opt.value === "git" && !githubConfigured;
+						const disabled = opt.value === "git" && !githubConfigured;
 						const isCompose = opt.value === "compose";
 						return (
 							<button
 								key={opt.value}
 								type="button"
-								onClick={() =>
-									!disabled && setSourceType(opt.value)
-								}
+								onClick={() => !disabled && setSourceType(opt.value)}
 								disabled={disabled}
-								title={
-									disabled
-										? "GitHub integration not configured in Settings"
-										: undefined
-								}
+								title={disabled ? "GitHub integration not configured in Settings" : undefined}
 								className={cn(
 									"relative p-3 rounded-lg border text-left flex items-start gap-2.5 transition-all",
 									isCompose && "col-span-2",
-									active
-										? "bg-[#141418] border-amber-500/40 shadow-sm"
-										: "bg-transparent border-zinc-800",
-									disabled
-										? "opacity-40 cursor-not-allowed"
-										: "hover:border-zinc-700 cursor-pointer",
+									active ? "bg-[#141418] border-amber-500/40 shadow-sm" : "bg-transparent border-zinc-800",
+									disabled ? "opacity-40 cursor-not-allowed" : "hover:border-zinc-700 cursor-pointer",
 								)}
 							>
 								<div
 									className={cn(
 										"w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-										active
-											? "bg-amber-500/10 text-amber-400"
-											: "bg-zinc-900 text-zinc-500",
+										active ? "bg-amber-500/10 text-amber-400" : "bg-zinc-900 text-zinc-500",
 									)}
 								>
 									<Icon className="h-4 w-4" />
 								</div>
 								<div className="min-w-0 flex-1">
-									<p className="text-xs font-bold text-zinc-300">
-										{opt.label}
-									</p>
-									<p className="text-[9px] text-zinc-500 mt-0.5 leading-normal">
-										{opt.desc}
-									</p>
+									<p className="text-xs font-bold text-zinc-300">{opt.label}</p>
+									<p className="text-[9px] text-zinc-500 mt-0.5 leading-normal">{opt.desc}</p>
 									{disabled && (
-										<p className="text-[9px] text-amber-600/80 mt-1 leading-normal">
-											Configure in Settings
-										</p>
+										<p className="text-[9px] text-amber-600/80 mt-1 leading-normal">Configure in Settings</p>
 									)}
 								</div>
-								{disabled && (
-									<Lock className="h-3 w-3 text-zinc-600 shrink-0 mt-0.5" />
-								)}
+								{disabled && <Lock className="h-3 w-3 text-zinc-600 shrink-0 mt-0.5" />}
 							</button>
 						);
 					})}
@@ -188,9 +165,7 @@ export function StepBasicsSourceSection({
 									onClick={() => setShowManual(!showManual)}
 									className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors"
 								>
-									{showManual
-										? "Hide manual input"
-										: "Or paste URL manually"}
+									{showManual ? "Hide manual input" : "Or paste URL manually"}
 								</button>
 							</div>
 							{showManual ? (
@@ -203,16 +178,9 @@ export function StepBasicsSourceSection({
 									showBranch
 								/>
 							) : (
-								<BranchInput
-									key="branch-input"
-									repoBranch={repoBranch}
-									setRepoBranch={setRepoBranch}
-								/>
+								<BranchInput key="branch-input" repoBranch={repoBranch} setRepoBranch={setRepoBranch} />
 							)}
-							<SourceDirInput
-								sourceDir={sourceDir}
-								setSourceDir={setSourceDir}
-							/>
+							<SourceDirInput sourceDir={sourceDir} setSourceDir={setSourceDir} />
 						</div>
 					) : (
 						<div className="space-y-3">
@@ -246,9 +214,7 @@ export function StepBasicsSourceSection({
 									onClick={() => setShowManual(!showManual)}
 									className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors"
 								>
-									{showManual
-										? "Hide"
-										: "Or enter URL manually"}
+									{showManual ? "Hide" : "Or enter URL manually"}
 								</button>
 							</div>
 
@@ -262,10 +228,7 @@ export function StepBasicsSourceSection({
 									showBranch
 								/>
 							)}
-							<SourceDirInput
-								sourceDir={sourceDir}
-								setSourceDir={setSourceDir}
-							/>
+							<SourceDirInput sourceDir={sourceDir} setSourceDir={setSourceDir} />
 						</div>
 					)}
 				</div>
@@ -280,9 +243,7 @@ export function StepBasicsSourceSection({
 					{sourceType === "upload" && (
 						<div key="upload-details" className="grid gap-3.5 text-xs">
 							<div className="grid gap-1.5">
-								<label className="font-semibold text-zinc-400">
-									ZIP Archive
-								</label>
+								<label className="font-semibold text-zinc-400">ZIP Archive</label>
 								<label
 									htmlFor="zip-upload"
 									className={cn(
@@ -293,17 +254,8 @@ export function StepBasicsSourceSection({
 									)}
 								>
 									<Upload className="h-4 w-4 text-zinc-500" />
-									<span
-										className={cn(
-											"text-xs",
-											zipFile
-												? "text-emerald-400"
-												: "text-zinc-400",
-										)}
-									>
-										{zipFile
-											? zipFile.name
-											: "Click to select a ZIP file"}
+									<span className={cn("text-xs", zipFile ? "text-emerald-400" : "text-zinc-400")}>
+										{zipFile ? zipFile.name : "Click to select a ZIP file"}
 									</span>
 								</label>
 								<input
@@ -312,8 +264,7 @@ export function StepBasicsSourceSection({
 									accept=".zip"
 									className="hidden"
 									onChange={(e) => {
-										const file =
-											e.target.files?.[0] || null;
+										const file = e.target.files?.[0] || null;
 										setZipFile(file);
 									}}
 								/>
@@ -327,38 +278,25 @@ export function StepBasicsSourceSection({
 									</button>
 								)}
 								<span className="text-[10px] text-zinc-500">
-									Upload your source code as a ZIP
-									archive. It will be deployed
-									automatically after project creation.
+									Upload your source code as a ZIP archive. It will be deployed automatically after project creation.
 								</span>
 							</div>
 						</div>
 					)}
 					{sourceType === "compose" && (
-						<p
-							key="compose-details"
-							className="text-xs text-zinc-500"
-						>
-							Provide a docker-compose.yml file URL or
-							upload after project creation.
+						<p key="compose-details" className="text-xs text-zinc-500">
+							Provide a docker-compose.yml file URL or upload after project creation.
 						</p>
 					)}
 					{sourceType === "image" && (
-						<div
-							key="image-details"
-							className="grid gap-3.5 text-xs"
-						>
+						<div key="image-details" className="grid gap-3.5 text-xs">
 							<div className="grid gap-1.5">
-								<label className="font-semibold text-zinc-400">
-									Container Image
-								</label>
+								<label className="font-semibold text-zinc-400">Container Image</label>
 								<Input
 									placeholder="e.g. nginx:alpine or ghcr.io/user/app:latest"
 									className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9"
 									value={repoUrl}
-									onChange={(e) =>
-										setRepoUrl(e.target.value)
-									}
+									onChange={(e) => setRepoUrl(e.target.value)}
 								/>
 							</div>
 						</div>
@@ -385,9 +323,7 @@ function ManualGitInputs({
 	return (
 		<div className="grid gap-3.5 sm:grid-cols-3 text-xs">
 			<div className="grid gap-1.5 sm:col-span-2">
-				<label className="font-semibold text-zinc-400">
-					Git Repository URL
-				</label>
+				<label className="font-semibold text-zinc-400">Git Repository URL</label>
 				<Input
 					placeholder="https://github.com/username/repository.git"
 					className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9"
@@ -399,16 +335,12 @@ function ManualGitInputs({
 			</div>
 			{showBranch && (
 				<div className="grid gap-1.5">
-					<label className="font-semibold text-zinc-400">
-						Branch
-					</label>
+					<label className="font-semibold text-zinc-400">Branch</label>
 					<Input
 						placeholder="main"
 						className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9"
 						value={repoBranch}
-						onChange={(e) =>
-							setRepoBranch(e.target.value)
-						}
+						onChange={(e) => setRepoBranch(e.target.value)}
 					/>
 				</div>
 			)}
@@ -416,20 +348,11 @@ function ManualGitInputs({
 	);
 }
 
-function SourceDirInput({
-	sourceDir,
-	setSourceDir,
-}: {
-	sourceDir: string;
-	setSourceDir: (v: string) => void;
-}) {
+function SourceDirInput({ sourceDir, setSourceDir }: { sourceDir: string; setSourceDir: (v: string) => void }) {
 	return (
 		<div className="grid gap-1.5">
 			<label className="font-semibold text-zinc-400">
-				Source Directory{" "}
-				<span className="text-zinc-600 font-normal">
-					(monorepo)
-				</span>
+				Source Directory <span className="text-zinc-600 font-normal">(monorepo)</span>
 			</label>
 			<Input
 				placeholder="e.g. apps/web"
@@ -437,34 +360,21 @@ function SourceDirInput({
 				value={sourceDir}
 				onChange={(e) => setSourceDir(e.target.value)}
 			/>
-			<span className="text-[10px] text-zinc-500">
-				Leave empty if the app is at the repository
-				root.
-			</span>
+			<span className="text-[10px] text-zinc-500">Leave empty if the app is at the repository root.</span>
 		</div>
 	);
 }
 
-function BranchInput({
-	repoBranch,
-	setRepoBranch,
-}: {
-	repoBranch: string;
-	setRepoBranch: (v: string) => void;
-}) {
+function BranchInput({ repoBranch, setRepoBranch }: { repoBranch: string; setRepoBranch: (v: string) => void }) {
 	return (
 		<div className="grid gap-3.5 sm:grid-cols-3 text-xs">
 			<div className="grid gap-1.5">
-				<label className="font-semibold text-zinc-400">
-					Branch
-				</label>
+				<label className="font-semibold text-zinc-400">Branch</label>
 				<Input
 					placeholder="main"
 					className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9"
 					value={repoBranch}
-					onChange={(e) =>
-						setRepoBranch(e.target.value)
-					}
+					onChange={(e) => setRepoBranch(e.target.value)}
 				/>
 			</div>
 		</div>

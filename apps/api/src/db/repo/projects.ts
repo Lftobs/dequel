@@ -1,181 +1,220 @@
-import { eq } from "drizzle-orm";
-import { getDb } from "../db-provider";
-import { projects, deployments, deploymentLogs, environmentVariables, volumes, databases, domains, scalingPolicies, alerts } from "../schema";
-import type { Project, CreateProjectInput } from "../../types";
 import { randomUUID } from "node:crypto";
-import { now, formatTimestamp, getRowsAffected } from "./helpers";
+import { eq } from "drizzle-orm";
+import type { CreateProjectInput, Project } from "../../types";
+import { getDb } from "../db-provider";
+import {
+	alerts,
+	databases,
+	deploymentLogs,
+	deployments,
+	domains,
+	environmentVariables,
+	projects,
+	scalingPolicies,
+	volumes,
+} from "../schema";
+import { formatTimestamp, getRowsAffected, now } from "./helpers";
 
 export interface ProjectCleanupInfo {
-  deploymentContainerNames: string[];
-  deploymentImageTags: string[];
-  databaseContainerNames: string[];
-  databaseVolumeNames: string[];
-  volumeDockerNames: string[];
-  domains: { domain: string; projectName: string }[];
-  slug: string;
-  projectName: string;
+	deploymentContainerNames: string[];
+	deploymentImageTags: string[];
+	databaseContainerNames: string[];
+	databaseVolumeNames: string[];
+	volumeDockerNames: string[];
+	domains: { domain: string; projectName: string }[];
+	slug: string;
+	projectName: string;
 }
 
 const mapProject = (row: typeof projects.$inferSelect): Project => ({
-  id: row.id,
-  serverId: row.serverId ?? null,
-  name: row.name,
-  description: row.description,
-  repoUrl: row.repoUrl,
-  repoBranch: row.repoBranch,
-  baseDomain: row.baseDomain,
-  cpuLimit: row.cpuLimit,
-  memoryLimitMb: row.memoryLimitMb,
-  port: row.port ?? null,
-  sourceDir: row.sourceDir ?? null,
-  sourceType: row.sourceType,
-  projectType: row.projectType,
-  buildType: row.buildType,
-  composeService: row.composeService ?? null,
-  composePort: row.composePort ?? null,
-  composeServices: row.composeServices ?? null,
-  buildCommand: row.buildCommand ?? null,
-  installCommand: row.installCommand ?? null,
-  outputDir: row.outputDir ?? null,
-  startCommand: row.startCommand ?? null,
-  githubTokenEncrypted: row.githubTokenEncrypted ?? null,
-  githubTokenIv: row.githubTokenIv ?? null,
-  githubTokenTag: row.githubTokenTag ?? null,
-  createdAt: formatTimestamp(row.createdAt),
-  updatedAt: formatTimestamp(row.updatedAt),
+	id: row.id,
+	serverId: row.serverId ?? null,
+	name: row.name,
+	description: row.description,
+	repoUrl: row.repoUrl,
+	repoBranch: row.repoBranch,
+	baseDomain: row.baseDomain,
+	cpuLimit: row.cpuLimit,
+	memoryLimitMb: row.memoryLimitMb,
+	port: row.port ?? null,
+	sourceDir: row.sourceDir ?? null,
+	sourceType: row.sourceType,
+	projectType: row.projectType,
+	buildType: row.buildType,
+	composeService: row.composeService ?? null,
+	composePort: row.composePort ?? null,
+	composeServices: row.composeServices ?? null,
+	buildCommand: row.buildCommand ?? null,
+	installCommand: row.installCommand ?? null,
+	outputDir: row.outputDir ?? null,
+	startCommand: row.startCommand ?? null,
+	githubTokenEncrypted: row.githubTokenEncrypted ?? null,
+	githubTokenIv: row.githubTokenIv ?? null,
+	githubTokenTag: row.githubTokenTag ?? null,
+	createdAt: formatTimestamp(row.createdAt),
+	updatedAt: formatTimestamp(row.updatedAt),
 });
 
 export const createProject = async (input: CreateProjectInput): Promise<Project> => {
-  const id = randomUUID();
-  const timestamp = now();
-  const db = await getDb();
-  await db.insert(projects).values({
-    id,
-    serverId: input.serverId ?? "local",
-    name: input.name,
-    description: input.description ?? null,
-    repoUrl: input.repoUrl ?? null,
-    repoBranch: input.repoBranch ?? null,
-    baseDomain: input.baseDomain ?? null,
-    cpuLimit: input.cpuLimit ?? null,
-    memoryLimitMb: input.memoryLimitMb ?? null,
-    port: input.port ?? null,
-    sourceDir: input.sourceDir ?? null,
-    sourceType: input.sourceType ?? "git",
-    projectType: input.projectType ?? "web",
-    buildType: input.buildType ?? "railpack",
-    composeService: input.composeService ?? null,
-    composePort: input.composePort ?? null,
-    composeServices: input.composeServices ?? null,
-    buildCommand: input.buildCommand ?? null,
-    installCommand: input.installCommand ?? null,
-    outputDir: input.outputDir ?? null,
-    startCommand: input.startCommand ?? null,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  }).execute();
-  const [row] = await db.select().from(projects).where(eq(projects.id, id)).execute();
-  return mapProject(row);
+	const id = randomUUID();
+	const timestamp = now();
+	const db = await getDb();
+	await db
+		.insert(projects)
+		.values({
+			id,
+			serverId: input.serverId ?? "local",
+			name: input.name,
+			description: input.description ?? null,
+			repoUrl: input.repoUrl ?? null,
+			repoBranch: input.repoBranch ?? null,
+			baseDomain: input.baseDomain ?? null,
+			cpuLimit: input.cpuLimit ?? null,
+			memoryLimitMb: input.memoryLimitMb ?? null,
+			port: input.port ?? null,
+			sourceDir: input.sourceDir ?? null,
+			sourceType: input.sourceType ?? "git",
+			projectType: input.projectType ?? "web",
+			buildType: input.buildType ?? "railpack",
+			composeService: input.composeService ?? null,
+			composePort: input.composePort ?? null,
+			composeServices: input.composeServices ?? null,
+			buildCommand: input.buildCommand ?? null,
+			installCommand: input.installCommand ?? null,
+			outputDir: input.outputDir ?? null,
+			startCommand: input.startCommand ?? null,
+			createdAt: timestamp,
+			updatedAt: timestamp,
+		})
+		.execute();
+	const [row] = await db.select().from(projects).where(eq(projects.id, id)).execute();
+	return mapProject(row);
 };
 
-export const updateProjectGithubToken = async (id: string, encrypted: string | null, iv: string | null, tag: string | null): Promise<void> => {
-  const db = await getDb();
-  await db.update(projects).set({ githubTokenEncrypted: encrypted, githubTokenIv: iv, githubTokenTag: tag }).where(eq(projects.id, id)).execute();
+export const updateProjectGithubToken = async (
+	id: string,
+	encrypted: string | null,
+	iv: string | null,
+	tag: string | null,
+): Promise<void> => {
+	const db = await getDb();
+	await db
+		.update(projects)
+		.set({ githubTokenEncrypted: encrypted, githubTokenIv: iv, githubTokenTag: tag })
+		.where(eq(projects.id, id))
+		.execute();
 };
 
 export const listProjects = async (): Promise<Project[]> => {
-  const db = await getDb();
-  const rows = await db.select().from(projects).orderBy(projects.name).execute();
-  return rows.map(mapProject);
+	const db = await getDb();
+	const rows = await db.select().from(projects).orderBy(projects.name).execute();
+	return rows.map(mapProject);
 };
 
 export const getProjectById = async (id: string): Promise<Project | null> => {
-  const db = await getDb();
-  const [row] = await db.select().from(projects).where(eq(projects.id, id)).execute();
-  return row ? mapProject(row) : null;
+	const db = await getDb();
+	const [row] = await db.select().from(projects).where(eq(projects.id, id)).execute();
+	return row ? mapProject(row) : null;
 };
 
 export const updateProject = async (id: string, patch: Partial<CreateProjectInput>): Promise<Project | null> => {
-  const existing = await getProjectById(id);
-  if (!existing) return null;
-  const db = await getDb();
-  const updates: Record<string, unknown> = { updatedAt: now() };
-  if (patch.name !== undefined) updates.name = patch.name;
-  if (patch.serverId !== undefined) updates.serverId = patch.serverId;
-  if (patch.description !== undefined) updates.description = patch.description;
-  if (patch.repoUrl !== undefined) updates.repoUrl = patch.repoUrl;
-  if (patch.repoBranch !== undefined) updates.repoBranch = patch.repoBranch;
-  if (patch.baseDomain !== undefined) updates.baseDomain = patch.baseDomain;
-  if (patch.cpuLimit !== undefined) updates.cpuLimit = patch.cpuLimit;
-  if (patch.memoryLimitMb !== undefined) updates.memoryLimitMb = patch.memoryLimitMb;
-  if (patch.port !== undefined) updates.port = patch.port;
-  if (patch.sourceDir !== undefined) updates.sourceDir = patch.sourceDir;
-  if (patch.projectType !== undefined) updates.projectType = patch.projectType;
-  if (patch.buildType !== undefined) updates.buildType = patch.buildType;
-  if (patch.composeService !== undefined) updates.composeService = patch.composeService;
-  if (patch.composePort !== undefined) updates.composePort = patch.composePort;
-  if (patch.composeServices !== undefined) updates.composeServices = patch.composeServices;
-  if (patch.buildCommand !== undefined) updates.buildCommand = patch.buildCommand;
-  if (patch.installCommand !== undefined) updates.installCommand = patch.installCommand;
-  if (patch.outputDir !== undefined) updates.outputDir = patch.outputDir;
-  if (patch.startCommand !== undefined) updates.startCommand = patch.startCommand;
-  await db.update(projects).set(updates).where(eq(projects.id, id)).execute();
-  return getProjectById(id);
+	const existing = await getProjectById(id);
+	if (!existing) return null;
+	const db = await getDb();
+	const updates: Record<string, unknown> = { updatedAt: now() };
+	if (patch.name !== undefined) updates.name = patch.name;
+	if (patch.serverId !== undefined) updates.serverId = patch.serverId;
+	if (patch.description !== undefined) updates.description = patch.description;
+	if (patch.repoUrl !== undefined) updates.repoUrl = patch.repoUrl;
+	if (patch.repoBranch !== undefined) updates.repoBranch = patch.repoBranch;
+	if (patch.baseDomain !== undefined) updates.baseDomain = patch.baseDomain;
+	if (patch.cpuLimit !== undefined) updates.cpuLimit = patch.cpuLimit;
+	if (patch.memoryLimitMb !== undefined) updates.memoryLimitMb = patch.memoryLimitMb;
+	if (patch.port !== undefined) updates.port = patch.port;
+	if (patch.sourceDir !== undefined) updates.sourceDir = patch.sourceDir;
+	if (patch.projectType !== undefined) updates.projectType = patch.projectType;
+	if (patch.buildType !== undefined) updates.buildType = patch.buildType;
+	if (patch.composeService !== undefined) updates.composeService = patch.composeService;
+	if (patch.composePort !== undefined) updates.composePort = patch.composePort;
+	if (patch.composeServices !== undefined) updates.composeServices = patch.composeServices;
+	if (patch.buildCommand !== undefined) updates.buildCommand = patch.buildCommand;
+	if (patch.installCommand !== undefined) updates.installCommand = patch.installCommand;
+	if (patch.outputDir !== undefined) updates.outputDir = patch.outputDir;
+	if (patch.startCommand !== undefined) updates.startCommand = patch.startCommand;
+	await db.update(projects).set(updates).where(eq(projects.id, id)).execute();
+	return getProjectById(id);
 };
 
 export const deleteProject = async (id: string): Promise<boolean> => {
-  const db = await getDb();
-  return getRowsAffected(await db.delete(projects).where(eq(projects.id, id)).execute()) > 0;
+	const db = await getDb();
+	return getRowsAffected(await db.delete(projects).where(eq(projects.id, id)).execute()) > 0;
 };
 
 export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupInfo | null> => {
-  const project = await getProjectById(id);
-  if (!project) return null;
+	const project = await getProjectById(id);
+	if (!project) return null;
 
-  const slug = project.name
-    ? project.name.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 63)
-    : id;
+	const slug = project.name
+		? project.name
+				.toLowerCase()
+				.replace(/[^a-z0-9-]+/g, "-")
+				.replace(/^-+|-+$/g, "")
+				.slice(0, 63)
+		: id;
 
-  const db = await getDb();
+	const db = await getDb();
 
-  const depRows = await db.select({ id: deployments.id, containerName: deployments.containerName, imageTag: deployments.imageTag })
-    .from(deployments).where(eq(deployments.projectId, id)).execute();
-  const deploymentContainerNames = depRows.filter(d => d.containerName).map(d => d.containerName!);
-  const deploymentImageTags = depRows.filter(d => d.imageTag).map(d => d.imageTag!);
+	const depRows = await db
+		.select({ id: deployments.id, containerName: deployments.containerName, imageTag: deployments.imageTag })
+		.from(deployments)
+		.where(eq(deployments.projectId, id))
+		.execute();
+	const deploymentContainerNames = depRows.filter((d) => d.containerName).map((d) => d.containerName!);
+	const deploymentImageTags = depRows.filter((d) => d.imageTag).map((d) => d.imageTag!);
 
-  for (const dep of depRows) {
-    await db.delete(deploymentLogs).where(eq(deploymentLogs.deploymentId, dep.id)).execute();
-  }
-  await db.delete(deployments).where(eq(deployments.projectId, id)).execute();
-  await db.delete(environmentVariables).where(eq(environmentVariables.projectId, id)).execute();
+	for (const dep of depRows) {
+		await db.delete(deploymentLogs).where(eq(deploymentLogs.deploymentId, dep.id)).execute();
+	}
+	await db.delete(deployments).where(eq(deployments.projectId, id)).execute();
+	await db.delete(environmentVariables).where(eq(environmentVariables.projectId, id)).execute();
 
-  const volRows = await db.select({ dockerVolumeName: volumes.dockerVolumeName })
-    .from(volumes).where(eq(volumes.projectId, id)).execute();
-  const volumeDockerNames = volRows.filter(v => v.dockerVolumeName).map(v => v.dockerVolumeName!);
-  await db.delete(volumes).where(eq(volumes.projectId, id)).execute();
+	const volRows = await db
+		.select({ dockerVolumeName: volumes.dockerVolumeName })
+		.from(volumes)
+		.where(eq(volumes.projectId, id))
+		.execute();
+	const volumeDockerNames = volRows.filter((v) => v.dockerVolumeName).map((v) => v.dockerVolumeName!);
+	await db.delete(volumes).where(eq(volumes.projectId, id)).execute();
 
-  const dbRows = await db.select({ containerName: databases.containerName, volumeName: databases.volumeName })
-    .from(databases).where(eq(databases.projectId, id)).execute();
-  const databaseContainerNames = dbRows.filter(d => d.containerName).map(d => d.containerName!);
-  const databaseVolumeNames = dbRows.filter(d => d.volumeName).map(d => d.volumeName!);
-  await db.update(databases).set({ projectId: null, updatedAt: now() }).where(eq(databases.projectId, id)).execute();
+	const dbRows = await db
+		.select({ containerName: databases.containerName, volumeName: databases.volumeName })
+		.from(databases)
+		.where(eq(databases.projectId, id))
+		.execute();
+	const databaseContainerNames = dbRows.filter((d) => d.containerName).map((d) => d.containerName!);
+	const databaseVolumeNames = dbRows.filter((d) => d.volumeName).map((d) => d.volumeName!);
+	await db.update(databases).set({ projectId: null, updatedAt: now() }).where(eq(databases.projectId, id)).execute();
 
-  const domainRows = await db.select({ domain: domains.domain }).from(domains).where(eq(domains.projectId, id)).execute();
-  const domainInfo = domainRows.map(d => ({ domain: d.domain, projectName: project.name ?? id }));
-  await db.delete(domains).where(eq(domains.projectId, id)).execute();
+	const domainRows = await db
+		.select({ domain: domains.domain })
+		.from(domains)
+		.where(eq(domains.projectId, id))
+		.execute();
+	const domainInfo = domainRows.map((d) => ({ domain: d.domain, projectName: project.name ?? id }));
+	await db.delete(domains).where(eq(domains.projectId, id)).execute();
 
-  await db.delete(scalingPolicies).where(eq(scalingPolicies.projectId, id)).execute();
-  await db.delete(alerts).where(eq(alerts.projectId, id)).execute();
-  await db.delete(projects).where(eq(projects.id, id)).execute();
+	await db.delete(scalingPolicies).where(eq(scalingPolicies.projectId, id)).execute();
+	await db.delete(alerts).where(eq(alerts.projectId, id)).execute();
+	await db.delete(projects).where(eq(projects.id, id)).execute();
 
-  return {
-    deploymentContainerNames,
-    deploymentImageTags,
-    databaseContainerNames,
-    databaseVolumeNames,
-    volumeDockerNames,
-    domains: domainInfo,
-    slug,
-    projectName: project.name ?? id,
-  };
+	return {
+		deploymentContainerNames,
+		deploymentImageTags,
+		databaseContainerNames,
+		databaseVolumeNames,
+		volumeDockerNames,
+		domains: domainInfo,
+		slug,
+		projectName: project.name ?? id,
+	};
 };
