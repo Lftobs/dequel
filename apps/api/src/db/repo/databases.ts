@@ -8,6 +8,7 @@ import { getRowsAffected, now } from "./helpers";
 const mapDatabase = (row: typeof databases.$inferSelect): Database => ({
 	id: row.id,
 	projectId: row.projectId ?? null,
+	serverId: row.serverId ?? null,
 	name: row.name,
 	type: row.type as Database["type"],
 	version: row.version,
@@ -68,6 +69,7 @@ export const createDatabase = async (input: CreateDatabaseInput): Promise<Databa
 		.values({
 			id,
 			projectId: input.projectId ?? null,
+			serverId: input.serverId ?? null,
 			name: input.name,
 			type: input.type,
 			version: input.version ?? null,

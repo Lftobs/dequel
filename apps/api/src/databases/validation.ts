@@ -70,6 +70,7 @@ export const validateDatabaseCreate = (
 			name: body.name.trim(),
 			type: body.type as DatabaseType,
 			version: body.version?.trim() || undefined,
+			serverId: typeof body.serverId === "string" && body.serverId.trim() ? body.serverId.trim() : null,
 			cpuLimit,
 			memoryLimitMb,
 			storageLimitMb,

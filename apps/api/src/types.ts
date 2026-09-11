@@ -113,6 +113,7 @@ export interface CreateVolumeInput {
 export interface Database {
 	id: string;
 	projectId: string | null;
+	serverId: string | null;
 	name: string;
 	type: DatabaseType;
 	version: string | null;
@@ -140,6 +141,7 @@ export interface Database {
 
 export interface CreateDatabaseInput {
 	projectId?: string | null;
+	serverId?: string | null;
 	name: string;
 	type: DatabaseType;
 	version?: string;

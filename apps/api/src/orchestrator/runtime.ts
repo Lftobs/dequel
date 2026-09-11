@@ -1,11 +1,11 @@
-import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Server } from "../types";
 import { config } from "../utils/config";
 import { DEQUEL_MANAGED_LABEL } from "../utils/dequel-labels";
 import { dockerBin } from "../utils/docker-bin";
-import { getDockerSshTarget, syncRemoteCaddyRoute } from "../utils/ssh";
+import { dockerRun, dockerRunTry } from "../utils/docker-run";
+import { syncRemoteCaddyRoute } from "../utils/ssh";
 
 const slugify = (s: string) =>
 	s
@@ -28,34 +28,9 @@ export interface RuntimeOpts {
 	targetServer?: Server | null;
 }
 
-const getDockerTargetArgs = (server?: Server | null): string[] => {
-	if (server?.mode === "ssh") {
-		return ["-H", getDockerSshTarget(server)];
-	}
-	if (server?.mode === "docker_tcp") {
-		return ["-H", `tcp://${server.host}:${server.port || 2376}`];
-	}
-	return [];
-};
+export const run = dockerRun;
 
-export const run = (cmd: string, args: string[], server?: Server | null) =>
-	new Promise<string>((resolve, reject) => {
-		const targetArgs = getDockerTargetArgs(server);
-		const fullArgs = cmd === dockerBin && targetArgs.length > 0 ? [...targetArgs, ...args] : args;
-		const child = spawn(cmd, fullArgs, { stdio: ["ignore", "pipe", "pipe"] });
-		let stdout = "";
-		let stderr = "";
-		child.stdout.on("data", (chunk) => {
-			stdout += String(chunk);
-		});
-		child.stderr.on("data", (chunk) => {
-			stderr += String(chunk);
-		});
-		child.on("close", (code) => {
-			if (code === 0) resolve(`${stdout}\n${stderr}`.trim());
-			else reject(new Error(`${cmd} ${fullArgs.join(" ")} failed (${code}): ${stderr}`));
-		});
-	});
+export const tryRun = dockerRunTry;
 
 const getCaddyContainer = async (): Promise<string> => {
 	const output = await run(dockerBin, [
@@ -70,14 +45,6 @@ const getCaddyContainer = async (): Promise<string> => {
 	const name = output.split("\n")[0]?.trim();
 	if (!name) throw new Error("Caddy container not found");
 	return name;
-};
-
-export const tryRun = async (cmd: string, args: string[], server?: Server | null) => {
-	try {
-		await run(cmd, args, server);
-	} catch {
-		return;
-	}
 };
 
 const waitForRunningContainer = async (

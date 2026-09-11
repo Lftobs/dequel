@@ -150,6 +150,7 @@ export const databases = pgTable(
 	{
 		id: text().primaryKey(),
 		projectId: text("project_id"),
+		serverId: text("server_id"),
 		name: text().notNull(),
 		type: text().notNull(),
 		version: text(),
@@ -404,4 +405,27 @@ export const routes = pgTable(
 		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 	},
 	(table) => [uniqueIndex("idx_routes_hostname_server").on(table.hostname, table.serverId)],
+);
+
+export const backups = pgTable(
+	"backups",
+	{
+		id: text().primaryKey(),
+		targetId: text("target_id").notNull(),
+		targetType: text("target_type").notNull(),
+		engine: text().notNull(),
+		filename: text(),
+		storageType: text("storage_type").notNull(),
+		storagePath: text("storage_path"),
+		sizeBytes: integer("size_bytes"),
+		error: text(),
+		status: text().notNull().default("pending"),
+		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+	},
+	(table) => [
+		index("idx_backups_target").on(table.targetId),
+		index("idx_backups_created").on(table.createdAt),
+		index("idx_backups_status").on(table.status),
+	],
 );

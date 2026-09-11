@@ -3,6 +3,7 @@ import { agentRoutes } from "./agents";
 import { alertsRoutes } from "./alerts";
 import { apiKeysRoutes } from "./api-keys";
 import { authRoutes } from "./auth";
+import { backupRoutes } from "./backups";
 import { databasesRoutes } from "./databases";
 import { deploymentsRoutes } from "./deployments";
 import { domainsRoutes } from "./domains";
@@ -86,4 +87,5 @@ export const apiRoutes = new Elysia({
 	.use(alertsRoutes)
 	.use(githubRoutes)
 	.use(settingsRoutes)
-	.use(routesRoutes);
+	.use(routesRoutes)
+	.use(backupRoutes);
