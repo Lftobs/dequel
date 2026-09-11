@@ -58,7 +58,7 @@ export function Keys() {
 						</p>
 					</div>
 
-					<div className="flex flex-wrap items-center gap-3">
+					<div className="w-full grid grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap items-center sm:gap-3">
 						<div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card/60 px-4 py-3 shadow-inner">
 							<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-400 ring-1 ring-orange-500/20">
 								<Key className="h-4 w-4" />
@@ -84,24 +84,24 @@ export function Keys() {
 
 			{/* Main Tabs Navigation */}
 			<Tabs defaultValue="api-tokens" className="space-y-6">
-				<TabsList className="bg-card/60 border border-border/60 p-1 rounded-2xl backdrop-blur-md max-w-md">
+				<TabsList className="bg-card/60 border border-border/60 p-1 rounded-2xl backdrop-blur-md max-w-md flex overflow-x-auto whitespace-nowrap justify-start [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x">
 					<TabsTrigger
 						value="api-tokens"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all"
+						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all shrink-0"
 					>
 						<Zap className="h-3.5 w-3.5" />
 						API Tokens
 					</TabsTrigger>
 					<TabsTrigger
 						value="ssh-keys"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all"
+						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all shrink-0"
 					>
 						<KeyRound className="h-3.5 w-3.5" />
 						SSH Key Pool
 					</TabsTrigger>
 					<TabsTrigger
 						value="cli-guide"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all"
+						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all shrink-0"
 					>
 						<Terminal className="h-3.5 w-3.5" />
 						CLI & API Guide
@@ -135,13 +135,13 @@ export function Keys() {
 									header as a Bearer token:
 								</p>
 								<div className="relative rounded-2xl border border-border/80 bg-black/60 p-4 font-mono text-xs text-zinc-300">
-									<pre className="overflow-x-auto whitespace-pre-wrap">{curlSnippet}</pre>
+									<pre className="overflow-x-auto whitespace-pre-wrap sm:pr-24 pb-8 sm:pb-0">{curlSnippet}</pre>
 									<Button
 										type="button"
 										size="sm"
 										variant="ghost"
 										onClick={handleCopyCurl}
-										className="absolute right-3 top-3 h-8 bg-card/80 hover:bg-card text-xs text-zinc-300 gap-1.5 px-3 rounded-lg border border-border/40"
+										className="absolute right-3 bottom-3 sm:bottom-auto sm:top-3 h-8 bg-card/80 hover:bg-card text-xs text-zinc-300 gap-1.5 px-3 rounded-lg border border-border/40"
 									>
 										{copiedCurl ? (
 											<>

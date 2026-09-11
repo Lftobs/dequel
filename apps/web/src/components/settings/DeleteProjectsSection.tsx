@@ -1,14 +1,14 @@
-import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Badge } from "../ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
-import { Trash2, AlertTriangle, Search, FolderX, Globe, GitBranch } from "lucide-react";
+import { AlertTriangle, FolderX, GitBranch, Globe, Search, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import * as api from "../../api/client";
 import type { Project } from "../../types";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Input } from "../ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 export function DeleteProjectsSection() {
 	const queryClient = useQueryClient();
@@ -114,83 +114,145 @@ export function DeleteProjectsSection() {
 						No projects matching &ldquo;{searchQuery}&rdquo;.
 					</div>
 				) : (
-					<div className="rounded-xl border border-border/80 overflow-hidden overflow-x-auto bg-black/20">
-						<Table className="min-w-[600px] md:min-w-full">
-							<TableHeader>
-								<TableRow className="border-border/60 hover:bg-transparent">
-									<TableHead className="text-xs font-semibold">Project</TableHead>
-									<TableHead className="text-xs font-semibold">Type / Source</TableHead>
-									<TableHead className="text-xs font-semibold">Branch / Domain</TableHead>
-									<TableHead className="text-xs font-semibold">Created</TableHead>
-									<TableHead className="w-24 text-right"></TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{filteredProjects.map((p) => (
-									<TableRow key={p.id} className="border-border/40 hover:bg-white/[0.02]">
-										<TableCell className="font-medium text-xs">
-											<div className="space-y-0.5">
-												<span className="font-bold text-foreground">{p.name}</span>
-												{p.description && (
-													<p className="text-[11px] text-muted-foreground line-clamp-1">{p.description}</p>
-												)}
+					<div className="rounded-xl border border-border/80 overflow-hidden bg-black/20">
+						{/* Mobile Card List */}
+						<div className="md:hidden divide-y divide-border/40">
+							{filteredProjects.map((p) => (
+								<div key={p.id} className="p-3.5 space-y-2.5">
+									<div className="flex items-start justify-between gap-2">
+										<div className="min-w-0">
+											<span className="font-bold text-foreground text-sm truncate block">{p.name}</span>
+											{p.description && (
+												<p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{p.description}</p>
+											)}
+										</div>
+										<Badge
+											variant="outline"
+											className="text-[10px] uppercase font-mono py-0 px-1.5 bg-muted/20 border-border shrink-0"
+										>
+											{p.projectType || "web"}
+										</Badge>
+									</div>
+
+									<div className="space-y-1 text-xs">
+										{p.repoUrl && (
+											<div className="text-[11px] text-muted-foreground font-mono truncate">
+												{p.repoUrl.replace(/https?:\/\/github\.com\//, "")}
 											</div>
-										</TableCell>
-										<TableCell>
-											<div className="flex items-center gap-1.5 flex-wrap">
-												<Badge
-													variant="outline"
-													className="text-[10px] uppercase font-mono py-0 px-1.5 bg-muted/20 border-border"
-												>
-													{p.projectType || "web"}
-												</Badge>
-												{p.repoUrl ? (
-													<span
-														className="text-[11px] text-muted-foreground font-mono truncate max-w-[160px]"
-														title={p.repoUrl}
-													>
-														{p.repoUrl.replace(/https?:\/\/github\.com\//, "")}
-													</span>
-												) : (
-													<span className="text-[11px] text-muted-foreground">Upload / Archive</span>
-												)}
-											</div>
-										</TableCell>
-										<TableCell>
-											<div className="space-y-0.5 text-xs">
-												{p.repoBranch && (
-													<div className="flex items-center gap-1 text-muted-foreground font-mono text-[11px]">
-														<GitBranch className="h-3 w-3 text-muted-foreground/70" />
-														<span>{p.repoBranch}</span>
-													</div>
-												)}
-												{p.baseDomain && (
-													<div className="flex items-center gap-1 text-muted-foreground font-mono text-[11px]">
-														<Globe className="h-3 w-3 text-muted-foreground/70" />
-														<span className="truncate max-w-[140px]">{p.baseDomain}</span>
-													</div>
-												)}
-												{!p.repoBranch && !p.baseDomain && <span className="text-muted-foreground/60">—</span>}
-											</div>
-										</TableCell>
-										<TableCell className="text-xs text-muted-foreground">
+										)}
+										<div className="flex flex-wrap items-center gap-2">
+											{p.repoBranch && (
+												<div className="flex items-center gap-1 text-muted-foreground font-mono text-[11px]">
+													<GitBranch className="h-3 w-3 text-muted-foreground/70" />
+													<span>{p.repoBranch}</span>
+												</div>
+											)}
+											{p.baseDomain && (
+												<div className="flex items-center gap-1 text-muted-foreground font-mono text-[11px]">
+													<Globe className="h-3 w-3 text-muted-foreground/70" />
+													<span className="truncate max-w-[140px]">{p.baseDomain}</span>
+												</div>
+											)}
+										</div>
+									</div>
+
+									<div className="flex items-center justify-between pt-1 border-t border-border/30">
+										<span className="text-[11px] text-muted-foreground">
 											{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—"}
-										</TableCell>
-										<TableCell className="text-right">
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() => openDeleteModal(p)}
-												className="h-8 px-2.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-lg transition-colors flex items-center gap-1.5 ml-auto"
-											>
-												<Trash2 className="h-3.5 w-3.5" />
-												<span>Delete</span>
-											</Button>
-										</TableCell>
+										</span>
+										<Button
+											variant="ghost"
+											size="sm"
+											onClick={() => openDeleteModal(p)}
+											className="h-7 px-2.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-lg transition-colors flex items-center gap-1"
+										>
+											<Trash2 className="h-3.5 w-3.5" />
+											<span>Delete</span>
+										</Button>
+									</div>
+								</div>
+							))}
+						</div>
+
+						{/* Desktop Table */}
+						<div className="hidden md:block overflow-x-auto">
+							<Table className="min-w-[600px] md:min-w-full">
+								<TableHeader>
+									<TableRow className="border-border/60 hover:bg-transparent">
+										<TableHead className="text-xs font-semibold">Project</TableHead>
+										<TableHead className="text-xs font-semibold">Type / Source</TableHead>
+										<TableHead className="text-xs font-semibold">Branch / Domain</TableHead>
+										<TableHead className="text-xs font-semibold">Created</TableHead>
+										<TableHead className="w-24 text-right"></TableHead>
 									</TableRow>
-								))}
-							</TableBody>
-						</Table>
+								</TableHeader>
+								<TableBody>
+									{filteredProjects.map((p) => (
+										<TableRow key={p.id} className="border-border/40 hover:bg-white/[0.02]">
+											<TableCell className="font-medium text-xs">
+												<div className="space-y-0.5">
+													<span className="font-bold text-foreground">{p.name}</span>
+													{p.description && (
+														<p className="text-[11px] text-muted-foreground line-clamp-1">{p.description}</p>
+													)}
+												</div>
+											</TableCell>
+											<TableCell>
+												<div className="flex items-center gap-1.5 flex-wrap">
+													<Badge
+														variant="outline"
+														className="text-[10px] uppercase font-mono py-0 px-1.5 bg-muted/20 border-border"
+													>
+														{p.projectType || "web"}
+													</Badge>
+													{p.repoUrl ? (
+														<span
+															className="text-[11px] text-muted-foreground font-mono truncate max-w-[160px]"
+															title={p.repoUrl}
+														>
+															{p.repoUrl.replace(/https?:\/\/github\.com\//, "")}
+														</span>
+													) : (
+														<span className="text-[11px] text-muted-foreground">Upload / Archive</span>
+													)}
+												</div>
+											</TableCell>
+											<TableCell>
+												<div className="space-y-0.5 text-xs">
+													{p.repoBranch && (
+														<div className="flex items-center gap-1 text-muted-foreground font-mono text-[11px]">
+															<GitBranch className="h-3 w-3 text-muted-foreground/70" />
+															<span>{p.repoBranch}</span>
+														</div>
+													)}
+													{p.baseDomain && (
+														<div className="flex items-center gap-1 text-muted-foreground font-mono text-[11px]">
+															<Globe className="h-3 w-3 text-muted-foreground/70" />
+															<span className="truncate max-w-[140px]">{p.baseDomain}</span>
+														</div>
+													)}
+													{!p.repoBranch && !p.baseDomain && <span className="text-muted-foreground/60">—</span>}
+												</div>
+											</TableCell>
+											<TableCell className="text-xs text-muted-foreground">
+												{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—"}
+											</TableCell>
+											<TableCell className="text-right">
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() => openDeleteModal(p)}
+													className="h-8 px-2.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-lg transition-colors flex items-center gap-1.5 ml-auto"
+												>
+													<Trash2 className="h-3.5 w-3.5" />
+													<span>Delete</span>
+												</Button>
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</div>
 					</div>
 				)}
 			</CardContent>

@@ -365,11 +365,11 @@ function ProjectGridCard({ project, onDelete }: { project: any; onDelete: () => 
 							undone and will permanently remove all associated container deployments, environments, and logs.
 						</DialogDescription>
 					</DialogHeader>
-					<DialogFooter className="flex justify-end gap-2 pt-4 border-t border-border/40">
+					<DialogFooter className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t border-border/40">
 						<Button
 							variant="ghost"
 							onClick={() => setIsDeleteOpen(false)}
-							className="h-9 text-xs px-4 rounded-lg hover:bg-[#1a1a21]"
+							className="h-9 text-xs px-4 rounded-lg hover:bg-[#1a1a21] w-full sm:w-auto"
 						>
 							Cancel
 						</Button>
@@ -379,7 +379,7 @@ function ProjectGridCard({ project, onDelete }: { project: any; onDelete: () => 
 								onDelete();
 								setIsDeleteOpen(false);
 							}}
-							className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold text-xs h-9 px-4 rounded-lg transition-all"
+							className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold text-xs h-9 px-4 rounded-lg transition-all w-full sm:w-auto"
 						>
 							Delete Project
 						</Button>

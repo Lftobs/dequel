@@ -92,7 +92,7 @@ export function SshKeyPoolSection() {
 				{isAdding && (
 					<form
 						onSubmit={add}
-						className="rounded-2xl border border-border/80 bg-background/40 p-5 space-y-4 shadow-inner"
+						className="rounded-2xl border border-border/80 bg-background/40 p-4 sm:p-5 space-y-4 shadow-inner"
 					>
 						<div className="flex items-center justify-between">
 							<span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -155,7 +155,7 @@ export function SshKeyPoolSection() {
 							</div>
 						</div>
 
-						<div className="flex justify-end gap-2 pt-2 border-t border-border/40">
+						<div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-border/40">
 							<Button
 								type="button"
 								variant="ghost"
@@ -196,67 +196,121 @@ export function SshKeyPoolSection() {
 					</div>
 				) : (
 					<div className="rounded-xl border border-border/60 overflow-hidden bg-card/30">
-						<Table>
-							<TableHeader className="bg-muted/40">
-								<TableRow className="border-border/60 hover:bg-transparent">
-									<TableHead className="text-xs font-semibold">Key Identifier</TableHead>
-									<TableHead className="text-xs font-semibold">Fingerprint</TableHead>
-									<TableHead className="text-xs font-semibold">Tags</TableHead>
-									<TableHead className="text-xs font-semibold">Added Date</TableHead>
-									<TableHead className="text-xs font-semibold text-right">Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{keys.map((k) => (
-									<TableRow key={k.id} className="border-border/40 hover:bg-muted/20">
-										<TableCell className="font-medium text-foreground text-xs py-3.5">
-											<div className="flex items-center gap-2">
-												<KeyRound className="h-4 w-4 text-orange-400/80" />
-												<span>{k.name}</span>
-											</div>
-										</TableCell>
-										<TableCell className="font-mono text-xs text-muted-foreground py-3.5">
-											<Badge
-												variant="outline"
-												className="font-mono text-[11px] bg-black/40 text-zinc-400 border-border/60"
-											>
-												{k.fingerprint || "SHA256:..."}
-											</Badge>
-										</TableCell>
-										<TableCell className="text-xs text-muted-foreground py-3.5">
-											{k.tags && k.tags.length > 0 ? (
-												<div className="flex flex-wrap gap-1">
-													{k.tags.map((tag, i) => (
-														<Badge key={i} variant="secondary" className="text-[10px] py-0 px-1.5">
-															{tag}
-														</Badge>
-													))}
-												</div>
-											) : (
-												<span className="text-muted-foreground/60">—</span>
-											)}
-										</TableCell>
-										<TableCell className="text-muted-foreground text-xs py-3.5">
+						{/* Mobile Card View */}
+						<div className="md:hidden divide-y divide-border/40">
+							{keys.map((k) => (
+								<div key={k.id} className="p-3.5 space-y-2.5">
+									<div className="flex items-center justify-between gap-2">
+										<div className="flex items-center gap-2 min-w-0">
+											<KeyRound className="h-4 w-4 text-orange-400/80 shrink-0" />
+											<span className="font-semibold text-foreground text-sm truncate">{k.name}</span>
+										</div>
+										<span className="text-[11px] text-muted-foreground shrink-0">
 											{new Date(k.createdAt).toLocaleDateString(undefined, {
-												year: "numeric",
 												month: "short",
 												day: "numeric",
 											})}
-										</TableCell>
-										<TableCell className="text-right py-3.5">
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-												onClick={() => setDeletingId(k.id)}
-											>
-												<Trash2 className="h-4 w-4" />
-											</Button>
-										</TableCell>
+										</span>
+									</div>
+
+									<div className="font-mono text-xs text-muted-foreground bg-black/30 px-2.5 py-1.5 rounded-lg border border-border/40 truncate">
+										<Badge
+											variant="outline"
+											className="font-mono text-[11px] bg-black/40 text-zinc-400 border-border/60"
+										>
+											{k.fingerprint || "SHA256:..."}
+										</Badge>
+									</div>
+
+									{k.tags && k.tags.length > 0 && (
+										<div className="flex flex-wrap gap-1">
+											{k.tags.map((tag, i) => (
+												<Badge key={i} variant="secondary" className="text-[10px] py-0 px-1.5">
+													{tag}
+												</Badge>
+											))}
+										</div>
+									)}
+
+									<div className="flex items-center justify-end pt-1 border-t border-border/30">
+										<Button
+											variant="ghost"
+											size="sm"
+											className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1 rounded-lg"
+											onClick={() => setDeletingId(k.id)}
+										>
+											<Trash2 className="h-3.5 w-3.5" />
+											<span>Delete</span>
+										</Button>
+									</div>
+								</div>
+							))}
+						</div>
+
+						{/* Desktop Table View */}
+						<div className="hidden md:block overflow-x-auto">
+							<Table>
+								<TableHeader className="bg-muted/40">
+									<TableRow className="border-border/60 hover:bg-transparent">
+										<TableHead className="text-xs font-semibold">Key Identifier</TableHead>
+										<TableHead className="text-xs font-semibold">Fingerprint</TableHead>
+										<TableHead className="text-xs font-semibold">Tags</TableHead>
+										<TableHead className="text-xs font-semibold">Added Date</TableHead>
+										<TableHead className="text-xs font-semibold text-right">Actions</TableHead>
 									</TableRow>
-								))}
-							</TableBody>
-						</Table>
+								</TableHeader>
+								<TableBody>
+									{keys.map((k) => (
+										<TableRow key={k.id} className="border-border/40 hover:bg-muted/20">
+											<TableCell className="font-medium text-foreground text-xs py-3.5">
+												<div className="flex items-center gap-2">
+													<KeyRound className="h-4 w-4 text-orange-400/80" />
+													<span>{k.name}</span>
+												</div>
+											</TableCell>
+											<TableCell className="font-mono text-xs text-muted-foreground py-3.5">
+												<Badge
+													variant="outline"
+													className="font-mono text-[11px] bg-black/40 text-zinc-400 border-border/60"
+												>
+													{k.fingerprint || "SHA256:..."}
+												</Badge>
+											</TableCell>
+											<TableCell className="text-xs text-muted-foreground py-3.5">
+												{k.tags && k.tags.length > 0 ? (
+													<div className="flex flex-wrap gap-1">
+														{k.tags.map((tag, i) => (
+															<Badge key={i} variant="secondary" className="text-[10px] py-0 px-1.5">
+																{tag}
+															</Badge>
+														))}
+													</div>
+												) : (
+													<span className="text-muted-foreground/60">—</span>
+												)}
+											</TableCell>
+											<TableCell className="text-muted-foreground text-xs py-3.5">
+												{new Date(k.createdAt).toLocaleDateString(undefined, {
+													year: "numeric",
+													month: "short",
+													day: "numeric",
+												})}
+											</TableCell>
+											<TableCell className="text-right py-3.5">
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+													onClick={() => setDeletingId(k.id)}
+												>
+													<Trash2 className="h-4 w-4" />
+												</Button>
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</div>
 					</div>
 				)}
 			</CardContent>
@@ -270,7 +324,7 @@ export function SshKeyPoolSection() {
 							management access.
 						</DialogDescription>
 					</DialogHeader>
-					<DialogFooter className="flex justify-end gap-2 pt-4 border-t border-border/40">
+					<DialogFooter className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t border-border/40">
 						<Button
 							variant="ghost"
 							onClick={() => setDeletingId(null)}

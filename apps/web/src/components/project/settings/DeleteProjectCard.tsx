@@ -42,7 +42,7 @@ export function DeleteProjectCard({ projectId }: DeleteProjectCardProps) {
 	return (
 		<Card className="bg-[#0c0c0e]/60 border-red-500/20 rounded-xl overflow-hidden">
 			<CardContent className="p-6 space-y-4">
-				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#222227] pb-5 space-y-4">
+				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#222227] pb-5">
 					<div className="flex items-start gap-3">
 						<div className="p-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
 							<Trash2 className="h-4 w-4" />
@@ -58,7 +58,7 @@ export function DeleteProjectCard({ projectId }: DeleteProjectCardProps) {
 					<Button
 						variant="destructive"
 						onClick={openDeleteModal}
-						className="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs h-9 px-4 rounded-lg flex items-center gap-1.5 transition-all shadow-md active:scale-95 shrink-0"
+						className="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs h-9 px-4 rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 shrink-0 w-full sm:w-auto"
 					>
 						<Trash2 className="h-3.5 w-3.5" />
 						Delete Project
