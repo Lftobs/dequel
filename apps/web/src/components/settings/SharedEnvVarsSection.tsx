@@ -94,7 +94,7 @@ export function SharedEnvVarsSection() {
 				{isAdding && (
 					<form
 						onSubmit={add}
-						className="rounded-2xl border border-border/80 bg-background/40 p-5 space-y-4 shadow-inner"
+						className="rounded-2xl border border-border/80 bg-background/40 p-4 sm:p-5 space-y-4 shadow-inner"
 					>
 						<div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 							Create Global Variable
@@ -154,7 +154,7 @@ export function SharedEnvVarsSection() {
 							</div>
 						</div>
 
-						<div className="flex justify-end gap-2 pt-2 border-t border-border/40">
+						<div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-border/40">
 							<Button
 								type="button"
 								variant="ghost"
@@ -195,80 +195,150 @@ export function SharedEnvVarsSection() {
 					</div>
 				) : (
 					<div className="rounded-xl border border-border/60 overflow-hidden bg-card/30">
-						<Table>
-							<TableHeader className="bg-muted/40">
-								<TableRow className="border-border/60 hover:bg-transparent">
-									<TableHead className="text-xs font-semibold">Variable Key</TableHead>
-									<TableHead className="text-xs font-semibold">Secret Value</TableHead>
-									<TableHead className="text-xs font-semibold">Target Scope</TableHead>
-									<TableHead className="text-xs font-semibold">Description</TableHead>
-									<TableHead className="text-xs font-semibold text-right">Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{vars.map((v) => (
-									<TableRow key={v.id} className="border-border/40 hover:bg-muted/20">
-										<TableCell className="font-mono text-xs font-medium text-orange-400 py-3.5">
-											<Badge
-												variant="outline"
-												className="font-mono text-[11px] bg-black/40 border-border/60 text-orange-300"
-											>
-												{v.key}
-											</Badge>
-										</TableCell>
-										<TableCell className="font-mono text-xs text-muted-foreground py-3.5">
+						{/* Mobile Card View */}
+						<div className="md:hidden divide-y divide-border/40">
+							{vars.map((v) => (
+								<div key={v.id} className="p-3.5 space-y-2.5">
+									<div className="flex items-center justify-between gap-2">
+										<Badge
+											variant="outline"
+											className="font-mono text-[11px] bg-black/40 border-border/60 text-orange-300 truncate max-w-[200px]"
+										>
+											{v.key}
+										</Badge>
+										<Badge variant="secondary" className="text-[10px] bg-secondary/80 text-zinc-300 shrink-0">
+											{v.environment || "All"}
+										</Badge>
+									</div>
+
+									<div className="flex items-center justify-between gap-2 font-mono text-xs text-muted-foreground bg-black/30 px-2.5 py-1.5 rounded-lg border border-border/40">
+										<span className="truncate">
 											{revealedId === v.id ? (
 												<span className="text-emerald-300 font-semibold">{revealedValue}</span>
 											) : (
 												<span className="text-zinc-500">••••••••••••</span>
 											)}
-										</TableCell>
-										<TableCell className="text-xs text-muted-foreground py-3.5">
-											<Badge variant="secondary" className="text-[10px] bg-secondary/80 text-zinc-300">
-												{v.environment || "All Environments"}
-											</Badge>
-										</TableCell>
-										<TableCell className="text-xs text-muted-foreground py-3.5">{v.description || "—"}</TableCell>
-										<TableCell className="text-right py-3.5">
-											<div className="flex items-center justify-end gap-1">
+										</span>
+										<div className="flex items-center gap-1 shrink-0">
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-7 w-7 text-muted-foreground hover:text-foreground"
+												onClick={() => handleReveal(v.id)}
+											>
+												{revealedId === v.id ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+											</Button>
+											{revealedId === v.id && (
 												<Button
 													variant="ghost"
 													size="icon"
-													className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
-													onClick={() => handleReveal(v.id)}
+													className="h-7 w-7 text-muted-foreground hover:text-emerald-400"
+													onClick={() => handleCopyValue(v.id, revealedValue)}
 												>
-													{revealedId === v.id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+													{copiedId === v.id ? (
+														<Check className="h-3.5 w-3.5 text-emerald-400" />
+													) : (
+														<Copy className="h-3.5 w-3.5" />
+													)}
 												</Button>
+											)}
+										</div>
+									</div>
 
-												{revealedId === v.id && (
+									{v.description && <p className="text-xs text-muted-foreground">{v.description}</p>}
+
+									<div className="flex items-center justify-end pt-1 border-t border-border/30">
+										<Button
+											variant="ghost"
+											size="sm"
+											className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1 rounded-lg"
+											onClick={() => setDeletingId(v.id)}
+										>
+											<Trash2 className="h-3.5 w-3.5" />
+											<span>Delete</span>
+										</Button>
+									</div>
+								</div>
+							))}
+						</div>
+
+						{/* Desktop Table View */}
+						<div className="hidden md:block overflow-x-auto">
+							<Table>
+								<TableHeader className="bg-muted/40">
+									<TableRow className="border-border/60 hover:bg-transparent">
+										<TableHead className="text-xs font-semibold">Variable Key</TableHead>
+										<TableHead className="text-xs font-semibold">Secret Value</TableHead>
+										<TableHead className="text-xs font-semibold">Target Scope</TableHead>
+										<TableHead className="text-xs font-semibold">Description</TableHead>
+										<TableHead className="text-xs font-semibold text-right">Actions</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{vars.map((v) => (
+										<TableRow key={v.id} className="border-border/40 hover:bg-muted/20">
+											<TableCell className="font-mono text-xs font-medium text-orange-400 py-3.5">
+												<Badge
+													variant="outline"
+													className="font-mono text-[11px] bg-black/40 border-border/60 text-orange-300"
+												>
+													{v.key}
+												</Badge>
+											</TableCell>
+											<TableCell className="font-mono text-xs text-muted-foreground py-3.5">
+												{revealedId === v.id ? (
+													<span className="text-emerald-300 font-semibold">{revealedValue}</span>
+												) : (
+													<span className="text-zinc-500">••••••••••••</span>
+												)}
+											</TableCell>
+											<TableCell className="text-xs text-muted-foreground py-3.5">
+												<Badge variant="secondary" className="text-[10px] bg-secondary/80 text-zinc-300">
+													{v.environment || "All Environments"}
+												</Badge>
+											</TableCell>
+											<TableCell className="text-xs text-muted-foreground py-3.5">{v.description || "—"}</TableCell>
+											<TableCell className="text-right py-3.5">
+												<div className="flex items-center justify-end gap-1">
 													<Button
 														variant="ghost"
 														size="icon"
-														className="h-8 w-8 text-muted-foreground hover:text-emerald-400 rounded-lg"
-														onClick={() => handleCopyValue(v.id, revealedValue)}
+														className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
+														onClick={() => handleReveal(v.id)}
 													>
-														{copiedId === v.id ? (
-															<Check className="h-4 w-4 text-emerald-400" />
-														) : (
-															<Copy className="h-4 w-4" />
-														)}
+														{revealedId === v.id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
 													</Button>
-												)}
 
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-													onClick={() => setDeletingId(v.id)}
-												>
-													<Trash2 className="h-4 w-4" />
-												</Button>
-											</div>
-										</TableCell>
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
+													{revealedId === v.id && (
+														<Button
+															variant="ghost"
+															size="icon"
+															className="h-8 w-8 text-muted-foreground hover:text-emerald-400 rounded-lg"
+															onClick={() => handleCopyValue(v.id, revealedValue)}
+														>
+															{copiedId === v.id ? (
+																<Check className="h-4 w-4 text-emerald-400" />
+															) : (
+																<Copy className="h-4 w-4" />
+															)}
+														</Button>
+													)}
+
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+														onClick={() => setDeletingId(v.id)}
+													>
+														<Trash2 className="h-4 w-4" />
+													</Button>
+												</div>
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</div>
 					</div>
 				)}
 			</CardContent>
@@ -282,7 +352,7 @@ export function SharedEnvVarsSection() {
 							to local project defaults.
 						</DialogDescription>
 					</DialogHeader>
-					<DialogFooter className="flex justify-end gap-2 pt-4 border-t border-border/40">
+					<DialogFooter className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t border-border/40">
 						<Button
 							variant="ghost"
 							onClick={() => setDeletingId(null)}

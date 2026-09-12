@@ -230,14 +230,14 @@ export function CreateDatabaseDialog({
 						</p>
 					)}
 
-					<div className="flex justify-end gap-2 border-t border-border/40 pt-4">
-						<Button variant="ghost" onClick={() => onOpenChange(false)} className="text-xs text-muted-foreground">
+					<div className="flex flex-col-reverse sm:flex-row justify-end gap-2 border-t border-border/40 pt-4">
+						<Button variant="ghost" onClick={() => onOpenChange(false)} className="text-xs text-muted-foreground w-full sm:w-auto">
 							Cancel
 						</Button>
 						<Button
 							disabled={isCreating || !name.trim() || (!allowAnywhere && !cidrs.trim())}
 							onClick={create}
-							className="bg-orange-500 hover:bg-orange-600 text-white font-medium text-xs px-5 shadow-md"
+							className="bg-orange-500 hover:bg-orange-600 text-white font-medium text-xs px-5 shadow-md w-full sm:w-auto"
 						>
 							{isCreating ? "Provisioning..." : "Provision Database"}
 						</Button>

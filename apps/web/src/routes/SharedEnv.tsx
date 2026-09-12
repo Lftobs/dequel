@@ -37,7 +37,7 @@ export function SharedEnv() {
 						</p>
 					</div>
 
-					<div className="flex flex-wrap items-center gap-3">
+					<div className="w-full grid grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap items-center sm:gap-3">
 						<div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card/60 px-4 py-3 shadow-inner">
 							<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-400 ring-1 ring-orange-500/20">
 								<Layers className="h-4 w-4" />

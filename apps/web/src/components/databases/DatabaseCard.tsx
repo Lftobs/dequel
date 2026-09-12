@@ -48,8 +48,7 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 			onChanged();
 		} catch (err) {
 			setActionError(err instanceof Error ? err.message : "Action failed");
-		}
-		fontFinally: {
+		} finally {
 			setIsBusy(false);
 		}
 	};
@@ -62,8 +61,7 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 
 	return (
 		<Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-xl hover:border-orange-500/30 transition-all overflow-hidden flex flex-col justify-between">
-			<CardContent className="space-y-5 p-6">
-				{/* Top Header Row */}
+			<CardContent className="space-y-5 p-4 sm:p-6">
 				<div className="flex items-start justify-between gap-4">
 					<div className="space-y-1.5">
 						<div className="flex items-center gap-2">
@@ -79,7 +77,7 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 							<Database className="h-4 w-4 text-orange-400" />
 							{database.name}
 						</h3>
-						<p className="text-xs text-muted-foreground flex items-center gap-1.5">
+						<p className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
 							<span>{project ? `Project: ${project.name}` : "Standalone Database"}</span>
 							<span>·</span>
 							<span className="font-mono text-zinc-400">{database.databaseName}</span>
@@ -92,13 +90,12 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 						disabled={isBusy}
 						aria-label={`Delete ${database.name}`}
 						onClick={() => onDelete(database)}
-						className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+						className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg shrink-0"
 					>
 						<Trash2 className="h-4 w-4" />
 					</Button>
 				</div>
 
-				{/* Endpoints Grid */}
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
 					<div className="rounded-xl border border-border/80 bg-black/40 p-3 space-y-1">
 						<div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
@@ -125,7 +122,6 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 					</div>
 				</div>
 
-				{/* Storage Meter */}
 				<div className="space-y-1.5">
 					<div className="flex justify-between text-xs font-medium">
 						<span className="text-muted-foreground">Disk Storage Usage</span>
@@ -152,7 +148,6 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 					</div>
 				</div>
 
-				{/* Connection String Box */}
 				<div className="rounded-xl border border-border/80 bg-black/50 p-3.5 space-y-2">
 					<div className="flex items-center justify-between gap-3">
 						<div className="min-w-0 flex-1">
@@ -170,6 +165,7 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 								variant="ghost"
 								size="icon"
 								onClick={reveal}
+								aria-label={credentials ? "Hide credentials" : "Reveal credentials"}
 								className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
 							>
 								{credentials ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -181,6 +177,7 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 									variant="ghost"
 									size="sm"
 									onClick={() => handleCopyConnection(connString)}
+									aria-label="Copy connection string"
 									className="h-8 text-xs text-emerald-400 hover:bg-emerald-500/10 gap-1 px-2 rounded-lg"
 								>
 									{copiedConnection ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -197,9 +194,8 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 					)}
 				</div>
 
-				{/* Action Row */}
-				<div className="flex items-center justify-between border-t border-border/40 pt-4">
-					<div className="flex gap-2">
+				<div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-4">
+					<div className="flex flex-wrap gap-2">
 						{database.status === "stopped" ? (
 							<Button
 								size="sm"

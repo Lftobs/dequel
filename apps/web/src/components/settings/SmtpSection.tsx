@@ -77,11 +77,11 @@ export function SmtpSection() {
 			<CardHeader className="border-b border-border/40 pb-5">
 				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 					<div className="flex items-center gap-3">
-						<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500 ring-1 ring-orange-500/20">
+						<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500 ring-1 ring-orange-500/20 shrink-0">
 							<Mail className="h-5 w-5" />
 						</div>
 						<div>
-							<div className="flex items-center gap-2">
+							<div className="flex items-center gap-2 flex-wrap">
 								<CardTitle className="text-lg font-semibold text-foreground">SMTP Email Notifications</CardTitle>
 								{data?.configured ? (
 									<Badge
@@ -206,7 +206,7 @@ export function SmtpSection() {
 						</div>
 					</div>
 
-					<div className="flex items-center justify-between pt-2 border-t border-border/40">
+					<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-border/40">
 						<div className="space-y-1">
 							{saveResult && (
 								<p
@@ -227,7 +227,7 @@ export function SmtpSection() {
 						<Button
 							type="submit"
 							size="sm"
-							className="bg-orange-500 hover:bg-orange-600 text-white font-medium text-xs px-5 shadow-md"
+							className="bg-orange-500 hover:bg-orange-600 text-white font-medium text-xs px-5 shadow-md w-full sm:w-auto"
 						>
 							Save SMTP Settings
 						</Button>

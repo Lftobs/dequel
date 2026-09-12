@@ -342,18 +342,18 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 							/>
 						)}
 
-						<DialogFooter className="pt-4 border-t border-[#1a1a1f] flex justify-between items-center sm:space-x-0 select-none">
-							<div className="text-zinc-500 text-[10px]">
+						<DialogFooter className="pt-4 border-t border-[#1a1a1f] flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:space-x-0 select-none">
+							<div className="text-zinc-500 text-[10px] text-center sm:text-left">
 								{step === 1 && "Step 1 of 3: General & Git settings"}
 								{step === 2 && "Step 2 of 3: Staging env variables"}
 								{step === 3 && "Step 3 of 3: Port, resource limits & Databases"}
 							</div>
-							<div className="flex gap-2">
+							<div className="flex gap-2 justify-end">
 								{step > 1 && (
 									<Button
 										type="button"
 										variant="outline"
-										className="border-[#222227] text-zinc-400 hover:bg-[#1a1a1f] h-9"
+										className="border-[#222227] text-zinc-400 hover:bg-[#1a1a1f] h-9 flex-1 sm:flex-none"
 										onClick={() => setStep(step - 1)}
 									>
 										Back
@@ -363,7 +363,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 									<Button
 										type="button"
 										variant="outline"
-										className="border-[#222227] text-zinc-400 hover:bg-[#1a1a1f] h-9"
+										className="border-[#222227] text-zinc-400 hover:bg-[#1a1a1f] h-9 flex-1 sm:flex-none"
 										onClick={() => handleOpenChange(false)}
 									>
 										Cancel
@@ -374,7 +374,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 									<Button
 										type="button"
 										onClick={() => setStep(step + 1)}
-										className="bg-amber-500 hover:bg-amber-600 text-white font-medium h-9"
+										className="bg-amber-500 hover:bg-amber-600 text-white font-medium h-9 flex-1 sm:flex-none"
 										disabled={step === 1 && !name.trim()}
 									>
 										Continue
@@ -382,7 +382,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 								) : (
 									<Button
 										type="submit"
-										className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-medium h-9 px-6 shadow-lg shadow-amber-500/10 border-0"
+										className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-medium h-9 px-6 shadow-lg shadow-amber-500/10 border-0 flex-1 sm:flex-none"
 										disabled={!name.trim() || createProject.isPending}
 									>
 										Configure & Create

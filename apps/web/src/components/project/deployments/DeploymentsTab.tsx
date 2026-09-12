@@ -15,6 +15,7 @@ import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Input } from "../../ui/input";
 import { ClearCacheToggle } from "./clear-cache-toggle";
+import { SwitchToGitCard } from "./SwitchToGitCard";
 import { DeploymentHistory } from "./deployment-history";
 import { ManualDeployDialog } from "./manual-deploy-dialog";
 
@@ -52,6 +53,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 	const [webhookLoading, setWebhookLoading] = useState(false);
 	const [webhookChecked, setWebhookChecked] = useState(false);
 	const [webhookError, setWebhookError] = useState<string | null>(null);
+	const [showManualDeployDialog, setShowManualDeployDialog] = useState(false);
 
 	useEffect(() => {
 		if (!project?.repoUrl) return;
@@ -127,7 +129,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 		if (project.repoBranch) form.set("branch", project.repoBranch);
 		setIsAutoDeploying(true);
 		createDeployment.mutateAsync(form).finally(() => setIsAutoDeploying(false));
-	}, [totalDeployments, project?.repoUrl, project?.repoBranch, projectId, createDeployment]);
+	}, [totalDeployments, project?.repoUrl, project?.repoBranch, projectId, createDeployment, isLoading]);
 
 	const canEditSource = totalDeployments === 0;
 	const canUpdateDeployment = sourceType === "upload" || sourceType === "compose";
@@ -171,8 +173,6 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 		setShowGitSwitch(false);
 	};
 
-	const [showManualDeployDialog, setShowManualDeployDialog] = useState(false);
-
 	const handleManualDeploy = async (form: FormData) => {
 		form.set("sourceType", "git");
 		if (projectId) form.set("projectId", projectId);
@@ -207,16 +207,16 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 					{sourceType === "git" ? (
 						<div className="space-y-4">
 							<div className="p-4 rounded-lg bg-[#141417]/50 border border-[#222227] space-y-3">
-								<div className="flex items-center justify-between">
-									<div className="space-y-1">
+								<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+									<div className="space-y-1 min-w-0">
 										<div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
 											Repository URL
 										</div>
-										<div className="text-sm font-mono text-zinc-200">
+										<div className="text-sm font-mono text-zinc-200 break-all">
 											{project?.repoUrl || "No repository configured"}
 										</div>
 									</div>
-									<div className="text-right space-y-1">
+									<div className="text-left sm:text-right space-y-1 shrink-0">
 										<div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Branch</div>
 										<div className="text-xs bg-[#1a1a20] border border-[#33333b] text-zinc-300 px-2 py-1 rounded font-mono inline-block">
 											{project?.repoBranch || "main"}
@@ -224,7 +224,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 									</div>
 								</div>
 								{webhookError && <p className="text-xs text-red-400">{webhookError}</p>}
-								<div className="pt-2 flex justify-end gap-2">
+								<div className="pt-2 flex flex-col sm:flex-row justify-end gap-2">
 									{webhookChecked && (
 										<Button
 											type="button"
@@ -234,18 +234,18 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 											disabled={webhookLoading}
 											className={
 												webhookActive
-													? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-													: "border-zinc-700 text-zinc-400 hover:border-zinc-600"
+													? "w-full sm:w-auto border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+													: "w-full sm:w-auto border-zinc-700 text-zinc-400 hover:border-zinc-600"
 											}
 										>
-											<Webhook className="h-3.5 w-3.5 mr-1.5" />
+											<Webhook className="h-3.5 w-3.5 mr-1.5 shrink-0" />
 											{webhookLoading ? "Loading..." : webhookActive ? "Auto-deploy on" : "Enable auto-deploy"}
 										</Button>
 									)}
 									<Button
 										type="button"
 										onClick={() => setShowManualDeployDialog(true)}
-										className="bg-amber-600 hover:bg-amber-700 text-white font-medium flex items-center gap-2 shadow-lg shadow-amber-500/10"
+										className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-medium flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10"
 									>
 										<Play className="h-4 w-4 fill-current" /> Manual Deploy...
 									</Button>
@@ -254,7 +254,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 						</div>
 					) : (
 						<form onSubmit={handleDeploy} className="space-y-3">
-							<div className="flex gap-2">
+							<div className="flex flex-wrap gap-2">
 								{(["git", "upload", "compose"] as const).map((type) => (
 									<Button
 										key={type}
@@ -274,20 +274,23 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 								className="file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-primary file:text-primary-foreground"
 							/>
 							<ClearCacheToggle checked={clearCache} onChange={setClearCache} id="clearCacheUpload" />
-							<div className="flex gap-2">
+							<div className="flex flex-col sm:flex-row gap-2">
 								<Input
 									placeholder="Environment (e.g. production)"
 									value={environment}
 									onChange={(e) => setEnvironment(e.target.value)}
 									className="flex-1"
 								/>
-								<Button type="submit" disabled={createDeployment.isPending || !canUpdateDeployment || isAutoDeploying}>
+								<Button
+									type="submit"
+									disabled={createDeployment.isPending || !canUpdateDeployment || isAutoDeploying}
+									className="w-full sm:w-auto"
+								>
 									{createDeployment.isPending || isAutoDeploying ? (
 										"Deploying..."
 									) : (
 										<>
-											<Play className="mr-1.5 h-4 w-4" />
-											Update
+											<Play className="mr-1.5 h-4 w-4" /> Update
 										</>
 									)}
 								</Button>
@@ -303,41 +306,15 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 			</Card>
 
 			{showGitSwitch && (
-				<Card className="border-primary/30 bg-primary/5">
-					<CardHeader className="pb-2">
-						<CardTitle className="text-sm text-foreground">Switch deployment source to Git?</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-3">
-						<p className="text-xs text-foreground">
-							Enter the git repository URL to create a new deployment from source.
-						</p>
-						<Input
-							placeholder="https://github.com/user/repo.git"
-							value={switchGitUrl}
-							onChange={(e) => setSwitchGitUrl(e.target.value)}
-							className="text-sm"
-						/>
-						<Input
-							placeholder="Branch (optional)"
-							value={switchBranch}
-							onChange={(e) => setSwitchBranch(e.target.value)}
-							className="text-sm"
-						/>
-						<div className="flex justify-end gap-2">
-							<Button type="button" size="sm" variant="outline" onClick={() => setShowGitSwitch(false)}>
-								Cancel
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								onClick={handleSwitchToGit}
-								disabled={!switchGitUrl.trim() || createDeployment.isPending || isAutoDeploying}
-							>
-								{createDeployment.isPending ? "Switching..." : "Switch"}
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
+				<SwitchToGitCard
+					switchGitUrl={switchGitUrl}
+					setSwitchGitUrl={setSwitchGitUrl}
+					switchBranch={switchBranch}
+					setSwitchBranch={setSwitchBranch}
+					onCancel={() => setShowGitSwitch(false)}
+					onSwitch={handleSwitchToGit}
+					isPending={createDeployment.isPending || isAutoDeploying}
+				/>
 			)}
 
 			{totalDeployments > 0 && (

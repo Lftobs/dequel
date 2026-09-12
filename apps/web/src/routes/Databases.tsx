@@ -81,7 +81,7 @@ export function Databases() {
 						<Button
 							onClick={() => setIsCreating(true)}
 							size="sm"
-							className="bg-orange-500 hover:bg-orange-600 text-white font-medium shadow-md transition-all gap-1.5 h-11 px-5 rounded-2xl"
+							className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-medium shadow-md transition-all gap-1.5 h-11 px-5 rounded-2xl"
 						>
 							<Plus className="h-4 w-4" />
 							New Database

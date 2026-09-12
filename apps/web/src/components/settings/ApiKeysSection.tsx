@@ -222,53 +222,78 @@ export function ApiKeysSection() {
 					</div>
 				) : (
 					<div className="rounded-xl border border-border/60 overflow-hidden bg-card/30">
-						<Table>
-							<TableHeader className="bg-muted/40">
-								<TableRow className="border-border/60 hover:bg-transparent">
-									<TableHead className="text-xs font-semibold">Token Label</TableHead>
-									<TableHead className="text-xs font-semibold">Key Hash</TableHead>
-									<TableHead className="text-xs font-semibold">Created Date</TableHead>
-									<TableHead className="text-xs font-semibold text-right">Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{apiKeys.map((k) => (
-									<TableRow key={k.id} className="border-border/40 hover:bg-muted/20">
-										<TableCell className="font-medium text-foreground text-xs py-3.5">
-											<div className="flex items-center gap-2">
-												<div className="h-2 w-2 rounded-full bg-emerald-500" />
-												<span>{k.name}</span>
-											</div>
-										</TableCell>
-										<TableCell className="font-mono text-xs text-muted-foreground py-3.5">
-											<Badge
-												variant="outline"
-												className="font-mono text-[11px] bg-black/40 text-zinc-400 border-border/60"
-											>
-												dequel_sec_{k.keyHash?.slice(0, 8)}...
-											</Badge>
-										</TableCell>
-										<TableCell className="text-muted-foreground text-xs py-3.5">
-											{new Date(k.createdAt).toLocaleDateString(undefined, {
-												year: "numeric",
-												month: "short",
-												day: "numeric",
-											})}
-										</TableCell>
-										<TableCell className="text-right py-3.5">
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-												onClick={() => setDeletingKeyId(k.id)}
-											>
-												<Trash2 className="h-4 w-4" />
-											</Button>
-										</TableCell>
+						<div className="md:hidden divide-y divide-border/40">
+							{apiKeys.map((k) => (
+								<div key={k.id} className="p-3.5 flex items-center justify-between gap-3">
+									<div className="space-y-1 min-w-0">
+										<div className="flex items-center gap-2">
+											<div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+											<p className="font-medium text-sm text-foreground truncate">{k.name}</p>
+										</div>
+										<p className="font-mono text-xs text-muted-foreground">dequel_sec_{k.keyHash?.slice(0, 8)}...</p>
+										<p className="text-[11px] text-muted-foreground/70">{new Date(k.createdAt).toLocaleDateString()}</p>
+									</div>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+										onClick={() => setDeletingKeyId(k.id)}
+									>
+										<Trash2 className="h-3.5 w-3.5" />
+									</Button>
+								</div>
+							))}
+						</div>
+
+						<div className="hidden md:block overflow-x-auto">
+							<Table className="w-full">
+								<TableHeader className="bg-muted/40">
+									<TableRow className="border-border/60 hover:bg-transparent">
+										<TableHead className="text-xs font-semibold">Token Label</TableHead>
+										<TableHead className="text-xs font-semibold">Key Hash</TableHead>
+										<TableHead className="text-xs font-semibold">Created Date</TableHead>
+										<TableHead className="text-xs font-semibold text-right">Actions</TableHead>
 									</TableRow>
-								))}
-							</TableBody>
-						</Table>
+								</TableHeader>
+								<TableBody>
+									{apiKeys.map((k) => (
+										<TableRow key={k.id} className="border-border/40 hover:bg-muted/20">
+											<TableCell className="font-medium text-foreground text-xs py-3.5">
+												<div className="flex items-center gap-2">
+													<div className="h-2 w-2 rounded-full bg-emerald-500" />
+													<span>{k.name}</span>
+												</div>
+											</TableCell>
+											<TableCell className="font-mono text-xs text-muted-foreground py-3.5">
+												<Badge
+													variant="outline"
+													className="font-mono text-[11px] bg-black/40 text-zinc-400 border-border/60"
+												>
+													dequel_sec_{k.keyHash?.slice(0, 8)}...
+												</Badge>
+											</TableCell>
+											<TableCell className="text-muted-foreground text-xs py-3.5">
+												{new Date(k.createdAt).toLocaleDateString(undefined, {
+													year: "numeric",
+													month: "short",
+													day: "numeric",
+												})}
+											</TableCell>
+											<TableCell className="text-right py-3.5">
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+													onClick={() => setDeletingKeyId(k.id)}
+												>
+													<Trash2 className="h-4 w-4" />
+												</Button>
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</div>
 					</div>
 				)}
 			</CardContent>

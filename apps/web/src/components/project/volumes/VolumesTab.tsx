@@ -55,7 +55,6 @@ export function VolumesTab({ projectId }: VolumesTabProps) {
 
 	return (
 		<div className="space-y-6">
-			{/* Redeployment Warning Banner */}
 			{showRedeployPrompt && latestDeployment && (
 				<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 gap-3 animate-in fade-in-0 duration-200">
 					<div className="flex items-start gap-3">
@@ -110,7 +109,7 @@ export function VolumesTab({ projectId }: VolumesTabProps) {
 			)}
 
 			{volumes.length === 0 ? (
-				<div className="flex flex-col items-center justify-center border border-dashed border-border rounded-2xl p-12 text-center bg-card/20 backdrop-blur-sm relative overflow-hidden group min-h-[350px]">
+				<div className="flex flex-col items-center justify-center border border-dashed border-border rounded-2xl p-6 sm:p-12 text-center bg-card/20 backdrop-blur-sm relative overflow-hidden group min-h-[350px]">
 					<div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50 pointer-events-none" />
 					<div className="relative w-16 h-16 rounded-2xl bg-gradient-to-b from-[#1a1a1f] to-[#121215] border border-border flex items-center justify-center mb-6 shadow-xl group-hover:border-primary/30 transition-colors duration-300">
 						<div className="absolute inset-0 bg-primary/10 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -130,64 +129,89 @@ export function VolumesTab({ projectId }: VolumesTabProps) {
 				</div>
 			) : (
 				<div className="space-y-4">
-					<div className="flex items-center justify-between">
+					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 						<div>
 							<h2 className="text-lg font-semibold text-foreground">Persistent Volumes</h2>
 							<p className="text-sm text-muted-foreground">Disk volumes mounted to container runtimes.</p>
 						</div>
 						<Button
 							onClick={() => setIsAddOpen(true)}
-							className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-1.5 px-4 h-9 rounded-xl transition-all text-xs shadow-md"
+							className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center justify-center gap-1.5 px-4 h-9 rounded-xl transition-all text-xs shadow-md w-full sm:w-auto"
 						>
 							<Plus className="h-4.5 w-4.5" /> Add Volume
 						</Button>
 					</div>
 
-					<div className="rounded-xl border border-border bg-card/35 backdrop-blur-sm overflow-hidden overflow-x-auto">
-						<Table className="min-w-[600px] md:min-w-full">
-							<TableHeader className="bg-[#0b0b0f]/50">
-								<TableRow className="border-border hover:bg-transparent">
-									<TableHead className="text-xs font-semibold py-3">Mount Path</TableHead>
-									<TableHead className="text-xs font-semibold py-3">Docker Volume Name</TableHead>
-									<TableHead className="text-xs font-semibold py-3">Created</TableHead>
-									<TableHead className="w-12 text-right pr-6"></TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{volumes.map((v) => (
-									<TableRow key={v.id} className="border-border hover:bg-[#121217]/30 group transition-all">
-										<TableCell className="font-mono text-sm py-3.5 font-semibold text-foreground">
+					<div className="rounded-xl border border-border bg-card/35 backdrop-blur-sm overflow-hidden">
+						<div className="md:hidden divide-y divide-border">
+							{volumes.map((v) => (
+								<div key={v.id} className="p-3.5 space-y-2">
+									<div className="flex items-center justify-between gap-2">
+										<span className="font-mono text-sm font-semibold text-foreground break-all">
 											{v.mountPath}
-										</TableCell>
-										<TableCell className="font-mono text-xs py-3.5 text-muted-foreground/75">
-											{v.dockerVolumeName ?? "—"}
-										</TableCell>
-										<TableCell className="text-muted-foreground text-xs py-3.5">
-											{new Date(v.createdAt).toLocaleDateString(undefined, {
-												year: "numeric",
-												month: "short",
-												day: "numeric",
-											})}
-										</TableCell>
-										<TableCell className="py-3.5 pr-6 text-right">
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all opacity-80 group-hover:opacity-100"
-												onClick={() => setDeletingVolId(v.id)}
-											>
-												<Trash2 className="h-3.5 w-3.5" />
-											</Button>
-										</TableCell>
+										</span>
+										<Button
+											variant="ghost"
+											size="icon"
+											className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+											onClick={() => setDeletingVolId(v.id)}
+										>
+											<Trash2 className="h-3.5 w-3.5" />
+										</Button>
+									</div>
+									<div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+										<span className="truncate max-w-[180px]">{v.dockerVolumeName ?? "—"}</span>
+										<span className="text-[11px]">{new Date(v.createdAt).toLocaleDateString()}</span>
+									</div>
+								</div>
+							))}
+						</div>
+
+						<div className="hidden md:block overflow-x-auto">
+							<Table className="w-full">
+								<TableHeader className="bg-[#0b0b0f]/50">
+									<TableRow className="border-border hover:bg-transparent">
+										<TableHead className="text-xs font-semibold py-3">Mount Path</TableHead>
+										<TableHead className="text-xs font-semibold py-3">Docker Volume Name</TableHead>
+										<TableHead className="text-xs font-semibold py-3">Created</TableHead>
+										<TableHead className="w-12 text-right pr-6"></TableHead>
 									</TableRow>
-								))}
-							</TableBody>
-						</Table>
+								</TableHeader>
+								<TableBody>
+									{volumes.map((v) => (
+										<TableRow key={v.id} className="border-border hover:bg-[#121217]/30 group transition-all">
+											<TableCell className="font-mono text-sm py-3.5 font-semibold text-foreground">
+												{v.mountPath}
+											</TableCell>
+											<TableCell className="font-mono text-xs py-3.5 text-muted-foreground/75">
+												{v.dockerVolumeName ?? "—"}
+											</TableCell>
+											<TableCell className="text-muted-foreground text-xs py-3.5">
+												{new Date(v.createdAt).toLocaleDateString(undefined, {
+													year: "numeric",
+													month: "short",
+													day: "numeric",
+												})}
+											</TableCell>
+											<TableCell className="py-3.5 pr-6 text-right">
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all opacity-80 group-hover:opacity-100"
+													onClick={() => setDeletingVolId(v.id)}
+												>
+													<Trash2 className="h-3.5 w-3.5" />
+												</Button>
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</div>
 					</div>
 				</div>
 			)}
 
-			{/* Add Volume Dialog */}
 			<Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
 				<DialogContent className="sm:max-w-[420px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
 					<DialogHeader>
@@ -232,7 +256,6 @@ export function VolumesTab({ projectId }: VolumesTabProps) {
 				</DialogContent>
 			</Dialog>
 
-			{/* Delete Volume Confirmation Dialog */}
 			<Dialog open={deletingVolId !== null} onOpenChange={(open) => !open && setDeletingVolId(null)}>
 				<DialogContent className="sm:max-w-[400px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
 					<DialogHeader>

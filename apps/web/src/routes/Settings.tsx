@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { GitBranch, Mail, Server, Settings2, ShieldCheck } from "lucide-react";
+import { GitBranch, Mail, Server, Settings2, ShieldCheck, Trash2 } from "lucide-react";
 import * as api from "../api/client";
 import { ConfigWarnings } from "../components/ConfigWarnings";
+import { DeleteProjectsSection } from "../components/settings/DeleteProjectsSection";
 import { GithubIntegrationSection } from "../components/settings/GithubIntegrationSection";
 import { ServersSection } from "../components/settings/ServersSection";
 import { SmtpSection } from "../components/settings/SmtpSection";
@@ -46,12 +47,11 @@ export function Settings() {
 							Platform Settings
 						</h1>
 						<p className="max-w-2xl text-xs md:text-sm text-muted-foreground leading-relaxed">
-							Configure cluster infrastructure nodes, external GitHub OAuth provider integrations, and SMTP notification
-							dispatchers.
+							Configure cluster infrastructure nodes, external GitHub OAuth provider integrations, SMTP notifications, and project management.
 						</p>
 					</div>
 
-					<div className="flex flex-wrap items-center gap-3">
+					<div className="w-full grid grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap items-center sm:gap-3">
 						<div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card/60 px-4 py-3 shadow-inner">
 							<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-400 ring-1 ring-orange-500/20">
 								<Server className="h-4 w-4" />
@@ -81,27 +81,34 @@ export function Settings() {
 
 			{/* Main Settings Tabs */}
 			<Tabs defaultValue="servers" className="space-y-6">
-				<TabsList className="bg-card/60 border border-border/60 p-1 rounded-2xl backdrop-blur-md max-w-lg">
+				<TabsList className="bg-card/60 border border-border/60 p-1 rounded-2xl backdrop-blur-md max-w-2xl flex overflow-x-auto whitespace-nowrap justify-start [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x">
 					<TabsTrigger
 						value="servers"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all"
+						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all shrink-0"
 					>
 						<Server className="h-3.5 w-3.5" />
 						Servers & Nodes
 					</TabsTrigger>
 					<TabsTrigger
 						value="github"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all"
+						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all shrink-0"
 					>
 						<GitBranch className="h-3.5 w-3.5" />
 						GitHub Integration
 					</TabsTrigger>
 					<TabsTrigger
 						value="smtp"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all"
+						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all shrink-0"
 					>
 						<Mail className="h-3.5 w-3.5" />
 						SMTP Notifications
+					</TabsTrigger>
+					<TabsTrigger
+						value="danger"
+						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-red-500 data-[state=active]:text-white transition-all shrink-0 text-red-400 hover:text-red-300"
+					>
+						<Trash2 className="h-3.5 w-3.5" />
+						Delete Projects
 					</TabsTrigger>
 				</TabsList>
 
@@ -115,6 +122,10 @@ export function Settings() {
 
 				<TabsContent value="smtp">
 					<SmtpSection />
+				</TabsContent>
+
+				<TabsContent value="danger">
+					<DeleteProjectsSection />
 				</TabsContent>
 			</Tabs>
 		</div>
