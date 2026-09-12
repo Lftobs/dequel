@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { Database, HardDrive, Plus, RefreshCw, Server, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import * as api from "../api/client";
@@ -17,6 +18,7 @@ import {
 import type { Database as DatabaseRecord } from "../types";
 
 export function Databases() {
+	const navigate = useNavigate();
 	const [isCreating, setIsCreating] = useState(false);
 	const [deleting, setDeleting] = useState<DatabaseRecord | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
@@ -79,7 +81,7 @@ export function Databases() {
 						</div>
 
 						<Button
-							onClick={() => setIsCreating(true)}
+							onClick={() => navigate({ to: "/databases/new" })}
 							size="sm"
 							className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-medium shadow-md transition-all gap-1.5 h-11 px-5 rounded-2xl"
 						>

@@ -1,6 +1,8 @@
 import type {
 	Alert,
 	ApiKey,
+	BackupJob,
+	BackupStorageSettingsData,
 	CreateProjectInput,
 	Database,
 	Deployment,
@@ -10,9 +12,11 @@ import type {
 	GithubRepo,
 	Log,
 	Project,
+	QueryExecResult,
 	ScalingPolicy,
 	Server,
 	SmtpSettingsStatus,
+	TableInfo,
 	Volume,
 } from "../types";
 
@@ -178,6 +182,7 @@ export const createDatabase = (
 	options?: {
 		name?: string;
 		version?: string;
+		serverId?: string;
 		cpuLimit?: number | null;
 		memoryLimitMb?: number | null;
 		storageLimitMb?: number | null;
@@ -205,6 +210,47 @@ export const startDatabase = (id: string) => apiFetch<Database>(`/databases/${id
 export const stopDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/stop`, { method: "POST" });
 export const restartDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/restart`, { method: "POST" });
 export const retryDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/retry`, { method: "POST" });
+export const updateDatabaseSettings = (
+	id: string,
+	data: {
+		name?: string;
+		cpuLimit?: number | null;
+		memoryLimitMb?: number | null;
+		storageLimitMb?: number | null;
+		publicAccess?: boolean;
+		allowPublicAccessFromAnywhere?: boolean;
+		allowedCidrs?: string[];
+		backupEnabled?: boolean;
+		backupSchedule?: string;
+		backupRetention?: number;
+	},
+) =>
+	apiFetch<Database>(`/databases/${id}`, {
+		method: "PATCH",
+		body: JSON.stringify(data),
+	});
+export const getDatabaseTables = (id: string) => apiFetch<TableInfo[]>(`/databases/${id}/tables`);
+export const queryDatabase = (id: string, query: string) =>
+	apiFetch<QueryExecResult>(`/databases/${id}/query`, {
+		method: "POST",
+		body: JSON.stringify({ query }),
+	});
+
+// Backups
+export const listBackups = () => apiFetch<BackupJob[]>("/backups");
+export const triggerBackup = (targetId = "internal") =>
+	apiFetch<BackupJob>(targetId === "internal" ? "/backups" : `/backups/${targetId}/trigger`, {
+		method: "POST",
+	});
+export const restoreBackup = (id: string) =>
+	apiFetch<{ restored: boolean }>(`/backups/${id}/restore`, { method: "POST" });
+export const deleteBackup = (id: string) => apiFetch<{ deleted: boolean }>(`/backups/${id}`, { method: "DELETE" });
+export const getBackupStorageSettings = () => apiFetch<BackupStorageSettingsData>("/settings/backup");
+export const updateBackupStorageSettings = (data: BackupStorageSettingsData) =>
+	apiFetch<BackupStorageSettingsData>("/settings/backup", {
+		method: "PUT",
+		body: JSON.stringify(data),
+	});
 
 // Domains
 export const listDomains = (projectId: string) => apiFetch<Domain[]>(`/projects/${projectId}/domains`);

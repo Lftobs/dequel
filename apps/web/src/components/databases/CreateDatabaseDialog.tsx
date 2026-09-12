@@ -1,5 +1,6 @@
-import { Database, HardDrive, ShieldAlert, Cpu } from "lucide-react";
+import { Cpu, Database, HardDrive, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import * as api from "../../api/client";
 import type { DatabaseType, Project } from "../../types";
 import { Button } from "../ui/button";
@@ -7,6 +8,7 @@ import { DATABASE_ENGINES, DatabaseSelect } from "../ui/DatabaseSelect";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { ServerSelect } from "./ServerSelect";
 
 interface CreateDatabaseDialogProps {
 	open: boolean;
@@ -32,8 +34,14 @@ export function CreateDatabaseDialog({
 	const [storage, setStorage] = useState("10240");
 	const [allowAnywhere, setAllowAnywhere] = useState(false);
 	const [cidrs, setCidrs] = useState("");
+	const [serverId, setServerId] = useState("local");
 	const [isCreating, setIsCreating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	const { data: servers = [] } = useQuery({
+		queryKey: ["servers"],
+		queryFn: () => api.listServers().catch(() => []),
+	});
 
 	useEffect(() => {
 		const engine = DATABASE_ENGINES.find((item) => item.type === type);
@@ -47,6 +55,7 @@ export function CreateDatabaseDialog({
 			await api.createDatabase(projectId === "standalone" ? null : projectId, type, {
 				name,
 				version,
+				serverId,
 				cpuLimit: Number(cpu),
 				memoryLimitMb: Number(memory),
 				storageLimitMb: Number(storage),
@@ -125,6 +134,8 @@ export function CreateDatabaseDialog({
 							<DatabaseSelect id="database-engine" value={type} onValueChange={(val) => setType(val)} />
 						</div>
 					</div>
+
+					<ServerSelect id="dialog-database-server" value={serverId} onChange={setServerId} servers={servers} />
 
 					<div className="space-y-1.5">
 						<label htmlFor="database-version" className="text-xs font-medium text-foreground">
@@ -231,7 +242,11 @@ export function CreateDatabaseDialog({
 					)}
 
 					<div className="flex flex-col-reverse sm:flex-row justify-end gap-2 border-t border-border/40 pt-4">
-						<Button variant="ghost" onClick={() => onOpenChange(false)} className="text-xs text-muted-foreground w-full sm:w-auto">
+						<Button
+							variant="ghost"
+							onClick={() => onOpenChange(false)}
+							className="text-xs text-muted-foreground w-full sm:w-auto"
+						>
 							Cancel
 						</Button>
 						<Button

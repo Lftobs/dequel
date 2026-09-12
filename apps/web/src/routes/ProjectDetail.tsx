@@ -92,73 +92,23 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 							)}
 						</div>
 						{project.description && (
-							<p className="text-muted-foreground text-xs sm:text-sm mt-0.5 line-clamp-2">
-								{project.description}
-							</p>
+							<p className="text-muted-foreground text-xs sm:text-sm mt-0.5 line-clamp-2">{project.description}</p>
 						)}
 					</div>
 				</div>
 			</div>
 
 			<Tabs value={activeTab} onValueChange={(val) => navigate({ search: { tab: val } as any })} className="space-y-4">
-				<TabsList
-					ref={tabsListRef}
-					className="mb-6 flex overflow-x-auto whitespace-nowrap justify-start h-auto p-1 bg-[#141417] border border-[#222227] rounded-lg max-w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x"
-				>
-					<TabsTrigger
-						value="deployments"
-						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
-					>
-						Deployments
-					</TabsTrigger>
-					<TabsTrigger
-						value="env-vars"
-						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
-					>
-						Env Vars
-					</TabsTrigger>
-					<TabsTrigger
-						value="volumes"
-						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
-					>
-						Volumes
-					</TabsTrigger>
-					<TabsTrigger
-						value="domains"
-						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
-					>
-						Domains
-					</TabsTrigger>
-					<TabsTrigger
-						value="scaling"
-						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
-					>
-						Scaling
-					</TabsTrigger>
-					<TabsTrigger
-						value="alerts"
-						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
-					>
-						Alerts
-					</TabsTrigger>
-					<TabsTrigger
-						value="observability"
-						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
-					>
-						Observability
-					</TabsTrigger>
-					<TabsTrigger
-						value="logs"
-						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
-					>
-						Logs
-					</TabsTrigger>
-					<TabsTrigger
-						value="settings"
-						className="text-xs px-3 py-1.5 rounded-md shrink-0 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100"
-					>
-						Settings
-					</TabsTrigger>
+				<TabsList ref={tabsListRef} className="mb-6">
+					<TabsTrigger value="deployments">Deployments</TabsTrigger>
+					<TabsTrigger value="env-vars">Env Vars</TabsTrigger>
+					<TabsTrigger value="volumes">Volumes</TabsTrigger>
+					<TabsTrigger value="domains">Domains</TabsTrigger>
+					<TabsTrigger value="scaling">Scaling</TabsTrigger>
+					<TabsTrigger value="alerts">Alerts</TabsTrigger>
+					<TabsTrigger value="observability">Observability</TabsTrigger>
+					<TabsTrigger value="logs">Logs</TabsTrigger>
+					<TabsTrigger value="settings">Settings</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="deployments">

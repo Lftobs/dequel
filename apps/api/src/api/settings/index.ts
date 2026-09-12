@@ -1,10 +1,12 @@
 import { Elysia } from "elysia";
 import nodemailer from "nodemailer";
 import {
+	getBackupStorageSettings,
 	getPlatformSettings,
 	getServerById,
 	getSmtpSettings,
 	setIngressServer,
+	upsertBackupStorageSettings,
 	upsertSmtpSettings,
 } from "../../db/repo";
 import { failoverState } from "../../orchestrator/failover";
@@ -96,4 +98,26 @@ export const settingsRoutes = new Elysia({ prefix: "/settings" })
 			set.status = 400;
 			return fail(err.message);
 		}
+	})
+
+	.get("/backup", async () => {
+		const config = await getBackupStorageSettings();
+		return ok(config);
+	})
+
+	.put("/backup", async ({ body, set }: any) => {
+		if (!body?.type || (body.type !== "local" && body.type !== "s3")) {
+			set.status = 400;
+			return fail("Valid storage type ('local' or 's3') is required");
+		}
+		const updated = await upsertBackupStorageSettings({
+			type: body.type,
+			path: body.path ?? "/data/backups",
+			s3Endpoint: body.s3Endpoint ?? "",
+			s3AccessKeyId: body.s3AccessKeyId ?? "",
+			s3SecretAccessKey: body.s3SecretAccessKey ?? "",
+			s3Bucket: body.s3Bucket ?? "",
+			s3Region: body.s3Region ?? "auto",
+		});
+		return ok(updated, "Backup storage settings updated");
 	});

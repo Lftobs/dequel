@@ -18,7 +18,6 @@ SETUP_GUIDE.md
 bun.lock
 apps/docs/.blume/
 FEATURES.md
-docs/plans/
 .agents
 .worktrees/
 artifacts

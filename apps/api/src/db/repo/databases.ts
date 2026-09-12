@@ -8,6 +8,7 @@ import { getRowsAffected, now } from "./helpers";
 const mapDatabase = (row: typeof databases.$inferSelect): Database => ({
 	id: row.id,
 	projectId: row.projectId ?? null,
+	serverId: row.serverId ?? null,
 	name: row.name,
 	type: row.type as Database["type"],
 	version: row.version,
@@ -37,6 +38,9 @@ const mapDatabase = (row: typeof databases.$inferSelect): Database => ({
 	connectionString: row.connectionString,
 	status: row.status as DatabaseStatus,
 	containerName: row.containerName,
+	backupEnabled: Boolean(row.backupEnabled),
+	backupSchedule: row.backupSchedule ?? "0 */6 * * *",
+	backupRetention: row.backupRetention ?? 7,
 	createdAt: row.createdAt,
 	updatedAt: row.updatedAt,
 });
@@ -68,6 +72,7 @@ export const createDatabase = async (input: CreateDatabaseInput): Promise<Databa
 		.values({
 			id,
 			projectId: input.projectId ?? null,
+			serverId: input.serverId ?? null,
 			name: input.name,
 			type: input.type,
 			version: input.version ?? null,
@@ -88,6 +93,9 @@ export const createDatabase = async (input: CreateDatabaseInput): Promise<Databa
 			volumeName,
 			connectionString: connStr,
 			status: "provisioning",
+			backupEnabled: input.backupEnabled ?? true,
+			backupSchedule: input.backupSchedule ?? "0 */6 * * *",
+			backupRetention: input.backupRetention ?? 7,
 			createdAt: timestamp,
 			updatedAt: timestamp,
 		})
@@ -145,6 +153,30 @@ export const updateDatabaseRuntime = async (
 		.set({ ...updates, updatedAt: now() })
 		.where(eq(databases.id, id))
 		.execute();
+};
+
+export const updateDatabaseSettings = async (
+	id: string,
+	updates: {
+		name?: string;
+		cpuLimit?: number | null;
+		memoryLimitMb?: number | null;
+		storageLimitMb?: number | null;
+		publicAccess?: boolean;
+		allowPublicAccessFromAnywhere?: boolean;
+		allowedCidrs?: string[];
+		backupEnabled?: boolean;
+		backupSchedule?: string;
+		backupRetention?: number;
+	},
+): Promise<Database | null> => {
+	const db = await getDb();
+	await db
+		.update(databases)
+		.set({ ...updates, updatedAt: now() })
+		.where(eq(databases.id, id))
+		.execute();
+	return getDatabaseById(id);
 };
 
 export const deleteDatabase = async (id: string): Promise<boolean> => {

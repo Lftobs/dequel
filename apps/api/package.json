@@ -9,6 +9,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1130.0",
     "@elysiajs/cors": "^1.1.1",
     "@sinclair/typebox": "^0.34.13",
     "drizzle-orm": "^0.45.2",

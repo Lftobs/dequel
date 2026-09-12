@@ -1,4 +1,18 @@
-import { Check, Copy, Database, Eye, EyeOff, HardDrive, Network, Pause, Play, RefreshCw, Trash2 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import {
+	Check,
+	Copy,
+	Database,
+	ExternalLink,
+	Eye,
+	EyeOff,
+	HardDrive,
+	Network,
+	Pause,
+	Play,
+	RefreshCw,
+	Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import * as api from "../../api/client";
 import type { Database as DatabaseRecord, Project } from "../../types";
@@ -15,6 +29,7 @@ interface DatabaseCardProps {
 }
 
 export function DatabaseCard({ database, project, onChanged, onDelete }: DatabaseCardProps) {
+	const navigate = useNavigate();
 	const [credentials, setCredentials] = useState<Awaited<ReturnType<typeof api.getDatabaseCredentials>> | null>(null);
 	const [credentialsError, setCredentialsError] = useState<string | null>(null);
 	const [actionError, setActionError] = useState<string | null>(null);
@@ -236,6 +251,14 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 							<RefreshCw className={`h-3.5 w-3.5 ${isBusy ? "animate-spin" : ""}`} /> Restart
 						</Button>
 					</div>
+
+					<Button
+						size="sm"
+						onClick={() => navigate({ to: "/databases/$databaseId", params: { databaseId: database.id } })}
+						className="bg-orange-500 hover:bg-orange-600 text-white font-medium text-xs h-8 px-3 rounded-lg gap-1.5 shadow-sm"
+					>
+						Open Workspace <ExternalLink className="h-3.5 w-3.5" />
+					</Button>
 				</div>
 
 				{actionError && (

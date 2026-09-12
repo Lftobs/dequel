@@ -8,11 +8,13 @@ import {
 	getProjectById,
 	listAllDatabases,
 	listDatabases,
+	updateDatabaseSettings,
 	updateDatabaseStatus,
 } from "../../db/repo";
 import type { Database } from "../../types";
 import { resolveServerIp } from "../../utils/dns";
 import { created, fail, ok } from "../response";
+import { executeDatabaseQuery, getDatabaseTables } from "./query";
 
 const sanitizeDatabase = <T extends { password: string; connectionString: string }>(database: T) => ({
 	...database,
@@ -171,6 +173,49 @@ export const databasesRoutes = new Elysia()
 			);
 			return ok(sanitizeDatabase((await getDatabaseById(id))!));
 		});
+	})
+	.get("/databases/:id/tables", async ({ params: { id }, set }) => {
+		const dbRecord = await findDatabase(id, set);
+		if (!dbRecord) return fail("Database not found");
+		try {
+			const tables = await getDatabaseTables(dbRecord);
+			return ok(tables);
+		} catch (err: any) {
+			set.status = 500;
+			return fail(err.message || "Failed to fetch database tables");
+		}
+	})
+	.post("/databases/:id/query", async ({ params: { id }, body, set }: any) => {
+		const dbRecord = await findDatabase(id, set);
+		if (!dbRecord) return fail("Database not found");
+		if (!body?.query) {
+			set.status = 400;
+			return fail("query parameter is required");
+		}
+		try {
+			const result = await executeDatabaseQuery(dbRecord, body.query);
+			return ok(result);
+		} catch (err: any) {
+			set.status = 400;
+			return fail(err.message || "Query execution failed");
+		}
+	})
+	.patch("/databases/:id", async ({ params: { id }, body, set }: any) => {
+		const dbRecord = await findDatabase(id, set);
+		if (!dbRecord) return fail("Database not found");
+		const updated = await updateDatabaseSettings(id, {
+			name: body?.name,
+			cpuLimit: body?.cpuLimit,
+			memoryLimitMb: body?.memoryLimitMb,
+			storageLimitMb: body?.storageLimitMb,
+			publicAccess: body?.publicAccess,
+			allowPublicAccessFromAnywhere: body?.allowPublicAccessFromAnywhere,
+			allowedCidrs: body?.allowedCidrs,
+			backupEnabled: body?.backupEnabled,
+			backupSchedule: body?.backupSchedule,
+			backupRetention: body?.backupRetention,
+		});
+		return ok(sanitizeDatabase(updated!));
 	})
 	.delete("/databases/:id", async ({ params: { id }, set }) => {
 		const dbRecord = await findDatabase(id, set);

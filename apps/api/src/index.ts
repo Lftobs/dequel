@@ -3,6 +3,7 @@ import { cors } from "@elysiajs/cors";
 import { count, eq } from "drizzle-orm";
 import { Elysia } from "elysia";
 import { apiRoutes } from "./api";
+import { startBackupScheduler } from "./backup/scheduler";
 import { startDatabaseMonitoring } from "./databases/manager";
 import { getDb } from "./db/db-provider";
 import { migrate } from "./db/migrate";
@@ -41,6 +42,24 @@ const bootstrap = async () => {
 	startReconciliation();
 	startStaleAgentCleanup();
 	startAbandonedJobCleanup();
+	startBackupScheduler({
+		enabled: process.env.BACKUP_ENABLED === "true",
+		scheduleCron: process.env.BACKUP_SCHEDULE || "0 */6 * * *",
+		retentionCount: parseInt(process.env.BACKUP_RETENTION || "7", 10),
+		storage: {
+			type: (process.env.BACKUP_STORAGE_TYPE as "local" | "s3") || "local",
+			path: process.env.BACKUP_STORAGE_PATH || "/data/backups",
+			...(process.env.BACKUP_STORAGE_TYPE === "s3"
+				? {
+						endpoint: process.env.BACKUP_S3_ENDPOINT || "",
+						accessKeyId: process.env.BACKUP_S3_ACCESS_KEY_ID || "",
+						secretAccessKey: process.env.BACKUP_S3_SECRET_ACCESS_KEY || "",
+						bucket: process.env.BACKUP_S3_BUCKET || "",
+						region: process.env.BACKUP_S3_REGION || "auto",
+					}
+				: {}),
+		},
+	});
 	setInterval(() => {
 		cleanupExpiredTokens().catch(() => {});
 	}, 60_000);

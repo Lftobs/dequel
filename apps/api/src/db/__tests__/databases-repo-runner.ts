@@ -38,6 +38,11 @@ const cleanup = async () => {
 };
 
 try {
+	await pool.query(`ALTER TABLE databases ADD COLUMN IF NOT EXISTS backup_enabled BOOLEAN NOT NULL DEFAULT true;`);
+	await pool.query(
+		`ALTER TABLE databases ADD COLUMN IF NOT EXISTS backup_schedule TEXT NOT NULL DEFAULT '0 */6 * * *';`,
+	);
+	await pool.query(`ALTER TABLE databases ADD COLUMN IF NOT EXISTS backup_retention INTEGER NOT NULL DEFAULT 7;`);
 	const {
 		createDatabase,
 		listAllDatabases,

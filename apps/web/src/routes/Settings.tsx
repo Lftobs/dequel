@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { GitBranch, Mail, Server, Settings2, ShieldCheck, Trash2 } from "lucide-react";
+import { Database, GitBranch, Mail, Server, Settings2, ShieldCheck, Trash2 } from "lucide-react";
 import * as api from "../api/client";
 import { ConfigWarnings } from "../components/ConfigWarnings";
+import { BackupSettingsSection } from "../components/settings/BackupSettingsSection";
 import { DeleteProjectsSection } from "../components/settings/DeleteProjectsSection";
 import { GithubIntegrationSection } from "../components/settings/GithubIntegrationSection";
 import { ServersSection } from "../components/settings/ServersSection";
@@ -47,7 +48,8 @@ export function Settings() {
 							Platform Settings
 						</h1>
 						<p className="max-w-2xl text-xs md:text-sm text-muted-foreground leading-relaxed">
-							Configure cluster infrastructure nodes, external GitHub OAuth provider integrations, SMTP notifications, and project management.
+							Configure cluster infrastructure nodes, external GitHub OAuth provider integrations, SMTP notifications,
+							and project management.
 						</p>
 					</div>
 
@@ -81,31 +83,26 @@ export function Settings() {
 
 			{/* Main Settings Tabs */}
 			<Tabs defaultValue="servers" className="space-y-6">
-				<TabsList className="bg-card/60 border border-border/60 p-1 rounded-2xl backdrop-blur-md max-w-2xl flex overflow-x-auto whitespace-nowrap justify-start [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x">
-					<TabsTrigger
-						value="servers"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all shrink-0"
-					>
+				<TabsList>
+					<TabsTrigger value="servers" className="gap-2">
 						<Server className="h-3.5 w-3.5" />
 						Servers & Nodes
 					</TabsTrigger>
-					<TabsTrigger
-						value="github"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all shrink-0"
-					>
+					<TabsTrigger value="backups" className="gap-2">
+						<Database className="h-3.5 w-3.5" />
+						Backups & Storage
+					</TabsTrigger>
+					<TabsTrigger value="github" className="gap-2">
 						<GitBranch className="h-3.5 w-3.5" />
 						GitHub Integration
 					</TabsTrigger>
-					<TabsTrigger
-						value="smtp"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all shrink-0"
-					>
+					<TabsTrigger value="smtp" className="gap-2">
 						<Mail className="h-3.5 w-3.5" />
 						SMTP Notifications
 					</TabsTrigger>
 					<TabsTrigger
 						value="danger"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-red-500 data-[state=active]:text-white transition-all shrink-0 text-red-400 hover:text-red-300"
+						className="gap-2 text-red-400 hover:text-red-300 data-[state=active]:bg-red-500/90 data-[state=active]:text-white"
 					>
 						<Trash2 className="h-3.5 w-3.5" />
 						Delete Projects
@@ -114,6 +111,10 @@ export function Settings() {
 
 				<TabsContent value="servers">
 					<ServersSection />
+				</TabsContent>
+
+				<TabsContent value="backups">
+					<BackupSettingsSection />
 				</TabsContent>
 
 				<TabsContent value="github">
