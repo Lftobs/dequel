@@ -1,11 +1,11 @@
+import type { Readable } from "node:stream";
 import {
-	S3Client,
-	PutObjectCommand,
+	DeleteObjectCommand,
 	GetObjectCommand,
 	ListObjectsV2Command,
-	DeleteObjectCommand,
+	PutObjectCommand,
+	S3Client,
 } from "@aws-sdk/client-s3";
-import { Readable } from "node:stream";
 import type { BackupStorage } from "../storage";
 import type { S3StorageConfig } from "../types";
 

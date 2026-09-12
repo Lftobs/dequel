@@ -1,7 +1,9 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
 import { Layout } from "../components/Layout";
+import { CreateDatabasePage } from "./CreateDatabasePage";
 import { CreateProjectPage } from "./CreateProjectPage";
 import { Dashboard } from "./Dashboard";
+import { DatabaseDetail } from "./DatabaseDetail";
 import { Databases } from "./Databases";
 import { Keys } from "./Keys";
 import { Login } from "./Login";
@@ -47,6 +49,23 @@ const databasesRoute = createRoute({
 	component: Databases,
 });
 
+const createDatabaseRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/databases/new",
+	component: CreateDatabasePage,
+});
+
+const DatabaseDetailPage = () => {
+	const { databaseId } = databaseDetailRoute.useParams();
+	return <DatabaseDetail databaseId={databaseId} />;
+};
+
+const databaseDetailRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/databases/$databaseId",
+	component: DatabaseDetailPage,
+});
+
 const keysRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/keys",
@@ -78,6 +97,8 @@ const routeTree = rootRoute.addChildren([
 	loginRoute,
 	settingsRoute,
 	databasesRoute,
+	createDatabaseRoute,
+	databaseDetailRoute,
 	keysRoute,
 	sharedEnvRoute,
 	projectRoute,

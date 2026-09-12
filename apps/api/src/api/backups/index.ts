@@ -1,25 +1,40 @@
 import { Elysia } from "elysia";
 import { BackupOrchestrator } from "../../backup/orchestrator";
 import type { BackupConfig, BackupTarget } from "../../backup/types";
-import { listBackupRecords, getBackupRecord, deleteBackupRecord } from "../../db/repo/backups";
-import { listAllDatabases, getDatabaseById } from "../../db/repo/databases";
+import { deleteBackupRecord, getBackupRecord, listBackupRecords } from "../../db/repo/backups";
+import { getDatabaseById } from "../../db/repo/databases";
+import { getBackupStorageSettings } from "../../db/repo/settings";
 import { created, fail, ok } from "../response";
 
-function getBackupConfig(): BackupConfig {
+async function getBackupConfig(targetId?: string): Promise<BackupConfig> {
+	const storageSettings = await getBackupStorageSettings();
+	let retentionCount = parseInt(process.env.BACKUP_RETENTION || "7", 10);
+	let enabled = process.env.BACKUP_ENABLED === "true";
+	let scheduleCron = process.env.BACKUP_SCHEDULE || "0 */6 * * *";
+
+	if (targetId && targetId !== "internal") {
+		const db = await getDatabaseById(targetId);
+		if (db) {
+			retentionCount = db.backupRetention ?? retentionCount;
+			enabled = db.backupEnabled ?? enabled;
+			scheduleCron = db.backupSchedule ?? scheduleCron;
+		}
+	}
+
 	return {
-		enabled: process.env.BACKUP_ENABLED === "true",
-		scheduleCron: process.env.BACKUP_SCHEDULE || "0 */6 * * *",
-		retentionCount: parseInt(process.env.BACKUP_RETENTION || "7", 10),
+		enabled,
+		scheduleCron,
+		retentionCount,
 		storage: {
-			type: (process.env.BACKUP_STORAGE_TYPE as "local" | "s3") || "local",
-			path: process.env.BACKUP_STORAGE_PATH || "/data/backups",
-			...(process.env.BACKUP_STORAGE_TYPE === "s3"
+			type: storageSettings.type,
+			path: storageSettings.path || "/data/backups",
+			...(storageSettings.type === "s3"
 				? {
-						endpoint: process.env.BACKUP_S3_ENDPOINT || "",
-						accessKeyId: process.env.BACKUP_S3_ACCESS_KEY_ID || "",
-						secretAccessKey: process.env.BACKUP_S3_SECRET_ACCESS_KEY || "",
-						bucket: process.env.BACKUP_S3_BUCKET || "",
-						region: process.env.BACKUP_S3_REGION || "auto",
+						endpoint: storageSettings.s3Endpoint || "",
+						accessKeyId: storageSettings.s3AccessKeyId || "",
+						secretAccessKey: storageSettings.s3SecretAccessKey || "",
+						bucket: storageSettings.s3Bucket || "",
+						region: storageSettings.s3Region || "auto",
 					}
 				: {}),
 		},
@@ -65,9 +80,12 @@ export const backupRoutes = new Elysia({ prefix: "/backups" })
 		const records = await listBackupRecords();
 		return ok(records);
 	})
+	.get("/config", async () => {
+		return ok(await getBackupConfig());
+	})
 	.post("/", async ({ set }) => {
 		try {
-			const config = getBackupConfig();
+			const config = await getBackupConfig("internal");
 			const orchestrator = new BackupOrchestrator(config);
 			const job = await orchestrator.backup("internal", resolveTarget);
 			return created(job);
@@ -76,11 +94,11 @@ export const backupRoutes = new Elysia({ prefix: "/backups" })
 			return fail(String(error));
 		}
 	})
-	.post("/:targetId", async ({ params, set }) => {
+	.post("/:id/trigger", async ({ params, set }) => {
 		try {
-			const config = getBackupConfig();
+			const config = await getBackupConfig(params.id);
 			const orchestrator = new BackupOrchestrator(config);
-			const job = await orchestrator.backup(params.targetId, resolveTarget);
+			const job = await orchestrator.backup(params.id, resolveTarget);
 			return created(job);
 		} catch (error) {
 			set.status = 500;
@@ -106,7 +124,8 @@ export const backupRoutes = new Elysia({ prefix: "/backups" })
 	})
 	.post("/:id/restore", async ({ params, set }) => {
 		try {
-			const config = getBackupConfig();
+			const record = await getBackupRecord(params.id);
+			const config = await getBackupConfig(record?.targetId);
 			const orchestrator = new BackupOrchestrator(config);
 			await orchestrator.restore(params.id, resolveTarget);
 			return ok({ restored: true });
@@ -114,7 +133,4 @@ export const backupRoutes = new Elysia({ prefix: "/backups" })
 			set.status = 500;
 			return fail(String(error));
 		}
-	})
-	.get("/config", () => {
-		return ok(getBackupConfig());
 	});

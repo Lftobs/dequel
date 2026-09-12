@@ -172,6 +172,9 @@ export const databases = pgTable(
 		connectionString: text("connection_string").notNull(),
 		status: text().notNull().default("provisioning"),
 		containerName: text("container_name"),
+		backupEnabled: boolean("backup_enabled").notNull().default(true),
+		backupSchedule: text("backup_schedule").notNull().default("0 */6 * * *"),
+		backupRetention: integer("backup_retention").notNull().default(7),
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 	},
@@ -341,6 +344,20 @@ export const smtpSettings = pgTable("smtp_settings", {
 export const platformSettings = pgTable("platform_settings", {
 	id: text().primaryKey(),
 	ingressServerId: text("ingress_server_id"),
+	updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const backupStorageSettings = pgTable("backup_storage_settings", {
+	id: text().primaryKey(),
+	type: text().notNull().default("local"),
+	path: text().default("/data/backups"),
+	s3Endpoint: text("s3_endpoint"),
+	s3AccessKeyId: text("s3_access_key_id"),
+	s3SecretAccessKeyEncrypted: text("s3_secret_access_key_encrypted"),
+	s3SecretAccessKeyIv: text("s3_secret_access_key_iv"),
+	s3SecretAccessKeyTag: text("s3_secret_access_key_tag"),
+	s3Bucket: text("s3_bucket"),
+	s3Region: text("s3_region").default("auto"),
 	updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

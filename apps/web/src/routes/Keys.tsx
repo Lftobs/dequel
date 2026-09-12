@@ -84,25 +84,16 @@ export function Keys() {
 
 			{/* Main Tabs Navigation */}
 			<Tabs defaultValue="api-tokens" className="space-y-6">
-				<TabsList className="bg-card/60 border border-border/60 p-1 rounded-2xl backdrop-blur-md max-w-md">
-					<TabsTrigger
-						value="api-tokens"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all"
-					>
+				<TabsList>
+					<TabsTrigger value="api-tokens" className="gap-2">
 						<Zap className="h-3.5 w-3.5" />
 						API Tokens
 					</TabsTrigger>
-					<TabsTrigger
-						value="ssh-keys"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all"
-					>
+					<TabsTrigger value="ssh-keys" className="gap-2">
 						<KeyRound className="h-3.5 w-3.5" />
 						SSH Key Pool
 					</TabsTrigger>
-					<TabsTrigger
-						value="cli-guide"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all"
-					>
+					<TabsTrigger value="cli-guide" className="gap-2">
 						<Terminal className="h-3.5 w-3.5" />
 						CLI & API Guide
 					</TabsTrigger>

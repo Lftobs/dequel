@@ -1,6 +1,6 @@
+import { listAllDatabases } from "../db/repo/databases";
 import { BackupOrchestrator } from "./orchestrator";
 import type { BackupConfig, BackupTarget } from "./types";
-import { listAllDatabases } from "../db/repo/databases";
 
 export function startBackupScheduler(config: BackupConfig): void {
 	if (!config.enabled) return;

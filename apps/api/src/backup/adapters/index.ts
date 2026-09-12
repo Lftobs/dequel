@@ -1,9 +1,9 @@
-import type { DatabaseType } from "../types";
 import type { BackupAdapter } from "../adapter";
-import { postgresAdapter } from "./postgres";
-import { mysqlAdapter } from "./mysql";
-import { redisAdapter } from "./redis";
+import type { DatabaseType } from "../types";
 import { mongoAdapter } from "./mongodb";
+import { mysqlAdapter } from "./mysql";
+import { postgresAdapter } from "./postgres";
+import { redisAdapter } from "./redis";
 
 const adapters: Record<DatabaseType, BackupAdapter> = {
 	postgresql: postgresAdapter,

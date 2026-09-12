@@ -128,6 +128,9 @@ export interface Database {
 	connectionString: string;
 	status: DatabaseStatus;
 	containerName: string | null;
+	backupEnabled?: boolean;
+	backupSchedule?: string;
+	backupRetention?: number;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -238,4 +241,43 @@ export interface GithubIntegrationStatus {
 	clientId?: string;
 	appName?: string;
 	hasWebhookSecret?: boolean;
+}
+
+export interface BackupJob {
+	id: string;
+	targetId: string;
+	targetType: string;
+	engine: string;
+	filename: string | null;
+	storageType: string;
+	storagePath: string | null;
+	sizeBytes: number | null;
+	error: string | null;
+	status: "pending" | "dumping" | "compressing" | "uploading" | "completed" | "failed";
+	createdAt: string;
+	completedAt: string | null;
+}
+
+export interface BackupStorageSettingsData {
+	type: "local" | "s3";
+	path?: string;
+	s3Endpoint?: string;
+	s3AccessKeyId?: string;
+	s3SecretAccessKey?: string;
+	s3Bucket?: string;
+	s3Region?: string;
+}
+
+export interface QueryExecResult {
+	rows: Record<string, unknown>[];
+	columns: string[];
+	affectedRows?: number;
+	executionTimeMs: number;
+	rawOutput?: string;
+}
+
+export interface TableInfo {
+	name: string;
+	rowCount?: number;
+	type?: string;
 }

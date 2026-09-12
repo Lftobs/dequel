@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { GitBranch, Mail, Server, Settings2, ShieldCheck } from "lucide-react";
+import { Database, GitBranch, Mail, Server, Settings2, ShieldCheck } from "lucide-react";
 import * as api from "../api/client";
 import { ConfigWarnings } from "../components/ConfigWarnings";
+import { BackupSettingsSection } from "../components/settings/BackupSettingsSection";
 import { GithubIntegrationSection } from "../components/settings/GithubIntegrationSection";
 import { ServersSection } from "../components/settings/ServersSection";
 import { SmtpSection } from "../components/settings/SmtpSection";
@@ -81,25 +82,20 @@ export function Settings() {
 
 			{/* Main Settings Tabs */}
 			<Tabs defaultValue="servers" className="space-y-6">
-				<TabsList className="bg-card/60 border border-border/60 p-1 rounded-2xl backdrop-blur-md max-w-lg">
-					<TabsTrigger
-						value="servers"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all"
-					>
+				<TabsList>
+					<TabsTrigger value="servers" className="gap-2">
 						<Server className="h-3.5 w-3.5" />
 						Servers & Nodes
 					</TabsTrigger>
-					<TabsTrigger
-						value="github"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all"
-					>
+					<TabsTrigger value="backups" className="gap-2">
+						<Database className="h-3.5 w-3.5" />
+						Backups & Storage
+					</TabsTrigger>
+					<TabsTrigger value="github" className="gap-2">
 						<GitBranch className="h-3.5 w-3.5" />
 						GitHub Integration
 					</TabsTrigger>
-					<TabsTrigger
-						value="smtp"
-						className="rounded-xl text-xs font-medium gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all"
-					>
+					<TabsTrigger value="smtp" className="gap-2">
 						<Mail className="h-3.5 w-3.5" />
 						SMTP Notifications
 					</TabsTrigger>
@@ -107,6 +103,10 @@ export function Settings() {
 
 				<TabsContent value="servers">
 					<ServersSection />
+				</TabsContent>
+
+				<TabsContent value="backups">
+					<BackupSettingsSection />
 				</TabsContent>
 
 				<TabsContent value="github">

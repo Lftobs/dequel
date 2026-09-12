@@ -135,6 +135,9 @@ export interface Database {
 	connectionString: string;
 	status: DatabaseStatus;
 	containerName: string | null;
+	backupEnabled: boolean;
+	backupSchedule: string;
+	backupRetention: number;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -151,6 +154,19 @@ export interface CreateDatabaseInput {
 	publicAccess?: boolean;
 	allowPublicAccessFromAnywhere?: boolean;
 	allowedCidrs?: string[];
+	backupEnabled?: boolean;
+	backupSchedule?: string;
+	backupRetention?: number;
+}
+
+export interface BackupStorageSettingsData {
+	type: "local" | "s3";
+	path?: string;
+	s3Endpoint?: string;
+	s3AccessKeyId?: string;
+	s3SecretAccessKey?: string;
+	s3Bucket?: string;
+	s3Region?: string;
 }
 
 export interface Domain {

@@ -1,9 +1,8 @@
+import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
-import { createReadStream } from "node:fs";
-import { Readable } from "node:stream";
+import type { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { createWriteStream } from "node:fs";
 import type { BackupStorage } from "../storage";
 
 export class LocalStorage implements BackupStorage {

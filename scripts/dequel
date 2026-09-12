@@ -270,7 +270,7 @@ cmd_backup() {
 	info "Backing up target: $target"
 	
 	local response
-	response=$(curl -s -X POST "$api_url/api/backups/$target" \
+	response=$(curl -s -X POST "$api_url/api/backups/$target/trigger" \
 		-H "Content-Type: application/json" \
 		-w "\n%{http_code}" 2>&1)
 	

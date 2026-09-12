@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import type { Readable } from "node:stream";
 import type { Server } from "../types";
-import { getDockerSshTarget, ensureSshKey } from "./ssh";
+import { ensureSshKey, getDockerSshTarget } from "./ssh";
 
 export interface ExecResult {
 	code: number;

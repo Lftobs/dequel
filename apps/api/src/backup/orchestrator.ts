@@ -1,19 +1,19 @@
 import { randomUUID } from "node:crypto";
-import { createGzip, createGunzip } from "node:zlib";
 import { pipeline } from "node:stream/promises";
-import { getAdapter } from "./adapters";
-import { createStorage } from "./storage/index";
-import type { BackupConfig, BackupJob, BackupTarget } from "./types";
-import type { BackupStorage } from "./storage";
-import type { BackupContext } from "./adapter";
+import { createGunzip, createGzip } from "node:zlib";
 import { getServerById } from "../db/repo";
 import {
 	createBackupRecord,
-	getBackupRecord,
-	updateBackupRecord,
 	deleteBackupRecord,
+	getBackupRecord,
 	listCompletedBackupsForTarget,
+	updateBackupRecord,
 } from "../db/repo/backups";
+import type { BackupContext } from "./adapter";
+import { getAdapter } from "./adapters";
+import type { BackupStorage } from "./storage";
+import { createStorage } from "./storage/index";
+import type { BackupConfig, BackupJob, BackupTarget } from "./types";
 
 async function buildContext(target: BackupTarget): Promise<BackupContext> {
 	const server = target.serverId ? await getServerById(target.serverId) : null;

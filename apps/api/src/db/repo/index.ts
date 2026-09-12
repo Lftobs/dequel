@@ -26,6 +26,7 @@ export {
 	listAllDatabases,
 	listDatabases,
 	updateDatabaseRuntime,
+	updateDatabaseSettings,
 	updateDatabaseStatus,
 } from "./databases";
 export { createDeploymentEvent, listDeploymentEvents } from "./deployment-events";
@@ -93,7 +94,7 @@ export {
 	updateServerStatus,
 } from "./servers";
 export type { SmtpSettingsData } from "./settings";
-export { getSmtpSettings, upsertSmtpSettings } from "./settings";
+export { getBackupStorageSettings, getSmtpSettings, upsertBackupStorageSettings, upsertSmtpSettings } from "./settings";
 export {
 	createSharedEnvVar,
 	deleteSharedEnvVar,

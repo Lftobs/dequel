@@ -1,6 +1,6 @@
 import type { Readable } from "node:stream";
+import { dockerExec, dockerExecStream, dockerExecWithStdin } from "../../utils/docker-run";
 import type { BackupAdapter, BackupContext } from "../adapter";
-import { dockerExecStream, dockerExec, dockerExecWithStdin } from "../../utils/docker-run";
 
 export const postgresAdapter: BackupAdapter = {
 	engine: "postgresql",

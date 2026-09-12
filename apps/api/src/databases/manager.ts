@@ -9,9 +9,9 @@ import {
 } from "../db/repo";
 import type { Database, DatabaseType, Server } from "../types";
 import { config } from "../utils/config";
-import { dockerRun, ensureContainerRemoved, ensureVolumeRemoved } from "../utils/docker-run";
 import { DEQUEL_DATABASE_LABEL } from "../utils/dequel-labels";
 import { dockerBin } from "../utils/docker-bin";
+import { dockerRun, ensureContainerRemoved, ensureVolumeRemoved } from "../utils/docker-run";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
