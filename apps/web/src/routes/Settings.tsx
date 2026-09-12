@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Database, GitBranch, Mail, Server, Settings2, ShieldCheck, Trash2 } from "lucide-react";
+import { Database, GitBranch, Mail, Server, Settings2, ShieldCheck } from "lucide-react";
 import * as api from "../api/client";
 import { ConfigWarnings } from "../components/ConfigWarnings";
 import { BackupSettingsSection } from "../components/settings/BackupSettingsSection";
-import { DeleteProjectsSection } from "../components/settings/DeleteProjectsSection";
 import { GithubIntegrationSection } from "../components/settings/GithubIntegrationSection";
 import { ServersSection } from "../components/settings/ServersSection";
 import { SmtpSection } from "../components/settings/SmtpSection";
@@ -48,8 +47,8 @@ export function Settings() {
 							Platform Settings
 						</h1>
 						<p className="max-w-2xl text-xs md:text-sm text-muted-foreground leading-relaxed">
-							Configure cluster infrastructure nodes, external GitHub OAuth provider integrations, SMTP notifications,
-							and project management.
+							Configure cluster infrastructure nodes, external GitHub OAuth provider integrations, and SMTP
+							notifications.
 						</p>
 					</div>
 
@@ -100,13 +99,6 @@ export function Settings() {
 						<Mail className="h-3.5 w-3.5" />
 						SMTP Notifications
 					</TabsTrigger>
-					<TabsTrigger
-						value="danger"
-						className="gap-2 text-red-400 hover:text-red-300 data-[state=active]:bg-red-500/90 data-[state=active]:text-white"
-					>
-						<Trash2 className="h-3.5 w-3.5" />
-						Delete Projects
-					</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="servers">
@@ -123,10 +115,6 @@ export function Settings() {
 
 				<TabsContent value="smtp">
 					<SmtpSection />
-				</TabsContent>
-
-				<TabsContent value="danger">
-					<DeleteProjectsSection />
 				</TabsContent>
 			</Tabs>
 		</div>
