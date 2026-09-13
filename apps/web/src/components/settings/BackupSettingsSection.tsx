@@ -19,6 +19,7 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
+import { Pagination } from "../ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 export function BackupSettingsSection() {
@@ -29,6 +30,8 @@ export function BackupSettingsSection() {
 	const [s3SecretAccessKey, setS3SecretAccessKey] = useState("");
 	const [s3Bucket, setS3Bucket] = useState("");
 	const [s3Region, setS3Region] = useState("auto");
+	const [systemBackupSchedule, setSystemBackupSchedule] = useState("0 */6 * * *");
+	const [systemBackupRetention, setSystemBackupRetention] = useState("7");
 	const [isSaving, setIsSaving] = useState(false);
 	const [saveSuccess, setSaveSuccess] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
@@ -39,6 +42,8 @@ export function BackupSettingsSection() {
 	const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
 	const [deletingBackup, setDeletingBackup] = useState<BackupJob | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
+	const [page, setPage] = useState(1);
+	const pageSize = 5;
 
 	const { data: config, refetch: refetchConfig } = useQuery({
 		queryKey: ["backup-storage-settings"],
@@ -52,16 +57,21 @@ export function BackupSettingsSection() {
 				setS3SecretAccessKey(res.s3SecretAccessKey || "");
 				setS3Bucket(res.s3Bucket || "");
 				setS3Region(res.s3Region || "auto");
+				setSystemBackupSchedule(res.systemBackupSchedule || "0 */6 * * *");
+				setSystemBackupRetention(String(res.systemBackupRetention ?? 7));
 			}
 			return res;
 		},
 	});
 
-	const { data: backups = [], refetch: refetchBackups } = useQuery({
+	const { data: allBackups = [], refetch: refetchBackups } = useQuery({
 		queryKey: ["backups"],
 		queryFn: () => api.listBackups().catch(() => []),
 		refetchInterval: 10_000,
 	});
+
+	const backups = allBackups.filter((b) => b.targetId === "internal");
+	const paginatedBackups = backups.slice((page - 1) * pageSize, page * pageSize);
 
 	const handleSaveConfig = async () => {
 		setIsSaving(true);
@@ -76,6 +86,8 @@ export function BackupSettingsSection() {
 				s3SecretAccessKey,
 				s3Bucket,
 				s3Region,
+				systemBackupSchedule,
+				systemBackupRetention: Number(systemBackupRetention),
 			});
 			setSaveSuccess(true);
 			setTimeout(() => setSaveSuccess(false), 3000);
@@ -260,6 +272,62 @@ export function BackupSettingsSection() {
 						</div>
 					)}
 
+					<div className="pt-4 border-t border-border/40 space-y-4">
+						<h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+							System Database Backup Schedule
+						</h4>
+						<p className="text-[11px] text-muted-foreground">
+							Configure the automatic backup schedule for Dequel&apos;s internal database. Per-database schedules are
+							configured individually.
+						</p>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+							<div className="space-y-2">
+								<label htmlFor="system-backup-schedule" className="text-xs font-semibold text-foreground">
+									Cron Schedule
+								</label>
+								<Input
+									id="system-backup-schedule"
+									value={systemBackupSchedule}
+									onChange={(e) => setSystemBackupSchedule(e.target.value)}
+									placeholder="0 */6 * * *"
+									className="bg-background/50 border-border/80 text-xs font-mono rounded-xl h-10"
+								/>
+								<div className="flex flex-wrap gap-1.5">
+									{[
+										{ label: "Every 1h", value: "0 * * * *" },
+										{ label: "Every 6h", value: "0 */6 * * *" },
+										{ label: "Daily", value: "0 0 * * *" },
+										{ label: "Weekly", value: "0 0 * * 0" },
+									].map((preset) => (
+										<button
+											key={preset.value}
+											type="button"
+											onClick={() => setSystemBackupSchedule(preset.value)}
+											className="text-[10px] bg-background/60 hover:bg-muted border border-border/60 px-2 py-0.5 rounded-lg font-mono text-muted-foreground"
+										>
+											{preset.label}
+										</button>
+									))}
+								</div>
+							</div>
+							<div className="space-y-2">
+								<label htmlFor="system-backup-retention" className="text-xs font-semibold text-foreground">
+									Max Retention Count
+								</label>
+								<Input
+									id="system-backup-retention"
+									type="number"
+									min="1"
+									max="30"
+									value={systemBackupRetention}
+									onChange={(e) => setSystemBackupRetention(e.target.value)}
+									className="bg-background/50 border-border/80 text-xs font-mono rounded-xl h-10"
+								/>
+								<p className="text-[10px] text-muted-foreground">Keep the latest N completed system backups.</p>
+							</div>
+						</div>
+					</div>
+
 					{saveError && (
 						<p role="alert" className="text-xs text-red-400 flex items-center gap-1.5">
 							<ShieldAlert className="h-4 w-4" />
@@ -327,7 +395,7 @@ export function BackupSettingsSection() {
 						</div>
 					) : (
 						<div className="divide-y divide-border/40 border border-border/60 rounded-2xl bg-black/20 overflow-hidden">
-							{backups.map((job) => (
+							{paginatedBackups.map((job) => (
 								<div key={job.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3">
 									<div className="space-y-1">
 										<div className="flex items-center gap-2">
@@ -378,6 +446,9 @@ export function BackupSettingsSection() {
 								</div>
 							))}
 						</div>
+					)}
+					{backups.length > 0 && (
+						<Pagination page={page} totalItems={backups.length} pageSize={pageSize} onPageChange={setPage} />
 					)}
 				</CardContent>
 			</Card>

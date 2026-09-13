@@ -1,3 +1,5 @@
+export const S3_BACKUP_PREFIX = "dequel-db-backup";
+
 export type DatabaseType = "postgresql" | "mysql" | "redis" | "mongodb";
 
 export interface BackupTarget {
@@ -30,13 +32,6 @@ export interface BackupJob {
 	completedAt: Date | null;
 }
 
-export interface BackupConfig {
-	enabled: boolean;
-	scheduleCron: string;
-	retentionCount: number;
-	storage: StorageConfig;
-}
-
 export type StorageConfig = LocalStorageConfig | S3StorageConfig;
 
 export interface LocalStorageConfig {
@@ -51,4 +46,5 @@ export interface S3StorageConfig {
 	secretAccessKey: string;
 	bucket: string;
 	region: string;
+	prefix: string;
 }

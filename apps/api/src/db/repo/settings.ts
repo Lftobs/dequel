@@ -84,13 +84,15 @@ export const getBackupStorageSettings = async (): Promise<import("../../types").
 	const [row] = await db.select().from(backupStorageSettings).limit(1).execute();
 	if (!row) {
 		return {
-			type: (process.env.BACKUP_STORAGE_TYPE as "local" | "s3") || "local",
-			path: process.env.BACKUP_STORAGE_PATH || "/data/backups",
-			s3Endpoint: process.env.BACKUP_S3_ENDPOINT || "",
-			s3AccessKeyId: process.env.BACKUP_S3_ACCESS_KEY_ID || "",
-			s3SecretAccessKey: process.env.BACKUP_S3_SECRET_ACCESS_KEY || "",
-			s3Bucket: process.env.BACKUP_S3_BUCKET || "",
-			s3Region: process.env.BACKUP_S3_REGION || "auto",
+			type: "local",
+			path: "/data/backups",
+			s3Endpoint: "",
+			s3AccessKeyId: "",
+			s3SecretAccessKey: "",
+			s3Bucket: "",
+			s3Region: "auto",
+			systemBackupSchedule: "0 */6 * * *",
+			systemBackupRetention: 7,
 		};
 	}
 	const secret =
@@ -110,6 +112,8 @@ export const getBackupStorageSettings = async (): Promise<import("../../types").
 		s3SecretAccessKey: secret,
 		s3Bucket: row.s3Bucket || "",
 		s3Region: row.s3Region || "auto",
+		systemBackupSchedule: row.systemBackupSchedule || "0 */6 * * *",
+		systemBackupRetention: row.systemBackupRetention ?? 7,
 	};
 };
 
@@ -135,6 +139,8 @@ export const upsertBackupStorageSettings = async (
 					s3SecretAccessKeyTag: encrypted?.tag ?? existing.s3SecretAccessKeyTag,
 					s3Bucket: input.s3Bucket ?? "",
 					s3Region: input.s3Region ?? "auto",
+					systemBackupSchedule: input.systemBackupSchedule ?? "0 */6 * * *",
+					systemBackupRetention: input.systemBackupRetention ?? 7,
 					updatedAt: timestamp,
 				})
 				.where(eq(backupStorageSettings.id, existing.id))
@@ -153,6 +159,8 @@ export const upsertBackupStorageSettings = async (
 					s3SecretAccessKeyTag: encrypted?.tag ?? null,
 					s3Bucket: input.s3Bucket ?? "",
 					s3Region: input.s3Region ?? "auto",
+					systemBackupSchedule: input.systemBackupSchedule ?? "0 */6 * * *",
+					systemBackupRetention: input.systemBackupRetention ?? 7,
 					updatedAt: timestamp,
 				})
 				.execute();

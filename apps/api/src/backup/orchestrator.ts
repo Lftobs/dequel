@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { pipeline } from "node:stream/promises";
-import { createGunzip, createGzip } from "node:zlib";
+import { createGzip } from "node:zlib";
 import { getServerById } from "../db/repo";
 import {
 	createBackupRecord,
@@ -13,7 +12,7 @@ import type { BackupContext } from "./adapter";
 import { getAdapter } from "./adapters";
 import type { BackupStorage } from "./storage";
 import { createStorage } from "./storage/index";
-import type { BackupConfig, BackupJob, BackupTarget } from "./types";
+import type { BackupJob, BackupTarget, StorageConfig } from "./types";
 
 async function buildContext(target: BackupTarget): Promise<BackupContext> {
 	const server = target.serverId ? await getServerById(target.serverId) : null;
@@ -22,14 +21,18 @@ async function buildContext(target: BackupTarget): Promise<BackupContext> {
 
 export class BackupOrchestrator {
 	private storage: BackupStorage;
-	private config: BackupConfig;
+	private storageType: "local" | "s3";
 
-	constructor(config: BackupConfig) {
-		this.config = config;
-		this.storage = createStorage(config.storage);
+	constructor(storage: StorageConfig) {
+		this.storage = createStorage(storage);
+		this.storageType = storage.type;
 	}
 
-	async backup(targetId: string, resolveTarget: (id: string) => Promise<BackupTarget>): Promise<BackupJob> {
+	async backup(
+		targetId: string,
+		retentionCount: number,
+		resolveTarget: (id: string) => Promise<BackupTarget>,
+	): Promise<BackupJob> {
 		const target = await resolveTarget(targetId);
 		const ctx = await buildContext(target);
 		const adapter = getAdapter(target.engine);
@@ -44,16 +47,17 @@ export class BackupOrchestrator {
 
 			await this.updateJob(job.id, { status: "uploading" });
 			const filename = `${target.id}-${new Date().toISOString().replace(/[:.]/g, "-")}.sql.gz`;
-			const storagePath = await this.storage.upload(filename, compressed);
+			const { path: storagePath, size: sizeBytes } = await this.storage.upload(filename, compressed);
 
 			const completed = await this.updateJob(job.id, {
 				status: "completed",
 				filename,
 				storagePath,
+				sizeBytes,
 				completedAt: new Date(),
 			});
 
-			await this.enforceRetention(targetId);
+			await this.enforceRetention(targetId, retentionCount);
 
 			return completed;
 		} catch (error) {
@@ -69,13 +73,14 @@ export class BackupOrchestrator {
 		const adapter = getAdapter(target.engine);
 
 		const compressed = await this.storage.download(job.storagePath!);
+		const { createGunzip } = await import("node:zlib");
 		const dump = compressed.pipe(createGunzip());
 		await adapter.restore(ctx, dump);
 	}
 
-	private async enforceRetention(targetId: string): Promise<void> {
+	private async enforceRetention(targetId: string, retentionCount: number): Promise<void> {
 		const completed = await listCompletedBackupsForTarget(targetId);
-		const toDelete = completed.slice(this.config.retentionCount);
+		const toDelete = completed.slice(retentionCount);
 
 		for (const job of toDelete) {
 			if (job.storagePath) {
@@ -92,7 +97,7 @@ export class BackupOrchestrator {
 			targetType: target.type,
 			engine: target.engine,
 			filename: null,
-			storageType: this.config.storage.type,
+			storageType: this.storageType,
 			storagePath: null,
 			sizeBytes: null,
 			status: "pending",

@@ -358,6 +358,8 @@ export const backupStorageSettings = pgTable("backup_storage_settings", {
 	s3SecretAccessKeyTag: text("s3_secret_access_key_tag"),
 	s3Bucket: text("s3_bucket"),
 	s3Region: text("s3_region").default("auto"),
+	systemBackupSchedule: text("system_backup_schedule").default("0 */6 * * *"),
+	systemBackupRetention: integer("system_backup_retention").default(7),
 	updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

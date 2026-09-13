@@ -1,7 +1,7 @@
 import type { Readable } from "node:stream";
 
 export interface BackupStorage {
-	upload(key: string, data: Readable): Promise<string>;
+	upload(key: string, data: Readable): Promise<{ path: string; size: number }>;
 
 	download(key: string): Promise<Readable>;
 
