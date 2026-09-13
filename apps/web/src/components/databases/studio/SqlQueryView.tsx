@@ -40,8 +40,9 @@ export function SqlQueryView({
 			<textarea
 				value={sqlQuery}
 				onChange={(e) => onQueryChange(e.target.value)}
-				rows={4}
-				className="w-full bg-black/40 border border-border/60 rounded-2xl p-4 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-orange-500/50"
+				rows={12}
+				placeholder="Type or paste SQL queries..."
+				className="w-full bg-black/50 border border-border/60 rounded-2xl p-4 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-orange-500/50 min-h-[260px] resize-y"
 			/>
 
 			{sqlError && (

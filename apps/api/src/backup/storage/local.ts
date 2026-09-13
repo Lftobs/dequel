@@ -13,12 +13,13 @@ export class LocalStorage implements BackupStorage {
 		this.basePath = basePath;
 	}
 
-	async upload(key: string, data: Readable): Promise<string> {
+	async upload(key: string, data: Readable): Promise<{ path: string; size: number }> {
 		await mkdir(this.basePath, { recursive: true });
 		const filePath = join(this.basePath, key);
 		const writeStream = createWriteStream(filePath);
 		await pipeline(data, writeStream);
-		return filePath;
+		const info = await stat(filePath);
+		return { path: filePath, size: info.size };
 	}
 
 	async download(key: string): Promise<Readable> {

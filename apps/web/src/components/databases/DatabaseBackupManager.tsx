@@ -7,6 +7,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Pagination } from "../ui/pagination";
 
 interface DatabaseBackupManagerProps {
 	database: Database;
@@ -20,6 +21,8 @@ export function DatabaseBackupManager({ database }: DatabaseBackupManagerProps) 
 	const [deletingBackup, setDeletingBackup] = useState<BackupJob | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [page, setPage] = useState(1);
+	const pageSize = 5;
 
 	const { data: allBackups = [], refetch } = useQuery({
 		queryKey: ["backups"],
@@ -28,6 +31,7 @@ export function DatabaseBackupManager({ database }: DatabaseBackupManagerProps) 
 	});
 
 	const instanceBackups = allBackups.filter((b) => b.targetId === database.id);
+	const paginatedBackups = instanceBackups.slice((page - 1) * pageSize, page * pageSize);
 
 	const handleTriggerBackup = async () => {
 		setIsTriggering(true);
@@ -127,7 +131,7 @@ export function DatabaseBackupManager({ database }: DatabaseBackupManagerProps) 
 						</div>
 					) : (
 						<div className="divide-y divide-border/40 border border-border/60 rounded-2xl bg-black/20 overflow-hidden">
-							{instanceBackups.map((job) => (
+							{paginatedBackups.map((job) => (
 								<div key={job.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3">
 									<div className="space-y-1">
 										<div className="flex items-center gap-2">
@@ -175,6 +179,9 @@ export function DatabaseBackupManager({ database }: DatabaseBackupManagerProps) 
 								</div>
 							))}
 						</div>
+					)}
+					{instanceBackups.length > 0 && (
+						<Pagination page={page} totalItems={instanceBackups.length} pageSize={pageSize} onPageChange={setPage} />
 					)}
 				</CardContent>
 			</Card>

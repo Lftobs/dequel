@@ -1,44 +1,36 @@
 import { Elysia } from "elysia";
 import { BackupOrchestrator } from "../../backup/orchestrator";
-import type { BackupConfig, BackupTarget } from "../../backup/types";
+import { S3_BACKUP_PREFIX } from "../../backup/types";
+import type { BackupTarget, StorageConfig } from "../../backup/types";
 import { deleteBackupRecord, getBackupRecord, listBackupRecords } from "../../db/repo/backups";
 import { getDatabaseById } from "../../db/repo/databases";
 import { getBackupStorageSettings } from "../../db/repo/settings";
 import { created, fail, ok } from "../response";
 
-async function getBackupConfig(targetId?: string): Promise<BackupConfig> {
-	const storageSettings = await getBackupStorageSettings();
-	let retentionCount = parseInt(process.env.BACKUP_RETENTION || "7", 10);
-	let enabled = process.env.BACKUP_ENABLED === "true";
-	let scheduleCron = process.env.BACKUP_SCHEDULE || "0 */6 * * *";
+const DEFAULT_RETENTION = 7;
 
+async function loadStorageConfig(): Promise<StorageConfig> {
+	const settings = await getBackupStorageSettings();
+	if (settings.type === "s3") {
+		return {
+			type: "s3",
+			endpoint: settings.s3Endpoint,
+			accessKeyId: settings.s3AccessKeyId,
+			secretAccessKey: settings.s3SecretAccessKey,
+			bucket: settings.s3Bucket,
+			region: settings.s3Region,
+			prefix: S3_BACKUP_PREFIX,
+		};
+	}
+	return { type: "local", path: settings.path };
+}
+
+async function getRetentionCount(targetId?: string): Promise<number> {
 	if (targetId && targetId !== "internal") {
 		const db = await getDatabaseById(targetId);
-		if (db) {
-			retentionCount = db.backupRetention ?? retentionCount;
-			enabled = db.backupEnabled ?? enabled;
-			scheduleCron = db.backupSchedule ?? scheduleCron;
-		}
+		if (db) return db.backupRetention ?? DEFAULT_RETENTION;
 	}
-
-	return {
-		enabled,
-		scheduleCron,
-		retentionCount,
-		storage: {
-			type: storageSettings.type,
-			path: storageSettings.path || "/data/backups",
-			...(storageSettings.type === "s3"
-				? {
-						endpoint: storageSettings.s3Endpoint || "",
-						accessKeyId: storageSettings.s3AccessKeyId || "",
-						secretAccessKey: storageSettings.s3SecretAccessKey || "",
-						bucket: storageSettings.s3Bucket || "",
-						region: storageSettings.s3Region || "auto",
-					}
-				: {}),
-		},
-	};
+	return DEFAULT_RETENTION;
 }
 
 async function resolveTarget(targetId: string): Promise<BackupTarget> {
@@ -47,7 +39,7 @@ async function resolveTarget(targetId: string): Promise<BackupTarget> {
 			id: "internal",
 			type: "internal",
 			engine: "postgresql",
-			containerName: "postgres",
+			containerName: process.env.POSTGRES_CONTAINER || "dequel-postgres-1",
 			databaseName: process.env.POSTGRES_DB || "dequel",
 			serverId: null,
 			credentials: {
@@ -81,13 +73,14 @@ export const backupRoutes = new Elysia({ prefix: "/backups" })
 		return ok(records);
 	})
 	.get("/config", async () => {
-		return ok(await getBackupConfig());
+		const settings = await getBackupStorageSettings();
+		return ok(settings);
 	})
 	.post("/", async ({ set }) => {
 		try {
-			const config = await getBackupConfig("internal");
-			const orchestrator = new BackupOrchestrator(config);
-			const job = await orchestrator.backup("internal", resolveTarget);
+			const storage = await loadStorageConfig();
+			const orchestrator = new BackupOrchestrator(storage);
+			const job = await orchestrator.backup("internal", DEFAULT_RETENTION, resolveTarget);
 			return created(job);
 		} catch (error) {
 			set.status = 500;
@@ -96,9 +89,10 @@ export const backupRoutes = new Elysia({ prefix: "/backups" })
 	})
 	.post("/:id/trigger", async ({ params, set }) => {
 		try {
-			const config = await getBackupConfig(params.id);
-			const orchestrator = new BackupOrchestrator(config);
-			const job = await orchestrator.backup(params.id, resolveTarget);
+			const storage = await loadStorageConfig();
+			const retention = await getRetentionCount(params.id);
+			const orchestrator = new BackupOrchestrator(storage);
+			const job = await orchestrator.backup(params.id, retention, resolveTarget);
 			return created(job);
 		} catch (error) {
 			set.status = 500;
@@ -124,9 +118,8 @@ export const backupRoutes = new Elysia({ prefix: "/backups" })
 	})
 	.post("/:id/restore", async ({ params, set }) => {
 		try {
-			const record = await getBackupRecord(params.id);
-			const config = await getBackupConfig(record?.targetId);
-			const orchestrator = new BackupOrchestrator(config);
+			const storage = await loadStorageConfig();
+			const orchestrator = new BackupOrchestrator(storage);
 			await orchestrator.restore(params.id, resolveTarget);
 			return ok({ restored: true });
 		} catch (error) {

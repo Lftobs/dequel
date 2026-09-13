@@ -266,6 +266,8 @@ export interface BackupStorageSettingsData {
 	s3SecretAccessKey?: string;
 	s3Bucket?: string;
 	s3Region?: string;
+	systemBackupSchedule?: string;
+	systemBackupRetention?: number;
 }
 
 export interface QueryExecResult {
