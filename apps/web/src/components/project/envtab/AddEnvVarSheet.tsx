@@ -1,5 +1,8 @@
-import { Plus, Trash2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link2, Plus, Share2, Trash2 } from "lucide-react";
 import { useState } from "react";
+import * as api from "../../../api/client";
+import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "../../ui/sheet";
@@ -14,10 +17,34 @@ interface AddEnvVarSheetProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onSubmit: (vars: EnvVarEntry[]) => Promise<void>;
+	projectId?: string;
 }
 
-export function AddEnvVarSheet({ open, onOpenChange, onSubmit }: AddEnvVarSheetProps) {
+export function AddEnvVarSheet({ open, onOpenChange, onSubmit, projectId }: AddEnvVarSheetProps) {
 	const [newVars, setNewVars] = useState<EnvVarEntry[]>([{ key: "", value: "", env: "" }]);
+	const queryClient = useQueryClient();
+
+	const { data: sharedVars = [] } = useQuery({
+		queryKey: ["shared-env-vars"],
+		queryFn: () => api.listSharedEnvVars().catch(() => []),
+		enabled: open,
+	});
+
+	const { data: linkedShared = [] } = useQuery({
+		queryKey: ["shared-env-links", projectId],
+		queryFn: () => api.listLinkedSharedEnvVars(projectId!),
+		enabled: open && !!projectId,
+	});
+
+	const linkedIds = new Set(linkedShared.map((l: any) => l.id));
+
+	const linkMutation = useMutation({
+		mutationFn: (sharedVarIds: string[]) => api.linkSharedEnvVars(projectId!, sharedVarIds),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["shared-env-links", projectId] });
+			queryClient.invalidateQueries({ queryKey: ["projects"] });
+		},
+	});
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -42,6 +69,11 @@ export function AddEnvVarSheet({ open, onOpenChange, onSubmit }: AddEnvVarSheetP
 
 	const updateRow = (index: number, field: keyof EnvVarEntry, val: string) => {
 		setNewVars((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: val } : item)));
+	};
+
+	const linkSharedVar = async (sharedVar: any) => {
+		if (!projectId) return;
+		await linkMutation.mutateAsync([sharedVar.id]);
 	};
 
 	return (
@@ -73,18 +105,53 @@ export function AddEnvVarSheet({ open, onOpenChange, onSubmit }: AddEnvVarSheetP
 								<div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider select-none">
 									Variable #{index + 1}
 								</div>
-								<div className="space-y-1">
-									<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-										Variable Key
-									</label>
-									<Input
-										placeholder="e.g. DATABASE_URL"
-										value={v.key}
-										onChange={(e) => updateRow(index, "key", e.target.value)}
-										className="h-9 bg-[#0d0d11] border-input focus:ring-1 focus:ring-primary text-xs font-semibold rounded-lg font-mono"
-										required
-									/>
-								</div>
+							<div className="space-y-1">
+								<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+									Variable Key
+								</label>
+								<Input
+									placeholder="e.g. DATABASE_URL"
+									value={v.key}
+									onChange={(e) => updateRow(index, "key", e.target.value)}
+									className="h-9 bg-[#0d0d11] border-input focus:ring-1 focus:ring-primary text-xs font-semibold rounded-lg font-mono"
+									required
+								/>
+								{v.key.trim().length > 0 && (() => {
+									const matches = sharedVars.filter(
+										(s: any) =>
+											s.key.toUpperCase().includes(v.key.trim().toUpperCase()) &&
+											!linkedIds.has(s.id) &&
+											s.key.toUpperCase() !== v.key.trim().toUpperCase(),
+									);
+									if (matches.length === 0) return null;
+									return (
+										<div className="mt-1.5 rounded-lg bg-orange-500/5 border border-orange-500/10 p-2 space-y-1">
+											<div className="text-[9px] font-semibold uppercase tracking-wider text-orange-400 flex items-center gap-1">
+												<Share2 className="h-2.5 w-2.5" /> Shared variable available
+											</div>
+											{matches.slice(0, 3).map((s: any) => (
+												<button
+													key={s.id}
+													type="button"
+													onClick={() => linkSharedVar(s)}
+													className="w-full flex items-center justify-between rounded-md px-2 py-1 hover:bg-orange-500/10 cursor-pointer transition-colors"
+												>
+													<div className="flex items-center gap-1.5">
+														<Link2 className="h-3 w-3 text-orange-400" />
+														<Badge
+															variant="outline"
+															className="font-mono text-[9px] bg-black/40 border-orange-500/20 text-orange-300"
+														>
+															{s.key}
+														</Badge>
+													</div>
+													<span className="text-[9px] text-orange-400 font-medium">Use this</span>
+												</button>
+											))}
+										</div>
+									);
+								})()}
+							</div>
 
 								<div className="space-y-1">
 									<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">

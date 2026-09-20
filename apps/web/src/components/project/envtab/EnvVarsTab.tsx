@@ -8,6 +8,7 @@ import { DeleteEnvVarDialog } from "./DeleteEnvVarDialog";
 import { EmptyEnvState } from "./EmptyEnvState";
 import { EnvVarTable } from "./EnvVarTable";
 import { ImportEnvFileDialog } from "./ImportEnvFileDialog";
+import { LinkedSharedEnvVars } from "./LinkedSharedEnvVars";
 import { RedeployBanner } from "./RedeployBanner";
 
 interface EnvVarsTabProps {
@@ -139,6 +140,8 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 
 	return (
 		<div className="space-y-6">
+			<LinkedSharedEnvVars projectId={projectId} onLinkedChange={() => setShowRedeployPrompt(true)} />
+
 			<RedeployBanner
 				show={showRedeployPrompt}
 				runningDeploymentId={runningDeployment?.id}
@@ -174,7 +177,7 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 				/>
 			)}
 
-			<AddEnvVarSheet open={isAddOpen} onOpenChange={setIsAddOpen} onSubmit={handleAddVars} />
+			<AddEnvVarSheet open={isAddOpen} onOpenChange={setIsAddOpen} onSubmit={handleAddVars} projectId={projectId} />
 
 			<ImportEnvFileDialog open={isImportOpen} onOpenChange={setIsImportOpen} onImport={handleImportVars} />
 

@@ -1,4 +1,7 @@
 import { Elysia } from "elysia";
+import { eq } from "drizzle-orm";
+import { getDb } from "../../db/db-provider";
+import { projectSharedEnvLinks } from "../../db/schema";
 import {
 	createSharedEnvVar,
 	deleteSharedEnvVar,
@@ -7,9 +10,9 @@ import {
 	linkSharedEnvVarsToProject,
 	listLinkedSharedEnvVars,
 	listSharedEnvVars,
-	unlinkSharedEnvVarFromProject,
 	updateSharedEnvVar,
 } from "../../db/repo/shared-env-vars";
+import { getRowsAffected } from "../../db/repo/helpers";
 import { fail, ok } from "../response";
 
 export const sharedEnvVarsRoutes = new Elysia()
@@ -80,8 +83,15 @@ export const sharedEnvLinksRoutes = new Elysia()
 		await linkSharedEnvVarsToProject(params.id, body.sharedEnvVarIds);
 		return ok(null, "Linked");
 	})
-	.delete("/projects/:id/shared-env-links/:linkId", async ({ params, set }: any) => {
-		const removed = await unlinkSharedEnvVarFromProject(params.id, params.linkId);
+	.delete("/projects/:id/shared-env-links/:linkId", async ({ params, set }) => {
+		const db = await getDb();
+		const removed =
+			getRowsAffected(
+				await db
+					.delete(projectSharedEnvLinks)
+					.where(eq(projectSharedEnvLinks.id, params.linkId))
+					.execute(),
+			) > 0;
 		if (!removed) {
 			set.status = 404;
 			return fail("Link not found");

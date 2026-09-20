@@ -32,8 +32,8 @@ export function SharedEnv() {
 							Shared Environment Variables
 						</h1>
 						<p className="max-w-2xl text-xs md:text-sm text-muted-foreground leading-relaxed">
-							Define global secrets, API keys, and configuration variables once to share across all project containers.
-							Project-specific variables take precedence.
+							Define global secrets, API keys, and configuration variables once, then link them to projects as needed.
+							Project-specific variables take precedence over shared variables with the same key.
 						</p>
 					</div>
 
@@ -69,9 +69,9 @@ export function SharedEnv() {
 				<div className="space-y-1">
 					<h4 className="text-xs font-semibold text-foreground">Variable Precedence Hierarchy</h4>
 					<p className="text-xs text-muted-foreground leading-relaxed">
-						Shared variables are automatically merged into runtime environments for all deployed applications. If a
-						project defines an environment variable with the exact same key name, the project-level value will override
-						the shared value.
+						Shared variables are injected into linked projects during deployment. If a project defines an
+						environment variable with the exact same key name, the project-level value will take precedence.
+						Link a shared variable to a project to make it available.
 					</p>
 				</div>
 			</div>
