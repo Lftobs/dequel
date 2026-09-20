@@ -1,85 +1,386 @@
-import { spawn } from 'node:child_process';
-import { config } from '../utils/config';
-import { dockerBin } from '../utils/docker-bin';
-import { DEQUEL_MANAGED_LABEL } from '../utils/dequel-labels';
-import type { Database } from '../types';
-import { updateDatabaseStatus } from '../db/repo';
+import { getDb } from "../db/db-provider";
+import {
+	deleteDatabase,
+	getDatabaseById,
+	getServerById,
+	listAllDatabases,
+	updateDatabaseRuntime,
+	updateDatabaseStatus,
+} from "../db/repo";
+import type { Database, DatabaseType, Server } from "../types";
+import { config } from "../utils/config";
+import { DEQUEL_DATABASE_LABEL } from "../utils/dequel-labels";
+import { dockerBin } from "../utils/docker-bin";
+import { dockerRun, ensureContainerRemoved, ensureVolumeRemoved } from "../utils/docker-run";
 
-const run = (cmd: string, args: string[]) =>
-  new Promise<string>((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', (chunk) => { stdout += String(chunk); });
-    child.stderr.on('data', (chunk) => { stderr += String(chunk); });
-    child.on('close', (code) => {
-      if (code === 0) resolve((stdout + '\n' + stderr).trim());
-      else reject(new Error(`${cmd} ${args.join(' ')} failed (${code}): ${stderr}`));
-    });
-  });
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const tryRun = (cmd: string, args: string[]) =>
-  run(cmd, args).catch(() => undefined);
+export const resolveDbImage = (type: string, versionInput?: string | null): string => {
+	if (type === "postgresql") {
+		const ver = versionInput || "18";
+		const tag = ver.includes("alpine") || ver.includes("debian") || ver === "latest" ? ver : `${ver}-alpine`;
+		return `postgres:${tag}`;
+	}
+	if (type === "mysql") {
+		const ver = versionInput || "8.4";
+		return `mysql:${ver}`;
+	}
+	if (type === "redis") {
+		const ver = versionInput || "8.0";
+		const tag = ver.includes("alpine") || ver === "latest" ? ver : `${ver}-alpine`;
+		return `redis:${tag}`;
+	}
+	if (type === "mongodb") {
+		const ver = versionInput || "8.0";
+		return `mongo:${ver}`;
+	}
+	throw new Error(`Unsupported database type: ${type}`);
+};
+
+type EngineRuntimeConfig = { volumeTarget: string; envVars: string[]; extraCmdArgs: string[] };
+
+const ENGINE_RUNTIME_CONFIGS: Record<DatabaseType, (dbRecord: Database) => EngineRuntimeConfig> = {
+	postgresql: (dbRecord) => {
+		const major = Number((dbRecord.version ?? "18").match(/^\d+/)?.[0]);
+		if (!Number.isInteger(major)) {
+			throw new Error(`PostgreSQL version ${dbRecord.version} must be a numeric major version`);
+		}
+		return {
+			volumeTarget: major >= 18 ? "/var/lib/postgresql" : "/var/lib/postgresql/data",
+			envVars: [
+				`POSTGRES_USER=${dbRecord.username}`,
+				`POSTGRES_PASSWORD=${dbRecord.password}`,
+				`POSTGRES_DB=${dbRecord.databaseName}`,
+			],
+			extraCmdArgs: [],
+		};
+	},
+	mysql: (dbRecord) => ({
+		volumeTarget: "/var/lib/mysql",
+		envVars: [
+			`MYSQL_ROOT_PASSWORD=${dbRecord.password}`,
+			`MYSQL_DATABASE=${dbRecord.databaseName}`,
+			`MYSQL_USER=${dbRecord.username}`,
+			`MYSQL_PASSWORD=${dbRecord.password}`,
+		],
+		extraCmdArgs: [],
+	}),
+	redis: (dbRecord) => ({
+		volumeTarget: "/data",
+		envVars: [],
+		extraCmdArgs: ["redis-server", "--requirepass", dbRecord.password],
+	}),
+	mongodb: (dbRecord) => ({
+		volumeTarget: "/data/db",
+		envVars: [
+			`MONGO_INITDB_ROOT_USERNAME=${dbRecord.username}`,
+			`MONGO_INITDB_ROOT_PASSWORD=${dbRecord.password}`,
+			`MONGO_INITDB_DATABASE=${dbRecord.databaseName}`,
+		],
+		extraCmdArgs: [],
+	}),
+};
+
+const resolveEngineConfig = (dbRecord: Database): EngineRuntimeConfig => {
+	const resolver = ENGINE_RUNTIME_CONFIGS[dbRecord.type];
+	if (!resolver) throw new Error(`Unsupported database type: ${dbRecord.type}`);
+	return resolver(dbRecord);
+};
+
+const provisionInFlight = new Map<string, Promise<void>>();
 
 export const provisionDatabase = async (dbRecord: Database): Promise<void> => {
-  const containerName = dbRecord.internalHost;
+	const task = runProvision(dbRecord).finally(() => provisionInFlight.delete(dbRecord.id));
+	provisionInFlight.set(dbRecord.id, task);
+	await task;
+};
 
-  const version = dbRecord.version || (dbRecord.type === 'mysql' ? '8.0' : '16-alpine');
-  const image = dbRecord.type === 'mysql' ? `mysql:${version}` : `postgres:${version}`;
+export const waitForProvision = (id: string): Promise<void> => provisionInFlight.get(id) ?? Promise.resolve();
 
-  // Pull image first (non-blocking)
-  await tryRun(dockerBin, ['pull', image]);
+const resolveServer = async (dbRecord: Database): Promise<Server | null> => {
+	if (!dbRecord.serverId || dbRecord.serverId === "local") return null;
+	return getServerById(dbRecord.serverId);
+};
 
-  const envVars = dbRecord.type === 'mysql'
-    ? [
-        `MYSQL_ROOT_PASSWORD=${dbRecord.password}`,
-        `MYSQL_DATABASE=${dbRecord.databaseName}`,
-        `MYSQL_USER=${dbRecord.username}`,
-        `MYSQL_PASSWORD=${dbRecord.password}`,
-      ]
-    : [
-        `POSTGRES_USER=${dbRecord.username}`,
-        `POSTGRES_PASSWORD=${dbRecord.password}`,
-        `POSTGRES_DB=${dbRecord.databaseName}`,
-      ];
+const runProvision = async (dbRecord: Database): Promise<void> => {
+	const containerName = dbRecord.internalHost;
+	let createdVolume = false;
+	const server = await resolveServer(dbRecord);
 
-  const volumeName = `db-${dbRecord.id.slice(0, 12)}`;
+	const abortIfDeleted = async () => {
+		const current = await getDatabaseById(dbRecord.id);
+		if (!current || current.status === "deleting") {
+			if (createdVolume) await ensureVolumeRemoved(dbRecord.volumeName, server).catch(() => {});
+			await ensureContainerRemoved(containerName, server).catch(() => {});
+			await ensureContainerRemoved(publicProxyName(dbRecord), server).catch(() => {});
+			return true;
+		}
+		return false;
+	};
 
-  // Create volume
-  await tryRun(dockerBin, ['volume', 'create', volumeName]);
+	try {
+		const image = resolveDbImage(dbRecord.type, dbRecord.version);
+		const { volumeTarget, envVars, extraCmdArgs } = resolveEngineConfig(dbRecord);
+		await dockerRun(dockerBin, ["pull", image], server);
+		if (await abortIfDeleted()) return;
 
-  const args = [
-    'run', '-d',
-    '--name', containerName,
-    '--network', config.dockerNetwork,
-    '--network-alias', containerName,
-    '-l', DEQUEL_MANAGED_LABEL,
-    ...(dbRecord.cpuLimit ? ['--cpus', String(dbRecord.cpuLimit)] : []),
-    ...(dbRecord.memoryLimitMb ? ['--memory', `${Math.round(dbRecord.memoryLimitMb)}m`] : []),
-    '-v', `${volumeName}:/var/lib/${dbRecord.type === 'mysql' ? 'mysql' : 'postgresql/data'}`,
-    '-e', `TZ=UTC`,
-    ...envVars.flatMap(e => ['-e', e]),
-    image,
-  ];
+		await dockerRun(dockerBin, ["volume", "create", dbRecord.volumeName], server);
+		createdVolume = true;
+		await ensureContainerRemoved(containerName, server);
+		if (await abortIfDeleted()) return;
 
-  await run(dockerBin, args);
+		const args = [
+			"run",
+			"-d",
+			"--name",
+			containerName,
+			"--network",
+			config.dockerNetwork,
+			"--network-alias",
+			containerName,
+			"--restart",
+			"unless-stopped",
+			"-l",
+			DEQUEL_DATABASE_LABEL,
+			...(dbRecord.cpuLimit ? ["--cpus", String(dbRecord.cpuLimit)] : []),
+			...(dbRecord.memoryLimitMb ? ["--memory", `${Math.round(dbRecord.memoryLimitMb)}m`] : []),
+			"-v",
+			`${dbRecord.volumeName}:${volumeTarget}`,
+			"-e",
+			"TZ=UTC",
+			...envVars.flatMap((e) => ["-e", e]),
+			image,
+			...extraCmdArgs,
+		];
 
-  // Wait for healthy
-  for (let i = 0; i < 30; i++) {
-    try {
-      const status = await run(dockerBin, ['inspect', '-f', '{{.State.Status}}', containerName]);
-      if (status.trim() === 'running') {
-        await updateDatabaseStatus(dbRecord.id, 'running', containerName);
-        return;
-      }
-    } catch {}
-    await new Promise(r => setTimeout(r, 2000));
-  }
+		await dockerRun(dockerBin, args, server);
 
-  await updateDatabaseStatus(dbRecord.id, 'failed', containerName);
+		let externalPort: number | null = null;
+		let proxyContainerName: string | null = null;
+		if (dbRecord.publicAccess) {
+			const proxy = await provisionPublicProxy(dbRecord, server);
+			externalPort = proxy.externalPort;
+			proxyContainerName = proxy.containerName;
+		}
+
+		if (await abortIfDeleted()) return;
+
+		for (let i = 0; i < 30; i++) {
+			try {
+				const status = await dockerRun(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName], server);
+				if (status.trim() === "running") {
+					await updateDatabaseRuntime(dbRecord.id, { externalPort, proxyContainerName });
+					await updateDatabaseStatus(dbRecord.id, "running", containerName);
+					return;
+				}
+			} catch {}
+			await sleep(2000);
+		}
+
+		if (proxyContainerName) await ensureContainerRemoved(proxyContainerName, server).catch(() => {});
+		await updateDatabaseStatus(dbRecord.id, "failed", containerName);
+		throw new Error(`Database ${containerName} failed to become ready within 60 seconds`);
+	} catch (err) {
+		console.error(`[DB Provisioner] Error provisioning database ${dbRecord.id}:`, err);
+		await deprovisionDatabase({ ...dbRecord, proxyContainerName: publicProxyName(dbRecord) }).catch(() => {});
+		await updateDatabaseStatus(dbRecord.id, "failed", containerName).catch(() => {});
+		throw err;
+	}
 };
 
 export const deprovisionDatabase = async (dbRecord: Database): Promise<void> => {
-  await tryRun(dockerBin, ['stop', '-t', '5', dbRecord.internalHost]);
-  await tryRun(dockerBin, ['rm', '-f', dbRecord.internalHost]);
+	const server = await resolveServer(dbRecord);
+	await ensureContainerRemoved(dbRecord.proxyContainerName ?? publicProxyName(dbRecord), server);
+	await ensureContainerRemoved(dbRecord.internalHost, server);
+	await ensureVolumeRemoved(dbRecord.volumeName, server);
+};
+
+export const publicProxyName = (dbRecord: Database): string => `${dbRecord.internalHost}-public`;
+
+export const proxyConfig = (dbRecord: Database, port: number): string => {
+	const rules = dbRecord.allowPublicAccessFromAnywhere
+		? ""
+		: `  acl allowed src ${dbRecord.allowedCidrs.join(" ")}\n  tcp-request connection reject if !allowed\n`;
+	return `${[
+		"global",
+		"defaults",
+		"  mode tcp",
+		"  timeout connect 5s",
+		"  timeout client 1h",
+		"  timeout server 1h",
+		"frontend database",
+		`  bind 0.0.0.0:${port}`,
+		rules,
+		"  default_backend database",
+		"backend database",
+		`  server database ${dbRecord.internalHost}:${dbRecord.internalPort} check`,
+	].join("\n")}\n`;
+};
+
+const PUBLIC_PORT_MIN = 20000;
+const PUBLIC_PORT_MAX = 40000;
+
+const provisionPublicProxy = async (
+	dbRecord: Database,
+	server: Server | null,
+): Promise<{ containerName: string; externalPort: number }> => {
+	const containerName = publicProxyName(dbRecord);
+	await dockerRun(dockerBin, ["pull", "haproxy:3.0-alpine"], server);
+	for (let attempt = 0; attempt < 20; attempt++) {
+		const externalPort = PUBLIC_PORT_MIN + Math.floor(Math.random() * (PUBLIC_PORT_MAX - PUBLIC_PORT_MIN));
+		const configText = proxyConfig(dbRecord, externalPort);
+		await ensureContainerRemoved(containerName, server);
+		try {
+			await dockerRun(
+				dockerBin,
+				[
+					"run",
+					"-d",
+					"--name",
+					containerName,
+					"--network",
+					config.dockerNetwork,
+					"-p",
+					`${externalPort}:${externalPort}`,
+					"--restart",
+					"unless-stopped",
+					"-l",
+					DEQUEL_DATABASE_LABEL,
+					"-e",
+					`DEQUEL_HAPROXY_CONFIG=${configText}`,
+					"haproxy:3.0-alpine",
+					"sh",
+					"-c",
+					'printf "%s" "$DEQUEL_HAPROXY_CONFIG" > /tmp/haproxy.cfg && exec haproxy -f /tmp/haproxy.cfg',
+				],
+				server,
+			);
+		} catch {
+			await ensureContainerRemoved(containerName, server).catch(() => {});
+			continue;
+		}
+		await sleep(1500);
+		try {
+			const status = await dockerRun(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName], server);
+			if (status.trim() === "running") return { containerName, externalPort };
+		} catch {}
+		await ensureContainerRemoved(containerName, server);
+	}
+	throw new Error("Could not allocate a free port for public database access");
+};
+
+export const stopDatabase = async (dbRecord: Database): Promise<void> => {
+	const server = await resolveServer(dbRecord);
+	if (dbRecord.proxyContainerName)
+		await dockerRun(dockerBin, ["stop", "-t", "5", dbRecord.proxyContainerName], server).catch(() => {});
+	await dockerRun(dockerBin, ["stop", "-t", "10", dbRecord.internalHost], server);
+	await updateDatabaseStatus(dbRecord.id, "stopped");
+};
+
+export const startDatabase = async (dbRecord: Database): Promise<void> => {
+	const server = await resolveServer(dbRecord);
+	await dockerRun(dockerBin, ["start", dbRecord.internalHost], server);
+	if (dbRecord.proxyContainerName) await dockerRun(dockerBin, ["start", dbRecord.proxyContainerName], server);
+	await updateDatabaseStatus(dbRecord.id, "running");
+};
+
+export const restartDatabase = async (dbRecord: Database): Promise<void> => {
+	const server = await resolveServer(dbRecord);
+	await updateDatabaseStatus(dbRecord.id, "restarting");
+	await dockerRun(dockerBin, ["restart", dbRecord.internalHost], server);
+	if (dbRecord.proxyContainerName) await dockerRun(dockerBin, ["restart", dbRecord.proxyContainerName], server);
+	await updateDatabaseStatus(dbRecord.id, "running");
+};
+
+export const measureDatabaseStorage = async (dbRecord: Database): Promise<number> => {
+	const server = await resolveServer(dbRecord);
+	const output = await dockerRun(
+		dockerBin,
+		["run", "--rm", "-v", `${dbRecord.volumeName}:/data:ro`, "alpine:3.20", "du", "-sm", "/data"],
+		server,
+	);
+	const usedMb = Number.parseInt(output, 10) || 0;
+	await updateDatabaseRuntime(dbRecord.id, { storageUsedMb: usedMb });
+	return usedMb;
+};
+
+const STORAGE_MEASURE_INTERVAL_MS = 10 * 60_000;
+const lastStorageMeasure = new Map<string, number>();
+
+const reconcileMissingContainer = async (dbRecord: Database) => {
+	if (dbRecord.status === "running" || dbRecord.status === "restarting") {
+		await updateDatabaseStatus(dbRecord.id, "failed");
+	}
+};
+
+export const startDatabaseMonitoring = () => {
+	let checkInFlight = false;
+	const check = async () => {
+		if (checkInFlight) return;
+		checkInFlight = true;
+		try {
+			for (const dbRecord of await listAllDatabases()) {
+				if (dbRecord.status === "deleting" || dbRecord.status === "deletion_failed") {
+					try {
+						await deprovisionDatabase(dbRecord);
+						await deleteDatabase(dbRecord.id);
+					} catch (error) {
+						console.warn(`[Database] Cleanup retry failed for ${dbRecord.id}:`, error);
+					}
+					continue;
+				}
+				try {
+					const server = await resolveServer(dbRecord);
+					const inspect = await dockerRun(
+						dockerBin,
+						["inspect", "-f", "{{.State.Status}}", dbRecord.internalHost],
+						server,
+					);
+					const running = inspect.trim() === "running";
+					if (dbRecord.status === "running" && !running) {
+						await updateDatabaseStatus(dbRecord.id, "stopped");
+					} else if (dbRecord.status === "stopped" && running) {
+						await updateDatabaseStatus(dbRecord.id, "running");
+					} else if (dbRecord.status === "restarting") {
+						const inspectStatus = inspect.trim();
+						if (inspectStatus === "restarting") continue;
+						await updateDatabaseStatus(dbRecord.id, inspectStatus === "running" ? "running" : "failed");
+					} else if (dbRecord.status === "provisioning" && !provisionInFlight.has(dbRecord.id)) {
+						const ageMs = Date.now() - new Date(dbRecord.createdAt).getTime();
+						if (ageMs > 5 * 60_000) {
+							await updateDatabaseStatus(dbRecord.id, running ? "running" : "failed");
+						}
+					}
+					if (running) {
+						const lastMeasured = lastStorageMeasure.get(dbRecord.id) ?? 0;
+						if (Date.now() - lastMeasured >= STORAGE_MEASURE_INTERVAL_MS) {
+							lastStorageMeasure.set(dbRecord.id, Date.now());
+							const usedMb = await measureDatabaseStorage(dbRecord);
+							if (dbRecord.storageLimitMb && usedMb >= dbRecord.storageLimitMb) {
+								console.warn(
+									`[Database] ${dbRecord.name} storage limit reached (${usedMb}/${dbRecord.storageLimitMb} MB)`,
+								);
+							} else if (dbRecord.storageLimitMb && usedMb >= dbRecord.storageLimitMb * 0.8) {
+								console.warn(
+									`[Database] ${dbRecord.name} storage usage above 80% (${usedMb}/${dbRecord.storageLimitMb} MB)`,
+								);
+							}
+						}
+					}
+				} catch (error) {
+					if (
+						/No such (?:container|volume)|No such object/.test(error instanceof Error ? error.message : String(error))
+					) {
+						await reconcileMissingContainer(dbRecord);
+					} else {
+						console.warn(`[Database] Monitoring skipped for ${dbRecord.id}:`, error);
+					}
+				}
+			}
+		} finally {
+			checkInFlight = false;
+		}
+	};
+	void check();
+	return setInterval(() => void check(), 60_000);
 };

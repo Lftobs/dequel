@@ -3,7 +3,6 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tegami } from "tegami";
 import { runCli } from "tegami/cli";
-import { github } from "tegami/plugins/github";
 import type { Draft, TegamiPlugin } from "tegami";
 
 const REPO = "Lftobs/dequel";
@@ -144,13 +143,6 @@ const paper = tegami({
   },
   plugins: [
     docsChangelogPlugin(),
-    github({
-      repo: REPO,
-      release: false,
-      versionPr: {
-        base: "main",
-      },
-    }),
   ],
   groups: {
     dequel: {

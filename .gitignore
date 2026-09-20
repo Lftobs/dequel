@@ -14,3 +14,10 @@ bump.sh
 scripts/workflow/bump.sh
 __pycache__
 .tegami/changes-*
+SETUP_GUIDE.md
+bun.lock
+apps/docs/.blume/
+FEATURES.md
+.agents
+.worktrees/
+artifacts

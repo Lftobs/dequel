@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { Coffee } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function SupportSection() {
 	const [failedToLoad, setFailedToLoad] = useState(false);
@@ -30,7 +30,7 @@ export function SupportSection() {
 					"kofi-widget-container",
 				);
 				setFailedToLoad(false);
-			} catch (e) {
+			} catch (_e) {
 				setFailedToLoad(true);
 			}
 		};
@@ -82,6 +82,26 @@ export function SupportSection() {
 				script.removeEventListener("error", handleError);
 			}
 		};
+	}, []);
+
+	useEffect(() => {
+		const observer = new MutationObserver(() => {
+			const popup = document.querySelector(".floating-chat-kofi-popup-iframe");
+			const popupMobi = document.querySelector(".floating-chat-kofi-popup-iframe-mobi");
+			if (popup && popup.parentElement !== document.body) {
+				document.body.appendChild(popup);
+			}
+			if (popupMobi && popupMobi.parentElement !== document.body) {
+				document.body.appendChild(popupMobi);
+			}
+		});
+
+		observer.observe(document.body, {
+			childList: true,
+			subtree: true,
+		});
+
+		return () => observer.disconnect();
 	}, []);
 
 	return (

@@ -1,7 +1,9 @@
 import { Elysia } from "elysia";
+import { agentRoutes } from "./agents";
 import { alertsRoutes } from "./alerts";
 import { apiKeysRoutes } from "./api-keys";
 import { authRoutes } from "./auth";
+import { backupRoutes } from "./backups";
 import { databasesRoutes } from "./databases";
 import { deploymentsRoutes } from "./deployments";
 import { domainsRoutes } from "./domains";
@@ -10,13 +12,26 @@ import { githubRoutes } from "./github";
 import { healthRoutes } from "./health";
 import { projectsRoutes } from "./projects";
 import { prometheusRoutes } from "./prometheus";
+import { routesRoutes } from "./routes";
 import { scalingRoutes } from "./scaling";
 import { serverInfoRoutes } from "./server-info";
 import { serversRoutes } from "./servers";
-import { volumesRoutes } from "./volumes";
 import { settingsRoutes } from "./settings";
+import { sharedEnvLinksRoutes, sharedEnvVarsRoutes } from "./shared-env-vars";
+import { sshKeysRoutes } from "./ssh-keys";
+import { volumesRoutes } from "./volumes";
 
-const BYPASS_PATHS = new Set(["/api/auth/login", "/api/auth/logout", "/api/auth/refresh", "/api/auth/me", "/api/health", "/api/github/callback", "/api/github/webhook"]);
+const BYPASS_PATHS = new Set([
+	"/api/auth/login",
+	"/api/auth/logout",
+	"/api/auth/refresh",
+	"/api/auth/me",
+	"/api/health",
+	"/api/github/callback",
+	"/api/github/webhook",
+	"/api/agents/register",
+	"/api/agents/p2p-sync",
+]);
 
 const authMiddleware = (app: Elysia) =>
 	app.onBeforeHandle(async ({ request, set, path }) => {
@@ -53,10 +68,14 @@ export const apiRoutes = new Elysia({
 })
 	.use(authRoutes)
 	.use(authMiddleware)
+	.use(agentRoutes)
 	.use(healthRoutes)
 	.use(projectsRoutes)
 	.use(deploymentsRoutes)
 	.use(envVarsRoutes)
+	.use(sharedEnvVarsRoutes)
+	.use(sharedEnvLinksRoutes)
+	.use(sshKeysRoutes)
 	.use(volumesRoutes)
 	.use(databasesRoutes)
 	.use(domainsRoutes)
@@ -67,4 +86,6 @@ export const apiRoutes = new Elysia({
 	.use(prometheusRoutes)
 	.use(alertsRoutes)
 	.use(githubRoutes)
-	.use(settingsRoutes);
+	.use(settingsRoutes)
+	.use(routesRoutes)
+	.use(backupRoutes);

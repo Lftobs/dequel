@@ -1,16 +1,9 @@
-import React, { useState } from "react";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogDescription,
-	DialogFooter,
-} from "../../ui/dialog";
-import { Button } from "../../ui/button";
-import { Input } from "../../ui/input";
 import { Rocket } from "lucide-react";
+import { useState } from "react";
 import { cn } from "../../../lib/utils";
+import { Button } from "../../ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../ui/dialog";
+import { Input } from "../../ui/input";
 import { ClearCacheToggle } from "./clear-cache-toggle";
 
 interface ManualDeployDialogProps {
@@ -66,7 +59,13 @@ export function ManualDeployDialog({
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={(v) => { if (!v) setError(null); onOpenChange(v); }}>
+		<Dialog
+			open={open}
+			onOpenChange={(v) => {
+				if (!v) setError(null);
+				onOpenChange(v);
+			}}
+		>
 			<DialogContent className="sm:max-w-[480px] bg-[#0c0c0e] border-[#1d1d22] text-zinc-100">
 				<DialogHeader>
 					<DialogTitle className="text-lg font-bold text-zinc-100 flex items-center gap-2">
@@ -89,7 +88,7 @@ export function ManualDeployDialog({
 									"flex flex-col items-start p-3 rounded-lg border text-left transition-all",
 									deployOption === "latest"
 										? "bg-amber-500/10 border-amber-500 text-amber-400"
-										: "bg-[#121215] border-[#222227] text-zinc-400 hover:border-[#33333b] hover:text-zinc-200"
+										: "bg-[#121215] border-[#222227] text-zinc-400 hover:border-[#33333b] hover:text-zinc-200",
 								)}
 							>
 								<span className="text-xs font-bold">Latest Commit</span>
@@ -102,7 +101,7 @@ export function ManualDeployDialog({
 									"flex flex-col items-start p-3 rounded-lg border text-left transition-all",
 									deployOption === "commit"
 										? "bg-amber-500/10 border-amber-500 text-amber-400"
-										: "bg-[#121215] border-[#222227] text-zinc-400 hover:border-[#33333b] hover:text-zinc-200"
+										: "bg-[#121215] border-[#222227] text-zinc-400 hover:border-[#33333b] hover:text-zinc-200",
 								)}
 							>
 								<span className="text-xs font-bold">Specific Commit</span>

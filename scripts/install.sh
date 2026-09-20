@@ -68,7 +68,7 @@ check_prerequisites() {
 
 setup_directories() {
 	header "Setting up installation directory"
-	mkdir -p "$INSTALL_DIR/data" "$INSTALL_DIR/workspace" "$INSTALL_DIR/infra/caddy/routes" "$INSTALL_DIR/infra/monitoring/grafana/datasources" "$INSTALL_DIR/infra/monitoring/grafana/dashboards"
+	mkdir -p "$INSTALL_DIR/data" "$INSTALL_DIR/workspace" "$INSTALL_DIR/infra/caddy/routes" "$INSTALL_DIR/infra/monitoring/grafana/datasources" "$INSTALL_DIR/infra/monitoring/grafana/dashboards" "$INSTALL_DIR/scripts/auth"
 	info "Installing to: $INSTALL_DIR"
 }
 
@@ -76,20 +76,25 @@ resolve_base_url() {
 	header "Downloading configuration"
 	TAG=""
 
-	if [ "$VERSION" = "latest" ]; then
-		local release_url="https://api.github.com/repos/$REPO/releases/latest"
-		info "Fetching latest release..."
+	if [ "$VERSION" = "pre" ] || [ "$VERSION" = "prerelease" ]; then
+		local release_url="https://api.github.com/repos/$REPO/releases"
+		info "Fetching latest pre-release..."
 		TAG=$(curl -fsSL "$release_url" | grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/') || true
-		if [ -z "$TAG" ]; then
-			warn "Could not determine latest release. Falling back to 'main' branch."
-			BASE_URL="https://raw.githubusercontent.com/$REPO/main"
-		else
-			BASE_URL="https://raw.githubusercontent.com/$REPO/$TAG"
-			success "Latest release: $TAG"
-		fi
+	elif [ "$VERSION" = "latest" ]; then
+		local release_url="https://api.github.com/repos/$REPO/releases/latest"
+		info "Fetching latest stable release..."
+		TAG=$(curl -fsSL "$release_url" | grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/') || true
 	else
-		TAG="v$VERSION"
+		TAG="${VERSION#v}"
+		TAG="v$TAG"
+	fi
+
+	if [ -z "$TAG" ]; then
+		warn "Could not determine release. Falling back to 'main' branch."
+		BASE_URL="https://raw.githubusercontent.com/$REPO/main"
+	else
 		BASE_URL="https://raw.githubusercontent.com/$REPO/$TAG"
+		success "Target release: $TAG"
 	fi
 }
 
@@ -119,6 +124,7 @@ download_configs() {
 	download_if_missing "$BASE_URL/docker-compose.yml" "$INSTALL_DIR/docker-compose.yml"
 	download_if_missing "$BASE_URL/infra/caddy/Caddyfile" "$INSTALL_DIR/infra/caddy/Caddyfile"
 	download_if_missing "$BASE_URL/scripts/dequel" "$INSTALL_DIR/dequel"
+	download_if_missing "$BASE_URL/scripts/auth/pam-server.py" "$INSTALL_DIR/scripts/auth/pam-server.py"
 
 	for f in prometheus.yml loki-config.yml promtail-config.yml; do
 		download_if_missing "$BASE_URL/infra/monitoring/$f" "$INSTALL_DIR/infra/monitoring/$f"
@@ -154,6 +160,9 @@ prompt_config() {
 	local ENC_KEY
 	ENC_KEY=$(openssl rand -hex 32 2>/dev/null || dd if=/dev/urandom bs=32 count=1 status=none 2>/dev/null | od -A n -t x1 | tr -d ' \n' || fail "Cannot generate encryption key — openssl and dd both failed")
 
+	local PG_PASS
+	PG_PASS=$(openssl rand -hex 16 2>/dev/null || dd if=/dev/urandom bs=16 count=1 status=none 2>/dev/null | od -A n -t x1 | tr -d ' \n' || fail "Cannot generate database password")
+
 	cat > "$INSTALL_DIR/data/dequel.json" <<EOF
 {
   "CADDY_BASE_DOMAIN": "$HOSTNAME",
@@ -166,6 +175,9 @@ EOF
 
 	{
 		echo "# Dequel environment configuration"
+		echo "POSTGRES_USER=dequel"
+		echo "POSTGRES_PASSWORD=$PG_PASS"
+		echo "POSTGRES_DB=dequel"
 		[ -n "$ADMIN_EMAIL" ] && echo "CADDY_EMAIL=$ADMIN_EMAIL"
 		[ -n "$HOSTNAME" ] && echo "CADDY_BASE_DOMAIN=$HOSTNAME"
 	} > "$INSTALL_DIR/.env"

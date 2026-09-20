@@ -1,10 +1,11 @@
 FROM oven/bun:1 AS build
 
 ARG DEQUEL_VERSION
+ARG BUILD_TIME=0
 ENV DEQUEL_VERSION=$DEQUEL_VERSION
 
 WORKDIR /app
-COPY package.json ./
+COPY package.json bun.lock* ./
 RUN bun install
 
 COPY src ./src

@@ -1,23 +1,23 @@
-import { defineCollection } from 'astro:content';
-import { glob } from 'astro/loaders';
-import { z } from 'astro/zod';
+import { defineCollection } from "astro:content";
+import { glob } from "astro/loaders";
+import { z } from "astro/zod";
 
 const docs = defineCollection({
-  loader: glob({ pattern: "*.md", base: "./src/content/docs" }),
-  schema: z.object({
-    title: z.string(),
-    category: z.string(),
-    description: z.string(),
-    slug: z.string(),
-  }),
+	loader: glob({ pattern: "*.md", base: "./src/content/docs" }),
+	schema: z.object({
+		title: z.string(),
+		category: z.string(),
+		description: z.string(),
+		slug: z.string(),
+	}),
 });
 
 const changelogs = defineCollection({
-  loader: glob({ pattern: "*.md", base: "./src/content/changelogs" }),
-  schema: z.object({
-    version: z.string(),
-    date: z.string(),
-  }),
+	loader: glob({ pattern: "*.md", base: "./src/content/changelogs" }),
+	schema: z.object({
+		version: z.string(),
+		date: z.string(),
+	}),
 });
 
 export const collections = { docs, changelogs };

@@ -1,0 +1,83 @@
+---
+---
+<section class="max-w-[1150px] mx-auto px-4 py-16 dq-reveal" id="comparison">
+  <div class="text-center mb-12">
+    <div class="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#ea580c] mb-3">PaaS Paradigm Shift</div>
+    <h2 class="text-3xl md:text-5xl font-bold tracking-tight mb-4">
+      Stop fighting infrastructure.<br />
+      <span class="text-[#ea580c]">Start shipping instantly.</span>
+    </h2>
+    <p class="text-sm text-[#7f7f8a] max-w-xl mx-auto leading-relaxed">
+      Dequel replaces fragmented DevOps tools with a unified self-hosted platform.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+    <!-- Left Card: Fighting Infra -->
+    <div class="cf-compare-card cf-compare-card--dark flex flex-col justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-6">
+          <span class="px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 text-xs font-mono font-semibold">TRADITIONAL DEVOPS</span>
+        </div>
+        <h3 class="text-2xl font-bold mb-4 text-[#e2e2e8]">
+          Fighting infra with DIY scripts & expensive PaaS
+        </h3>
+        <ul class="space-y-4 text-xs text-[#7f7f8a] leading-relaxed mb-8">
+          <li class="flex items-start gap-3">
+            <span class="text-red-400 font-bold text-sm">✕</span>
+            <span>Wrestling with complex Kubernetes manifests, ingress controllers, and Helm charts just to host an API.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-red-400 font-bold text-sm">✕</span>
+            <span>Hand-rolling certbot renewal scripts, nginx proxy configurations, and port forward rules on raw VPS boxes.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-red-400 font-bold text-sm">✕</span>
+            <span>Paying bloated monthly per-seat fees or unpredictable bandwidth egress markups on public cloud PaaS platforms.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-red-400 font-bold text-sm">✕</span>
+            <span>Scattered logs, missing metrics dashboards, and zero visibility into build errors or worker queues.</span>
+          </li>
+        </ul>
+      </div>
+      <div class="border-t border-[#222228] pt-4 text-xs font-mono text-[#4b4b54]">
+        Status: High overhead • Proprietary lock-in
+      </div>
+    </div>
+
+    <!-- Right Card: Shipping with Dequel -->
+    <div class="cf-compare-card cf-compare-card--orange flex flex-col justify-between text-white">
+      <div>
+        <div class="flex items-center gap-2 mb-6">
+          <span class="px-2.5 py-1 rounded-full bg-white/20 text-white text-xs font-mono font-semibold backdrop-blur-sm">DEQUEL PAAS</span>
+        </div>
+        <h3 class="text-2xl font-bold mb-4 text-white">
+          Shipping apps with Dequel in seconds
+        </h3>
+        <ul class="space-y-4 text-xs text-orange-50 leading-relaxed mb-8">
+          <li class="flex items-start gap-3">
+            <span class="text-white font-bold text-sm">✓</span>
+            <span><strong>One-command install:</strong> Spin up the entire PaaS control plane on any clean Linux VPS in under 60 seconds.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-white font-bold text-sm">✓</span>
+            <span><strong>Automated Railpack builds:</strong> Connect Git or upload a ZIP file — Dequel autodetects your runtime and builds via local Buildkit.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-white font-bold text-sm">✓</span>
+            <span><strong>Zero-config SSL & Domains:</strong> Built-in Caddy engine automatically handles Let's Encrypt certificates and domain routing.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="text-white font-bold text-sm">✓</span>
+            <span><strong>Complete Observability:</strong> Full Prometheus, cAdvisor, Loki log aggregation, and Grafana monitoring out-of-the-box.</span>
+          </li>
+        </ul>
+      </div>
+      <div class="border-t border-white/20 pt-4 text-xs font-mono text-white/80 flex items-center justify-between">
+        <span>Status: 100% Owned by You</span>
+        <span class="bg-white/20 px-2 py-0.5 rounded text-[0.65rem]">0% Markups</span>
+      </div>
+    </div>
+  </div>
+</section>

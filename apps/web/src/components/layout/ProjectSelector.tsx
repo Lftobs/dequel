@@ -32,9 +32,7 @@ export function ProjectSelector({
 				<div className="flex items-center gap-2.5 min-w-0">
 					{currentProject ? (
 						<div className="w-6 h-6 rounded-md bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-[10px] font-display font-black text-white shadow-sm shrink-0">
-							{currentProject.name
-								.slice(0, 2)
-								.toUpperCase()}
+							{currentProject.name.slice(0, 2).toUpperCase()}
 						</div>
 					) : (
 						<DequelLogo className="w-6 h-6 shrink-0" />
@@ -53,10 +51,7 @@ export function ProjectSelector({
 
 			{isOpen && (
 				<>
-					<div
-						className="fixed inset-0 z-10"
-						onClick={() => setIsOpen(false)}
-					/>
+					<div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
 					<div className="absolute top-[calc(100%-8px)] left-4 right-4 mt-2 py-1.5 rounded-lg border border-[#27272a] bg-[#111113] shadow-xl z-20 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-100">
 						<Link
 							to="/"

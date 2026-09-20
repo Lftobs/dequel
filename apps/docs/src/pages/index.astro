@@ -2,10 +2,10 @@
 import "../styles/global.css";
 import Hero from "../components/Hero.astro";
 import Stats from "../components/Stats.astro";
+import Comparison from "../components/Comparison.astro";
 import Features from "../components/Features.astro";
 import HowItWorks from "../components/HowItWorks.astro";
 import TerminalDemo from "../components/TerminalDemo.astro";
-import TechStack from "../components/TechStack.astro";
 import CTA from "../components/CTA.astro";
 ---
 
@@ -15,11 +15,11 @@ import CTA from "../components/CTA.astro";
 		<meta charset="UTF-8" />
 		<meta
 			name="description"
-			content="Dequel — The self-hosted container platform. Deploy, scale, and observe containerized workloads on your own infrastructure."
+			content="Dequel — The self-hosted PaaS container platform. Deploy, route with auto-SSL, scale, and monitor applications on your own servers with zero vendor lock-in."
 		/>
 		<meta
 			name="viewport"
-			content="width=device-width"
+			content="width=device-width, initial-scale=1.0"
 		/>
 		<link
 			rel="preconnect"
@@ -40,11 +40,11 @@ import CTA from "../components/CTA.astro";
 			href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'%3E%3ClinearGradient id='g' x1='0' y1='0' x2='32' y2='32' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0%25' stop-color='%23f59e0b'/%3E%3Cstop offset='50%25' stop-color='%23ea580c'/%3E%3Cstop offset='100%25' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3Cpath d='M12 8H20C24.4183 8 28 11.5817 28 16C28 20.4183 24.4183 24 20 24H12' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M20 24H12C7.58172 24 4 20.4183 4 16C4 11.5817 7.58172 8 12 8H16' stroke='url(%23g)' stroke-width='3' stroke-linecap='round' stroke-dasharray='40 10'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='url(%23g)'/%3E%3C/svg%3E"
 		/>
 		<title>
-			Dequel — Self-Hosted Container
-			Platform
+			Dequel — Self-Hosted PaaS Engine & Container Platform
 		</title>
 	</head>
-	<body class="dq-noise">
+	<body class="dq-noise bg-[#0a0a0c] text-[#e2e2e8]">
+		<!-- Cloudflare-style Header Nav -->
 		<nav class="dq-nav">
 			<div class="dq-nav-inner">
 				<a href="/" class="dq-nav-brand">
@@ -106,12 +106,17 @@ import CTA from "../components/CTA.astro";
 					<a
 						href="#features"
 						class="dq-nav-link"
-						>Features</a
+						>Platform</a
 					>
 					<a
-						href="#demo"
+						href="#comparison"
 						class="dq-nav-link"
-						>Demo</a
+						>Why Dequel</a
+					>
+					<a
+						href="#how-it-works"
+						class="dq-nav-link"
+						>Architecture</a
 					>
 					<a
 						href="/docs"
@@ -120,9 +125,9 @@ import CTA from "../components/CTA.astro";
 					>
 					<a
 						href="/docs/installation"
-						class="dq-btn dq-btn--ghost"
+						class="cf-pill-btn-white text-xs !py-2 !px-4"
 					>
-						Install <span
+						Deploy Now <span
 							class="dq-btn-arrow"
 							>→</span
 						>
@@ -131,26 +136,19 @@ import CTA from "../components/CTA.astro";
 			</div>
 		</nav>
 
-		<Hero />
+		<main class="space-y-4">
+			<Hero />
+			<Stats />
+			<Comparison />
+			<Features />
+			<HowItWorks />
+			<TerminalDemo />
+			<CTA />
+		</main>
 
-		<Stats />
-
-		<HowItWorks />
-
-		<Features />
-
-		<hr
-			class="dq-rule-thin"
-			style="max-width:1100px;margin:0 auto;"
-		/>
-
-		<TerminalDemo />
-
-		<CTA />
-
-		<footer class="dq-footer">
-			<div class="dq-footer-inner">
-				<div class="dq-footer-brand">
+		<footer class="dq-footer bg-[#070709] border-t border-[#222228] mt-20">
+			<div class="dq-footer-inner max-w-[1150px] mx-auto px-4 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+				<div class="dq-footer-brand flex items-center gap-2">
 					<svg
 						viewBox="0 0 32 32"
 						fill="none"
@@ -202,131 +200,117 @@ import CTA from "../components/CTA.astro";
 						></circle>
 					</svg>
 					<span
-						style="font-weight:700;font-size:0.8rem;letter-spacing:0.04em;color:var(--dq-text-muted);"
+						style="font-weight:700;font-size:0.85rem;letter-spacing:0.04em;color:var(--dq-text-muted);"
 						>dequel</span
 					>
 				</div>
-				<div class="dq-footer-links">
+				<div class="dq-footer-links flex gap-6 text-xs text-[#7f7f8a]">
 					<a
 						href="/docs"
-						class="dq-footer-link"
+						class="hover:text-white transition-colors"
 						>Documentation</a
 					>
 					<a
 						href="/docs/installation"
-						class="dq-footer-link"
-						>Install</a
+						class="hover:text-white transition-colors"
+						>Installation</a
 					>
 					<a
 						href="https://github.com/Lftobs/dequel"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="dq-footer-link"
+						class="hover:text-white transition-colors"
 						>GitHub</a
 					>
 				</div>
-				<p class="dq-footer-copy">
-					© {new Date().getFullYear()} Dequel.
-					Self-hosted container platform.
+				<p class="dq-footer-copy text-xs text-[#4b4b54]">
+					© {new Date().getFullYear()} Dequel. Self-hosted PaaS container platform.
 				</p>
 			</div>
 		</footer>
 
-		<!-- ─── Scripts ─── -->
+		<!-- ─── Interactive Scripts ─── -->
 		<script>
 			// ── Scroll reveal ──
-			const revealEls =
-				document.querySelectorAll(
-					".dq-reveal",
-				);
-			const revealObs =
-				new IntersectionObserver(
-					(entries) => {
-						entries.forEach(
-							(entry) => {
-								if (
-									entry.isIntersecting
-								) {
-									entry.target.classList.add(
-										"dq-visible",
-									);
-								}
-							},
-						);
-					},
-					{ threshold: 0.15 },
-				);
-			revealEls.forEach((el) =>
-				revealObs.observe(el),
+			const revealEls = document.querySelectorAll(".dq-reveal");
+			const revealObs = new IntersectionObserver(
+				(entries) => {
+					entries.forEach((entry) => {
+						if (entry.isIntersecting) {
+							entry.target.classList.add("dq-visible");
+						}
+					});
+				},
+				{ threshold: 0.1 }
 			);
+			revealEls.forEach((el) => revealObs.observe(el));
+
+			// ── Cloudflare Product Capability Tab Switcher ──
+			const tabBtns = document.querySelectorAll("#cf-tab-container .cf-tab-btn");
+			const tabPanels = document.querySelectorAll(".tab-panel");
+
+			tabBtns.forEach((btn) => {
+				btn.addEventListener("click", () => {
+					const targetTab = btn.getAttribute("data-tab");
+
+					tabBtns.forEach((b) => b.classList.remove("active"));
+					btn.classList.add("active");
+
+					tabPanels.forEach((panel) => {
+						if (panel.id === `tab-panel-${targetTab}`) {
+							panel.classList.remove("hidden");
+							panel.classList.add("block");
+						} else {
+							panel.classList.remove("block");
+							panel.classList.add("hidden");
+						}
+					});
+				});
+			});
 
 			// ── Terminal typing animation ──
 			const lines = [
 				{
 					type: "cmd",
-					text: "dequel deploy --project my-api",
+					text: "dequel deploy --project my-app",
 				},
 				{
 					type: "info",
-					text: "  ⠋ Building container image...",
+					text: "  ⠋ Railpack analyzing codebase (Node.js/Express)...",
 				},
 				{
 					type: "info",
-					text: "  ✓ Image built (2.3s)",
+					text: "  ✓ Container image built via Buildkit (1.8s)",
 				},
 				{
 					type: "info",
-					text: "  ⠋ Pushing to registry...",
+					text: "  ⠋ Reloading dynamic Caddy proxy routes & SSL...",
 				},
 				{
 					type: "success",
-					text: "  ✓ Deployed to production",
+					text: "  ✓ Deployed to container cluster (replica 1/1)",
 				},
 				{
 					type: "url",
-					text: "  → https://my-api.dequel.dev",
+					text: "  → Live at https://my-app.dequel.dev",
 				},
 			];
 
-			const termBody =
-				document.getElementById(
-					"terminal-output",
-				);
-			let cursor =
-				document.getElementById(
-					"t-cursor",
-				);
-			let cmdSpan =
-				document.getElementById(
-					"t-line-0",
-				);
+			const termBody = document.getElementById("terminal-output");
+			let cursor = document.getElementById("t-cursor");
+			let cmdSpan = document.getElementById("t-line-0");
 			let lineIdx = 0;
 			let charIdx = 0;
 			let phase = "typing";
 
 			function typeChar() {
-				if (
-					lineIdx === 0 &&
-					phase === "typing"
-				) {
-					if (
-						charIdx <
-						lines[0].text.length
-					) {
-						cmdSpan.textContent +=
-							lines[0].text[
-								charIdx
-							];
+				if (lineIdx === 0 && phase === "typing" && cmdSpan) {
+					if (charIdx < lines[0].text.length) {
+						cmdSpan.textContent += lines[0].text[charIdx];
 						charIdx++;
-						setTimeout(
-							typeChar,
-							30 +
-								Math.random() *
-									40,
-						);
+						setTimeout(typeChar, 30 + Math.random() * 40);
 					} else {
-						cursor.style.display =
-							"none";
+						if (cursor) cursor.style.display = "none";
 						lineIdx = 1;
 						setTimeout(showLine, 600);
 					}
@@ -334,109 +318,74 @@ import CTA from "../components/CTA.astro";
 			}
 
 			function showLine() {
+				if (!termBody) return;
 				if (lineIdx >= lines.length) {
-					setTimeout(
-						resetTerminal,
-						3000,
-					);
+					setTimeout(resetTerminal, 3500);
 					return;
 				}
 				const line = lines[lineIdx];
-				const div =
-					document.createElement("div");
-				div.innerHTML = `<span class="dq-t-${line.type}">${line.text}</span>`;
+				const div = document.createElement("div");
+				
+				let colorClass = "text-[#7f7f8a]";
+				if (line.type === "success") colorClass = "text-green-400 font-semibold";
+				if (line.type === "url") colorClass = "text-amber-400 font-semibold";
+				if (line.type === "cmd") colorClass = "text-[#e2e2e8]";
+
+				div.innerHTML = `<span class="${colorClass}">${line.text}</span>`;
 				div.style.opacity = "0";
-				div.style.transform =
-					"translateY(4px)";
+				div.style.transform = "translateY(4px)";
 				termBody.appendChild(div);
 
 				requestAnimationFrame(() => {
-					div.style.transition =
-						"opacity 150ms, transform 150ms";
+					div.style.transition = "opacity 150ms, transform 150ms";
 					div.style.opacity = "1";
-					div.style.transform =
-						"translateY(0)";
+					div.style.transform = "translateY(0)";
 				});
 
 				lineIdx++;
-				const delay =
-					line.type === "cmd"
-						? 200
-						: line.type ===
-									"success" ||
-							  line.type === "url"
-							? 800
-							: 1000;
+				const delay = line.type === "cmd" ? 200 : line.type === "success" || line.type === "url" ? 800 : 1000;
 				setTimeout(showLine, delay);
 			}
 
 			function resetTerminal() {
-				termBody.innerHTML =
-					'<div><span class="dq-t-prompt">$ </span><span class="dq-t-cmd" id="t-line-0"></span><span class="dq-t-cursor" id="t-cursor"></span></div>';
-				cmdSpan =
-					document.getElementById(
-						"t-line-0",
-					);
-				cursor =
-					document.getElementById(
-						"t-cursor",
-					);
+				if (!termBody) return;
+				termBody.innerHTML = '<div><span class="text-[#ea580c]">$ </span><span class="text-[#e2e2e8]" id="t-line-0"></span><span class="inline-block w-2 h-4 bg-[#ea580c] align-middle animate-pulse" id="t-cursor"></span></div>';
+				cmdSpan = document.getElementById("t-line-0");
+				cursor = document.getElementById("t-cursor");
 				lineIdx = 0;
 				charIdx = 0;
 				phase = "typing";
 				setTimeout(typeChar, 500);
 			}
 
-			const termSection =
-				document.getElementById("demo");
-			const termObs =
-				new IntersectionObserver(
+			const termSection = document.getElementById("demo");
+			if (termSection) {
+				const termObs = new IntersectionObserver(
 					(entries) => {
-						entries.forEach(
-							(entry) => {
-								if (
-									entry.isIntersecting
-								) {
-									setTimeout(
-										typeChar,
-										800,
-									);
-									termObs.unobserve(
-										entry.target,
-									);
-								}
-							},
-						);
-					},
-					{ threshold: 0.3 },
-				);
-			termObs.observe(termSection);
-
-			document
-				.querySelectorAll('a[href^="#"]')
-				.forEach((anchor) => {
-					anchor.addEventListener(
-						"click",
-						(e) => {
-							e.preventDefault();
-							const target =
-								document.querySelector(
-									anchor.getAttribute(
-										"href",
-									),
-								);
-							if (target) {
-								target.scrollIntoView(
-									{
-										behavior:
-											"smooth",
-										block: "start",
-									},
-								);
+						entries.forEach((entry) => {
+							if (entry.isIntersecting) {
+								setTimeout(typeChar, 800);
+								termObs.unobserve(entry.target);
 							}
-						},
-					);
+						});
+					},
+					{ threshold: 0.3 }
+				);
+				termObs.observe(termSection);
+			}
+
+			document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+				anchor.addEventListener("click", (e) => {
+					const href = anchor.getAttribute("href");
+					if (href && href !== "#") {
+						e.preventDefault();
+						const target = document.querySelector(href);
+						if (target) {
+							target.scrollIntoView({ behavior: "smooth", block: "start" });
+						}
+					}
 				});
+			});
 		</script>
 	</body>
 </html>

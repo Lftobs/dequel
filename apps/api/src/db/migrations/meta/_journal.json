@@ -1,19 +1,75 @@
 {
-  "version": "6",
-  "dialect": "sqlite",
+  "version": "7",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "6",
-      "when": 1718000000000,
-      "tag": "0000_baseline",
+      "version": "7",
+      "when": 1787441273837,
+      "tag": "0000_damp_madame_web",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "6",
-      "when": 1782100000000,
-      "tag": "0001_refresh_tokens",
+      "version": "7",
+      "when": 1787555903651,
+      "tag": "0001_perfect_charles_xavier",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787910000000,
+      "tag": "0002_add_server_ssh_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788000000000,
+      "tag": "0003_add_server_ssh_key_encryption",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788100000000,
+      "tag": "0021_add_github_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788200000000,
+      "tag": "0022_add_shared_env_vars_ssh_key_pool",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788300000000,
+      "tag": "0030_add_backups_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788400000000,
+      "tag": "0031_add_database_server_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788500000000,
+      "tag": "0032_add_backup_storage_and_db_schedule",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788600000000,
+      "tag": "0033_add_system_backup_settings",
       "breakpoints": true
     }
   ]
