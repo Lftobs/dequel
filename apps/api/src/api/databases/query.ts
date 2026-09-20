@@ -110,6 +110,17 @@ export const getDatabaseTables = async (dbRecord: Database): Promise<TableInfo[]
 	}
 };
 
+function parseRedisCommandArgs(input: string): string[] {
+	const regex = /(?:[^\s"']+|"[^"]*"|'[^']*')+/g;
+	const matches = input.match(regex) || [];
+	return matches.map((arg) => {
+		if ((arg.startsWith('"') && arg.endsWith('"')) || (arg.startsWith("'") && arg.endsWith("'"))) {
+			return arg.slice(1, -1);
+		}
+		return arg;
+	});
+}
+
 export const executeDatabaseQuery = async (dbRecord: Database, query: string): Promise<QueryExecResult> => {
 	if (!dbRecord.containerName) {
 		throw new Error("Database container is not active");
@@ -194,20 +205,40 @@ export const executeDatabaseQuery = async (dbRecord: Database, query: string): P
 	}
 
 	if (dbRecord.type === "redis") {
-		const parts = query.trim().split(/\s+/);
-		const res = await dockerExec(dbRecord.containerName, ["redis-cli", "-a", dbRecord.password, ...parts], server);
-		const executionTimeMs = Date.now() - startTime;
+		const rawLines = query
+			.split("\n")
+			.map((l) => l.trim())
+			.filter((l) => l.length > 0 && !l.startsWith("#"));
 
-		if (res.code !== 0) {
-			throw new Error(res.stderr || res.stdout || "Command execution failed");
+		if (rawLines.length === 0) {
+			return { rows: [], columns: ["command", "result"], executionTimeMs: 0 };
 		}
 
-		const output = res.stdout;
+		const results: Record<string, unknown>[] = [];
+		for (const line of rawLines) {
+			const parts = parseRedisCommandArgs(line);
+			if (parts.length === 0) continue;
+
+			const redisArgs = ["redis-cli"];
+			if (dbRecord.password) {
+				redisArgs.push("-a", dbRecord.password);
+			}
+			redisArgs.push(...parts);
+
+			const res = await dockerExec(dbRecord.containerName, redisArgs, server);
+			const output = res.code === 0 ? res.stdout.trim() : res.stderr.trim() || res.stdout.trim() || "ERROR";
+			results.push({
+				command: line,
+				result: output,
+			});
+		}
+
+		const executionTimeMs = Date.now() - startTime;
 		return {
-			rows: [{ result: output }],
-			columns: ["result"],
+			rows: results,
+			columns: ["command", "result"],
 			executionTimeMs,
-			rawOutput: output,
+			rawOutput: results.map((r) => `${r.command} => ${r.result}`).join("\n"),
 		};
 	}
 
