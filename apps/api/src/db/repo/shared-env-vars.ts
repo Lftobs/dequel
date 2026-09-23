@@ -127,19 +127,25 @@ export const linkSharedEnvVarsToProject = async (projectId: string, sharedEnvVar
 
 export const unlinkSharedEnvVarFromProject = async (projectId: string, sharedEnvVarId: string): Promise<boolean> => {
 	const db = await getDb();
+	const links = await db
+		.select()
+		.from(projectSharedEnvLinks)
+		.where(
+			and(eq(projectSharedEnvLinks.projectId, projectId), eq(projectSharedEnvLinks.sharedEnvVarId, sharedEnvVarId)),
+		)
+		.execute();
+	if (links.length === 0) return false;
 	return (
 		getRowsAffected(
 			await db
 				.delete(projectSharedEnvLinks)
-				.where(
-					and(eq(projectSharedEnvLinks.projectId, projectId), eq(projectSharedEnvLinks.sharedEnvVarId, sharedEnvVarId)),
-				)
+				.where(eq(projectSharedEnvLinks.id, links[0].id))
 				.execute(),
 		) > 0
 	);
 };
 
-export const listLinkedSharedEnvVars = async (projectId: string): Promise<SharedEnvVar[]> => {
+export const listLinkedSharedEnvVars = async (projectId: string): Promise<(SharedEnvVar & { linkId: string })[]> => {
 	const db = await getDb();
 	const links = await db
 		.select()
@@ -156,9 +162,12 @@ export const listLinkedSharedEnvVars = async (projectId: string): Promise<Shared
 		.execute();
 	const rowMap = new Map(rows.map((r) => [r.id, r]));
 	return links
-		.map((l) => rowMap.get(l.sharedEnvVarId))
-		.filter(Boolean)
-		.map((r) => mapSharedEnvVar(r!));
+		.map((l) => {
+			const row = rowMap.get(l.sharedEnvVarId);
+			if (!row) return null;
+			return { ...mapSharedEnvVar(row), linkId: l.id };
+		})
+		.filter(Boolean) as (SharedEnvVar & { linkId: string })[];
 };
 
 export const listSharedEnvVarsForDeploy = async (

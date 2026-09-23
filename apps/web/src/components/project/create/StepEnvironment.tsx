@@ -1,6 +1,9 @@
-import { Server, Trash2, Upload } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Link2, Server, Share2, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
+import * as api from "../../../api/client";
 import { cn } from "../../../lib/utils";
+import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 
@@ -13,15 +16,24 @@ interface StagedEnv {
 interface StepEnvironmentProps {
 	stagedEnvs: StagedEnv[];
 	setStagedEnvs: React.Dispatch<React.SetStateAction<StagedEnv[]>>;
+	stagedSharedVarIds: string[];
+	setStagedSharedVarIds: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
-export function StepEnvironment({ stagedEnvs, setStagedEnvs }: StepEnvironmentProps) {
+export function StepEnvironment({ stagedEnvs, setStagedEnvs, stagedSharedVarIds, setStagedSharedVarIds }: StepEnvironmentProps) {
 	const [envTab, setEnvTab] = useState<"single" | "bulk" | "file">("single");
 	const [singleKey, setSingleKey] = useState("");
 	const [singleVal, setSingleVal] = useState("");
 	const [singleEnv, setSingleEnv] = useState("production");
 	const [bulkText, setBulkText] = useState("");
 	const [fileError, setFileError] = useState("");
+
+	const { data: sharedVars = [] } = useQuery({
+		queryKey: ["shared-env-vars"],
+		queryFn: () => api.listSharedEnvVars().catch(() => []),
+	});
+
+	const linkedSet = new Set(stagedSharedVarIds);
 
 	const parseEnvText = (text: string): StagedEnv[] => {
 		const lines = text
@@ -115,6 +127,18 @@ export function StepEnvironment({ stagedEnvs, setStagedEnvs }: StepEnvironmentPr
 		setStagedEnvs((prev) => prev.filter((x) => x.key !== keyToRemove));
 	};
 
+	const toggleSharedVar = (sharedVar: any) => {
+		if (linkedSet.has(sharedVar.id)) {
+			setStagedSharedVarIds((prev) => prev.filter((id) => id !== sharedVar.id));
+		} else {
+			setStagedSharedVarIds((prev) => [...prev, sharedVar.id]);
+		}
+	};
+
+	const removeSharedVar = (sharedVarId: string) => {
+		setStagedSharedVarIds((prev) => prev.filter((id) => id !== sharedVarId));
+	};
+
 	return (
 		<div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
 			<div className="space-y-3.5 bg-[#0c0c0e]/60 p-4 rounded-xl border border-[#222227]">
@@ -144,35 +168,72 @@ export function StepEnvironment({ stagedEnvs, setStagedEnvs }: StepEnvironmentPr
 				</div>
 
 				{envTab === "single" && (
-					<div className="flex flex-col sm:flex-row gap-2">
-						<Input
-							placeholder="KEY"
-							value={singleKey}
-							onChange={(e) => setSingleKey(e.target.value)}
-							className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9 font-mono text-xs sm:w-1/3"
-						/>
-						<Input
-							placeholder="value"
-							value={singleVal}
-							onChange={(e) => setSingleVal(e.target.value)}
-							className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9 font-mono text-xs flex-1"
-						/>
-						<select
-							value={singleEnv}
-							onChange={(e) => setSingleEnv(e.target.value)}
-							className="bg-[#141418] border-[#222227] rounded-md text-zinc-200 text-xs px-2.5 h-9 focus:border-amber-500 outline-none"
-						>
-							<option value="production">Production</option>
-							<option value="preview">Preview</option>
-							<option value="development">Development</option>
-						</select>
-						<Button
-							type="button"
-							onClick={handleAddSingle}
-							className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white text-xs h-9 px-4 shrink-0"
-						>
-							Add
-						</Button>
+					<div className="space-y-2">
+						<div className="flex flex-col sm:flex-row gap-2">
+							<Input
+								placeholder="KEY"
+								value={singleKey}
+								onChange={(e) => setSingleKey(e.target.value)}
+								className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9 font-mono text-xs sm:w-1/3"
+							/>
+							<Input
+								placeholder="value"
+								value={singleVal}
+								onChange={(e) => setSingleVal(e.target.value)}
+								className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9 font-mono text-xs flex-1"
+							/>
+							<select
+								value={singleEnv}
+								onChange={(e) => setSingleEnv(e.target.value)}
+								className="bg-[#141418] border-[#222227] rounded-md text-zinc-200 text-xs px-2.5 h-9 focus:border-amber-500 outline-none"
+							>
+								<option value="production">Production</option>
+								<option value="preview">Preview</option>
+								<option value="development">Development</option>
+							</select>
+							<Button
+								type="button"
+								onClick={handleAddSingle}
+								className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white text-xs h-9 px-4 shrink-0"
+							>
+								Add
+							</Button>
+						</div>
+						{singleKey.trim().length > 0 && (() => {
+							const matches = sharedVars.filter(
+								(s: any) =>
+									s.key.toUpperCase().includes(singleKey.trim().toUpperCase()) &&
+									!linkedSet.has(s.id) &&
+									s.key.toUpperCase() !== singleKey.trim().toUpperCase(),
+							);
+							if (matches.length === 0) return null;
+							return (
+								<div className="rounded-lg bg-orange-500/5 border border-orange-500/10 p-2 space-y-1">
+									<div className="text-[9px] font-semibold uppercase tracking-wider text-orange-400 flex items-center gap-1">
+										<Share2 className="h-2.5 w-2.5" /> Shared variable available
+									</div>
+									{matches.slice(0, 3).map((s: any) => (
+										<button
+											key={s.id}
+											type="button"
+											onClick={() => toggleSharedVar(s)}
+											className="w-full flex items-center justify-between rounded-md px-2 py-1 hover:bg-orange-500/10 cursor-pointer transition-colors"
+										>
+											<div className="flex items-center gap-1.5">
+												<Link2 className="h-3 w-3 text-orange-400" />
+												<Badge
+													variant="outline"
+													className="font-mono text-[9px] bg-black/40 border-orange-500/20 text-orange-300"
+												>
+													{s.key}
+												</Badge>
+											</div>
+											<span className="text-[9px] text-orange-400 font-medium">Link</span>
+										</button>
+									))}
+								</div>
+							);
+						})()}
 					</div>
 				)}
 
@@ -225,72 +286,103 @@ export function StepEnvironment({ stagedEnvs, setStagedEnvs }: StepEnvironmentPr
 				{fileError && <p className="text-[11px] text-red-400 font-semibold">{fileError}</p>}
 			</div>
 
-			<div className="space-y-3.5 bg-[#0c0c0e]/60 p-4 rounded-xl border border-[#222227]">
-				<div className="flex items-center justify-between">
-					<h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-						Staged Environment Variables ({stagedEnvs.length})
-					</h4>
-					{stagedEnvs.length > 0 && (
-						<button
-							type="button"
-							onClick={() => setStagedEnvs([])}
-							className="text-red-500 hover:text-red-400 transition-colors normal-case font-normal text-[10px] select-none"
-						>
-							Clear All
-						</button>
-					)}
-				</div>
-
-				{stagedEnvs.length === 0 ? (
-					<div className="text-center py-6 text-zinc-500 text-xs italic select-none">
-						No variables staged yet. Add some above.
-					</div>
-				) : (
-					<div className="max-h-[200px] overflow-y-auto border border-[#1e1e24] rounded-lg bg-[#0c0c0e]">
-						<table className="w-full text-left border-collapse text-[11px]">
-							<thead>
-								<tr className="border-b border-[#1c1c21] bg-zinc-900/30 text-zinc-500 uppercase tracking-wider font-semibold select-none">
-									<th className="py-2 px-3">Key</th>
-									<th className="py-2 px-3">Value</th>
-									<th className="py-2 px-3">Env</th>
-									<th className="py-2 px-3 w-12"></th>
-								</tr>
-							</thead>
-							<tbody className="divide-y divide-[#16161a] font-mono">
-								{stagedEnvs.map((env) => (
-									<tr key={env.key} className="hover:bg-zinc-900/10 text-zinc-350 group">
-										<td className="py-1.5 px-3 font-semibold truncate max-w-[150px]">{env.key}</td>
-										<td className="py-1.5 px-3 truncate max-w-[200px] text-zinc-500">{env.value}</td>
-										<td className="py-1.5 px-3 select-none">
-											<span
-												className={cn(
-													"text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight",
-													env.environment === "production"
-														? "bg-emerald-950/40 text-emerald-400 border border-emerald-900/10"
-														: env.environment === "preview"
-															? "bg-amber-950/40 text-amber-400 border border-amber-900/10"
-															: "bg-orange-950/40 text-orange-400 border border-orange-900/10",
-												)}
-											>
-												{env.environment || "production"}
-											</span>
-										</td>
-										<td className="py-1.5 px-3 text-right">
-											<button
-												type="button"
-												onClick={() => handleRemoveStaged(env.key)}
-												className="text-zinc-650 hover:text-red-500 transition-colors p-1"
-											>
-												<Trash2 className="h-3.5 w-3.5" />
-											</button>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
+		<div className="space-y-3.5 bg-[#0c0c0e]/60 p-4 rounded-xl border border-[#222227]">
+			<div className="flex items-center justify-between">
+				<h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+					Staged Environment Variables ({stagedEnvs.length + stagedSharedVarIds.length})
+				</h4>
+				{(stagedEnvs.length > 0 || stagedSharedVarIds.length > 0) && (
+					<button
+						type="button"
+						onClick={() => { setStagedEnvs([]); setStagedSharedVarIds([]); }}
+						className="text-red-500 hover:text-red-400 transition-colors normal-case font-normal text-[10px] select-none"
+					>
+						Clear All
+					</button>
 				)}
 			</div>
+
+			{stagedEnvs.length === 0 && stagedSharedVarIds.length === 0 ? (
+				<div className="text-center py-6 text-zinc-500 text-xs italic select-none">
+					No variables staged yet. Add some above.
+				</div>
+			) : (
+				<div className="space-y-2">
+					{stagedEnvs.length > 0 && (
+						<div className="max-h-[200px] overflow-y-auto border border-[#1e1e24] rounded-lg bg-[#0c0c0e]">
+							<table className="w-full text-left border-collapse text-[11px]">
+								<thead>
+									<tr className="border-b border-[#1c1c21] bg-zinc-900/30 text-zinc-500 uppercase tracking-wider font-semibold select-none">
+										<th className="py-2 px-3">Key</th>
+										<th className="py-2 px-3">Value</th>
+										<th className="py-2 px-3">Env</th>
+										<th className="py-2 px-3 w-12"></th>
+									</tr>
+								</thead>
+								<tbody className="divide-y divide-[#16161a] font-mono">
+									{stagedEnvs.map((env) => (
+										<tr key={env.key} className="hover:bg-zinc-900/10 text-zinc-350 group">
+											<td className="py-1.5 px-3 font-semibold truncate max-w-[150px]">{env.key}</td>
+											<td className="py-1.5 px-3 truncate max-w-[200px] text-zinc-500">{env.value}</td>
+											<td className="py-1.5 px-3 select-none">
+												<span
+													className={cn(
+														"text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight",
+														env.environment === "production"
+															? "bg-emerald-950/40 text-emerald-400 border border-emerald-900/10"
+															: env.environment === "preview"
+																? "bg-amber-950/40 text-amber-400 border border-amber-900/10"
+																: "bg-orange-950/40 text-orange-400 border border-orange-900/10",
+													)}
+												>
+													{env.environment || "production"}
+												</span>
+											</td>
+											<td className="py-1.5 px-3 text-right">
+												<button
+													type="button"
+													onClick={() => handleRemoveStaged(env.key)}
+													className="text-zinc-650 hover:text-red-500 transition-colors p-1"
+												>
+													<Trash2 className="h-3.5 w-3.5" />
+												</button>
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					)}
+					{stagedSharedVarIds.length > 0 && (
+						<div className="space-y-1.5 border border-[#1e1e24] rounded-lg bg-[#0c0c0e] p-2">
+							<div className="text-[9px] font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1 px-1 pb-1">
+								<Share2 className="h-2.5 w-2.5" /> Linked Shared Variables
+							</div>
+							{sharedVars
+								.filter((s: any) => stagedSharedVarIds.includes(s.id))
+								.map((s: any) => (
+									<div
+										key={s.id}
+										className="flex items-center justify-between rounded-md px-2 py-1 bg-orange-500/5 border border-orange-500/10 text-xs font-mono"
+									>
+										<div className="flex items-center gap-1.5">
+											<Link2 className="h-3 w-3 text-orange-400" />
+											<span className="text-orange-400 font-semibold">{s.key}</span>
+										</div>
+										<button
+											type="button"
+											onClick={() => removeSharedVar(s.id)}
+											className="text-zinc-500 hover:text-red-500 transition-colors p-1"
+										>
+											<Trash2 className="h-3.5 w-3.5" />
+										</button>
+									</div>
+								))}
+						</div>
+					)}
+				</div>
+			)}
 		</div>
-	);
+	</div>
+);
 }

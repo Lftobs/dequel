@@ -1,5 +1,8 @@
-import { ChevronDown, FileText, Key, Plus, Trash2, Upload } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ChevronDown, FileText, Key, Link2, Plus, Share2, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
+import * as api from "../../../api/client";
+import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 
@@ -12,9 +15,11 @@ export interface StagedEnv {
 interface EnvVarsSectionProps {
 	stagedEnvs: StagedEnv[];
 	setStagedEnvs: React.Dispatch<React.SetStateAction<StagedEnv[]>>;
+	stagedSharedVarIds: string[];
+	setStagedSharedVarIds: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
-export function EnvVarsSection({ stagedEnvs, setStagedEnvs }: EnvVarsSectionProps) {
+export function EnvVarsSection({ stagedEnvs, setStagedEnvs, stagedSharedVarIds, setStagedSharedVarIds }: EnvVarsSectionProps) {
 	const [isExpanded, setIsExpanded] = useState(true);
 	const [key, setKey] = useState("");
 	const [val, setVal] = useState("");
@@ -22,6 +27,13 @@ export function EnvVarsSection({ stagedEnvs, setStagedEnvs }: EnvVarsSectionProp
 	const [mode, setMode] = useState<"single" | "bulk" | "file">("single");
 	const [fileError, setFileError] = useState("");
 	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	const { data: sharedVars = [] } = useQuery({
+		queryKey: ["shared-env-vars"],
+		queryFn: () => api.listSharedEnvVars().catch(() => []),
+	});
+
+	const linkedSet = new Set(stagedSharedVarIds);
 
 	const addEnv = () => {
 		if (!key.trim()) return;
@@ -32,6 +44,18 @@ export function EnvVarsSection({ stagedEnvs, setStagedEnvs }: EnvVarsSectionProp
 
 	const removeEnv = (index: number) => {
 		setStagedEnvs((prev) => prev.filter((_, i) => i !== index));
+	};
+
+	const toggleSharedVar = (sharedVar: any) => {
+		if (linkedSet.has(sharedVar.id)) {
+			setStagedSharedVarIds((prev) => prev.filter((id) => id !== sharedVar.id));
+		} else {
+			setStagedSharedVarIds((prev) => [...prev, sharedVar.id]);
+		}
+	};
+
+	const removeSharedVar = (sharedVarId: string) => {
+		setStagedSharedVarIds((prev) => prev.filter((id) => id !== sharedVarId));
 	};
 
 	const parseEnvContent = (content: string) => {
@@ -147,28 +171,65 @@ export function EnvVarsSection({ stagedEnvs, setStagedEnvs }: EnvVarsSectionProp
 					</div>
 
 					{mode === "single" ? (
-						<div className="flex flex-col sm:flex-row gap-2">
-							<Input
-								placeholder="KEY (e.g. DATABASE_URL)"
-								value={key}
-								onChange={(e) => setKey(e.target.value)}
-								className="bg-[#121215] border-[#22222a] text-xs font-mono"
-							/>
-							<Input
-								placeholder="VALUE"
-								value={val}
-								onChange={(e) => setVal(e.target.value)}
-								className="bg-[#121215] border-[#22222a] text-xs font-mono"
-							/>
-							<Button
-								type="button"
-								onClick={addEnv}
-								disabled={!key.trim()}
-								className="bg-orange-600 hover:bg-orange-500 text-white shrink-0 text-xs px-4"
-							>
-								<Plus className="h-4 w-4 mr-1" />
-								Add
-							</Button>
+						<div className="space-y-2">
+							<div className="flex flex-col sm:flex-row gap-2">
+								<Input
+									placeholder="KEY (e.g. DATABASE_URL)"
+									value={key}
+									onChange={(e) => setKey(e.target.value)}
+									className="bg-[#121215] border-[#22222a] text-xs font-mono"
+								/>
+								<Input
+									placeholder="VALUE"
+									value={val}
+									onChange={(e) => setVal(e.target.value)}
+									className="bg-[#121215] border-[#22222a] text-xs font-mono"
+								/>
+								<Button
+									type="button"
+									onClick={addEnv}
+									disabled={!key.trim()}
+									className="bg-orange-600 hover:bg-orange-500 text-white shrink-0 text-xs px-4"
+								>
+									<Plus className="h-4 w-4 mr-1" />
+									Add
+								</Button>
+							</div>
+							{key.trim().length > 0 && (() => {
+								const matches = sharedVars.filter(
+									(s: any) =>
+										s.key.toUpperCase().includes(key.trim().toUpperCase()) &&
+										!linkedSet.has(s.id) &&
+										s.key.toUpperCase() !== key.trim().toUpperCase(),
+								);
+								if (matches.length === 0) return null;
+								return (
+									<div className="rounded-lg bg-orange-500/5 border border-orange-500/10 p-2 space-y-1">
+										<div className="text-[9px] font-semibold uppercase tracking-wider text-orange-400 flex items-center gap-1">
+											<Share2 className="h-2.5 w-2.5" /> Shared variable available
+										</div>
+										{matches.slice(0, 3).map((s: any) => (
+											<button
+												key={s.id}
+												type="button"
+												onClick={() => toggleSharedVar(s)}
+												className="w-full flex items-center justify-between rounded-md px-2 py-1 hover:bg-orange-500/10 cursor-pointer transition-colors"
+											>
+												<div className="flex items-center gap-1.5">
+													<Link2 className="h-3 w-3 text-orange-400" />
+													<Badge
+														variant="outline"
+														className="font-mono text-[9px] bg-black/40 border-orange-500/20 text-orange-300"
+													>
+														{s.key}
+													</Badge>
+												</div>
+												<span className="text-[9px] text-orange-400 font-medium">Link</span>
+											</button>
+										))}
+									</div>
+								);
+							})()}
 						</div>
 					) : mode === "bulk" ? (
 						<div className="space-y-2">
@@ -233,6 +294,33 @@ export function EnvVarsSection({ stagedEnvs, setStagedEnvs }: EnvVarsSectionProp
 									</button>
 								</div>
 							))}
+						</div>
+					)}
+					{stagedSharedVarIds.length > 0 && (
+						<div className="space-y-1.5 pt-2 max-h-48 overflow-y-auto pr-1">
+							<div className="text-[9px] font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1 pb-1">
+								<Share2 className="h-2.5 w-2.5" /> Linked Shared Variables
+							</div>
+							{sharedVars
+								.filter((s: any) => stagedSharedVarIds.includes(s.id))
+								.map((s: any) => (
+									<div
+										key={s.id}
+										className="flex items-center justify-between p-2.5 rounded-xl bg-orange-500/5 border border-orange-500/10 text-xs font-mono"
+									>
+										<div className="flex items-center gap-2 truncate">
+											<Link2 className="h-3 w-3 text-orange-400 shrink-0" />
+											<span className="text-orange-400 font-bold">{s.key}</span>
+										</div>
+										<button
+											type="button"
+											onClick={() => removeSharedVar(s.id)}
+											className="text-zinc-500 hover:text-red-400 p-1 shrink-0"
+										>
+											<Trash2 className="h-3.5 w-3.5" />
+										</button>
+									</div>
+								))}
 						</div>
 					)}
 				</div>

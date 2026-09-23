@@ -1,10 +1,11 @@
 import { Cpu, Database, HardDrive, ShieldAlert } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as api from "../../api/client";
 import type { DatabaseType, Project } from "../../types";
 import { Button } from "../ui/button";
-import { DATABASE_ENGINES, DatabaseSelect } from "../ui/DatabaseSelect";
+import { DATABASE_ENGINES } from "../ui/DatabaseSelect";
+import { getDatabaseLogo } from "../logos/DatabaseLogos";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -42,11 +43,6 @@ export function CreateDatabaseDialog({
 		queryKey: ["servers"],
 		queryFn: () => api.listServers().catch(() => []),
 	});
-
-	useEffect(() => {
-		const engine = DATABASE_ENGINES.find((item) => item.type === type);
-		if (engine) setVersion(engine.defaultVersion);
-	}, [type]);
 
 	const create = async () => {
 		setIsCreating(true);
@@ -131,7 +127,25 @@ export function CreateDatabaseDialog({
 							<label htmlFor="database-engine" className="text-xs font-medium text-foreground">
 								Database Engine
 							</label>
-							<DatabaseSelect id="database-engine" value={type} onValueChange={(val) => setType(val)} />
+							<Select value={type} onValueChange={(val) => {
+								setType(val as DatabaseType);
+								const engine = DATABASE_ENGINES.find((e) => e.type === val);
+								if (engine) setVersion(engine.defaultVersion);
+							}}>
+								<SelectTrigger id="database-engine" className="bg-background/50 border-border/80 text-xs">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent className="bg-card border-border text-xs">
+									{DATABASE_ENGINES.map((engine) => (
+										<SelectItem key={engine.type} value={engine.type}>
+											<div className="flex items-center gap-2">
+												{getDatabaseLogo(engine.type, "h-4 w-4")}
+												<span>{engine.name}</span>
+											</div>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
 					</div>
 
@@ -139,14 +153,20 @@ export function CreateDatabaseDialog({
 
 					<div className="space-y-1.5">
 						<label htmlFor="database-version" className="text-xs font-medium text-foreground">
-							Engine Tag / Version
+							Engine Version
 						</label>
-						<Input
-							id="database-version"
-							value={version}
-							onChange={(event) => setVersion(event.target.value)}
-							className="bg-background/50 border-border/80 text-xs font-mono"
-						/>
+						<Select value={version} onValueChange={setVersion}>
+							<SelectTrigger id="database-version" className="bg-background/50 border-border/80 text-xs font-mono">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent className="bg-card border-border text-xs">
+								{DATABASE_ENGINES.find((e) => e.type === type)?.versions.map((v) => (
+									<SelectItem key={v} value={v}>
+										{v}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
 					</div>
 
 					<div className="rounded-2xl border border-border/60 bg-black/30 p-4 space-y-3">

@@ -73,10 +73,10 @@ export function SharedEnvVarsSection() {
 							<Share2 className="h-5 w-5" />
 						</div>
 						<div>
-							<CardTitle className="text-lg font-semibold text-foreground">Shared Environment Variables</CardTitle>
-							<p className="text-xs text-muted-foreground mt-0.5">
-								Global environment variables automatically injected into all project containers during deployment.
-							</p>
+						<CardTitle className="text-lg font-semibold text-foreground">Shared Environment Variables</CardTitle>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							Global variables that can be linked to projects. Link a shared variable to inject it during deployment.
+						</p>
 						</div>
 					</div>
 					<Button
@@ -182,7 +182,7 @@ export function SharedEnvVarsSection() {
 						</div>
 						<h3 className="text-sm font-semibold text-foreground">No Shared Variables</h3>
 						<p className="text-xs text-muted-foreground max-w-sm mt-1 mb-4">
-							Define reusable secrets and environment variables once to share across all deployed applications.
+							Define reusable secrets and configuration once, then link them to projects as needed.
 						</p>
 						<Button
 							size="sm"
@@ -348,8 +348,8 @@ export function SharedEnvVarsSection() {
 					<DialogHeader>
 						<DialogTitle className="text-lg font-bold text-foreground">Delete Shared Variable</DialogTitle>
 						<DialogDescription className="text-xs text-muted-foreground mt-2 leading-relaxed">
-							Are you sure you want to remove this variable? Projects depending on this environment key will fall back
-							to local project defaults.
+							Are you sure you want to remove this variable? Projects linked to this variable will no longer
+							receive it during deployment.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t border-border/40">
