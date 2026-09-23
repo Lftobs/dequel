@@ -128,7 +128,7 @@ export function CreateDatabaseDialog({
 								Database Engine
 							</label>
 							<Select value={type} onValueChange={(val) => {
-								setType(val);
+								setType(val as DatabaseType);
 								const engine = DATABASE_ENGINES.find((e) => e.type === val);
 								if (engine) setVersion(engine.defaultVersion);
 							}}>

@@ -18,9 +18,10 @@ interface AddEnvVarSheetProps {
 	onOpenChange: (open: boolean) => void;
 	onSubmit: (vars: EnvVarEntry[]) => Promise<void>;
 	projectId?: string;
+	onLinkedChange?: () => void;
 }
 
-export function AddEnvVarSheet({ open, onOpenChange, onSubmit, projectId }: AddEnvVarSheetProps) {
+export function AddEnvVarSheet({ open, onOpenChange, onSubmit, projectId, onLinkedChange }: AddEnvVarSheetProps) {
 	const [newVars, setNewVars] = useState<EnvVarEntry[]>([{ key: "", value: "", env: "" }]);
 	const queryClient = useQueryClient();
 
@@ -74,6 +75,7 @@ export function AddEnvVarSheet({ open, onOpenChange, onSubmit, projectId }: AddE
 	const linkSharedVar = async (sharedVar: any) => {
 		if (!projectId) return;
 		await linkMutation.mutateAsync([sharedVar.id]);
+		onLinkedChange?.();
 	};
 
 	return (

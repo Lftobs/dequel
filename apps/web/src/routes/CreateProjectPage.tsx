@@ -203,9 +203,7 @@ export function CreateProjectPage() {
 			}
 
 			if (stagedSharedVarIds.length > 0) {
-				try {
-					await api.linkSharedEnvVars(project.id, stagedSharedVarIds);
-				} catch {}
+				await api.linkSharedEnvVars(project.id, stagedSharedVarIds);
 			}
 
 			setSubmittingStatus("done");

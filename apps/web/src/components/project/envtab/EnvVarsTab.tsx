@@ -177,7 +177,7 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 				/>
 			)}
 
-			<AddEnvVarSheet open={isAddOpen} onOpenChange={setIsAddOpen} onSubmit={handleAddVars} projectId={projectId} />
+			<AddEnvVarSheet open={isAddOpen} onOpenChange={setIsAddOpen} onSubmit={handleAddVars} projectId={projectId} onLinkedChange={() => setShowRedeployPrompt(true)} />
 
 			<ImportEnvFileDialog open={isImportOpen} onOpenChange={setIsImportOpen} onImport={handleImportVars} />
 

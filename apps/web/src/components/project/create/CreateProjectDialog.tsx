@@ -179,9 +179,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 			}
 
 			if (stagedSharedVarIds.length > 0) {
-				try {
-					await api.linkSharedEnvVars(project.id, stagedSharedVarIds);
-				} catch {}
+				await api.linkSharedEnvVars(project.id, stagedSharedVarIds);
 			}
 
 			if (zipFile && sourceType === "upload") {
