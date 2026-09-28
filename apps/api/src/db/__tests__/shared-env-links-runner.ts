@@ -1,14 +1,14 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { setDbProvider } from "../db-provider";
-import * as schema from "../schema";
 import {
 	linkSharedEnvVarsToProject,
 	listLinkedSharedEnvVars,
 	unlinkSharedEnvVarFromProject,
 } from "../repo/shared-env-vars";
+import * as schema from "../schema";
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgresql://dequel:dequel@localhost:5433/dequel";
 const pool = new Pool({ connectionString: TEST_DATABASE_URL });
@@ -45,7 +45,9 @@ try {
 			"created_at" timestamp DEFAULT now()
 		)
 	`);
-	await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "project_shared_env_links_project_shared_idx" ON "project_shared_env_links" ("project_id", "shared_env_var_id")`);
+	await pool.query(
+		`CREATE UNIQUE INDEX IF NOT EXISTS "project_shared_env_links_project_shared_idx" ON "project_shared_env_links" ("project_id", "shared_env_var_id")`,
+	);
 	await cleanup();
 
 	const projectId = `test-sel-${randomUUID().slice(0, 8)}`;

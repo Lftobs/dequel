@@ -104,6 +104,8 @@ export const deploymentEvents = pgTable(
 		type: text().notNull(),
 		message: text(),
 		metadata: jsonb("metadata"),
+		sentAt: timestamp("sent_at", { withTimezone: true }),
+		attempts: integer().notNull().default(0),
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 	},
 	(table) => [

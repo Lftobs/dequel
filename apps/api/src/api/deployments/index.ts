@@ -10,9 +10,11 @@ import {
 	getProjectById,
 	getServerById,
 	listDeployments,
+	recordDeploymentFailure,
 } from "../../db/repo";
 import { executorFor } from "../../executors/dispatch";
 import { orchestrator } from "../../orchestrator";
+import { summarizeDeploymentError } from "../../orchestrator/deployment-errors";
 import { logBus } from "../../orchestrator/log-bus";
 import { config } from "../../utils/config";
 import { isPrivateGitUrl } from "../../utils/validate";
@@ -31,8 +33,13 @@ const dispatchDeployment = async (
 	if (deployment.sourceType !== "git") throw new Error("Remote servers currently support Git deployments only");
 	const executor = executorFor(server.mode);
 	if (server.mode === "ssh") {
-		void executor.deploy({ deployment, project, server }).catch((error) => {
+		void executor.deploy({ deployment, project, server }).catch(async (error) => {
 			console.error(`[SSH Executor] Deployment ${deployment.id} failed:`, error);
+			await recordDeploymentFailure({
+				deploymentId: deployment.id,
+				reason: summarizeDeploymentError(error),
+				source: "dispatch",
+			}).catch((e) => console.error(`[SSH Executor] Failed to record failure for ${deployment.id}:`, e));
 		});
 		return;
 	}

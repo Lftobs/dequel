@@ -1,7 +1,7 @@
-import { Elysia } from "elysia";
 import { and, eq } from "drizzle-orm";
+import { Elysia } from "elysia";
 import { getDb } from "../../db/db-provider";
-import { projectSharedEnvLinks } from "../../db/schema";
+import { getRowsAffected } from "../../db/repo/helpers";
 import {
 	createSharedEnvVar,
 	deleteSharedEnvVar,
@@ -12,7 +12,7 @@ import {
 	listSharedEnvVars,
 	updateSharedEnvVar,
 } from "../../db/repo/shared-env-vars";
-import { getRowsAffected } from "../../db/repo/helpers";
+import { projectSharedEnvLinks } from "../../db/schema";
 import { fail, ok } from "../response";
 
 export const sharedEnvVarsRoutes = new Elysia()
@@ -89,12 +89,7 @@ export const sharedEnvLinksRoutes = new Elysia()
 			getRowsAffected(
 				await db
 					.delete(projectSharedEnvLinks)
-					.where(
-					and(
-						eq(projectSharedEnvLinks.id, params.linkId),
-						eq(projectSharedEnvLinks.projectId, params.id),
-					),
-				)
+					.where(and(eq(projectSharedEnvLinks.id, params.linkId), eq(projectSharedEnvLinks.projectId, params.id)))
 					.execute(),
 			) > 0;
 		if (!removed) {

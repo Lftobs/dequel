@@ -10,6 +10,7 @@ import { migrate } from "./db/migrate";
 import { ensureLocalServer } from "./db/repo";
 import { deployments } from "./db/schema";
 import { alertEvaluator } from "./monitoring/evaluator";
+import { startFailureNotifier } from "./monitoring/failure-notifier";
 import { orchestrator } from "./orchestrator";
 import { startBuildCleanup } from "./orchestrator/cleanup";
 import { startFailoverMonitor } from "./orchestrator/failover";
@@ -36,6 +37,7 @@ const bootstrap = async () => {
 	serverManager.start();
 	startDomainPolling();
 	alertEvaluator.start();
+	startFailureNotifier();
 	startBuildCleanup();
 	startFailoverMonitor();
 	startDatabaseMonitoring();

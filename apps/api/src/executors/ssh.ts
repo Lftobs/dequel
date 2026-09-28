@@ -1,6 +1,7 @@
 import { summarizeDeploymentError } from "../orchestrator/deployment-errors";
 import type { Deployment, Project, Server } from "../types";
 import { config } from "../utils/config";
+import { CANCELLED_FAILURE_REASON } from "../utils/failure-outcome";
 import { removeRemoteCaddyRoute, runRemoteScript, syncRemoteCaddyRoute } from "../utils/ssh";
 import { emitLog } from "./logging";
 import { buildRemoteDeployScript, parseRemoteBuildResult } from "./ssh-build-script";
@@ -254,10 +255,10 @@ const deployComposeRemote = async (deployment: Deployment, project: Project, ser
 };
 
 const markFailed = async (deploymentId: string, error: unknown) => {
-	const { updateDeploymentStatus } = await getRepo();
+	const { recordDeploymentFailure } = await getRepo();
 	const message = summarizeDeploymentError(error);
 	await emitLog(deploymentId, "system", `Deployment failed: ${message}`);
-	await updateDeploymentStatus(deploymentId, "failed", { failureReason: message });
+	await recordDeploymentFailure({ deploymentId, reason: message, source: "ssh" });
 };
 
 export const sshExecutor: DeploymentExecutor = {
@@ -268,7 +269,11 @@ export const sshExecutor: DeploymentExecutor = {
 		if (!project) throw new Error("Deployment requires a project");
 
 		if (project.buildType === "compose") {
-			await deployComposeRemote(deployment, project, server);
+			try {
+				await deployComposeRemote(deployment, project, server);
+			} catch (error) {
+				await markFailed(deployment.id, error);
+			}
 			return;
 		}
 
@@ -353,7 +358,8 @@ export const sshExecutor: DeploymentExecutor = {
 		} catch (error) {
 			const message = summarizeDeploymentError(error);
 			await emitLog(deployment.id, "system", `Rollback failed: ${message}`);
-			await updateDeploymentStatus(deployment.id, "failed", { failureReason: message });
+			const { recordDeploymentFailure } = await getRepo();
+			await recordDeploymentFailure({ deploymentId: deployment.id, reason: message, source: "rollback" });
 			throw error;
 		}
 	},
@@ -400,9 +406,13 @@ export const sshExecutor: DeploymentExecutor = {
 	},
 
 	async cancel({ deployment }: ExecutorCancelInput) {
-		const { updateDeploymentStatus } = await getRepo();
+		const { recordDeploymentCancellation } = await getRepo();
 		if (deployment.status !== "pending" && deployment.status !== "building") return;
-		await updateDeploymentStatus(deployment.id, "failed", { failureReason: "Cancelled" });
+		await recordDeploymentCancellation({
+			deploymentId: deployment.id,
+			reason: CANCELLED_FAILURE_REASON,
+			source: "ssh",
+		});
 		await emitLog(deployment.id, "system", "Deployment cancelled by user (remote build may continue on the server)");
 	},
 };

@@ -1,115 +1,28 @@
 import { eq } from "drizzle-orm";
 import Redis from "ioredis";
 import { getDb } from "../db/db-provider";
-import { getProjectById, getServerById, listDeployments } from "../db/repo";
+import { getProjectById, getScalingPolicy, listDeployments } from "../db/repo";
 import { alerts } from "../db/schema";
-import { run } from "../orchestrator/runtime";
-import type { Deployment, Server } from "../types";
+import { scalingEngine } from "../scaling/engine";
+import type { Deployment } from "../types";
 import { config } from "../utils/config";
-import { dockerBin } from "../utils/docker-bin";
+import { appBaseUrl } from "../utils/routes";
+import { scalingGuard } from "./alert-guard";
+import { getDeploymentContainerStats } from "./container-stats";
+import { type Observation } from "./incident-policy";
+import { createIncidentTracker, createRedisIncidentStore } from "./incident-tracker";
 import { sendNotification } from "./notifier";
-
-const NOTIFICATION_KEY = "dequel:alert:notified";
-const NOTIFICATION_COOLDOWN_MS = 300_000; // 5 min between same alert
-const AGENT_OFFLINE_MS = 90_000;
-
-interface ContainerStats {
-	cpuPercent: number;
-	memoryMb: number;
-}
-
-const parseMemToMb = (mem: string): number => {
-	const match = mem.match(/^([\d.]+)(\w+)$/);
-	if (!match) return 0;
-	const val = parseFloat(match[1]);
-	switch (match[2]) {
-		case "GiB":
-		case "GB":
-			return val * 1024;
-		case "MiB":
-		case "MB":
-			return val;
-		case "KiB":
-		case "KB":
-			return val / 1024;
-		default:
-			return val;
-	}
-};
-
-const parseStatsJson = (statsJson: string): ContainerStats | null => {
-	try {
-		const stats = JSON.parse(statsJson);
-		return {
-			cpuPercent: parseFloat(stats.CPUPerc?.replace("%", "") ?? "0"),
-			memoryMb: parseMemToMb(stats.MemUsage?.split("/")[0]?.trim() ?? "0B"),
-		};
-	} catch {
-		return null;
-	}
-};
-
-const isAgentOffline = (server: Server | null): boolean => {
-	if (!server?.lastHeartbeat) return true;
-	return Date.now() - new Date(server.lastHeartbeat).getTime() > AGENT_OFFLINE_MS;
-};
-
-const getContainerStats = async (deployment: Deployment): Promise<ContainerStats | null> => {
-	const server =
-		deployment.serverId && deployment.serverId !== "local"
-			? await getServerById(deployment.serverId).catch(() => null)
-			: null;
-	const mode = server?.mode ?? "local";
-	if (mode === "agent") {
-		if (isAgentOffline(server)) return null;
-		const { agentStatsCache } = await import("../agents/stats-cache");
-		const containers = await agentStatsCache.get(server!.id);
-		const stat = containers.get(deployment.containerName ?? "");
-		return stat ? { cpuPercent: stat.cpuPercent, memoryMb: stat.memoryMb } : null;
-	}
-	try {
-		const statsJson = await run(
-			dockerBin,
-			["stats", "--no-stream", "--format", "{{json .}}", deployment.containerName ?? ""],
-			server,
-		);
-		return parseStatsJson(statsJson);
-	} catch {
-		return null;
-	}
-};
-
-const getMetricValue = async (alertType: string, _projectId: string, deployments: Deployment[]): Promise<number> => {
-	if (alertType === "cpu" || alertType === "memory") {
-		let total = 0;
-		let count = 0;
-		for (const dep of deployments) {
-			if (dep.status !== "running" || !dep.containerName) continue;
-			const stats = await getContainerStats(dep);
-			if (stats) {
-				total += alertType === "cpu" ? stats.cpuPercent : stats.memoryMb;
-				count++;
-			}
-		}
-		return count > 0 ? total / count : 0;
-	}
-	if (alertType === "downtime") {
-		const running = deployments.filter((d) => d.status === "running");
-		return running.length === 0 ? 1 : 0;
-	}
-	if (alertType === "error_rate") {
-		const failed = deployments.filter((d) => d.status === "failed");
-		return failed.length > 0 ? failed.length : 0;
-	}
-	return 0;
-};
+import type { AlertDetails } from "./templates";
 
 class AlertEvaluator {
 	private redis: Redis;
+	private incidents: ReturnType<typeof createIncidentTracker>;
 	private interval: ReturnType<typeof setInterval> | null = null;
+	private ticking = false;
 
 	constructor() {
 		this.redis = new Redis(config.redisUrl, { maxRetriesPerRequest: null, enableOfflineQueue: false });
+		this.incidents = createIncidentTracker(createRedisIncidentStore(this.redis));
 	}
 
 	start() {
@@ -128,6 +41,8 @@ class AlertEvaluator {
 	}
 
 	private async tick() {
+		if (this.ticking) return;
+		this.ticking = true;
 		try {
 			const db = await getDb();
 			const alertRows = await db.select().from(alerts).where(eq(alerts.enabled, true)).execute();
@@ -156,52 +71,128 @@ class AlertEvaluator {
 			}
 		} catch (err) {
 			console.error("[Alerts] Tick error:", err);
+		} finally {
+			this.ticking = false;
 		}
 	}
 
-	private async evaluate(alert: any, project: { id: string; name: string }, deployments: Deployment[]) {
-		const currentValue = await getMetricValue(alert.type, project.id, deployments);
-		if (currentValue === 0) return;
-
+	private async evaluate(
+		alert: any,
+		project: { id: string; name: string; liveUrl?: string | null; cpuLimit?: number | null },
+		deployments: Deployment[],
+	) {
 		const threshold = alert.threshold ?? (alert.type === "memory" ? 85 : 70);
-		let breached = false;
+		let { observation, currentValue } = await this.probe(alert.type, deployments, threshold);
+		let scaling: AlertDetails["scaling"];
 
-		switch (alert.type) {
-			case "cpu":
-				breached = currentValue > threshold;
-				break;
-			case "memory":
-				breached = currentValue > threshold;
-				break;
-			case "downtime":
-				breached = currentValue > 0;
-				break;
-			case "error_rate":
-				breached = currentValue > 0;
-				break;
-			case "cert_expiry":
-				break;
+		if (observation.kind === "breach") {
+			const guard = await this.evaluateScalingGuard(alert.type, project);
+			if (guard.suppress) {
+				observation = { kind: "no_data" };
+			} else if (guard.suggestion) {
+				scaling = {
+					...guard.suggestion,
+					url: `${appBaseUrl()}/project/${project.id}?tab=scaling`,
+				};
+			}
 		}
 
-		if (!breached) return;
-
-		const notifiedKey = `${NOTIFICATION_KEY}:${alert.id}`;
-		const lastNotified = await this.redis
-			.get(notifiedKey)
-			.then((v) => (v ? Number(v) : 0))
-			.catch(() => 0);
-		if (Date.now() - lastNotified < NOTIFICATION_COOLDOWN_MS) return;
-
-		await sendNotification({
-			channel: alert.channel,
-			destination: alert.destination,
-			projectName: project.name,
-			alertType: alert.type,
-			threshold,
-			currentValue,
+		await this.incidents.step({
+			alertId: alert.id,
+			observation,
+			send: async () => {
+				const details = await this.buildDetails(alert.type, deployments);
+				return sendNotification({
+					channel: alert.channel,
+					destination: alert.destination,
+					projectName: project.name,
+					alertType: alert.type,
+					threshold,
+					currentValue,
+					details: {
+						...details,
+						scaling,
+						projectUrl: `${appBaseUrl()}/project/${project.id}`,
+					},
+				});
+			},
 		});
+	}
 
-		await this.redis.set(notifiedKey, String(Date.now())).catch(() => {});
+	private async evaluateScalingGuard(alertType: string, project: { id: string; cpuLimit?: number | null }) {
+		const policy = await getScalingPolicy(project.id).catch(() => null);
+		const canScale = !!policy?.enabled && !!project.cpuLimit && project.cpuLimit > 0;
+		const replicas = canScale ? await scalingEngine.getProjectReplicas(project.id) : null;
+		return scalingGuard(alertType, {
+			policy: policy ? { enabled: policy.enabled, maxReplicas: policy.maxReplicas } : null,
+			cpuLimit: project.cpuLimit ?? null,
+			currentReplicas: replicas?.current ?? null,
+		});
+	}
+
+	private async probe(
+		alertType: string,
+		deployments: Deployment[],
+		threshold: number,
+	): Promise<{ observation: Observation; currentValue: number }> {
+		if (alertType === "downtime") {
+			if (!deployments.length) return { observation: { kind: "no_data" }, currentValue: 0 };
+			const running = deployments.some((d) => d.status === "running");
+			return {
+				observation: { kind: running ? "clear" : "breach" },
+				currentValue: running ? 0 : 1,
+			};
+		}
+
+		if (alertType !== "cpu" && alertType !== "memory") {
+			return { observation: { kind: "no_data" }, currentValue: 0 };
+		}
+
+		let total = 0;
+		let count = 0;
+		for (const dep of deployments) {
+			if (dep.status !== "running" || !dep.containerName) continue;
+			const stats = await getDeploymentContainerStats(dep);
+			if (stats) {
+				total += alertType === "cpu" ? stats.cpuPercent : stats.memoryMb;
+				count++;
+			}
+		}
+		if (count === 0) return { observation: { kind: "no_data" }, currentValue: 0 };
+
+		const value = total / count;
+		return {
+			observation: { kind: value > threshold ? "breach" : "clear" },
+			currentValue: value,
+		};
+	}
+
+	private async buildDetails(alertType: string, deployments: Deployment[]): Promise<AlertDetails> {
+		const details: AlertDetails = {};
+
+		if (alertType === "cpu" || alertType === "memory") {
+			const containers: { name: string; value: number }[] = [];
+			for (const dep of deployments) {
+				if (dep.status !== "running" || !dep.containerName) continue;
+				const stats = await getDeploymentContainerStats(dep);
+				if (stats) {
+					containers.push({
+						name: dep.containerName,
+						value: alertType === "cpu" ? stats.cpuPercent : stats.memoryMb,
+					});
+				}
+			}
+			details.containers = containers;
+		}
+
+		if (alertType === "downtime") {
+			const lastFinished = deployments
+				.filter((d) => d.finishedAt)
+				.sort((a, b) => new Date(b.finishedAt!).getTime() - new Date(a.finishedAt!).getTime())[0];
+			details.lastRunningAt = lastFinished?.finishedAt ?? null;
+		}
+
+		return details;
 	}
 }
 

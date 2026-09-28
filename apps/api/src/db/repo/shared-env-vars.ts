@@ -136,12 +136,8 @@ export const unlinkSharedEnvVarFromProject = async (projectId: string, sharedEnv
 		.execute();
 	if (links.length === 0) return false;
 	return (
-		getRowsAffected(
-			await db
-				.delete(projectSharedEnvLinks)
-				.where(eq(projectSharedEnvLinks.id, links[0].id))
-				.execute(),
-		) > 0
+		getRowsAffected(await db.delete(projectSharedEnvLinks).where(eq(projectSharedEnvLinks.id, links[0].id)).execute()) >
+		0
 	);
 };
 

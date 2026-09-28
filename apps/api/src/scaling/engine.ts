@@ -6,6 +6,7 @@ import type { Server } from "../types";
 import { config } from "../utils/config";
 import { DEQUEL_MANAGED_LABEL } from "../utils/dequel-labels";
 import { dockerBin } from "../utils/docker-bin";
+import { slugify } from "../utils/routes";
 import { execDockerSshCommand, syncRemoteCaddyRoute } from "../utils/ssh";
 import { run, tryRun } from "./docker-utils";
 
@@ -232,7 +233,10 @@ class ScalingEngine {
 			const containers = await agentStatsCache.get(target.server!.id);
 			let count = 0;
 			for (const stat of containers.values()) {
-				if (stat.replica && dep.id && stat.deploymentId === dep.id) count++;
+				if (!stat.replica || !dep.id) continue;
+				if (stat.containerName === dep.containerName || stat.containerName.startsWith(`deploy-${dep.id}`)) {
+					count++;
+				}
 			}
 			if (containers.has(dep.containerName ?? "")) count++;
 			return Math.max(1, count);
@@ -242,7 +246,7 @@ class ScalingEngine {
 				"ps",
 				"-q",
 				"--filter",
-				"label=com.dequel.managed=1",
+				`label=${DEQUEL_MANAGED_LABEL}`,
 				"--filter",
 				`name=deploy-${dep.id}-replica-`,
 			]);
@@ -269,11 +273,29 @@ class ScalingEngine {
 			const containers = new Set<string>();
 			for (const m of matches) {
 				const parts = m.replace("reverse_proxy", "").trim().split(/\s+/);
-				for (const p of parts) containers.add(p.split(":")[0]);
+				for (const p of parts) {
+					if (!p.includes(":") || p.startsWith("{")) continue;
+					containers.add(p.split(":")[0]);
+				}
 			}
 			return Math.max(1, containers.size);
 		} catch {
 			return 1;
+		}
+	}
+
+	async getProjectReplicas(projectId: string): Promise<{ current: number } | null> {
+		try {
+			const deployments = await listDeployments(projectId);
+			const runningDep = deployments.find((d) => d.status === "running") ?? deployments.find((d) => d.containerName);
+			if (!runningDep) return null;
+			const project = await getProjectById(projectId);
+			const target = await this.resolveTarget(runningDep);
+			const slug = project ? slugify(project.name) : projectId;
+			return { current: await this.getCurrentReplicas(slug, target, runningDep) };
+		} catch (err) {
+			console.warn(`[Scaling] Failed to get replicas for project ${projectId}:`, err);
+			return null;
 		}
 	}
 
@@ -499,6 +521,7 @@ class ScalingEngine {
 			await import("../utils/ingress");
 		const ingressServer = await getIngressServer();
 		const viaIngress = shouldRouteViaIngress(target.server ?? null, ingressServer);
+		const { caddyReverseProxy, caddySite } = await import("../utils/caddy-site");
 		const caddySnippet = viaIngress
 			? projectServerSite(
 					`${slug}.${baseDomain}`,
@@ -506,7 +529,7 @@ class ScalingEngine {
 					targets.map((t) => t.split(":")[0]),
 					true,
 				)
-			: `${slug}.${baseDomain} {\n  reverse_proxy ${targets.join(" ")} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+			: caddySite(`${slug}.${baseDomain}`, caddyReverseProxy(targets.join(" ")));
 
 		if (target.mode === "ssh") {
 			await syncRemoteCaddyRoute(target.server!, `${slug}.caddy`, caddySnippet);

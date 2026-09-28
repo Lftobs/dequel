@@ -41,7 +41,7 @@ export function Pagination({ page, totalItems, pageSize, onPageChange }: Paginat
 					return (
 						<Button
 							key={pageNum}
-							var="ghost"
+							variant="ghost"
 							size="sm"
 							onClick={() => onPageChange(pageNum)}
 							className={`h-7 w-7 p-0 text-[11px] ${pageNum === page ? "bg-muted text-foreground font-semibold" : "text-muted-foreground"}`}

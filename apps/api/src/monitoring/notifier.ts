@@ -1,5 +1,9 @@
 import nodemailer from "nodemailer";
-import { config } from "../utils/config";
+import { getSmtpSettings } from "../db/repo/settings";
+import type { FailureNotificationContext, MailDelivery } from "../types";
+import { appBaseUrl } from "../utils/routes";
+import { buildSlackMessage } from "./slack-message";
+import { type AlertDetails, buildDeploymentFailureEmail, buildEmail } from "./templates";
 
 type NotifyOpts = {
 	channel: string;
@@ -8,27 +12,45 @@ type NotifyOpts = {
 	alertType: string;
 	threshold: number | null;
 	currentValue: number;
+	details?: AlertDetails;
+};
+
+type SmtpConfig = {
+	host: string;
+	port: number;
+	user: string;
+	pass: string;
+	from: string;
+};
+
+const loadSmtpConfig = async (): Promise<SmtpConfig | null> => {
+	try {
+		const db = await getSmtpSettings();
+		if (db?.host) {
+			return { host: db.host, port: db.port, user: db.user, pass: db.pass, from: db.fromAddress };
+		}
+	} catch {}
+	return null;
 };
 
 let transporter: nodemailer.Transporter | null = null;
+let transporterKey = "";
 
-const getTransporter = () => {
-	if (transporter) return transporter;
-	if (!config.smtpHost) return null;
+const getTransporter = async (smtp: SmtpConfig) => {
+	const key = `${smtp.host}:${smtp.port}:${smtp.user}`;
+	if (transporter && transporterKey === key) return transporter;
 	transporter = nodemailer.createTransport({
-		host: config.smtpHost,
-		port: config.smtpPort,
-		secure: config.smtpPort === 465,
-		auth: config.smtpUser && config.smtpPass ? { user: config.smtpUser, pass: config.smtpPass } : undefined,
+		host: smtp.host,
+		port: smtp.port,
+		secure: smtp.port === 465,
+		auth: smtp.user && smtp.pass ? { user: smtp.user, pass: smtp.pass } : undefined,
+		connectionTimeout: 10_000,
+		greetingTimeout: 10_000,
+		socketTimeout: 30_000,
 	});
+	transporterKey = key;
 	return transporter;
 };
-
-const subject = (projectName: string, alertType: string) =>
-	`[Dequel] ${alertType.toUpperCase()} alert — ${projectName}`;
-
-const textBody = (projectName: string, alertType: string, threshold: number | null, currentValue: number) =>
-	`Alert: ${projectName}\n\nType: ${alertType}\nThreshold: ${threshold ?? "N/A"}\nCurrent value: ${currentValue}\n\nThis is an automated notification from Dequel.`;
 
 const sendEmail = async (
 	to: string,
@@ -36,17 +58,20 @@ const sendEmail = async (
 	alertType: string,
 	threshold: number | null,
 	currentValue: number,
+	details?: AlertDetails,
 ) => {
-	const t = getTransporter();
-	if (!t) {
+	const smtp = await loadSmtpConfig();
+	if (!smtp) {
 		console.warn(`[Notifier] SMTP not configured — skipping email to ${to}`);
 		return;
 	}
+	const { subject, html } = buildEmail(alertType, projectName, threshold, currentValue, details);
+	const t = await getTransporter(smtp);
 	await t.sendMail({
-		from: config.smtpFrom,
+		from: smtp.from,
 		to,
-		subject: subject(projectName, alertType),
-		text: textBody(projectName, alertType, threshold, currentValue),
+		subject,
+		html,
 	});
 };
 
@@ -56,27 +81,16 @@ const sendSlack = async (
 	alertType: string,
 	threshold: number | null,
 	currentValue: number,
+	details?: AlertDetails,
 ) => {
-	const payload = {
-		text: subject(projectName, alertType),
-		blocks: [
-			{ type: "header", text: { type: "plain_text", text: `⚠️ Dequel Alert: ${projectName}` } },
-			{
-				type: "section",
-				fields: [
-					{ type: "mrkdwn", text: `*Type:* ${alertType}` },
-					{ type: "mrkdwn", text: `*Threshold:* ${threshold ?? "N/A"}` },
-					{ type: "mrkdwn", text: `*Current:* ${currentValue}` },
-				],
-			},
-		],
-	};
+	const payload = buildSlackMessage(alertType, projectName, threshold, currentValue, details);
 	const res = await fetch(webhookUrl, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(payload),
+		signal: AbortSignal.timeout(10_000),
 	});
-	if (!res.ok) console.warn(`[Notifier] Slack webhook returned ${res.status}`);
+	if (!res.ok) throw new Error(`Slack webhook returned ${res.status}`);
 };
 
 const sendWebhook = async (
@@ -98,26 +112,55 @@ const sendWebhook = async (
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(payload),
+		signal: AbortSignal.timeout(10_000),
 	});
-	if (!res.ok) console.warn(`[Notifier] Webhook returned ${res.status}`);
+	if (!res.ok) throw new Error(`Webhook returned ${res.status}`);
 };
 
-export const sendNotification = async (opts: NotifyOpts): Promise<void> => {
-	const { channel, destination, projectName, alertType, threshold, currentValue } = opts;
+export const sendNotification = async (opts: NotifyOpts): Promise<MailDelivery> => {
+	const { channel, projectName, alertType, threshold, currentValue, details } = opts;
+	let destination = opts.destination;
+	if (!destination && channel === "email") {
+		const smtp = await loadSmtpConfig();
+		destination = smtp?.from ?? null;
+	}
 	if (!destination) {
 		console.warn(`[Notifier] No destination for ${channel} alert — skipping`);
-		return;
-	}
-	const fn =
-		channel === "email" ? sendEmail : channel === "slack" ? sendSlack : channel === "webhook" ? sendWebhook : null;
-	if (!fn) {
-		console.warn(`[Notifier] Unknown channel: ${channel}`);
-		return;
+		return { status: "skipped", reason: "no_recipient" };
 	}
 	try {
-		await fn(destination, projectName, alertType, threshold, currentValue);
+		if (channel === "email") {
+			await sendEmail(destination, projectName, alertType, threshold, currentValue, details);
+		} else if (channel === "slack") {
+			await sendSlack(destination, projectName, alertType, threshold, currentValue, details);
+		} else if (channel === "webhook") {
+			await sendWebhook(destination, projectName, alertType, threshold, currentValue);
+		} else {
+			console.warn(`[Notifier] Unknown channel: ${channel}`);
+			return { status: "failed", error: `unknown channel: ${channel}` };
+		}
 		console.log(`[Notifier] ${channel} alert sent to ${destination}`);
+		return { status: "sent" };
 	} catch (err) {
 		console.error(`[Notifier] Failed to send ${channel} alert:`, err);
+		return { status: "failed", error: err instanceof Error ? err.message : String(err) };
+	}
+};
+
+export const isSmtpConfigured = async (): Promise<boolean> => (await loadSmtpConfig()) !== null;
+
+export const sendDeploymentFailureEmail = async (ctx: FailureNotificationContext): Promise<MailDelivery> => {
+	const smtp = await loadSmtpConfig();
+	if (!smtp) return { status: "skipped", reason: "no_smtp" };
+	const to = smtp.from;
+	if (!to) return { status: "skipped", reason: "no_recipient" };
+	try {
+		const logsUrl = ctx.projectId ? `${appBaseUrl()}/project/${ctx.projectId}?tab=deployments` : undefined;
+		const { subject, html } = buildDeploymentFailureEmail({ ...ctx, logsUrl });
+		const t = await getTransporter(smtp);
+		await t.sendMail({ from: smtp.from, to, subject, html });
+		return { status: "sent" };
+	} catch (err) {
+		return { status: "failed", error: err instanceof Error ? err.message : String(err) };
 	}
 };

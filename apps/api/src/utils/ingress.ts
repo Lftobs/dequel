@@ -1,6 +1,7 @@
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createAgentJob, getPlatformSettings, getServerById, upsertRoute } from "../db/repo";
+import { caddyReverseProxy, caddySite } from "./caddy-site";
 import { config } from "./config";
 import { removeRemoteCaddyRoute, syncRemoteCaddyRoute } from "./ssh";
 
@@ -38,10 +39,11 @@ export const projectServerSite = (
 	viaIngress: boolean,
 ): string => {
 	const targets = containers.map((c) => `${c}:${port}`).join(" ");
+	const proxy = caddyReverseProxy(targets);
 	if (viaIngress) {
-		return `:80 {\n  reverse_proxy ${targets} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+		return caddySite(":80", proxy);
 	}
-	return `${hostname} {\n  reverse_proxy ${targets} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+	return caddySite(hostname, proxy);
 };
 
 export const ingressSite = (hostname: string, upstreamHost: string): string =>

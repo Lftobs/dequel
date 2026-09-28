@@ -29,7 +29,16 @@ export {
 	updateDatabaseSettings,
 	updateDatabaseStatus,
 } from "./databases";
-export { createDeploymentEvent, listDeploymentEvents } from "./deployment-events";
+export {
+	claimFailureNotification,
+	createDeploymentEvent,
+	listDeploymentEvents,
+	listPendingFailureNotificationIds,
+	listProjectEvents,
+	markFailureNotificationSent,
+	recordDeploymentCancellation,
+	recordDeploymentFailure,
+} from "./deployment-events";
 export {
 	appendLog,
 	countDeployments,

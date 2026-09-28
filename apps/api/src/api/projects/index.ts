@@ -6,7 +6,6 @@ import {
 	deleteProjectCascade,
 	getProjectById,
 	getServerById,
-	listDomains,
 	listProjects,
 	updateProject,
 } from "../../db/repo";
@@ -15,6 +14,7 @@ import { reloadCaddy, tryRun } from "../../orchestrator/runtime";
 import { config } from "../../utils/config";
 import { dockerBin } from "../../utils/docker-bin";
 import { removeFromCaddyRoute } from "../../utils/domain-verifier";
+import { buildProjectRequestHostRegex, caddyRequestLogSelector } from "../../utils/loki";
 import { isPort, isPrivateGitUrl, SERVICE_NAME_RE, validateComposeServices } from "../../utils/validate";
 import { created, fail, ok } from "../response";
 
@@ -194,22 +194,8 @@ export const projectsRoutes = new Elysia()
 			set.status = 404;
 			return fail("Project not found");
 		}
-		const slugify = (s: string) =>
-			s
-				.toLowerCase()
-				.replace(/[^a-z0-9-]+/g, "-")
-				.replace(/^-+|-+$/g, "")
-				.slice(0, 63);
-		const slug = slugify(project.name);
-		const domains = [`${slug}.${config.caddyBaseDomain}`];
-		const projectDomains = await listDomains(id);
-		const verified = projectDomains.filter((d) => d.validationStatus === "verified");
-		for (const d of verified) {
-			domains.push(d.domain);
-		}
-
-		const regexEscaped = domains.map((d) => d.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\\\$&")).join("|");
-		const queryStr = `{container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$"`;
+		const hostRegex = await buildProjectRequestHostRegex(id);
+		const queryStr = caddyRequestLogSelector(hostRegex);
 
 		const startParam = (queryParams as any)?.start;
 		const endParam = (queryParams as any)?.end;
@@ -274,23 +260,9 @@ export const projectsRoutes = new Elysia()
 			set.status = 404;
 			return fail("Project not found");
 		}
-		const slugify = (s: string) =>
-			s
-				.toLowerCase()
-				.replace(/[^a-z0-9-]+/g, "-")
-				.replace(/^-+|-+$/g, "")
-				.slice(0, 63);
-		const slug = slugify(project.name);
-		const domains = [`${slug}.${config.caddyBaseDomain}`];
-		const projectDomains = await listDomains(id);
-		const verified = projectDomains.filter((d) => d.validationStatus === "verified");
-		for (const d of verified) {
-			domains.push(d.domain);
-		}
+		const hostRegex = await buildProjectRequestHostRegex(id);
 
-		const regexEscaped = domains.map((d) => d.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\\\$&")).join("|");
-
-		const query = `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [5m]))`;
+		const query = `sum(count_over_time(${caddyRequestLogSelector(hostRegex)} [5m]))`;
 
 		const end = Math.floor(Date.now() / 1000);
 		const start = end - 6 * 60 * 60;
@@ -325,22 +297,8 @@ export const projectsRoutes = new Elysia()
 			return fail("Project not found");
 		}
 		const encoder = new TextEncoder();
-		const slugify = (s: string) =>
-			s
-				.toLowerCase()
-				.replace(/[^a-z0-9-]+/g, "-")
-				.replace(/^-+|-+$/g, "")
-				.slice(0, 63);
-		const slug = slugify(project.name);
-		const domains = [`${slug}.${config.caddyBaseDomain}`];
-		const projectDomains = await listDomains(id);
-		const verified = projectDomains.filter((d) => d.validationStatus === "verified");
-		for (const d of verified) {
-			domains.push(d.domain);
-		}
-
-		const regexEscaped = domains.map((d) => d.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\\\$&")).join("|");
-		const query = `{container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$"`;
+		const hostRegex = await buildProjectRequestHostRegex(id);
+		const query = caddyRequestLogSelector(hostRegex);
 
 		let ws: WebSocket | null = null;
 		let closed = false;

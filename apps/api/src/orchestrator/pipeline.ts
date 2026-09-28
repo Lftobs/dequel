@@ -13,10 +13,14 @@ import {
 	listDeployments,
 	listEnvironmentVariablesForDeploy,
 	listVolumes,
+	recordDeploymentCancellation,
+	recordDeploymentFailure,
 	updateDeploymentCommitSha,
 	updateDeploymentStatus,
 } from "../db/repo";
 import { deployments } from "../db/schema";
+import { config } from "../utils/config";
+import { CANCELLED_FAILURE_REASON } from "../utils/failure-outcome";
 import { ensureProjectDashboard } from "../utils/grafana";
 import { buildWithCompose, destroyComposeStack } from "./compose";
 import { deployComposeStack } from "./compose-deploy";
@@ -88,13 +92,12 @@ export class PipelineOrchestrator {
 
 		await Promise.all([
 			this.queue.remove(deploymentId),
-			updateDeploymentStatus(deploymentId, "failed", { failureReason: "Cancelled" }),
-			appendLog(deploymentId, "system", "Deployment cancelled by user"),
-			createDeploymentEvent({
+			recordDeploymentCancellation({
 				deploymentId,
-				type: "cancelled",
-				message: "Deployment cancelled by user",
+				reason: CANCELLED_FAILURE_REASON,
+				source: "pipeline",
 			}),
+			appendLog(deploymentId, "system", "Deployment cancelled by user"),
 		]);
 		logBus.publish({
 			deploymentId,
@@ -466,13 +469,7 @@ export class PipelineOrchestrator {
 			const message = summarizeDeploymentError(error);
 			console.error(`[Orchestrator] Deployment ${deploymentId} failed:`, error);
 			await emitLog(deploymentId, "system", `Deployment failed: ${message}`);
-			await updateDeploymentStatus(deploymentId, "failed", { failureReason: message });
-			await createDeploymentEvent({
-				deploymentId,
-				type: "failed",
-				message,
-				metadata: { stage: "unknown" },
-			});
+			await recordDeploymentFailure({ deploymentId, reason: message, source: "pipeline" });
 
 			if (!deployed) {
 				await emitLog(deploymentId, "system", "Cleaning up Docker resources from failed deployment");
@@ -604,7 +601,7 @@ export class PipelineOrchestrator {
 			const message = summarizeDeploymentError(error);
 			console.error(`[Orchestrator] Rollback of ${targetDeploymentId} failed:`, error);
 			await emitLog(targetDeploymentId, "system", `Rollback failed: ${message}`);
-			await updateDeploymentStatus(targetDeploymentId, "failed", { failureReason: message });
+			await recordDeploymentFailure({ deploymentId: targetDeploymentId, reason: message, source: "rollback" });
 			throw error;
 		}
 	}

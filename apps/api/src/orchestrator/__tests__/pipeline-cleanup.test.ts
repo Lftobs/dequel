@@ -48,6 +48,8 @@ const mockDb = {
 	listEnvironmentVariablesForDeploy: mock(() => Promise.resolve([])),
 	listVolumes: mock(() => Promise.resolve([])),
 	listDeployments: mock(() => Promise.resolve([])),
+	listProjectEvents: mock(() => Promise.resolve([])),
+	listRoutesByDeployment: mock(() => Promise.resolve([])),
 	listAllDatabases: mock(() => Promise.resolve([])),
 	deleteDeploymentAndLogs: mock(() => Promise.resolve()),
 	getScalingPolicy: mock(() => Promise.resolve(null)),
@@ -65,11 +67,14 @@ const mockDb = {
 	updateDomainValidation: mock(() => Promise.resolve()),
 	listDomains: mock(() => Promise.resolve([])),
 	createDeploymentEvent: mock(() => Promise.resolve()),
+	recordDeploymentFailure: mock(() => Promise.resolve({ outcome: "recorded" })),
+	recordDeploymentCancellation: mock(() => Promise.resolve({ outcome: "recorded" })),
 };
 
 mock.module(fileUrl("../../db/repo"), () => mockDb);
 
 mock.module(fileUrl("../runtime"), () => ({
+	run: mock(() => Promise.resolve("")),
 	deployContainer: mock(() =>
 		Promise.resolve({
 			containerName: "test-project-abc12345",
