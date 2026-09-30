@@ -2,7 +2,6 @@ import { migrate as drizzleMigrate } from "drizzle-orm/node-postgres/migrator";
 import { config } from "../utils/config";
 import { getDb } from "./client";
 import { getGithubIntegration, setGithubIntegration } from "./repo/github";
-import { getSmtpSettings, upsertSmtpSettings } from "./repo/settings";
 
 export const migrate = async () => {
 	const db = await getDb();
@@ -49,19 +48,6 @@ const seedFromConfig = async () => {
 				webhookSecret: config.githubWebhookSecret || undefined,
 			});
 			console.log("[Config] Seeded GitHub integration from config file");
-		}
-	}
-	if (config.smtpHost) {
-		const existing = await getSmtpSettings();
-		if (!existing) {
-			await upsertSmtpSettings({
-				host: config.smtpHost,
-				port: config.smtpPort,
-				user: config.smtpUser,
-				pass: config.smtpPass,
-				fromAddress: config.smtpFrom,
-			});
-			console.log("[Config] Seeded SMTP settings from config file");
 		}
 	}
 };

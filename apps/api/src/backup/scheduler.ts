@@ -1,8 +1,8 @@
 import { listAllDatabases } from "../db/repo/databases";
 import { getBackupStorageSettings } from "../db/repo/settings";
 import { BackupOrchestrator } from "./orchestrator";
-import { S3_BACKUP_PREFIX } from "./types";
 import type { BackupTarget, StorageConfig } from "./types";
+import { S3_BACKUP_PREFIX } from "./types";
 
 const lastFiredMinute = new Map<string, number>();
 
@@ -71,9 +71,24 @@ function toStorageConfig(settings: {
 	return { type: "local", path: settings.path || "/data/backups" };
 }
 
-function matchesCron(cron: string, date: Date): boolean {
+const CRON_TOKEN = /^(\*|\d+)(?:-(\d+))?(?:\/(\d+))?$/;
+
+const isValidToken = (token: string): boolean => {
+	const match = CRON_TOKEN.exec(token);
+	if (!match) return false;
+	const [, start, end, step] = match;
+	if (start === "*" && end !== undefined) return false;
+	if (end !== undefined && Number(end) < Number(start)) return false;
+	if (step !== undefined && Number(step) < 1) return false;
+	return true;
+};
+
+const isValidField = (expr: string): boolean => expr.length > 0 && expr.split(",").every(isValidToken);
+
+export function matchesCron(cron: string, date: Date): boolean {
 	const parts = cron.trim().split(/\s+/);
 	if (parts.length !== 5) return false;
+	if (!parts.every(isValidField)) return false;
 
 	const [minExpr, hourExpr, dayExpr, monthExpr, dowExpr] = parts;
 
@@ -90,21 +105,28 @@ function matchField(expr: string, value: number): boolean {
 	if (expr === "*") return true;
 
 	for (const part of expr.split(",")) {
-		if (part.includes("-")) {
-			const [start, end] = part.split("-").map(Number);
-			if (value >= start && value <= end) return true;
-		} else if (part.includes("/")) {
-			const [range, step] = part.split("/");
-			const stepNum = parseInt(step, 10);
-			if (range === "*") {
-				if (value % stepNum === 0) return true;
-			} else {
-				const start = parseInt(range, 10);
-				if (value >= start && value % stepNum === 0) return true;
+		if (!part) continue;
+		const [range, stepStr] = part.split("/");
+		const step = stepStr === undefined ? 1 : Number.parseInt(stepStr, 10);
+		if (!Number.isInteger(step) || step <= 0) continue;
+
+		let start = 0;
+		let end = Number.POSITIVE_INFINITY;
+		if (range.includes("-")) {
+			const [s, e] = range.split("-").map((n) => Number.parseInt(n, 10));
+			if (!Number.isInteger(s) || !Number.isInteger(e)) continue;
+			start = s;
+			end = e;
+		} else if (range !== "*") {
+			const s = Number.parseInt(range, 10);
+			if (!Number.isInteger(s)) continue;
+			if (stepStr === undefined) {
+				if (value === s) return true;
+				continue;
 			}
-		} else {
-			if (parseInt(part, 10) === value) return true;
+			start = s;
 		}
+		if (value >= start && value <= end && (value - start) % step === 0) return true;
 	}
 
 	return false;

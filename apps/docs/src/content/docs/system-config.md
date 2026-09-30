@@ -50,29 +50,7 @@ On boot, these values seed the `github_integrations` table. You can also update 
 
 ### SMTP
 
-Set these to enable email alerts and notifications:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SMTP_HOST` | `""` | SMTP server hostname |
-| `SMTP_PORT` | `587` | SMTP server port |
-| `SMTP_USER` | `""` | SMTP username |
-| `SMTP_PASS` | `""` | SMTP password |
-| `SMTP_FROM` | `dequel@localhost` | From address for outgoing emails |
-
-Config file equivalent:
-
-```json
-{
-  "smtpHost": "smtp.sendgrid.net",
-  "smtpPort": 587,
-  "smtpUser": "apikey",
-  "smtpPass": "...",
-  "smtpFrom": "dequel@example.com"
-}
-```
-
-On boot, these values seed the `smtp_settings` table. The password is encrypted at rest using `ENV_ENCRYPTION_KEY`. You can also update these from the Settings page in the dashboard, and send a test email to verify the configuration.
+SMTP settings are not read from environment variables or the config file. Configure them from the Settings page in the dashboard, where you can also send a test email to verify the setup. The password is encrypted at rest using `ENV_ENCRYPTION_KEY`.
 
 ### Ingress
 
@@ -98,11 +76,6 @@ Config file equivalent:
   "githubClientSecret": "...",
   "githubAppName": "MyDequel",
   "githubWebhookSecret": "...",
-  "smtpHost": "smtp.sendgrid.net",
-  "smtpPort": 587,
-  "smtpUser": "apikey",
-  "smtpPass": "...",
-  "smtpFrom": "alerts@example.com",
   "envEncryptionKey": "your-secure-key-here"
 }
 ```

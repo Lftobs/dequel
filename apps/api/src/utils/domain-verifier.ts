@@ -5,6 +5,7 @@ import { getDb } from "../db/db-provider";
 import { getProjectById, listDomains, listEnvironmentVariablesForDeploy, updateDomainValidation } from "../db/repo";
 import { domains } from "../db/schema";
 import { reloadCaddy } from "../orchestrator/runtime";
+import { caddyReverseProxy, caddySite } from "./caddy-site";
 import { config } from "./config";
 import { resolveServerIp, validateDomain } from "./dns";
 
@@ -205,9 +206,7 @@ export const buildCaddySnippet = async (
 					}
 				}
 				const tPort = d.targetPort || port;
-				customBlocks.push(
-					`${entryDomain} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${targetContainer}:${tPort} {\n    header_up Host {upstream_hostport}\n  }\n}\n`,
-				);
+				customBlocks.push(caddySite(entryDomain, caddyReverseProxy(`${targetContainer}:${tPort}`)));
 			} else {
 				if (!defaultDomains.includes(entryDomain)) defaultDomains.push(entryDomain);
 			}
@@ -246,7 +245,7 @@ export const buildCaddySnippet = async (
 		}
 	}
 
-	const primaryBlock = `${defaultDomains.join(", ")} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${containerName}:${port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+	const primaryBlock = caddySite(defaultDomains.join(", "), caddyReverseProxy(`${containerName}:${port}`));
 
 	return [primaryBlock, ...customBlocks].join("\n");
 };

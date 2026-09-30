@@ -15,7 +15,7 @@ export type DomainValidationStatus = "pending" | "verified" | "failed";
 export type SslStatus = "pending" | "provisioned" | "failed";
 export type ServerStatus = "pending" | "connected" | "disconnected" | "failed";
 export type AlertChannel = "email" | "slack" | "webhook";
-export type AlertType = "cpu" | "memory" | "error_rate" | "downtime" | "cert_expiry";
+export type AlertType = "cpu" | "memory" | "downtime" | "cert_expiry";
 
 export interface Project {
 	id: string;

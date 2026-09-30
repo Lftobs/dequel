@@ -18,11 +18,6 @@ export interface FileConfig {
 	queueConcurrency?: number;
 	queueRetryMax?: number;
 	queueRetryBaseMs?: number;
-	smtpHost?: string;
-	smtpPort?: number;
-	smtpUser?: string;
-	smtpPass?: string;
-	smtpFrom?: string;
 	alertEvalIntervalMs?: number;
 	githubClientId?: string;
 	githubClientSecret?: string;

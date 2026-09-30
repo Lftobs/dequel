@@ -1,5 +1,6 @@
-import { listDomains } from "../db/repo";
 import { config } from "./config";
+import { buildProjectRequestHostRegex } from "./loki";
+import { slugify } from "./routes";
 
 interface GrafanaDashboard {
 	dashboard: {
@@ -64,24 +65,8 @@ export async function ensureProjectDashboard(
 	projectName: string,
 	containerRegex: string,
 ): Promise<void> {
-	const slug = projectName
-		.toLowerCase()
-		.replace(/[^a-z0-9-]+/g, "-")
-		.replace(/^-+|-+$/g, "")
-		.slice(0, 63);
-
-	const domains = [`${slug}.${config.caddyBaseDomain}`];
-	try {
-		const projectDomains = await listDomains(projectId);
-		const verified = projectDomains.filter((d) => d.validationStatus === "verified");
-		for (const d of verified) {
-			domains.push(d.domain);
-		}
-	} catch (e) {
-		console.warn("[Grafana] Failed to list domains for dashboard query:", e);
-	}
-
-	const regexEscaped = domains.map((d) => d.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\\\$&")).join("|");
+	const slug = slugify(projectName);
+	const regexEscaped = await buildProjectRequestHostRegex(projectId);
 
 	const dashboard: GrafanaDashboard = {
 		dashboard: {

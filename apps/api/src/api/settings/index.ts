@@ -9,6 +9,7 @@ import {
 	upsertBackupStorageSettings,
 	upsertSmtpSettings,
 } from "../../db/repo";
+import { buildSmtpTestEmail } from "../../monitoring/templates";
 import { failoverState } from "../../orchestrator/failover";
 import { rerenderAllIngressRoutes } from "../../orchestrator/ingress-sync";
 import { fail, ok } from "../response";
@@ -87,10 +88,12 @@ export const settingsRoutes = new Elysia({ prefix: "/settings" })
 				secure: settings.port === 465,
 				auth: settings.user && settings.pass ? { user: settings.user, pass: settings.pass } : undefined,
 			});
+			const { subject, html } = buildSmtpTestEmail();
 			await transporter.sendMail({
 				from: settings.fromAddress,
 				to: settings.fromAddress,
-				subject: "[Dequel] SMTP Test Email",
+				subject,
+				html,
 				text: "This is a test email from Dequel. Your SMTP settings are working correctly.",
 			});
 			return ok(null, "Test email sent");

@@ -91,13 +91,17 @@ const ACTIVE_STATUSES: DeploymentStatus[] = ["pending", "building", "deploying"]
 
 const STAMP_FINISHED_UNCONDITIONALLY: DeploymentStatus[] = ["running", "failed"];
 
-export const updateDeploymentStatus = async (
+type Tx = Parameters<Parameters<Awaited<ReturnType<typeof getDb>>["transaction"]>[0]>[0];
+
+import { captureTelemetry } from "../../utils/telemetry";
+
+export const applyStatusUpdate = async (
+	tx: Tx | Awaited<ReturnType<typeof getDb>>,
 	id: string,
 	status: DeploymentStatus,
 	patch: Partial<Pick<Deployment, "imageTag" | "containerName" | "liveUrl" | "failureReason" | "replicas">> = {},
 ) => {
-	const db = await getDb();
-	const [existing] = await db
+	const [existing] = await tx
 		.select({ finishedAt: deployments.finishedAt })
 		.from(deployments)
 		.where(eq(deployments.id, id))
@@ -115,7 +119,23 @@ export const updateDeploymentStatus = async (
 			updates.finishedAt = now();
 		}
 	}
-	await db.update(deployments).set(updates).where(eq(deployments.id, id)).execute();
+	await tx.update(deployments).set(updates).where(eq(deployments.id, id)).execute();
+
+	if (status === "running" || status === "failed") {
+		captureTelemetry("deployment_executed", {
+			status,
+			has_failure_reason: Boolean(patch.failureReason),
+		}).catch(() => {});
+	}
+};
+
+export const updateDeploymentStatus = async (
+	id: string,
+	status: DeploymentStatus,
+	patch: Partial<Pick<Deployment, "imageTag" | "containerName" | "liveUrl" | "failureReason" | "replicas">> = {},
+) => {
+	const db = await getDb();
+	await applyStatusUpdate(db, id, status, patch);
 };
 
 export const deleteDeploymentAndLogs = async (id: string): Promise<boolean> => {

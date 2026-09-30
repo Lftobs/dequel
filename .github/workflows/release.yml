@@ -56,6 +56,7 @@ jobs:
           push: true
           build-args: |
             BUILD_TIME=${{ github.sha }}
+            DEQUEL_POSTHOG_KEY=${{ secrets.DEQUEL_POSTHOG_KEY }}
           tags: |
             ${{ env.API_IMAGE }}:${{ steps.version.outputs.VERSION }}
             ${{ steps.version.outputs.IS_PRERELEASE == 'false' && format('{0}:latest', env.API_IMAGE) || format('{0}:next', env.API_IMAGE) }}
