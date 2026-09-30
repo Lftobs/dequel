@@ -48,6 +48,11 @@ const smtpTestTpl = loadHtml("smtp-test.html");
 
 const truncated = (s: string, n = 160) => (s.length > n ? `${s.slice(0, n)}…` : s);
 
+const escapeHtml = (s: string): string =>
+	s.replace(/[&<>"']/g, (c) =>
+		c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === '"' ? "&quot;" : "&#39;",
+	);
+
 const renderBadge = (text: string, bg: string, textColor: string) => {
 	if (!text) return "";
 	return `<div style="margin-bottom:20px;">
@@ -95,6 +100,7 @@ export const buildEmail = (
 	currentValue: number,
 	details?: AlertDetails,
 ): { subject: string; html: string } => {
+	const project = escapeHtml(projectName);
 	switch (alertType) {
 		case "cpu":
 		case "memory": {
@@ -106,7 +112,7 @@ export const buildEmail = (
 
 			const body = alertMetricTpl
 				.replace(/{{METRIC_TYPE}}/g, isCpu ? "CPU" : "Memory")
-				.replace(/{{PROJECT_NAME}}/g, projectName)
+				.replace(/{{PROJECT_NAME}}/g, project)
 				.replace(/{{CURRENT_VALUE}}/g, currentValue.toFixed(1))
 				.replace(/{{THRESHOLD}}/g, String(threshold ?? "N/A"))
 				.replace(/{{UNIT}}/g, unit)
@@ -127,7 +133,7 @@ export const buildEmail = (
 			const actionButton = details?.logsUrl ? renderButton(details.logsUrl, "View Logs") : "";
 
 			const body = alertDowntimeTpl
-				.replace(/{{PROJECT_NAME}}/g, projectName)
+				.replace(/{{PROJECT_NAME}}/g, project)
 				.replace("{{LAST_RUNNING_ROW}}", lastRunningRow)
 				.replace("{{ACTION_BUTTON}}", actionButton);
 
@@ -142,7 +148,7 @@ export const buildEmail = (
 			const actionButton = details?.appUrl ? renderButton(details.appUrl, "View Site") : "";
 
 			const body = alertCertExpiryTpl
-				.replace(/{{PROJECT_NAME}}/g, projectName)
+				.replace(/{{PROJECT_NAME}}/g, project)
 				.replace(/{{CURRENT_VALUE}}/g, String(currentValue))
 				.replace("{{DAYS_ROW}}", daysRow)
 				.replace("{{ACTION_BUTTON}}", actionButton);
@@ -160,7 +166,7 @@ export const buildEmail = (
 				renderRow("Current value", String(currentValue)),
 			].join("");
 
-			const body = alertDefaultTpl.replace(/{{PROJECT_NAME}}/g, projectName).replace("{{DETAILS_ROWS}}", detailsRows);
+			const body = alertDefaultTpl.replace(/{{PROJECT_NAME}}/g, project).replace("{{DETAILS_ROWS}}", detailsRows);
 
 			return {
 				subject: `[Dequel] ${alertType} alert — ${projectName}`,
@@ -181,23 +187,23 @@ export const buildDeploymentFailureEmail = (ctx: {
 	const commitItem = ctx.commitSha
 		? `<li style="margin-bottom:10px;color:#3f3f46;"><strong style="color:#18181b;">Commit:</strong> ${
 				ctx.failureReason
-					? `<a href="${ctx.logsUrl || "#"}" style="color:#7c3aed;text-decoration:underline;font-weight:500;">${truncated(ctx.failureReason, 140)}</a> <span style="font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:#71717a;font-size:13px;">(${ctx.commitSha.slice(0, 12)})</span>`
+					? `<a href="${ctx.logsUrl || "#"}" style="color:#7c3aed;text-decoration:underline;font-weight:500;">${escapeHtml(truncated(ctx.failureReason, 140))}</a> <span style="font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:#71717a;font-size:13px;">(${ctx.commitSha.slice(0, 12)})</span>`
 					: `<code style="font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#f4f4f5;border:1px solid #e4e4e7;color:#18181b;padding:2px 6px;border-radius:4px;font-size:13px;">${ctx.commitSha.slice(0, 12)}</code>`
 			}</li>`
 		: "";
 	const sourceItem = ctx.sourceRef
-		? `<li style="margin-bottom:10px;color:#3f3f46;"><strong style="color:#18181b;">Source:</strong> <span style="color:#18181b;font-weight:500;">${ctx.sourceRef}</span></li>`
+		? `<li style="margin-bottom:10px;color:#3f3f46;"><strong style="color:#18181b;">Source:</strong> <span style="color:#18181b;font-weight:500;">${escapeHtml(ctx.sourceRef)}</span></li>`
 		: "";
 	const reasonItem =
 		ctx.failureReason && !ctx.commitSha
-			? `<li style="margin-bottom:10px;color:#3f3f46;"><strong style="color:#18181b;">Reason:</strong> <span style="color:#dc2626;">${truncated(ctx.failureReason, 160)}</span></li>`
+			? `<li style="margin-bottom:10px;color:#3f3f46;"><strong style="color:#18181b;">Reason:</strong> <span style="color:#dc2626;">${escapeHtml(truncated(ctx.failureReason, 160))}</span></li>`
 			: "";
 
 	const detailsItems = `${commitItem}${sourceItem}${reasonItem}`;
 	const actionButton = ctx.logsUrl ? renderButton(ctx.logsUrl, "View Logs") : "";
 
 	const body = deployFailureTpl
-		.replace(/{{PROJECT_NAME}}/g, ctx.projectName)
+		.replace(/{{PROJECT_NAME}}/g, escapeHtml(ctx.projectName))
 		.replace(/{{LOGS_URL}}/g, ctx.logsUrl || "#")
 		.replace("{{DETAILS_ITEMS}}", detailsItems)
 		.replace("{{ACTION_BUTTON}}", actionButton);

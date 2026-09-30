@@ -1,9 +1,10 @@
 import { Elysia } from "elysia";
 import { createAlert, deleteAlert, listAlerts, updateAlertEnabled } from "../../db/repo";
 import type { AlertChannel, AlertType } from "../../types";
+import { validateDestination } from "../../utils/destination";
 import { created, fail, ok } from "../response";
 
-const ALERT_TYPES: ReadonlySet<string> = new Set<AlertType>(["cpu", "memory", "downtime", "cert_expiry"]);
+const ALERT_TYPES: ReadonlySet<string> = new Set<AlertType>(["cpu", "memory", "downtime"]);
 const ALERT_CHANNELS: ReadonlySet<string> = new Set<AlertChannel>(["email", "slack", "webhook"]);
 
 export const alertsRoutes = new Elysia()
@@ -22,15 +23,10 @@ export const alertsRoutes = new Elysia()
 			return fail(`channel must be one of: ${[...ALERT_CHANNELS].join(", ")}`);
 		}
 		if (body.channel !== "email") {
-			let valid = false;
-			try {
-				valid = ["http:", "https:"].includes(new URL(String(body.destination ?? "")).protocol);
-			} catch {
-				valid = false;
-			}
-			if (!valid) {
+			const destinationError = await validateDestination(String(body.destination ?? ""));
+			if (destinationError) {
 				set.status = 400;
-				return fail("destination must be an http(s) URL for this channel");
+				return fail(destinationError);
 			}
 		}
 		return created(

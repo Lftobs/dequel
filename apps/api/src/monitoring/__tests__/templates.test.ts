@@ -43,6 +43,21 @@ describe("Email Templates", () => {
 			expect(html).toContain("DEPLOY FAILED");
 			expect(html).not.toContain("View Logs");
 		});
+
+		it("escapes HTML in project name, failure reason and source ref", () => {
+			const { html } = buildDeploymentFailureEmail({
+				projectName: "<img src=x>",
+				failureReason: "a < b & c > d",
+				commitSha: null,
+				sourceRef: "<b>main</b>",
+				finishedAt: null,
+			});
+
+			expect(html).not.toContain("<img src=x>");
+			expect(html).toContain("&lt;img src=x&gt;");
+			expect(html).toContain("&lt;b&gt;main&lt;/b&gt;");
+			expect(html).toContain("a &lt; b &amp; c &gt; d");
+		});
 	});
 
 	describe("buildEmail (monitoring alerts)", () => {
@@ -122,6 +137,13 @@ describe("Email Templates", () => {
 
 			expect(subject).toBe("[Dequel] disk_space alert — storage-node");
 			expect(html).toContain("ALERT");
+		});
+
+		it("escapes the project name in alert email bodies", () => {
+			const { html } = buildEmail("cpu", "a<b> & c", 80, 94.2);
+
+			expect(html).not.toContain("a<b> & c");
+			expect(html).toContain("a&lt;b&gt; &amp; c");
 		});
 	});
 

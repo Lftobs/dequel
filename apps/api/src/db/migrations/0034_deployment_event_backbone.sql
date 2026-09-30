@@ -4,7 +4,8 @@ ALTER TABLE deployment_events ADD COLUMN attempts integer NOT NULL DEFAULT 0;
 UPDATE deployment_events SET sent_at = now() WHERE type = 'failed';
 
 DELETE FROM deployment_events a USING deployment_events b
-  WHERE a.deployment_id = b.deployment_id AND a.type = b.type AND a.ctid < b.ctid;
+  WHERE a.deployment_id = b.deployment_id AND a.type = b.type AND a.ctid < b.ctid
+  AND a.type IN ('failed','cancelled');
 
 CREATE UNIQUE INDEX udep_events_failed ON deployment_events (deployment_id) WHERE type = 'failed';
 CREATE UNIQUE INDEX udep_events_cancelled ON deployment_events (deployment_id) WHERE type = 'cancelled';

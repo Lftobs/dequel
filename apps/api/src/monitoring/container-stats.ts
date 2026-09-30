@@ -8,6 +8,7 @@ const AGENT_OFFLINE_MS = 90_000;
 export interface ContainerStats {
 	cpuPercent: number;
 	memoryMb: number;
+	memoryPercent: number | null;
 }
 
 const parseMemToMb = (mem: string): number => {
@@ -32,9 +33,11 @@ const parseMemToMb = (mem: string): number => {
 const parseStatsJson = (statsJson: string): ContainerStats | null => {
 	try {
 		const stats = JSON.parse(statsJson);
+		const memoryPercent = parseFloat(String(stats.MemPerc ?? "").replace("%", ""));
 		return {
 			cpuPercent: parseFloat(stats.CPUPerc?.replace("%", "") ?? "0"),
 			memoryMb: parseMemToMb(stats.MemUsage?.split("/")[0]?.trim() ?? "0B"),
+			memoryPercent: Number.isFinite(memoryPercent) ? memoryPercent : null,
 		};
 	} catch {
 		return null;
@@ -57,7 +60,7 @@ export const getDeploymentContainerStats = async (deployment: Deployment): Promi
 		const { agentStatsCache } = await import("../agents/stats-cache");
 		const containers = await agentStatsCache.get(server!.id);
 		const stat = containers.get(deployment.containerName ?? "");
-		return stat ? { cpuPercent: stat.cpuPercent, memoryMb: stat.memoryMb } : null;
+		return stat ? { cpuPercent: stat.cpuPercent, memoryMb: stat.memoryMb, memoryPercent: null } : null;
 	}
 	try {
 		const statsJson = await run(

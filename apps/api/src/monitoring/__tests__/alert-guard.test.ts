@@ -57,14 +57,21 @@ describe("scalingGuard", () => {
 		});
 	});
 
-	it("suppresses when autoscaling is on and replicas are below the ceiling", () => {
+	it("suppresses cpu when autoscaling is on and replicas are below the ceiling", () => {
 		expect(scalingGuard("cpu", { policy: enabled(5), cpuLimit: 1, currentReplicas: 1 })).toEqual({
 			suppress: true,
 			suggestion: null,
 		});
+	});
+
+	it("never suppresses memory alerts", () => {
 		expect(scalingGuard("memory", { policy: enabled(5), cpuLimit: 1, currentReplicas: 4 })).toEqual({
-			suppress: true,
+			suppress: false,
 			suggestion: null,
+		});
+		expect(scalingGuard("memory", { policy: enabled(3), cpuLimit: 1, currentReplicas: 3 })).toEqual({
+			suppress: false,
+			suggestion: { kind: "increase_max_replicas", current: 3, maxReplicas: 3 },
 		});
 	});
 });

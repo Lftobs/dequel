@@ -73,4 +73,15 @@ describe("matchesCron", () => {
 		expect(matchesCron("* * *", at(0))).toBe(false);
 		expect(matchesCron("* * * * * *", at(0))).toBe(false);
 	});
+
+	test("malformed tokens are rejected outright", () => {
+		expect(matchesCron("*/5oops * * * *", at(0))).toBe(false);
+		expect(matchesCron("*/5oops * * * *", at(5))).toBe(false);
+		expect(matchesCron("5/15/2 * * * *", at(5))).toBe(false);
+		expect(matchesCron("5/15/2 * * * *", at(20))).toBe(false);
+		expect(matchesCron("10-20-30 * * * *", at(15))).toBe(false);
+		expect(matchesCron("1x * * * *", at(1))).toBe(false);
+		expect(matchesCron("a * * * *", at(0))).toBe(false);
+		expect(matchesCron("1,*/3x * * * *", at(3))).toBe(false);
+	});
 });

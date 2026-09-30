@@ -2,17 +2,15 @@ import type { AlertDetails } from "./templates";
 
 const formatValue = (alertType: string, value: number): string => {
 	if (alertType === "downtime") return "Service down";
-	if (alertType === "memory") return `${value.toFixed(0)} MB`;
 	return `${value.toFixed(1)}%`;
 };
 
 const formatThreshold = (alertType: string, threshold: number | null): string => {
 	if (alertType === "downtime" || threshold === null) return "N/A";
-	return alertType === "memory" ? String(threshold) : `${threshold}%`;
+	return `${threshold}%`;
 };
 
-const formatContainer = (alertType: string, c: { name: string; value: number }): string =>
-	`\`${c.name}\` ${alertType === "memory" ? `${c.value.toFixed(0)} MB` : `${c.value.toFixed(1)}%`}`;
+const formatContainer = (c: { name: string; value: number }): string => `\`${c.name}\` ${c.value.toFixed(1)}%`;
 
 type SlackBlock =
 	| { type: "header"; text: { type: string; text: string } }
@@ -47,7 +45,7 @@ export const buildSlackMessage = (
 			type: "section",
 			text: {
 				type: "mrkdwn",
-				text: containers.map((c) => `• ${formatContainer(alertType, c)}`).join("\n"),
+				text: containers.map((c) => `• ${formatContainer(c)}`).join("\n"),
 			},
 		});
 	}

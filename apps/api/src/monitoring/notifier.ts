@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { getSmtpSettings } from "../db/repo/settings";
 import type { FailureNotificationContext, MailDelivery } from "../types";
 import { appBaseUrl } from "../utils/routes";
+import { validateDestination } from "../utils/destination";
 import { buildSlackMessage } from "./slack-message";
 import { type AlertDetails, buildDeploymentFailureEmail, buildEmail } from "./templates";
 
@@ -37,7 +38,7 @@ let transporter: nodemailer.Transporter | null = null;
 let transporterKey = "";
 
 const getTransporter = async (smtp: SmtpConfig) => {
-	const key = `${smtp.host}:${smtp.port}:${smtp.user}`;
+	const key = `${smtp.host}:${smtp.port}:${smtp.user}:${smtp.pass}`;
 	if (transporter && transporterKey === key) return transporter;
 	transporter = nodemailer.createTransport({
 		host: smtp.host,
@@ -88,6 +89,7 @@ const sendSlack = async (
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(payload),
+		redirect: "manual",
 		signal: AbortSignal.timeout(10_000),
 	});
 	if (!res.ok) throw new Error(`Slack webhook returned ${res.status}`);
@@ -112,6 +114,7 @@ const sendWebhook = async (
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(payload),
+		redirect: "manual",
 		signal: AbortSignal.timeout(10_000),
 	});
 	if (!res.ok) throw new Error(`Webhook returned ${res.status}`);
@@ -129,6 +132,10 @@ export const sendNotification = async (opts: NotifyOpts): Promise<MailDelivery> 
 		return { status: "skipped", reason: "no_recipient" };
 	}
 	try {
+		if (channel === "slack" || channel === "webhook") {
+			const destinationError = await validateDestination(destination);
+			if (destinationError) throw new Error(destinationError);
+		}
 		if (channel === "email") {
 			await sendEmail(destination, projectName, alertType, threshold, currentValue, details);
 		} else if (channel === "slack") {

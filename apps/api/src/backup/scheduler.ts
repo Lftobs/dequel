@@ -71,9 +71,24 @@ function toStorageConfig(settings: {
 	return { type: "local", path: settings.path || "/data/backups" };
 }
 
+const CRON_TOKEN = /^(\*|\d+)(?:-(\d+))?(?:\/(\d+))?$/;
+
+const isValidToken = (token: string): boolean => {
+	const match = CRON_TOKEN.exec(token);
+	if (!match) return false;
+	const [, start, end, step] = match;
+	if (start === "*" && end !== undefined) return false;
+	if (end !== undefined && Number(end) < Number(start)) return false;
+	if (step !== undefined && Number(step) < 1) return false;
+	return true;
+};
+
+const isValidField = (expr: string): boolean => expr.length > 0 && expr.split(",").every(isValidToken);
+
 export function matchesCron(cron: string, date: Date): boolean {
 	const parts = cron.trim().split(/\s+/);
 	if (parts.length !== 5) return false;
+	if (!parts.every(isValidField)) return false;
 
 	const [minExpr, hourExpr, dayExpr, monthExpr, dowExpr] = parts;
 

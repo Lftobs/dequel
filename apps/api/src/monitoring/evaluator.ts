@@ -8,11 +8,17 @@ import type { Deployment } from "../types";
 import { config } from "../utils/config";
 import { appBaseUrl } from "../utils/routes";
 import { scalingGuard } from "./alert-guard";
-import { getDeploymentContainerStats } from "./container-stats";
+import { type ContainerStats, getDeploymentContainerStats } from "./container-stats";
 import { type Observation } from "./incident-policy";
 import { createIncidentTracker, createRedisIncidentStore } from "./incident-tracker";
 import { sendNotification } from "./notifier";
 import type { AlertDetails } from "./templates";
+
+const memoryPercentOf = (stats: ContainerStats, limitMb: number | null): number | null => {
+	if (stats.memoryPercent !== null) return stats.memoryPercent;
+	if (limitMb && limitMb > 0) return (stats.memoryMb / limitMb) * 100;
+	return null;
+};
 
 class AlertEvaluator {
 	private redis: Redis;
@@ -78,11 +84,18 @@ class AlertEvaluator {
 
 	private async evaluate(
 		alert: any,
-		project: { id: string; name: string; liveUrl?: string | null; cpuLimit?: number | null },
+		project: {
+			id: string;
+			name: string;
+			liveUrl?: string | null;
+			cpuLimit?: number | null;
+			memoryLimitMb?: number | null;
+		},
 		deployments: Deployment[],
 	) {
 		const threshold = alert.threshold ?? (alert.type === "memory" ? 85 : 70);
-		let { observation, currentValue } = await this.probe(alert.type, deployments, threshold);
+		const memoryLimitMb = project.memoryLimitMb ?? null;
+		let { observation, currentValue } = await this.probe(alert.type, deployments, threshold, memoryLimitMb);
 		let scaling: AlertDetails["scaling"];
 
 		if (observation.kind === "breach") {
@@ -101,7 +114,7 @@ class AlertEvaluator {
 			alertId: alert.id,
 			observation,
 			send: async () => {
-				const details = await this.buildDetails(alert.type, deployments);
+				const details = await this.buildDetails(alert.type, deployments, memoryLimitMb);
 				return sendNotification({
 					channel: alert.channel,
 					destination: alert.destination,
@@ -134,6 +147,7 @@ class AlertEvaluator {
 		alertType: string,
 		deployments: Deployment[],
 		threshold: number,
+		memoryLimitMb: number | null,
 	): Promise<{ observation: Observation; currentValue: number }> {
 		if (alertType === "downtime") {
 			if (!deployments.length) return { observation: { kind: "no_data" }, currentValue: 0 };
@@ -153,10 +167,16 @@ class AlertEvaluator {
 		for (const dep of deployments) {
 			if (dep.status !== "running" || !dep.containerName) continue;
 			const stats = await getDeploymentContainerStats(dep);
-			if (stats) {
-				total += alertType === "cpu" ? stats.cpuPercent : stats.memoryMb;
+			if (!stats) continue;
+			if (alertType === "cpu") {
+				total += stats.cpuPercent;
 				count++;
+				continue;
 			}
+			const percent = memoryPercentOf(stats, memoryLimitMb);
+			if (percent === null) continue;
+			total += percent;
+			count++;
 		}
 		if (count === 0) return { observation: { kind: "no_data" }, currentValue: 0 };
 
@@ -167,7 +187,11 @@ class AlertEvaluator {
 		};
 	}
 
-	private async buildDetails(alertType: string, deployments: Deployment[]): Promise<AlertDetails> {
+	private async buildDetails(
+		alertType: string,
+		deployments: Deployment[],
+		memoryLimitMb: number | null,
+	): Promise<AlertDetails> {
 		const details: AlertDetails = {};
 
 		if (alertType === "cpu" || alertType === "memory") {
@@ -175,12 +199,10 @@ class AlertEvaluator {
 			for (const dep of deployments) {
 				if (dep.status !== "running" || !dep.containerName) continue;
 				const stats = await getDeploymentContainerStats(dep);
-				if (stats) {
-					containers.push({
-						name: dep.containerName,
-						value: alertType === "cpu" ? stats.cpuPercent : stats.memoryMb,
-					});
-				}
+				if (!stats) continue;
+				const value = alertType === "cpu" ? stats.cpuPercent : memoryPercentOf(stats, memoryLimitMb);
+				if (value === null) continue;
+				containers.push({ name: dep.containerName, value });
 			}
 			details.containers = containers;
 		}

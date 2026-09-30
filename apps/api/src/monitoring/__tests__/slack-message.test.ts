@@ -13,11 +13,19 @@ describe("buildSlackMessage", () => {
 		expect(fields).toContain("*Current:* 51.6%");
 	});
 
-	test("memory alert shows MB for current value", () => {
-		const { blocks } = buildSlackMessage("memory", "tabi", 85, 524.4);
+	test("memory alert shows percentages for current value and threshold", () => {
+		const { blocks } = buildSlackMessage("memory", "tabi", 85, 91.5);
 		const fields = findBlock(blocks, "section").fields.map((f: any) => f.text);
-		expect(fields).toContain("*Current:* 524 MB");
-		expect(fields).toContain("*Threshold:* 85");
+		expect(fields).toContain("*Current:* 91.5%");
+		expect(fields).toContain("*Threshold:* 85%");
+	});
+
+	test("memory containers render as percentages", () => {
+		const { blocks } = buildSlackMessage("memory", "tabi", 85, 91.5, {
+			containers: [{ name: "tabi-abc", value: 91.5 }],
+		});
+		const section = blocks.find((b: any) => b.type === "section" && b.text?.text?.includes("tabi-abc"));
+		expect(section.text.text).toContain("`tabi-abc` 91.5%");
 	});
 
 	test("downtime alert shows service down", () => {

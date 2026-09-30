@@ -358,8 +358,9 @@ export const sshExecutor: DeploymentExecutor = {
 		} catch (error) {
 			const message = summarizeDeploymentError(error);
 			await emitLog(deployment.id, "system", `Rollback failed: ${message}`);
-			const { recordDeploymentFailure } = await getRepo();
-			await recordDeploymentFailure({ deploymentId: deployment.id, reason: message, source: "rollback" });
+			const { recordDeploymentFailure, updateDeploymentStatus } = await getRepo();
+			const r = await recordDeploymentFailure({ deploymentId: deployment.id, reason: message, source: "rollback" });
+			if (!r.claimed) await updateDeploymentStatus(deployment.id, "failed", { failureReason: message });
 			throw error;
 		}
 	},

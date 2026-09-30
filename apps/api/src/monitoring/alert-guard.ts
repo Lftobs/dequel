@@ -26,5 +26,6 @@ export const scalingGuard = (alertType: string, ctx: ScalingContext): ScalingGua
 			suggestion: { kind: "increase_max_replicas", current, maxReplicas: ctx.policy.maxReplicas },
 		};
 	}
+	if (alertType === "memory") return { suppress: false, suggestion: null };
 	return { suppress: true, suggestion: null };
 };

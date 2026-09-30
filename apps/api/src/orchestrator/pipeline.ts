@@ -601,7 +601,12 @@ export class PipelineOrchestrator {
 			const message = summarizeDeploymentError(error);
 			console.error(`[Orchestrator] Rollback of ${targetDeploymentId} failed:`, error);
 			await emitLog(targetDeploymentId, "system", `Rollback failed: ${message}`);
-			await recordDeploymentFailure({ deploymentId: targetDeploymentId, reason: message, source: "rollback" });
+			const r = await recordDeploymentFailure({
+				deploymentId: targetDeploymentId,
+				reason: message,
+				source: "rollback",
+			});
+			if (!r.claimed) await updateDeploymentStatus(targetDeploymentId, "failed", { failureReason: message });
 			throw error;
 		}
 	}

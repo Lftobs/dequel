@@ -32,6 +32,12 @@ export const getProjectStatus = async (projectId: string, windowSeconds: number)
 		}
 	}
 
+	const latestRunningAt = running.reduce<number | null>((max, d) => {
+		const t = new Date(d.createdAt).getTime();
+		return max === null || t > max ? t : max;
+	}, null);
+	const createdAtById = new Map(deployments.map((d) => [d.id, new Date(d.createdAt).getTime()]));
+
 	const failures: StatusFailure[] = events
 		.filter((e) => e.type === "failed")
 		.map((e) => ({
@@ -40,7 +46,9 @@ export const getProjectStatus = async (projectId: string, windowSeconds: number)
 			commitSha: e.commitSha,
 			sourceRef: e.sourceRef,
 			finishedAt: e.finishedAt,
-			recovered: e.deploymentStatus !== "failed",
+			recovered:
+				latestRunningAt !== null &&
+				latestRunningAt > (createdAtById.get(e.deploymentId) ?? new Date(e.createdAt).getTime()),
 			notifiedAt: e.sentAt,
 		}));
 

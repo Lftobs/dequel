@@ -86,7 +86,7 @@ export const apiRoutes = new Elysia({
 			}).catch(() => {});
 		}
 
-		if (INTERNAL_ERROR.test(message)) {
+		if (set.status >= 500 || INTERNAL_ERROR.test(message)) {
 			console.error("[API] Unhandled error:", error);
 			return fail("Internal server error");
 		}
