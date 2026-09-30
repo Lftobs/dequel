@@ -15,11 +15,11 @@ const firstSend = (now: number): Incident => {
 };
 
 describe("backoffMs", () => {
-	it("quadruples per send and clamps at the cap", () => {
+	it("grows tenfold per send and clamps at the cap", () => {
 		expect(backoffMs(1, P)).toBe(5 * MIN);
-		expect(backoffMs(2, P)).toBe(20 * MIN);
-		expect(backoffMs(3, P)).toBe(80 * MIN);
-		expect(backoffMs(4, P)).toBe(320 * MIN);
+		expect(backoffMs(2, P)).toBe(50 * MIN);
+		expect(backoffMs(3, P)).toBe(500 * MIN);
+		expect(backoffMs(4, P)).toBe(P.capMs);
 		expect(backoffMs(5, P)).toBe(P.capMs);
 		expect(backoffMs(99, P)).toBe(P.capMs);
 	});
@@ -44,16 +44,16 @@ describe("decide — breach", () => {
 		expect(breach(state, 4 * MIN + 59_000).kind).toBe("noop");
 	});
 
-	it("sends the next rung once due, quadrupling the gap", () => {
+	it("sends the next rung once due, stretching the gap tenfold", () => {
 		const state = firstSend(0);
 		const d = breach(state, 5 * MIN);
 		expect(d.kind).toBe("send");
 		if (d.kind !== "send") return;
 		expect(d.next.sends).toBe(2);
-		expect(d.next.nextDueAt).toBe(5 * MIN + 20 * MIN);
+		expect(d.next.nextDueAt).toBe(5 * MIN + 50 * MIN);
 	});
 
-	it("sends exactly 5 emails over an 8h sustained breach", () => {
+	it("sends exactly 3 emails over an 8h sustained breach", () => {
 		let state: Incident | null = null;
 		let sends = 0;
 		for (let minute = 0; minute <= 8 * 60; minute++) {
@@ -65,7 +65,7 @@ describe("decide — breach", () => {
 				state = d.next;
 			}
 		}
-		expect(sends).toBe(5);
+		expect(sends).toBe(3);
 	});
 });
 

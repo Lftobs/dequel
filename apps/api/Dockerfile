@@ -1,6 +1,9 @@
 FROM oven/bun:1
 
 ARG BUILD_TIME=0
+ARG DEQUEL_POSTHOG_KEY=""
+
+ENV DEQUEL_POSTHOG_KEY=$DEQUEL_POSTHOG_KEY
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \

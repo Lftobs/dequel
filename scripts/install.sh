@@ -207,6 +207,27 @@ install_cli() {
 	fi
 }
 
+send_install_telemetry() {
+	[ "${DEQUEL_TELEMETRY_DISABLED:-0}" = "1" ] && return 0
+	local os arch posthog_key
+	os=$(uname -s 2>/dev/null || echo "unknown")
+	arch=$(uname -m 2>/dev/null || echo "unknown")
+	posthog_key="${DEQUEL_POSTHOG_KEY:-phc_dequel_telemetry_public_key}"
+
+	curl -fsSL -X POST "https://us.i.posthog.com/capture/" \
+		-H "Content-Type: application/json" \
+		-d '{
+			"api_key": "'"$posthog_key"'",
+			"event": "installation_completed",
+			"distinct_id": "'"$os-$arch-$(date +%s)"'",
+			"properties": {
+				"os": "'"$os"'",
+				"arch": "'"$arch"'",
+				"version": "'"${TAG:-latest}"'"
+			}
+		}' >/dev/null 2>&1 || true
+}
+
 print_summary() {
 	echo ""
 	echo ""
@@ -237,7 +258,9 @@ main() {
 	prompt_config
 	pull_images
 	install_cli
+	send_install_telemetry
 	print_summary
 }
 
 main
+

@@ -21,7 +21,7 @@ export type Decision = { kind: "noop" } | { kind: "commit"; next: Incident | nul
 
 export const DEFAULT_POLICY: IncidentPolicy = {
 	baseMs: 300_000,
-	factor: 4,
+	factor: 10,
 	capMs: 43_200_000,
 	recoveryGraceMs: 300_000,
 };

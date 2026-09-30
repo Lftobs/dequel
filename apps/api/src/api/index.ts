@@ -68,13 +68,24 @@ const authMiddleware = (app: Elysia) =>
 const INTERNAL_ERROR =
 	/Failed query:|params:|getaddrinfo|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|EHOSTUNREACH|timeout exceeded|node:internal|Cannot read propert|is not a function|is not a constructor|Unexpected token/i;
 
+import { captureTelemetry } from "../utils/telemetry";
+
 export const apiRoutes = new Elysia({
 	prefix: "/api",
 })
-	.onError(({ error, set }) => {
-		const err = error as { status?: number; message?: string };
+	.onError(({ error, set, path }) => {
+		const err = error as { status?: number; message?: string; name?: string };
 		set.status = typeof err?.status === "number" ? err.status : 500;
 		const message = err?.message ?? "Internal server error";
+
+		if (set.status >= 500) {
+			captureTelemetry("server_error", {
+				path,
+				status: set.status,
+				error_name: err?.name || "UnhandledServerError",
+			}).catch(() => {});
+		}
+
 		if (INTERNAL_ERROR.test(message)) {
 			console.error("[API] Unhandled error:", error);
 			return fail("Internal server error");

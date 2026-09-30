@@ -16,6 +16,7 @@ import { dockerBin } from "../../utils/docker-bin";
 import { removeFromCaddyRoute } from "../../utils/domain-verifier";
 import { buildProjectRequestHostRegex, caddyRequestLogSelector } from "../../utils/loki";
 import { isPort, isPrivateGitUrl, SERVICE_NAME_RE, validateComposeServices } from "../../utils/validate";
+import { captureTelemetry } from "../../utils/telemetry";
 import { created, fail, ok } from "../response";
 
 const validateComposeFields = (body: any): string | null => {
@@ -108,6 +109,12 @@ export const projectsRoutes = new Elysia()
 			outputDir: body.outputDir || undefined,
 			startCommand: body.startCommand || undefined,
 		});
+
+		captureTelemetry("project_created", {
+			build_type: project.buildType,
+			project_type: project.projectType,
+			source_type: project.sourceType,
+		}).catch(() => {});
 		return created(project);
 	})
 	.patch("/projects/:id", async ({ params: { id }, body, set }: any) => {

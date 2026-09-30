@@ -93,6 +93,8 @@ const STAMP_FINISHED_UNCONDITIONALLY: DeploymentStatus[] = ["running", "failed"]
 
 type Tx = Parameters<Parameters<Awaited<ReturnType<typeof getDb>>["transaction"]>[0]>[0];
 
+import { captureTelemetry } from "../../utils/telemetry";
+
 export const applyStatusUpdate = async (
 	tx: Tx | Awaited<ReturnType<typeof getDb>>,
 	id: string,
@@ -118,6 +120,13 @@ export const applyStatusUpdate = async (
 		}
 	}
 	await tx.update(deployments).set(updates).where(eq(deployments.id, id)).execute();
+
+	if (status === "running" || status === "failed") {
+		captureTelemetry("deployment_executed", {
+			status,
+			has_failure_reason: Boolean(patch.failureReason),
+		}).catch(() => {});
+	}
 };
 
 export const updateDeploymentStatus = async (
