@@ -46,14 +46,18 @@ services:
             RAILPACK_VERBOSE: "1"
             RAILPACK_BUILD_TIMEOUT_MS: "1200000"
             GRAFANA_URL: http://grafana:3000/grafana
+            POSTGRES_CONTAINER: ${POSTGRES_CONTAINER:-dequel-postgres-1}
         volumes:
             - ./workspace:/app/workspace
             - ./infra/caddy/routes:/caddy/routes
             - /var/run/docker.sock:/var/run/docker.sock
             - railpack-cache:/tmp/railpack
             - api-data:/app/data
+            - backup-data:/data/backups
             - /etc/passwd:/etc/passwd:ro
             - /etc/group:/etc/group:ro
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
         depends_on:
             buildkit:
                 condition: service_started
@@ -76,6 +80,18 @@ services:
             dequel:
                 aliases:
                     - api
+
+    diagnose-sandbox:
+        build:
+            context: ./apps/api
+            dockerfile: Dockerfile.sandbox
+        container_name: dequel-diag-sandbox
+        restart: unless-stopped
+        command: ["sleep", "infinity"]
+        volumes:
+            - diag-sandbox-data:/srv
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
 
     pam-auth:
         image: python:3-slim
@@ -345,6 +361,7 @@ networks:
 
 volumes:
     buildkit-data:
+    diag-sandbox-data:
     redis-data:
     postgres-data:
     api-data:
@@ -353,3 +370,4 @@ volumes:
     grafana-data:
     railpack-cache:
     promtail-data:
+    backup-data:
