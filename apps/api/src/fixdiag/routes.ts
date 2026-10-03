@@ -5,6 +5,7 @@ import { created, fail, ok } from "../api/response";
 import { approveFixPr, approveSlackPost } from "./actions";
 import { DiagRunMachine } from "./machine";
 import { diagBus } from "./stream";
+import type { StageEvent } from "./types";
 
 export const fixdiagRoutes = new Elysia()
 	.post("/deployments/:id/diagnose", async ({ params: { id }, body, set }: any) => {
@@ -63,7 +64,7 @@ export const fixdiagRoutes = new Elysia()
 			return fail("Diagnosis not found");
 		}
 		const encoder = new TextEncoder();
-		let unsubscribe = () => undefined;
+		let unsubscribe: () => void = () => {};
 		let heartbeat: ReturnType<typeof setInterval> | null = null;
 		let closed = false;
 		const stop = () => {
@@ -79,23 +80,8 @@ export const fixdiagRoutes = new Elysia()
 					if (closed) return;
 					controller.enqueue(encoder.encode(`event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`));
 				};
-				send("ready", { runId });
-				for (const stage of await listStageResults(runId)) {
-					send("stage", { runId, stage: stage.stage, payload: stage.payload });
-				}
-				if (run.status === "done") {
-					send("done", { runId });
-					stop();
-					controller.close();
-					return;
-				}
-				if (run.status === "error") {
-					send("error", { runId, message: run.error });
-					stop();
-					controller.close();
-					return;
-				}
-				unsubscribe = diagBus.subscribe(runId, (event) => {
+				const handle = (event: StageEvent) => {
+					if (closed) return;
 					if (event.type === "stage") send("stage", event);
 					else if (event.type === "done") {
 						send("done", event);
@@ -106,7 +92,35 @@ export const fixdiagRoutes = new Elysia()
 						stop();
 						controller.close();
 					}
+				};
+				send("ready", { runId });
+				const buffered: StageEvent[] = [];
+				let replaying = true;
+				unsubscribe = diagBus.subscribe(runId, (event) => {
+					if (event.type === "token") return;
+					if (replaying) buffered.push(event);
+					else handle(event);
 				});
+				for (const stage of await listStageResults(runId)) {
+					send("stage", { runId, stage: stage.stage, payload: stage.payload });
+				}
+				replaying = false;
+				for (const event of buffered) handle(event);
+				if (closed) return;
+				const latest = (await getDiagRun(runId)) ?? run;
+				if (closed) return;
+				if (latest.status === "done") {
+					send("done", { runId });
+					stop();
+					controller.close();
+					return;
+				}
+				if (latest.status === "error") {
+					send("error", { runId, message: latest.error });
+					stop();
+					controller.close();
+					return;
+				}
 				heartbeat = setInterval(() => send("heartbeat", { at: new Date().toISOString() }), 15000);
 			},
 			cancel: stop,

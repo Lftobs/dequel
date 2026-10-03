@@ -13,7 +13,7 @@ export const getGithubSession = async (id: string): Promise<string | null> => {
 
 export const getGithubTokenFromCookie = async (cookie: string | null): Promise<string | null> => {
 	if (!cookie) return null;
-	const match = cookie.match(/github_session=([^;]+)/);
+	const match = cookie.match(/(?:^|;\s*)github_session=([^;]+)/);
 	if (!match) return null;
 	return getGithubSession(match[1]);
 };

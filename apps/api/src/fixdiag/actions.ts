@@ -25,12 +25,29 @@ export type ActionResult = { ok: true; data: unknown } | { ok: false; status: nu
 
 const short = (s: string, n = 500): string => (s.length > n ? `${s.slice(0, n)}…` : s);
 
-const git = (args: string[], cwd: string, token: string) =>
-	execFileAsync("git", ["-c", `http.extraHeader=Authorization: Bearer ${token}`, ...args], {
-		timeout: 120_000,
-		cwd,
-		maxBuffer: 4 * 1024 * 1024,
-	});
+const git = async (args: string[], cwd: string, token: string) => {
+	const auth = Buffer.from(`x-access-token:${token}`).toString("base64");
+	try {
+		return await execFileAsync("git", args, {
+			timeout: 120_000,
+			cwd,
+			maxBuffer: 4 * 1024 * 1024,
+			env: {
+				...process.env,
+				GIT_TERMINAL_PROMPT: "0",
+				GIT_CONFIG_COUNT: "1",
+				GIT_CONFIG_KEY_0: "http.https://github.com/.extraHeader",
+				GIT_CONFIG_VALUE_0: `Authorization: Basic ${auth}`,
+			},
+		});
+	} catch (err) {
+		const stderr = String((err as { stderr?: unknown }).stderr ?? "")
+			.split(token)
+			.join("***")
+			.trim();
+		throw new Error(`git ${args.join(" ")} failed: ${short(stderr || "command failed")}`);
+	}
+};
 
 const githubFetch = async (token: string, path: string, init?: RequestInit) => {
 	const res = await fetch(`https://api.github.com${path}`, {
@@ -109,16 +126,22 @@ export const approveFixPr = async (
 		await ensureSandbox();
 		const version = await readLocalVersion();
 		const { rev, stale } = await syncDequelSource(version);
-		const project = await syncProjectSource({
-			deploymentId: dep.id,
-			projectId: dep.projectId,
-			sourceType: dep.sourceType,
-			sourceRef: dep.sourceRef,
-			branch: dep.branch,
-			commitSha: dep.commitSha ?? "",
-			failureReason: dep.failureReason,
-		});
-		if (!project.available) return fail(422, "Project source could not be pulled into the sandbox");
+		const project = await syncProjectSource(
+			{
+				deploymentId: dep.id,
+				projectId: dep.projectId,
+				sourceType: dep.sourceType,
+				sourceRef: dep.sourceRef,
+				branch: dep.branch,
+				commitSha: dep.commitSha ?? "",
+				failureReason: dep.failureReason,
+			},
+			runId,
+		);
+		if (!project.available) {
+			await clearProjectSource(runId);
+			return fail(422, "Project source could not be pulled into the sandbox");
+		}
 		try {
 			const investigation = (await getStagePayload(runId, "investigate")) as {
 				culpritPaths?: unknown;
@@ -150,7 +173,7 @@ export const approveFixPr = async (
 			});
 			patch = result.patch;
 		} finally {
-			await clearProjectSource();
+			await clearProjectSource(runId);
 		}
 	} catch (err) {
 		return fail(502, `Agent fix failed: ${short(err instanceof Error ? err.message : String(err))}`);

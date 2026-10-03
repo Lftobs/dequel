@@ -45,19 +45,35 @@ const docker = async (args: string[], timeoutMs = 60_000): Promise<string> => {
 	}
 };
 
+const OWN_DIRS = "/srv/jobs /srv/dequel-src /srv/project-src";
+
+const normalizeOwnership = async (): Promise<void> => {
+	await docker(
+		[
+			"exec",
+			"-u",
+			"0",
+			SANDBOX_CONTAINER,
+			"sh",
+			"-c",
+			`u=$(id -u bun); for d in ${OWN_DIRS}; do [ "$(stat -c %u "$d" 2>/dev/null)" = "$u" ] || chown -R bun:bun "$d"; done`,
+		],
+		120_000,
+	).catch(() => {});
+};
+
 export const ensureSandbox = async (): Promise<void> => {
 	const running = await docker(["inspect", "-f", "{{.State.Running}}", SANDBOX_CONTAINER], 15_000)
 		.then((out) => out.trim() === "true")
 		.catch(() => false);
-	if (running) return;
-	const exists = await docker(["inspect", "-f", "{{.Id}}", SANDBOX_CONTAINER], 15_000)
-		.then((out) => out.trim().length > 0)
-		.catch(() => false);
-	if (exists) {
+	if (!running) {
+		const exists = await docker(["inspect", "-f", "{{.Id}}", SANDBOX_CONTAINER], 15_000)
+			.then((out) => out.trim().length > 0)
+			.catch(() => false);
+		if (!exists) throw new Error("Diagnosis sandbox is not running (start the diagnose-sandbox service)");
 		await docker(["start", SANDBOX_CONTAINER], 60_000);
-		return;
 	}
-	throw new Error("Diagnosis sandbox is not running (start the diagnose-sandbox service)");
+	await normalizeOwnership();
 };
 
 export const syncDequelSource = async (version: string): Promise<{ rev: string; stale: boolean }> => {
@@ -110,61 +126,64 @@ export const syncDequelSource = async (version: string): Promise<{ rev: string; 
 	return { rev, stale: !fetched };
 };
 
-export const syncProjectSource = async (facts: DeploymentFacts): Promise<{ available: boolean }> => {
-	await docker(["exec", SANDBOX_CONTAINER, "sh", "-c", "rm -rf /srv/project-src && mkdir -p /srv/project-src"], 30_000);
+const PROJECT_SRC_PARENT = "/srv/project-src";
+
+const sanitizeRunId = (runId: string): string => runId.replace(/[^A-Za-z0-9_-]/g, "") || "run";
+
+export const projectSrcDir = (runId: string): string => `${PROJECT_SRC_PARENT}/${sanitizeRunId(runId)}`;
+
+export const syncProjectSource = async (
+	facts: DeploymentFacts,
+	runId: string,
+): Promise<{ available: boolean; srcDir: string }> => {
+	const srcDir = projectSrcDir(runId);
+	await docker(
+		[
+			"exec",
+			"-u",
+			"0",
+			SANDBOX_CONTAINER,
+			"sh",
+			"-c",
+			`rm -rf '${srcDir}' && mkdir -p '${srcDir}' && chown bun:bun '${srcDir}'`,
+		],
+		30_000,
+	);
 	if (facts.sourceType === "git") {
 		const base = facts.branch ? ["--branch", facts.branch] : [];
 		const cloned = await docker(
-			["exec", SANDBOX_CONTAINER, "git", "clone", "--depth", "1", ...base, facts.sourceRef, "/srv/project-src"],
+			["exec", SANDBOX_CONTAINER, "git", "clone", "--depth", "1", ...base, facts.sourceRef, srcDir],
 			180_000,
 		)
 			.then(() => true)
 			.catch(() => false);
-		if (!cloned) return { available: false };
+		if (!cloned) return { available: false, srcDir };
 		if (facts.commitSha) {
 			await docker(
-				[
-					"exec",
-					SANDBOX_CONTAINER,
-					"git",
-					"-C",
-					"/srv/project-src",
-					"fetch",
-					"--depth",
-					"1",
-					"origin",
-					facts.commitSha,
-				],
+				["exec", SANDBOX_CONTAINER, "git", "-C", srcDir, "fetch", "--depth", "1", "origin", facts.commitSha],
 				120_000,
 			).catch(() => "");
-			await docker(
-				["exec", SANDBOX_CONTAINER, "git", "-C", "/srv/project-src", "checkout", "-q", facts.commitSha],
-				30_000,
-			).catch(() => "");
+			await docker(["exec", SANDBOX_CONTAINER, "git", "-C", srcDir, "checkout", "-q", facts.commitSha], 30_000).catch(
+				() => "",
+			);
 		}
-		return { available: true };
+		return { available: true, srcDir };
 	}
 	if (facts.sourceType === "upload") {
 		const dir = join(config.workspaceRoot, facts.deploymentId);
-		const tmp = await mkdtemp(join(tmpdir(), "dequel-diag-cp-")).catch(() => null);
-		if (!tmp) return { available: false };
 		try {
-			await docker(["cp", `${dir}/.`, `${SANDBOX_CONTAINER}:/srv/project-src/`], 120_000);
-			return { available: true };
+			await docker(["cp", `${dir}/.`, `${SANDBOX_CONTAINER}:${srcDir}/`], 120_000);
+			await docker(["exec", "-u", "0", SANDBOX_CONTAINER, "chown", "-R", "bun:bun", srcDir], 60_000).catch(() => {});
+			return { available: true, srcDir };
 		} catch {
-			return { available: false };
-		} finally {
-			await rm(tmp, { recursive: true, force: true }).catch(() => {});
+			return { available: false, srcDir };
 		}
 	}
-	return { available: false };
+	return { available: false, srcDir };
 };
 
-export const clearProjectSource = async (): Promise<void> => {
-	await docker(
-		["exec", SANDBOX_CONTAINER, "sh", "-c", "rm -rf /srv/project-src && mkdir -p /srv/project-src"],
-		30_000,
-	).catch(() => {});
+export const clearProjectSource = async (runId: string): Promise<void> => {
+	await docker(["exec", "-u", "0", SANDBOX_CONTAINER, "rm", "-rf", projectSrcDir(runId)], 30_000).catch(() => {});
 };
 
 export const investigateInSandbox = async (input: {
@@ -192,7 +211,7 @@ export const investigateInSandbox = async (input: {
 		"Use listFiles to discover layout, readFile for targeted reads, searchText to trace error strings.",
 	].join(" ");
 	const raw = await runAgentJob({
-		jobDir: `/srv/jobs/${input.runId}`,
+		jobDir: `/srv/jobs/${sanitizeRunId(input.runId)}`,
 		input: {
 			mode: "investigate",
 			failureReason: input.failureReason,
@@ -203,6 +222,7 @@ export const investigateInSandbox = async (input: {
 			apiKey: key.apiKey,
 			baseUrl: key.baseUrl,
 			hasProjectSource: input.projectAvailable,
+			projectSrcDir: input.projectAvailable ? projectSrcDir(input.runId) : null,
 			dequelRev: input.dequelRev,
 			dequelStale: input.dequelStale,
 			deadlineMs: 9 * 60_000,
@@ -231,8 +251,9 @@ export const runFixAgent = async (input: {
 	const key = await getDecryptedLlmKey(input.provider);
 	if (!key) throw new Error(`LLM provider "${input.provider}" is not configured`);
 	await ensureSandbox();
+	const srcDir = projectSrcDir(input.runId);
 	const raw = (await runAgentJob({
-		jobDir: `/srv/jobs/fix-${input.runId}`,
+		jobDir: `/srv/jobs/fix-${sanitizeRunId(input.runId)}`,
 		input: {
 			mode: "fix",
 			fixBrief: input.fixBrief,
@@ -241,6 +262,7 @@ export const runFixAgent = async (input: {
 			apiKey: key.apiKey,
 			baseUrl: key.baseUrl,
 			hasProjectSource: true,
+			projectSrcDir: srcDir,
 			dequelRev: input.dequelRev,
 			dequelStale: input.dequelStale,
 			deadlineMs: 5.5 * 60_000,
@@ -252,7 +274,11 @@ export const runFixAgent = async (input: {
 	const changedFiles = Array.isArray(raw.changedFiles)
 		? raw.changedFiles.filter((v): v is string => typeof v === "string").slice(0, 32)
 		: [];
-	const patch = await docker(["exec", SANDBOX_CONTAINER, "git", "-C", "/srv/project-src", "diff", "--no-color"], 30_000)
+	await docker(["exec", SANDBOX_CONTAINER, "git", "-C", srcDir, "add", "-A"], 30_000).catch(() => "");
+	const patch = await docker(
+		["exec", SANDBOX_CONTAINER, "git", "-C", srcDir, "diff", "--cached", "--no-color", "--binary"],
+		30_000,
+	)
 		.then((out) => out)
 		.catch(() => "");
 	if (!patch.trim()) throw new Error("agent made no changes to the project source");

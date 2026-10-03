@@ -90,6 +90,11 @@ export interface TriageInput {
 	logText: string;
 }
 
+export interface ExplainInput {
+	verdict: TriageVerdict;
+	localization: Localization;
+}
+
 export interface ProposeInput {
 	localization: Localization;
 	explanation: Explanation;

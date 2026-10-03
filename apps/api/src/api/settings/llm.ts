@@ -76,8 +76,13 @@ export const llmSettingsRoutes = new Elysia({ prefix: "/settings" })
 		}
 		const apiKey =
 			typeof body?.apiKey === "string" && body.apiKey.length > 0 ? body.apiKey : provider === "ollama" ? "ollama" : "";
-		const effectiveApiKey = apiKey || existing?.apiKey || "";
 		const effectiveBaseUrl = body?.baseURL !== undefined ? body.baseURL : existing?.baseUrl;
+		const baseChanged = body?.baseURL !== undefined && body.baseURL !== existing?.baseUrl;
+		if (baseChanged && !apiKey && existing?.apiKey) {
+			set.status = 400;
+			return fail("apiKey is required when changing baseURL");
+		}
+		const effectiveApiKey = apiKey || existing?.apiKey || "";
 
 		let models: string[] | undefined = Array.isArray(body?.models) ? body.models.map(String) : undefined;
 		if (!models || models.length === 0) {

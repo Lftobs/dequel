@@ -15,6 +15,9 @@ COPY src/fixdiag/types.ts ./fixdiag/types.ts
 COPY src/fixdiag/llm.ts ./fixdiag/llm.ts
 RUN rm -rf ./fixdiag/sandbox-runner/__tests__
 
-RUN mkdir -p /srv/jobs /srv/dequel-src /srv/project-src
+RUN mkdir -p /srv/jobs /srv/dequel-src /srv/project-src \
+    && chown -R bun:bun /srv/jobs /srv/dequel-src /srv/project-src
+
+USER bun
 
 CMD ["sleep", "infinity"]

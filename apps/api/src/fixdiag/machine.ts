@@ -28,6 +28,7 @@ import type {
 } from "./types";
 import {
 	clearProjectSource,
+	ensureSandbox,
 	investigateInSandbox,
 	readLocalVersion,
 	syncDequelSource,
@@ -41,9 +42,10 @@ const STAGES: DiagStageName[] = ["triage", "investigate", "explain", "propose"];
 const activeDrives = new Set<string>();
 
 const defaultInvestigator: InvestigateFn = async ({ run, deployment, logText, verdict, onProgress }) => {
+	await ensureSandbox();
 	const version = await readLocalVersion();
 	const { rev, stale } = await syncDequelSource(version);
-	const project = await syncProjectSource(deployment);
+	const project = await syncProjectSource(deployment, run.id);
 	try {
 		return await investigateInSandbox({
 			runId: run.id,
@@ -59,7 +61,7 @@ const defaultInvestigator: InvestigateFn = async ({ run, deployment, logText, ve
 			onProgress,
 		});
 	} finally {
-		await clearProjectSource();
+		await clearProjectSource(run.id);
 	}
 };
 

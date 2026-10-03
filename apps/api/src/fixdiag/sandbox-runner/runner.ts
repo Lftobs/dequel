@@ -12,6 +12,7 @@ interface BaseInput {
 	apiKey: string;
 	baseUrl: string | null;
 	hasProjectSource: boolean;
+	projectSrcDir?: string | null;
 	dequelRev: string;
 	dequelStale: boolean;
 	deadlineMs?: number;
@@ -57,7 +58,7 @@ const main = async (): Promise<void> => {
 		const llm = buildLlm(raw.provider, raw.apiKey, raw.baseUrl ?? null, raw.model);
 		const ctx = {
 			progressPath,
-			projectRoot: raw.hasProjectSource ? "/srv/project-src" : null,
+			projectRoot: raw.hasProjectSource ? (raw.projectSrcDir ?? "/srv/project-src") : null,
 			dequelRef: raw.dequelRev,
 		};
 		if (raw.mode === "fix") {

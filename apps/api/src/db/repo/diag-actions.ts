@@ -57,9 +57,12 @@ export const claimDiagAction = async (
 		const [claimed] = await db
 			.update(diagActions)
 			.set({ status: "executing", error: null, updatedAt: timestamp })
-			.where(eq(diagActions.key, key))
+			.where(
+				and(eq(diagActions.key, key), eq(diagActions.status, row.status), eq(diagActions.updatedAt, row.updatedAt)),
+			)
 			.returning()
 			.execute();
+		if (!claimed) return { action, fresh: false };
 		return { action: toAction(claimed), fresh: true };
 	}
 	return { action, fresh: false };
