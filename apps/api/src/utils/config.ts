@@ -16,6 +16,9 @@ const SYSTEM = {
 	dockerNetwork: "dequel_net",
 	buildkitHost: "tcp://buildkit:1234",
 	redisUrl: "redis://redis:6379",
+	dequelSlackWebhookUrl: "",
+	dequelSlackChannel: "",
+	dequelSourceRepoUrl: "https://github.com/Lftobs/dequel.git",
 } as const;
 
 export const config = {

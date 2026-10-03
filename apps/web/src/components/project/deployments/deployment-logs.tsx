@@ -2,6 +2,7 @@ import { Terminal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useDeploymentLogs } from "../../../hooks/useDeploymentLogs";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { DiagnoseSheet } from "./DiagnoseSheet";
 
 export function formatTimeAgo(dateStr: string) {
 	const diff = Date.now() - new Date(dateStr).getTime();
@@ -78,6 +79,7 @@ function fmtLogTs(raw: string | undefined) {
 export function DeploymentLogs({ deployment }: { deployment: any }) {
 	const { logs, isLoading } = useDeploymentLogs(deployment.id);
 	const endRef = useRef<HTMLDivElement>(null);
+	const [diagnoseOpen, setDiagnoseOpen] = useState(false);
 	useEffect(() => {
 		endRef.current?.scrollIntoView({
 			behavior: "smooth",
@@ -86,7 +88,9 @@ export function DeploymentLogs({ deployment }: { deployment: any }) {
 
 	const [copied, setCopied] = useState(false);
 	const copyAllLogs = () => {
-		const fullText = logs.map(l => `[${l.stage}]-[${fmtLogTs((l as any).timestamp || l.createdAt)}] ${l.message}`).join("\n");
+		const fullText = logs
+			.map((l) => `[${l.stage}]-[${fmtLogTs((l as any).timestamp || l.createdAt)}] ${l.message}`)
+			.join("\n");
 		navigator.clipboard.writeText(fullText);
 		setCopied(true);
 		setTimeout(() => setCopied(false), 1500);
@@ -105,6 +109,15 @@ export function DeploymentLogs({ deployment }: { deployment: any }) {
 							<span>Duration:</span>
 							<DeploymentDuration deployment={deployment} />
 						</span>
+						{deployment.status === "failed" && (
+							<button
+								type="button"
+								onClick={() => setDiagnoseOpen(true)}
+								className="text-[11px] px-2 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 hover:text-amber-200 transition-colors flex items-center gap-1"
+							>
+								Diagnose
+							</button>
+						)}
 						{logs.length > 0 && (
 							<button
 								type="button"
@@ -138,6 +151,7 @@ export function DeploymentLogs({ deployment }: { deployment: any }) {
 					</div>
 				)}
 			</CardContent>
+			{diagnoseOpen && <DiagnoseSheet deployment={deployment} open={diagnoseOpen} onOpenChange={setDiagnoseOpen} />}
 		</Card>
 	);
 }

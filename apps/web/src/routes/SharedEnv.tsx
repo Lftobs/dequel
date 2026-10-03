@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Info, Layers, Share2, Shield } from "lucide-react";
+import { Layers, Share2, Shield } from "lucide-react";
 import * as api from "../api/client";
 import { SharedEnvVarsSection } from "../components/settings/SharedEnvVarsSection";
 import { Badge } from "../components/ui/badge";
@@ -58,21 +58,6 @@ export function SharedEnv() {
 							</div>
 						</div>
 					</div>
-				</div>
-			</div>
-
-			{/* Variable Inheritance Tip Callout */}
-			<div className="rounded-2xl border border-border/60 bg-card/40 p-4 backdrop-blur-sm flex items-start gap-3">
-				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10 text-orange-400 shrink-0 mt-0.5">
-					<Info className="h-4 w-4" />
-				</div>
-				<div className="space-y-1">
-					<h4 className="text-xs font-semibold text-foreground">Variable Precedence Hierarchy</h4>
-					<p className="text-xs text-muted-foreground leading-relaxed">
-						Shared variables are injected into linked projects during deployment. If a project defines an
-						environment variable with the exact same key name, the project-level value will take precedence.
-						Link a shared variable to a project to make it available.
-					</p>
 				</div>
 			</div>
 

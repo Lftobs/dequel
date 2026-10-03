@@ -19,6 +19,8 @@ import { scalingRoutes } from "./scaling";
 import { serverInfoRoutes } from "./server-info";
 import { serversRoutes } from "./servers";
 import { settingsRoutes } from "./settings";
+import { llmSettingsRoutes } from "./settings/llm";
+import { fixdiagRoutes } from "../fixdiag/routes";
 import { sharedEnvLinksRoutes, sharedEnvVarsRoutes } from "./shared-env-vars";
 import { sshKeysRoutes } from "./ssh-keys";
 import { volumesRoutes } from "./volumes";
@@ -114,5 +116,7 @@ export const apiRoutes = new Elysia({
 	.use(alertsRoutes)
 	.use(githubRoutes)
 	.use(settingsRoutes)
+	.use(llmSettingsRoutes)
+	.use(fixdiagRoutes)
 	.use(routesRoutes)
 	.use(backupRoutes);

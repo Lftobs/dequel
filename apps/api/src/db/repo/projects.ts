@@ -48,9 +48,7 @@ const mapProject = (row: typeof projects.$inferSelect): Project => ({
 	installCommand: row.installCommand ?? null,
 	outputDir: row.outputDir ?? null,
 	startCommand: row.startCommand ?? null,
-	githubTokenEncrypted: row.githubTokenEncrypted ?? null,
-	githubTokenIv: row.githubTokenIv ?? null,
-	githubTokenTag: row.githubTokenTag ?? null,
+	hasGithubToken: !!(row.githubTokenEncrypted && row.githubTokenIv && row.githubTokenTag),
 	createdAt: formatTimestamp(row.createdAt),
 	updatedAt: formatTimestamp(row.updatedAt),
 });

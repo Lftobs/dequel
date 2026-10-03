@@ -1,4 +1,5 @@
 import type {
+	ActiveDiagRun,
 	Alert,
 	ApiKey,
 	BackupJob,
@@ -6,10 +7,13 @@ import type {
 	CreateProjectInput,
 	Database,
 	Deployment,
+	DiagRun,
+	DiagStage,
 	Domain,
 	EnvironmentVariable,
 	GithubIntegrationStatus,
 	GithubRepo,
+	LlmKeyStatus,
 	Log,
 	Project,
 	QueryExecResult,
@@ -463,7 +467,49 @@ export const testSmtpSettings = () =>
 		method: "POST",
 	});
 
-// ─── GitHub Webhook ───────────────────────────────────────
+export const getLlmKeys = () => apiFetch<LlmKeyStatus[]>("/settings/llm-keys");
+
+export const getLlmDefaultModels = () => apiFetch<Record<string, string[]>>("/settings/llm-default-models");
+
+export const syncLlmModels = (provider: string) =>
+	apiFetch<{ provider: string; models: string[] }>(`/settings/llm-keys/${provider}/sync`, {
+		method: "POST",
+	});
+
+export const getLlmModels = (provider: string, refresh = false) =>
+	apiFetch<{ provider: string; models: string[]; cached: boolean }>(
+		`/settings/llm-keys/${provider}/models${refresh ? "?refresh=true" : ""}`,
+	);
+
+export const setLlmKey = (data: { provider: string; apiKey?: string; baseURL?: string; models?: string[] }) =>
+	apiFetch<LlmKeyStatus>("/settings/llm-keys", {
+		method: "PUT",
+		body: JSON.stringify(data),
+	});
+
+export const deleteLlmKey = (provider: string) =>
+	apiFetch<void>(`/settings/llm-keys/${provider}`, {
+		method: "DELETE",
+	});
+
+export const startDiagnosis = (deploymentId: string, data: { provider: string; model: string }) =>
+	apiFetch<DiagRun>(`/deployments/${deploymentId}/diagnose`, {
+		method: "POST",
+		body: JSON.stringify(data),
+	});
+
+export const getDiagnosis = (runId: string) =>
+	apiFetch<{ run: DiagRun; stages: DiagStage[]; slackPosted: boolean }>(`/diagnoses/${runId}`);
+
+export const getActiveDiagnoses = () => apiFetch<ActiveDiagRun[]>("/diagnoses/active");
+
+export const streamDiagnosisUrl = (runId: string) => `${BASE}/diagnoses/${runId}/stream`;
+
+export const approveFixPr = (runId: string, idempotencyKey: string) =>
+	apiFetch<{ prUrl: string }>(`/diagnoses/${runId}/approve-pr`, {
+		method: "POST",
+		body: JSON.stringify({ idempotencyKey }),
+	});
 
 export const getRepoHooks = (owner: string, repo: string) =>
 	apiFetch<Array<{ id: number; url: string; active: boolean; events: string[] }>>(
