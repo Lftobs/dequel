@@ -1,0 +1,7 @@
+{
+	"name": "dequel-diag-sandbox",
+	"private": true,
+	"dependencies": {
+		"@ax-llm/ax": "^25.0.0"
+	}
+}

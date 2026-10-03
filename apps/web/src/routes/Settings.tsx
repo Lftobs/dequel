@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { Database, GitBranch, Mail, Server, Settings2, ShieldCheck } from "lucide-react";
+import { Database, GitBranch, Mail, Server, Settings2, ShieldCheck, Sparkles } from "lucide-react";
 import * as api from "../api/client";
 import { ConfigWarnings } from "../components/ConfigWarnings";
 import { BackupSettingsSection } from "../components/settings/BackupSettingsSection";
 import { GithubIntegrationSection } from "../components/settings/GithubIntegrationSection";
+import { LlmKeysSection } from "../components/settings/LlmKeysSection";
 import { ServersSection } from "../components/settings/ServersSection";
 import { SmtpSection } from "../components/settings/SmtpSection";
 import { Badge } from "../components/ui/badge";
@@ -99,6 +100,10 @@ export function Settings() {
 						<Mail className="h-3.5 w-3.5" />
 						SMTP Notifications
 					</TabsTrigger>
+					<TabsTrigger value="ai" className="gap-2">
+						<Sparkles className="h-3.5 w-3.5" />
+						AI Diagnosis
+					</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="servers">
@@ -115,6 +120,9 @@ export function Settings() {
 
 				<TabsContent value="smtp">
 					<SmtpSection />
+				</TabsContent>
+				<TabsContent value="ai">
+					<LlmKeysSection />
 				</TabsContent>
 			</Tabs>
 		</div>

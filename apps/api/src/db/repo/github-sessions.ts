@@ -11,6 +11,13 @@ export const getGithubSession = async (id: string): Promise<string | null> => {
 	return decryptValue(row.accessTokenEncrypted, row.accessTokenIv, row.accessTokenTag, config.envEncryptionKey);
 };
 
+export const getGithubTokenFromCookie = async (cookie: string | null): Promise<string | null> => {
+	if (!cookie) return null;
+	const match = cookie.match(/(?:^|;\s*)github_session=([^;]+)/);
+	if (!match) return null;
+	return getGithubSession(match[1]);
+};
+
 export const createGithubSession = async (id: string, accessToken: string): Promise<void> => {
 	const db = await getDb();
 	const enc = encryptValue(accessToken, config.envEncryptionKey);

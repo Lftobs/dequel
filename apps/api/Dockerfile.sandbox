@@ -1,0 +1,23 @@
+FROM oven/bun:1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    ripgrep \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /runner
+COPY package.sandbox.json ./package.json
+RUN bun install --production
+
+COPY src/fixdiag/sandbox-runner/ ./fixdiag/sandbox-runner/
+COPY src/fixdiag/types.ts ./fixdiag/types.ts
+COPY src/fixdiag/llm.ts ./fixdiag/llm.ts
+RUN rm -rf ./fixdiag/sandbox-runner/__tests__
+
+RUN mkdir -p /srv/jobs /srv/dequel-src /srv/project-src \
+    && chown -R bun:bun /srv/jobs /srv/dequel-src /srv/project-src
+
+USER bun
+
+CMD ["sleep", "infinity"]

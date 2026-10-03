@@ -40,9 +40,7 @@ export interface Project {
 	installCommand: string | null;
 	outputDir: string | null;
 	startCommand: string | null;
-	githubTokenEncrypted: string | null;
-	githubTokenIv: string | null;
-	githubTokenTag: string | null;
+	hasGithubToken: boolean;
 	createdAt: string;
 	updatedAt: string;
 }

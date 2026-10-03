@@ -16,6 +16,7 @@ const SYSTEM = {
 	dockerNetwork: "dequel_net",
 	buildkitHost: "tcp://buildkit:1234",
 	redisUrl: "redis://redis:6379",
+	dequelSourceRepoUrl: "https://github.com/Lftobs/dequel.git",
 } as const;
 
 export const config = {
@@ -29,6 +30,8 @@ export const config = {
 	agentTunnelUrl: withFile<string>("AGENT_TUNNEL_URL", ""),
 	appInternalPort: withFile<number>("APP_INTERNAL_PORT", "17476", Number),
 	envEncryptionKey: withFile<string>("ENV_ENCRYPTION_KEY", "dev-env-key-change-me"),
+	dequelSlackWebhookUrl: withFile<string>("DEQUEL_SLACK_WEBHOOK_URL", ""),
+	dequelSlackChannel: withFile<string>("DEQUEL_SLACK_CHANNEL", ""),
 	queueConcurrency: withFile<number>("QUEUE_CONCURRENCY", "3", Number),
 	queueRetryMax: withFile<number>("QUEUE_RETRY_MAX", "5", Number),
 	queueRetryBaseMs: withFile<number>("QUEUE_RETRY_BASE_MS", "5000", Number),

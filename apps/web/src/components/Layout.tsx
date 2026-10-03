@@ -7,6 +7,7 @@ import { parseMetrics } from "../lib/metrics";
 import { Header } from "./layout/Header";
 import { NotificationBanner } from "./layout/NotificationBanner";
 import { Sidebar } from "./layout/Sidebar";
+import { DiagNotifier } from "./DiagNotifier";
 
 export function Layout({ children }: { children: React.ReactNode }) {
 	const location = useLocation();
@@ -127,6 +128,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				/>
 
 				<NotificationBanner notification={notification} onClose={() => setNotification(null)} />
+				<DiagNotifier enabled={!!me?.authenticated} />
 
 				<main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">{children}</main>
 			</div>

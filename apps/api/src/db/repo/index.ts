@@ -51,6 +51,26 @@ export {
 	updateDeploymentStatus,
 } from "./deployments";
 export {
+	createDiagRun,
+	deleteDiagRun,
+	findDiagRun,
+	finishDiagRun,
+	getDiagRun,
+	getStagePayload,
+	listActiveDiagRuns,
+	listStageResults,
+	markInterruptedDiagRuns,
+	recordStageResult,
+} from "./diag-runs";
+export type { DiagAction, DiagActionKind, DiagActionStatus } from "./diag-actions";
+export {
+	claimDiagAction,
+	completeDiagAction,
+	failDiagAction,
+	findCompletedAction,
+	getDiagAction,
+} from "./diag-actions";
+export {
 	createDomain,
 	deleteDomain,
 	getDomainById,
@@ -68,7 +88,12 @@ export {
 	updateEnvironmentVariable,
 } from "./env-vars";
 export { getGithubIntegration, setGithubIntegration } from "./github";
-export { createGithubSession, deleteGithubSession, getGithubSession } from "./github-sessions";
+export {
+	createGithubSession,
+	deleteGithubSession,
+	getGithubSession,
+	getGithubTokenFromCookie,
+} from "./github-sessions";
 export { getPlatformSettings, setIngressServer } from "./platform-settings";
 export type { ProjectCleanupInfo } from "./projects";
 export {
@@ -104,6 +129,15 @@ export {
 } from "./servers";
 export type { SmtpSettingsData } from "./settings";
 export { getBackupStorageSettings, getSmtpSettings, upsertBackupStorageSettings, upsertSmtpSettings } from "./settings";
+export type { LlmKeyInput, LlmKeyStatus, LlmProvider } from "./llm-keys";
+export {
+	LLM_PROVIDERS,
+	deleteLlmKey,
+	getDecryptedLlmKey,
+	getLlmKeyStatus,
+	updateLlmModels,
+	upsertLlmKey,
+} from "./llm-keys";
 export {
 	createSharedEnvVar,
 	deleteSharedEnvVar,

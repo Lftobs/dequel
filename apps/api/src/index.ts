@@ -8,6 +8,7 @@ import { startDatabaseMonitoring } from "./databases/manager";
 import { getDb } from "./db/db-provider";
 import { migrate } from "./db/migrate";
 import { ensureLocalServer } from "./db/repo";
+import { markInterruptedDiagRuns } from "./db/repo/diag-runs";
 import { deployments } from "./db/schema";
 import { alertEvaluator } from "./monitoring/evaluator";
 import { startFailureNotifier } from "./monitoring/failure-notifier";
@@ -34,6 +35,8 @@ const bootstrap = async () => {
 
 	await migrate();
 	await ensureLocalServer();
+	const interrupted = await markInterruptedDiagRuns().catch(() => 0);
+	if (interrupted > 0) console.log(`[Fixdiag] Marked ${interrupted} interrupted diagnosis run(s) as failed`);
 	await orchestrator.reconcileState();
 	orchestrator.startWorker();
 	scalingEngine.start();
