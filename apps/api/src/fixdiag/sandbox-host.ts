@@ -295,8 +295,9 @@ const runAgentJob = async (opts: {
 	const hostTmp = await mkdtemp(join(tmpdir(), "dequel-diag-job-"));
 	try {
 		await writeFile(join(hostTmp, "input.json"), JSON.stringify(opts.input));
-		await docker(["exec", SANDBOX_CONTAINER, "mkdir", "-p", opts.jobDir], 15_000);
+		await docker(["exec", "-u", "0", SANDBOX_CONTAINER, "mkdir", "-p", opts.jobDir], 15_000);
 		await docker(["cp", join(hostTmp, "input.json"), `${SANDBOX_CONTAINER}:${opts.jobDir}/input.json`], 30_000);
+		await docker(["exec", "-u", "0", SANDBOX_CONTAINER, "chown", "-R", "bun:bun", opts.jobDir], 15_000);
 		const deadline = Date.now() + opts.execTimeoutMs;
 		let exited = false;
 		const run = docker(["exec", SANDBOX_CONTAINER, "bun", RUNNER, `${opts.jobDir}/input.json`], opts.execTimeoutMs)
@@ -330,7 +331,7 @@ const runAgentJob = async (opts: {
 		if (!report) throw new Error("sandbox agent produced no report");
 		return JSON.parse(report);
 	} finally {
-		await docker(["exec", SANDBOX_CONTAINER, "rm", "-rf", opts.jobDir], 30_000).catch(() => {});
+		await docker(["exec", "-u", "0", SANDBOX_CONTAINER, "rm", "-rf", opts.jobDir], 30_000).catch(() => {});
 		await rm(hostTmp, { recursive: true, force: true }).catch(() => {});
 	}
 };

@@ -82,9 +82,10 @@ services:
                     - api
 
     diagnose-sandbox:
-        build:
-            context: ./apps/api
-            dockerfile: Dockerfile.sandbox
+        image: ghcr.io/lftobs/dequel/sandbox
+        # build:
+        #     context: ./apps/api
+        #     dockerfile: Dockerfile.sandbox
         container_name: dequel-diag-sandbox
         restart: unless-stopped
         command: ["sleep", "infinity"]
