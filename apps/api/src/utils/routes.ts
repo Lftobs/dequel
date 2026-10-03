@@ -9,6 +9,9 @@ export const slugify = (s: string) =>
 
 export const baseDomainFor = () => (config.caddyBaseDomain === "localhost" ? "localhost:80" : config.caddyBaseDomain);
 
+export const appBaseUrl = () =>
+	config.caddyBaseDomain === "localhost" ? "http://localhost" : `https://${config.caddyBaseDomain}`;
+
 export const routeNamesFor = (projectName: string | null, projectId: string | null, deploymentId: string) => {
 	const slug = slugify(projectName || projectId || deploymentId);
 	return {

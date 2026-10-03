@@ -73,6 +73,7 @@ export function CreateProjectPage() {
 
 	// Environment Variables State
 	const [stagedEnvs, setStagedEnvs] = useState<StagedEnv[]>([]);
+	const [stagedSharedVarIds, setStagedSharedVarIds] = useState<string[]>([]);
 
 	// Status State
 	const [submittingStatus, setSubmittingStatus] = useState<
@@ -201,6 +202,10 @@ export function CreateProjectPage() {
 				}
 			}
 
+			if (stagedSharedVarIds.length > 0) {
+				await api.linkSharedEnvVars(project.id, stagedSharedVarIds);
+			}
+
 			setSubmittingStatus("done");
 			setTimeout(() => {
 				navigate({ to: "/project/$projectId", params: { projectId: project.id }, search: { tab: "deployments" } });
@@ -292,7 +297,7 @@ export function CreateProjectPage() {
 					/>
 
 					{/* Environment Variables (with File Upload, Key-Value builder, and Bulk paste) */}
-					<EnvVarsSection stagedEnvs={stagedEnvs} setStagedEnvs={setStagedEnvs} />
+					<EnvVarsSection stagedEnvs={stagedEnvs} setStagedEnvs={setStagedEnvs} stagedSharedVarIds={stagedSharedVarIds} setStagedSharedVarIds={setStagedSharedVarIds} />
 
 					{/* Error Message Display */}
 					{errorMessage && (

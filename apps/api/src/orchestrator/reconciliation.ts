@@ -1,6 +1,7 @@
 import { and, eq, lt } from "drizzle-orm";
 import { getDb } from "../db/db-provider";
-import { agentJobs, deployments, servers } from "../db/schema";
+import { recordDeploymentFailure } from "../db/repo";
+import { agentJobs, servers } from "../db/schema";
 
 const LEASE_RECOVERY_INTERVAL_MS = 30_000;
 const STALE_AGENT_THRESHOLD_MS = 5 * 60 * 1000;
@@ -113,15 +114,11 @@ const cleanAbandonedJobs = async () => {
 				.execute();
 
 			if (job.deploymentId) {
-				await db
-					.update(deployments)
-					.set({
-						status: "failed",
-						failureReason: "Agent job abandoned",
-						finishedAt: new Date(),
-					})
-					.where(eq(deployments.id, job.deploymentId))
-					.execute();
+				await recordDeploymentFailure({
+					deploymentId: job.deploymentId,
+					reason: "Agent job abandoned",
+					source: "reconciler",
+				}).catch((err) => console.error(`[Reconciliation] Failed to record failure for ${job.deploymentId}:`, err));
 			}
 
 			console.log(`[Reconciliation] Cleaned abandoned job ${job.id} (started ${job.startedAt})`);

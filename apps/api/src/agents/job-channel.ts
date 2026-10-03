@@ -9,6 +9,7 @@ import {
 	leaseNextAgentJob,
 	listCancelledJobIds,
 	listDeployments,
+	recordDeploymentFailure,
 	updateAgentHeartbeat,
 	updateDeploymentCommitSha,
 	updateDeploymentStatus,
@@ -119,8 +120,10 @@ export const processAgentJobUpdate = async (
 				}
 			}
 		} else {
-			await updateDeploymentStatus(deploymentId, "failed", {
-				failureReason: update.error || "Remote agent deployment failed",
+			await recordDeploymentFailure({
+				deploymentId,
+				reason: update.error || "Remote agent deployment failed",
+				source: "job-channel",
 			});
 			await appendLog(deploymentId, "system", `Remote deployment failed: ${update.error || "Unknown agent error"}`);
 		}

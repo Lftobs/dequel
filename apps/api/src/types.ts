@@ -16,7 +16,7 @@ export type SslStatus = "pending" | "provisioned" | "failed";
 export type ServerStatus = "pending" | "connected" | "disconnected" | "failed";
 export type ServerMode = "local" | "ssh" | "agent" | "docker_tcp";
 export type AlertChannel = "email" | "slack" | "webhook";
-export type AlertType = "cpu" | "memory" | "error_rate" | "downtime" | "cert_expiry";
+export type AlertType = "cpu" | "memory" | "downtime" | "cert_expiry";
 
 export interface Project {
 	id: string;
@@ -40,9 +40,7 @@ export interface Project {
 	installCommand: string | null;
 	outputDir: string | null;
 	startCommand: string | null;
-	githubTokenEncrypted: string | null;
-	githubTokenIv: string | null;
-	githubTokenTag: string | null;
+	hasGithubToken: boolean;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -288,6 +286,92 @@ export interface CreateAlertInput {
 	durationSeconds?: number;
 	channel: AlertChannel;
 	destination?: string;
+}
+
+export type FailureSource = "pipeline" | "rollback" | "ssh" | "agent" | "job-channel" | "reconciler" | "dispatch";
+
+export interface RecordFailureInput {
+	deploymentId: string;
+	reason: string;
+	source: FailureSource;
+	cancel?: boolean;
+}
+
+export interface RecordFailureOutcome {
+	claimed: boolean;
+	eventId: string | null;
+}
+
+export interface FailureNotificationContext {
+	eventId: string;
+	deploymentId: string;
+	projectId: string | null;
+	projectName: string;
+	failureReason: string | null;
+	commitSha: string | null;
+	sourceRef: string;
+	finishedAt: string | null;
+	attempt: number;
+}
+
+export type MailDelivery =
+	| { status: "sent" }
+	| { status: "skipped"; reason: "no_smtp" | "no_recipient" }
+	| { status: "failed"; error: string };
+
+export type HealthStatus = "ok" | "warn" | "fail" | "unknown";
+export type OverallHealth = "healthy" | "degraded" | "down";
+
+export interface HealthCheck {
+	name: "server" | "containers" | "ingress" | "http";
+	status: HealthStatus;
+	detail: string | null;
+}
+
+export interface StatusFailure {
+	deploymentId: string;
+	message: string | null;
+	commitSha: string | null;
+	sourceRef: string;
+	finishedAt: string | null;
+	recovered: boolean;
+	notifiedAt: string | null;
+}
+
+export interface StatusHistoryEntry {
+	deploymentId: string;
+	type: string;
+	message: string | null;
+	at: string;
+}
+
+export interface HttpErrorRate {
+	source: "loki";
+	available: boolean;
+	windowSeconds: number;
+	totalRequests: number;
+	errorRequests: number;
+	errorRate: number | null;
+	byStatus: { status: string; count: number }[];
+}
+
+export interface ProjectStatus {
+	projectId: string;
+	windowSeconds: number;
+	health: { overall: OverallHealth; checks: HealthCheck[] };
+	failures: StatusFailure[];
+	history: StatusHistoryEntry[];
+	replicas: { current: number } | null;
+	resources: {
+		server: {
+			status: string;
+			cpuUsedPercent: number | null;
+			memoryTotalMb: number | null;
+			lastHeartbeatAt: string | null;
+		} | null;
+		containers: { name: string; cpuPercent: number; memoryMb: number }[];
+	};
+	http: HttpErrorRate;
 }
 
 export interface Deployment {

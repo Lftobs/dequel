@@ -1,4 +1,5 @@
 import type { Deployment, Project, Server } from "../types";
+import { CANCELLED_FAILURE_REASON } from "../utils/failure-outcome";
 import { routeNamesFor } from "../utils/routes";
 import type {
 	DeploymentExecutor,
@@ -106,10 +107,14 @@ export const agentExecutor: DeploymentExecutor = {
 	},
 
 	async cancel({ deployment }: ExecutorCancelInput) {
-		const { cancelAgentJobsByDeploymentId, updateDeploymentStatus, appendLog } = await getRepo();
+		const { cancelAgentJobsByDeploymentId, recordDeploymentCancellation, appendLog } = await getRepo();
 		if (deployment.status !== "pending" && deployment.status !== "building") return;
 		await cancelAgentJobsByDeploymentId(deployment.id);
-		await updateDeploymentStatus(deployment.id, "failed", { failureReason: "Cancelled" });
+		await recordDeploymentCancellation({
+			deploymentId: deployment.id,
+			reason: CANCELLED_FAILURE_REASON,
+			source: "agent",
+		});
 		await appendLog(deployment.id, "system", "Deployment cancelled by user");
 	},
 };

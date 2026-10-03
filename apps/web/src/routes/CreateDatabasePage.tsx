@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Clock, Cpu, Database, HardDrive, ShieldAlert, ShieldCheck, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import * as api from "../api/client";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { DATABASE_ENGINES, DatabaseSelect } from "../components/ui/DatabaseSelect";
+import { DATABASE_ENGINES } from "../components/ui/DatabaseSelect";
+import { getDatabaseLogo } from "../components/logos/DatabaseLogos";
 import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { ServerSelect } from "../components/databases/ServerSelect";
@@ -16,8 +17,7 @@ export function CreateDatabasePage() {
 	const [name, setName] = useState("");
 	const [projectId, setProjectId] = useState("standalone");
 	const [type, setType] = useState<DatabaseType>("postgresql");
-	const [version, setVersion] = useState("16");
-	const [cpu, setCpu] = useState("1");
+	const [version, setVersion] = useState("16");	const [cpu, setCpu] = useState("1");
 	const [memory, setMemory] = useState("512");
 	const [storage, setStorage] = useState("10240");
 	const [allowAnywhere, setAllowAnywhere] = useState(false);
@@ -40,11 +40,6 @@ export function CreateDatabasePage() {
 		queryKey: ["servers"],
 		queryFn: () => api.listServers().catch(() => []),
 	});
-
-	useEffect(() => {
-		const engine = DATABASE_ENGINES.find((item) => item.type === type);
-		if (engine) setVersion(engine.defaultVersion);
-	}, [type]);
 
 	const handleCreate = async () => {
 		setIsCreating(true);
@@ -112,32 +107,51 @@ export function CreateDatabasePage() {
 							1. Database Engine & Version
 						</h2>
 						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-							{DATABASE_ENGINES.map((engine) => {
-								const isSelected = type === engine.type;
-								return (
-									<button
-										key={engine.type}
-										type="button"
-										onClick={() => setType(engine.type as DatabaseType)}
-										className={`flex flex-col items-start p-4 rounded-2xl border transition-all text-left ${
-											isSelected
-												? "border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/50 shadow-lg"
-												: "border-border/60 bg-background/30 hover:border-border"
-										}`}
-									>
-										<div className="flex items-center justify-between w-full">
-											<span className="font-bold text-xs text-foreground">{engine.label}</span>
-											<Badge variant="outline" className="text-[10px] font-mono border-border/60">
-												v{engine.defaultVersion}
-											</Badge>
-										</div>
-										<p className="text-[11px] text-muted-foreground mt-1 leading-snug">{engine.description}</p>
-									</button>
-								);
-							})}
+							<div className="space-y-1.5">
+								<label htmlFor="database-engine-select" className="text-xs font-semibold text-foreground">
+									Database Engine
+								</label>
+								<Select value={type} onValueChange={(val) => {
+									setType(val as DatabaseType);
+									const engine = DATABASE_ENGINES.find((e) => e.type === val);
+									if (engine) setVersion(engine.defaultVersion);
+								}}>
+									<SelectTrigger id="database-engine-select" className="bg-background/50 border-border/80 text-xs rounded-xl h-10">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent className="bg-card border-border text-xs">
+										{DATABASE_ENGINES.map((engine) => (
+											<SelectItem key={engine.type} value={engine.type}>
+												<div className="flex items-center gap-2">
+													{getDatabaseLogo(engine.type, "h-4 w-4")}
+													<span>{engine.name}</span>
+												</div>
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+
+							<div className="space-y-1.5">
+								<label htmlFor="database-version-tag" className="text-xs font-semibold text-foreground">
+									Engine Version
+								</label>
+								<Select value={version} onValueChange={setVersion}>
+									<SelectTrigger id="database-version-tag" className="bg-background/50 border-border/80 font-mono text-xs rounded-xl h-10">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent className="bg-card border-border text-xs">
+										{DATABASE_ENGINES.find((e) => e.type === type)?.versions.map((v) => (
+											<SelectItem key={v} value={v}>
+												{v}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
 						</div>
 
-						<div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+						<div className="pt-2">
 							<div className="space-y-1.5">
 								<label htmlFor="database-display-name" className="text-xs font-semibold text-foreground">
 									Display Name
@@ -148,18 +162,6 @@ export function CreateDatabasePage() {
 									onChange={(e) => setName(e.target.value)}
 									placeholder="e.g. Production PostgreSQL DB"
 									className="bg-background/50 border-border/80 text-xs rounded-xl h-10"
-								/>
-							</div>
-
-							<div className="space-y-1.5">
-								<label htmlFor="database-version-tag" className="text-xs font-semibold text-foreground">
-									Engine Version Tag
-								</label>
-								<Input
-									id="database-version-tag"
-									value={version}
-									onChange={(e) => setVersion(e.target.value)}
-									className="bg-background/50 border-border/80 font-mono text-xs rounded-xl h-10"
 								/>
 							</div>
 						</div>

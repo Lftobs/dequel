@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, BellOff, Cpu, Layers, Plus, ShieldAlert, Trash2, WifiOff } from "lucide-react";
+import { BellOff, Cpu, Layers, Plus, ShieldAlert, Trash2, WifiOff } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import * as api from "../../../api/client";
@@ -18,12 +18,8 @@ const getAlertIcon = (type: string) => {
 			return Cpu;
 		case "memory":
 			return Layers;
-		case "error_rate":
-			return AlertTriangle;
 		case "downtime":
 			return WifiOff;
-		case "cert_expiry":
-			return ShieldAlert;
 		default:
 			return Cpu;
 	}
@@ -33,14 +29,17 @@ const getUnit = (type: string) => {
 	switch (type) {
 		case "cpu":
 		case "memory":
-		case "error_rate":
 			return "%";
-		case "cert_expiry":
-			return " days";
-		case "downtime":
-			return "s";
 		default:
 			return "";
+	}
+};
+
+const safeHostname = (url: string) => {
+	try {
+		return new URL(url).hostname;
+	} catch {
+		return url;
 	}
 };
 
@@ -54,6 +53,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 	const [type, setType] = useState("cpu");
 	const [threshold, setThreshold] = useState("80");
 	const [channel, setChannel] = useState("email");
+	const [destination, setDestination] = useState("");
 
 	const [deletingAlertId, setDeletingAlertId] = useState<string | null>(null);
 
@@ -68,9 +68,11 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 		e.preventDefault();
 		await api.createAlert(projectId, {
 			type,
-			threshold: Number(threshold),
+			threshold: type === "downtime" ? null : Number(threshold),
 			channel,
+			...(channel !== "email" ? { destination } : {}),
 		} as any);
+		setDestination("");
 		setIsOpen(false);
 		refetch();
 	};
@@ -86,8 +88,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 					</div>
 					<h3 className="text-lg font-semibold text-foreground mb-2">No Alert Rules Configured</h3>
 					<p className="text-sm text-muted-foreground max-w-sm mb-6 leading-relaxed">
-						Monitor system health and receive notifications when CPU, memory, error rates, or certificate status cross
-						your limits.
+						Monitor system health and receive notifications when CPU, memory, or downtime conditions trigger.
 					</p>
 					<Button
 						onClick={() => setIsOpen(true)}
@@ -102,7 +103,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 						<div>
 							<h2 className="text-lg font-semibold text-foreground">Alert Rules</h2>
 							<p className="text-sm text-muted-foreground">
-								Configure notifications for resource utilization spikes and uptime changes.
+								Configure notifications for resource utilization spikes and service downtime.
 							</p>
 						</div>
 						<Button
@@ -136,14 +137,27 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 												>
 													{a.channel}
 												</Badge>
+												{a.destination ? (
+													<span
+														className="text-[10px] text-muted-foreground truncate max-w-[160px]"
+														title={a.destination}
+													>
+														{safeHostname(a.destination)}
+													</span>
+												) : null}
 											</div>
 											<p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-												Triggers when{" "}
-												<span className="capitalize">{a.type.replace("_", " ")}</span> exceeds{" "}
-												<span className="font-semibold text-foreground">
-													{a.threshold}
-													{getUnit(a.type)}
-												</span>
+												{a.type === "downtime" ? (
+													"Triggers immediately when all service containers are down"
+												) : (
+													<>
+														Triggers when <span className="capitalize">{a.type.replace("_", " ")}</span> exceeds{" "}
+														<span className="font-semibold text-foreground">
+															{a.threshold}
+															{getUnit(a.type)}
+														</span>
+													</>
+												)}
 											</p>
 										</div>
 									</div>
@@ -184,7 +198,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 					<DialogHeader>
 						<DialogTitle className="text-lg font-bold text-foreground">Create Alert Rule</DialogTitle>
 						<DialogDescription className="text-xs text-muted-foreground">
-							Set up monitoring for your project. Notifications will be triggered when thresholds are crossed.
+							Set up monitoring for your project. Notifications will be triggered when your selected condition occurs.
 						</DialogDescription>
 					</DialogHeader>
 					<form onSubmit={add} className="space-y-4 pt-2">
@@ -194,37 +208,47 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 							</label>
 							<select
 								value={type}
-								onChange={(e) => setType(e.target.value)}
+								onChange={(e) => {
+									const selected = e.target.value;
+									setType(selected);
+									if (selected === "cpu") setThreshold("80");
+									else if (selected === "memory") setThreshold("85");
+								}}
 								className="flex h-10 w-full rounded-lg border border-input bg-[#0d0d11] px-3 py-2 text-sm shadow-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
 							>
 								<option value="cpu">CPU Usage</option>
 								<option value="memory">Memory Usage</option>
-								<option value="error_rate">HTTP Error Rate</option>
 								<option value="downtime">Downtime Detect</option>
-								<option value="cert_expiry">SSL Cert Expiry</option>
 							</select>
 						</div>
 
-						<div className="grid gap-2">
-							<label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-								Threshold {getUnit(type) && `(${getUnit(type).trim()})`}
-							</label>
-							<div className="relative flex items-center">
-								<Input
-									type="number"
-									min={1}
-									value={threshold}
-									onChange={(e) => setThreshold(e.target.value)}
-									className="h-10 bg-[#0d0d11] border-input focus:ring-2 focus:ring-primary text-sm font-semibold rounded-lg pr-10"
-									required
-								/>
-								{getUnit(type) && (
+						{type !== "downtime" ? (
+							<div className="grid gap-2">
+								<label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+									Threshold ({getUnit(type).trim()})
+								</label>
+								<div className="relative flex items-center">
+									<Input
+										type="number"
+										min={1}
+										max={100}
+										value={threshold}
+										onChange={(e) => setThreshold(e.target.value)}
+										className="h-10 bg-[#0d0d11] border-input focus:ring-2 focus:ring-primary text-sm font-semibold rounded-lg pr-10"
+										required
+									/>
 									<span className="absolute right-3 text-xs font-semibold text-muted-foreground">
 										{getUnit(type).trim()}
 									</span>
-								)}
+								</div>
 							</div>
-						</div>
+						) : (
+							<div className="p-3.5 rounded-xl border border-border/60 bg-[#0d0d11] text-xs text-muted-foreground leading-relaxed">
+								<span className="font-medium text-foreground block mb-0.5">Instant Alerting</span>
+								Downtime notification triggers immediately when all active containers for this project stop or fail. No
+								percentage threshold required.
+							</div>
+						)}
 
 						<div className="grid gap-2">
 							<label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -236,8 +260,38 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 								className="flex h-10 w-full rounded-lg border border-input bg-[#0d0d11] px-3 py-2 text-sm shadow-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
 							>
 								<option value="email">Email Notification</option>
+								<option value="slack">Slack Webhook</option>
+								<option value="webhook">Webhook</option>
 							</select>
 						</div>
+
+						{channel !== "email" ? (
+							<div className="grid gap-2">
+								<label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+									Webhook URL
+								</label>
+								<Input
+									type="url"
+									required
+									placeholder={
+										channel === "slack" ? "https://hooks.slack.com/services/..." : "https://example.com/webhook"
+									}
+									value={destination}
+									onChange={(e) => setDestination(e.target.value)}
+									className="h-10 bg-[#0d0d11] border-input focus:ring-2 focus:ring-primary text-sm rounded-lg"
+								/>
+								{channel === "slack" ? (
+									<p className="text-[11px] text-muted-foreground leading-relaxed">
+										In Slack: Apps → Incoming Webhooks → Add New Webhook to Workspace, pick a channel, then paste the
+										URL here.
+									</p>
+								) : (
+									<p className="text-[11px] text-muted-foreground leading-relaxed">
+										Dequel POSTs a JSON payload to this URL when the alert triggers.
+									</p>
+								)}
+							</div>
+						) : null}
 
 						<div className="flex justify-end gap-2 pt-2">
 							<Button

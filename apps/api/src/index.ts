@@ -8,8 +8,10 @@ import { startDatabaseMonitoring } from "./databases/manager";
 import { getDb } from "./db/db-provider";
 import { migrate } from "./db/migrate";
 import { ensureLocalServer } from "./db/repo";
+import { markInterruptedDiagRuns } from "./db/repo/diag-runs";
 import { deployments } from "./db/schema";
 import { alertEvaluator } from "./monitoring/evaluator";
+import { startFailureNotifier } from "./monitoring/failure-notifier";
 import { orchestrator } from "./orchestrator";
 import { startBuildCleanup } from "./orchestrator/cleanup";
 import { startFailoverMonitor } from "./orchestrator/failover";
@@ -21,6 +23,9 @@ import { config } from "./utils/config";
 import { startDomainPolling } from "./utils/domain-verifier";
 import { loadOrCreateJwtSecret } from "./utils/secrets";
 
+import { projects } from "./db/schema";
+import { captureTelemetry } from "./utils/telemetry";
+
 const bootstrap = async () => {
 	await mkdir(config.workspaceRoot, { recursive: true });
 	await mkdir(config.caddyRoutesDir, { recursive: true });
@@ -30,12 +35,15 @@ const bootstrap = async () => {
 
 	await migrate();
 	await ensureLocalServer();
+	const interrupted = await markInterruptedDiagRuns().catch(() => 0);
+	if (interrupted > 0) console.log(`[Fixdiag] Marked ${interrupted} interrupted diagnosis run(s) as failed`);
 	await orchestrator.reconcileState();
 	orchestrator.startWorker();
 	scalingEngine.start();
 	serverManager.start();
 	startDomainPolling();
 	alertEvaluator.start();
+	startFailureNotifier();
 	startBuildCleanup();
 	startFailoverMonitor();
 	startDatabaseMonitoring();
@@ -46,6 +54,24 @@ const bootstrap = async () => {
 	setInterval(() => {
 		cleanupExpiredTokens().catch(() => {});
 	}, 60_000);
+
+	captureTelemetry("instance_boot").catch(() => {});
+
+	// 24-hour anonymous heartbeat
+	setInterval(
+		async () => {
+			try {
+				const db = await getDb();
+				const [projectsRes] = await db.select({ count: count() }).from(projects);
+				const [deploymentsRes] = await db.select({ count: count() }).from(deployments);
+				captureTelemetry("instance_heartbeat", {
+					projects_count: Number(projectsRes?.count ?? 0),
+					deployments_count: Number(deploymentsRes?.count ?? 0),
+				}).catch(() => {});
+			} catch {}
+		},
+		24 * 60 * 60 * 1000,
+	);
 
 	const metrics = {
 		requestsTotal: 0,

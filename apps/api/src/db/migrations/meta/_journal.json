@@ -71,6 +71,27 @@
       "when": 1788600000000,
       "tag": "0033_add_system_backup_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788600001000,
+      "tag": "0034_deployment_event_backbone",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790424535143,
+      "tag": "0035_deployment_fk_cascade",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790700000000,
+      "tag": "0036_fixdiag",
+      "breakpoints": true
     }
   ]
 }

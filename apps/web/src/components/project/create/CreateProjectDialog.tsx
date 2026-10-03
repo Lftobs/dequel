@@ -56,6 +56,8 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 		}>
 	>([]);
 
+	const [stagedSharedVarIds, setStagedSharedVarIds] = useState<string[]>([]);
+
 	const [sourceType, setSourceType] = useState("git");
 	const [projectType, setProjectType] = useState("web");
 	const [selectedPresetId, setSelectedPresetId] = useState("");
@@ -127,6 +129,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 			setPort("");
 			setZipFile(null);
 			setServerId("local");
+			setStagedSharedVarIds([]);
 		}
 	};
 
@@ -173,6 +176,10 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 						}),
 					),
 				);
+			}
+
+			if (stagedSharedVarIds.length > 0) {
+				await api.linkSharedEnvVars(project.id, stagedSharedVarIds);
 			}
 
 			if (zipFile && sourceType === "upload") {
@@ -319,7 +326,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 						)}
 
 						{step === 2 && (
-							<StepEnvironment key="step-environment" stagedEnvs={stagedEnvs} setStagedEnvs={setStagedEnvs} />
+							<StepEnvironment key="step-environment" stagedEnvs={stagedEnvs} setStagedEnvs={setStagedEnvs} stagedSharedVarIds={stagedSharedVarIds} setStagedSharedVarIds={setStagedSharedVarIds} />
 						)}
 
 						{step === 3 && (

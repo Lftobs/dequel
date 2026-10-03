@@ -15,7 +15,7 @@ export type DomainValidationStatus = "pending" | "verified" | "failed";
 export type SslStatus = "pending" | "provisioned" | "failed";
 export type ServerStatus = "pending" | "connected" | "disconnected" | "failed";
 export type AlertChannel = "email" | "slack" | "webhook";
-export type AlertType = "cpu" | "memory" | "error_rate" | "downtime" | "cert_expiry";
+export type AlertType = "cpu" | "memory" | "downtime" | "cert_expiry";
 
 export interface Project {
 	id: string;
@@ -241,6 +241,48 @@ export interface GithubIntegrationStatus {
 	clientId?: string;
 	appName?: string;
 	hasWebhookSecret?: boolean;
+}
+
+export interface LlmKeyStatus {
+	provider: string;
+	configured: boolean;
+	baseUrl: string | null;
+	models: string[];
+}
+
+export type DiagCause = "user-source" | "dequel-source" | "unknown";
+
+export interface DiagRun {
+	id: string;
+	deploymentId: string;
+	provider: string;
+	model: string;
+	status: "running" | "done" | "error";
+	currentStage: string | null;
+	cause: DiagCause | null;
+	report: {
+		cause: DiagCause;
+		userFix?: { title: string; body: string; suggestedDiff: string | null };
+		dequelReport?: { problem: string; cause: string; proposedFix: string };
+	} | null;
+	error: string | null;
+	createdAt: string;
+}
+
+export interface DiagStage {
+	stage: string;
+	payload: unknown;
+}
+
+export interface ActiveDiagRun {
+	id: string;
+	deploymentId: string;
+	projectId: string | null;
+	projectName: string | null;
+	provider: string;
+	model: string;
+	currentStage: string | null;
+	createdAt: string;
 }
 
 export interface BackupJob {

@@ -8,6 +8,7 @@ export interface DatabaseEngineInfo {
 	type: DatabaseType;
 	name: string;
 	defaultVersion: string;
+	versions: string[];
 	description: string;
 }
 
@@ -16,31 +17,29 @@ export const DATABASE_ENGINES: DatabaseEngineInfo[] = [
 		type: "postgresql",
 		name: "PostgreSQL",
 		defaultVersion: "16",
+		versions: ["14", "15", "16", "17", "18"],
 		description: "Enterprise relational database with JSONB & ACID compliance",
 	},
 	{
 		type: "mysql",
 		name: "MySQL",
 		defaultVersion: "8.4",
+		versions: ["8.0", "8.4", "9.0", "9.1", "9.7"],
 		description: "Popular open-source relational database",
 	},
 	{
 		type: "redis",
 		name: "Redis",
 		defaultVersion: "7.4",
+		versions: ["6.2", "7.2", "7.4", "8.2", "8.4", "8.6", "8.8", "8.10"],
 		description: "Ultra-fast in-memory key-value data store & pub/sub cache",
 	},
 	{
 		type: "mongodb",
 		name: "MongoDB",
-		defaultVersion: "7.0",
+		defaultVersion: "8.0",
+		versions: ["6.0", "7.0", "8.0", "8.3"],
 		description: "Scalable document-oriented NoSQL database",
-	},
-	{
-		type: "mariadb",
-		name: "MariaDB",
-		defaultVersion: "11.4",
-		description: "Community-developed relational database fork of MySQL",
 	},
 ];
 
