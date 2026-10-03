@@ -2,10 +2,7 @@ import type {
 	ActiveDiagRun,
 	Alert,
 	ApiKey,
-	BackupJob,
-	BackupStorageSettingsData,
 	CreateProjectInput,
-	Database,
 	Deployment,
 	DiagRun,
 	DiagStage,
@@ -16,47 +13,16 @@ import type {
 	LlmKeyStatus,
 	Log,
 	Project,
-	QueryExecResult,
 	ScalingPolicy,
 	Server,
 	SmtpSettingsStatus,
-	TableInfo,
 	Volume,
 } from "../types";
+import { BASE, apiFetch } from "./http";
 
-const BASE = "/api";
-
-class ApiError extends Error {
-	status: number;
-	constructor(msg: string, status: number) {
-		super(msg);
-		this.status = status;
-	}
-}
-
-const apiFetch = async <T>(path: string, opts?: RequestInit): Promise<T> => {
-	const isFormData = opts?.body instanceof FormData;
-	const headers: Record<string, string> = {};
-	if (!isFormData) headers["Content-Type"] = "application/json";
-	const res = await fetch(`${BASE}${path}`, {
-		...opts,
-		headers: {
-			...headers,
-			...(opts?.headers as Record<string, string>),
-		},
-	});
-	if (!res.ok) {
-		const body = await res.json().catch(() => ({
-			message: res.statusText,
-		}));
-		throw new ApiError(body.message ?? body.error ?? "Request failed", res.status);
-	}
-	if (res.headers.get("content-type")?.includes("text/event-stream")) return res as unknown as T;
-	if (res.headers.get("content-type")?.includes("text/plain")) return res.text() as unknown as T;
-	const json = await res.json();
-	if (json && typeof json === "object" && "status" in json && "data" in json) return json.data as T;
-	return json as T;
-};
+export * from "./http";
+export * from "./auth";
+export * from "./databases";
 
 // Projects
 export const listProjects = () => apiFetch<Project[]>("/projects");
@@ -177,85 +143,6 @@ export const deleteVolume = (id: string) =>
 		method: "DELETE",
 	});
 
-// Databases
-export const listAllDatabases = () => apiFetch<Database[]>("/databases");
-export const listDatabases = (projectId: string) => apiFetch<Database[]>(`/projects/${projectId}/databases`);
-export const createDatabase = (
-	projectId: string | null,
-	type: string,
-	options?: {
-		name?: string;
-		version?: string;
-		serverId?: string;
-		cpuLimit?: number | null;
-		memoryLimitMb?: number | null;
-		storageLimitMb?: number | null;
-		publicAccess?: boolean;
-		allowPublicAccessFromAnywhere?: boolean;
-		allowedCidrs?: string[];
-	},
-) =>
-	apiFetch<Database>(projectId ? `/projects/${projectId}/databases` : "/databases", {
-		method: "POST",
-		body: JSON.stringify({ type, projectId, ...options }),
-	});
-export const getDatabase = (id: string) => apiFetch<Database>(`/databases/${id}`);
-export const deleteDatabase = (id: string) => apiFetch<void>(`/databases/${id}`, { method: "DELETE" });
-export const getDatabaseCredentials = (id: string) =>
-	apiFetch<{
-		username: string;
-		password: string;
-		internalConnectionString: string;
-		externalConnectionString: string | null;
-		externalHost: string | null;
-		externalPort: number | null;
-	}>(`/databases/${id}/credentials`);
-export const startDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/start`, { method: "POST" });
-export const stopDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/stop`, { method: "POST" });
-export const restartDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/restart`, { method: "POST" });
-export const retryDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/retry`, { method: "POST" });
-export const updateDatabaseSettings = (
-	id: string,
-	data: {
-		name?: string;
-		cpuLimit?: number | null;
-		memoryLimitMb?: number | null;
-		storageLimitMb?: number | null;
-		publicAccess?: boolean;
-		allowPublicAccessFromAnywhere?: boolean;
-		allowedCidrs?: string[];
-		backupEnabled?: boolean;
-		backupSchedule?: string;
-		backupRetention?: number;
-	},
-) =>
-	apiFetch<Database>(`/databases/${id}`, {
-		method: "PATCH",
-		body: JSON.stringify(data),
-	});
-export const getDatabaseTables = (id: string) => apiFetch<TableInfo[]>(`/databases/${id}/tables`);
-export const queryDatabase = (id: string, query: string) =>
-	apiFetch<QueryExecResult>(`/databases/${id}/query`, {
-		method: "POST",
-		body: JSON.stringify({ query }),
-	});
-
-// Backups
-export const listBackups = () => apiFetch<BackupJob[]>("/backups");
-export const triggerBackup = (targetId = "internal") =>
-	apiFetch<BackupJob>(targetId === "internal" ? "/backups" : `/backups/${targetId}/trigger`, {
-		method: "POST",
-	});
-export const restoreBackup = (id: string) =>
-	apiFetch<{ restored: boolean }>(`/backups/${id}/restore`, { method: "POST" });
-export const deleteBackup = (id: string) => apiFetch<{ deleted: boolean }>(`/backups/${id}`, { method: "DELETE" });
-export const getBackupStorageSettings = () => apiFetch<BackupStorageSettingsData>("/settings/backup");
-export const updateBackupStorageSettings = (data: BackupStorageSettingsData) =>
-	apiFetch<BackupStorageSettingsData>("/settings/backup", {
-		method: "PUT",
-		body: JSON.stringify(data),
-	});
-
 // Domains
 export const listDomains = (projectId: string) => apiFetch<Domain[]>(`/projects/${projectId}/domains`);
 export const createDomain = (
@@ -302,28 +189,6 @@ export const deleteScalingPolicy = (projectId: string) =>
 // Server
 export const getServerIp = () =>
 	apiFetch<{ ip: string; baseDomain: string; resolves: boolean; url: string }>("/server/ip");
-
-// Auth
-export const login = (username: string, password: string) =>
-	apiFetch<{ username: string }>("/auth/login", {
-		method: "POST",
-		body: JSON.stringify({ username, password }),
-	});
-
-export const logout = () => apiFetch<void>("/auth/logout", { method: "POST" });
-
-export const refreshSession = () => apiFetch<{ username: string }>("/auth/refresh", { method: "POST" });
-
-export const getMe = async () => {
-	const res = await apiFetch<{ authenticated: boolean; username?: string }>("/auth/me");
-	if (!res.authenticated) {
-		const refreshed = await apiFetch<{ username: string }>("/auth/refresh", { method: "POST" }).catch(() => null);
-		if (refreshed) {
-			return apiFetch<{ authenticated: boolean; username?: string }>("/auth/me");
-		}
-	}
-	return res;
-};
 
 // Prometheus
 export const queryPrometheus = (query: string) =>

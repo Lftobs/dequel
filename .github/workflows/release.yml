@@ -36,6 +36,7 @@ jobs:
           echo "API_IMAGE=ghcr.io/${REPO_LC}/api" >> $GITHUB_ENV
           echo "WEB_IMAGE=ghcr.io/${REPO_LC}/web" >> $GITHUB_ENV
           echo "AGENT_IMAGE=ghcr.io/${REPO_LC}/agent" >> $GITHUB_ENV
+          echo "SANDBOX_IMAGE=ghcr.io/${REPO_LC}/sandbox" >> $GITHUB_ENV
         env:
           REPO: ${{ github.repository }}
 
@@ -89,6 +90,18 @@ jobs:
             ${{ steps.version.outputs.IS_PRERELEASE == 'false' && format('{0}:latest', env.AGENT_IMAGE) || format('{0}:next', env.AGENT_IMAGE) }}
           cache-from: type=gha,scope=agent-${{ github.sha }}
           cache-to: type=gha,scope=agent-${{ github.sha }},mode=max
+
+      - name: Build and push diagnose sandbox image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/api
+          file: apps/api/Dockerfile.sandbox
+          push: true
+          tags: |
+            ${{ env.SANDBOX_IMAGE }}:${{ steps.version.outputs.VERSION }}
+            ${{ steps.version.outputs.IS_PRERELEASE == 'false' && format('{0}:latest', env.SANDBOX_IMAGE) || format('{0}:next', env.SANDBOX_IMAGE) }}
+          cache-from: type=gha,scope=sandbox-${{ github.sha }}
+          cache-to: type=gha,scope=sandbox-${{ github.sha }},mode=max
 
       - name: Build config tarball
         run: |

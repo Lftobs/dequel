@@ -41,7 +41,8 @@ export const validateDestination = async (raw: string): Promise<string | null> =
 	if (url.username || url.password) return "destination must not contain credentials";
 	const hostname = url.hostname;
 	if (!hostname) return "destination must be a valid URL";
-	if (isBlockedAddress(hostname)) return PUBLIC_REQUIRED;
+	const looksLikeIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) || hostname.includes(":");
+	if (looksLikeIp && isBlockedAddress(hostname)) return PUBLIC_REQUIRED;
 	let addresses: { address: string }[];
 	try {
 		addresses = await lookup(hostname, { all: true });

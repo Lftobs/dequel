@@ -67,7 +67,7 @@ export const authRoutes = new Elysia()
 		dequel_session.set({ ...SESSION_COOKIE_OPTS, secure: isSecure });
 		dequel_refresh.value = refreshToken;
 		dequel_refresh.set({ ...REFRESH_COOKIE_OPTS, secure: isSecure });
-		return ok({ username }, "Logged in");
+		return ok({ username, expiresIn: 900 }, "Logged in");
 	})
 	.post("/auth/logout", async ({ cookie: { dequel_session, dequel_refresh } }) => {
 		const rt = dequel_refresh.value;
@@ -99,12 +99,39 @@ export const authRoutes = new Elysia()
 		dequel_session.set({ ...SESSION_COOKIE_OPTS, secure: isSecure });
 		dequel_refresh.value = newRefreshToken;
 		dequel_refresh.set({ ...REFRESH_COOKIE_OPTS, secure: isSecure });
-		return ok({ username }, "Token refreshed");
+		return ok({ username, expiresIn: 900 }, "Token refreshed");
 	})
-	.get("/auth/me", async ({ cookie: { dequel_session } }) => {
+	.get("/auth/me", async ({ cookie: { dequel_session, dequel_refresh }, isSecure }) => {
 		const token = dequel_session.value;
-		if (!token) return ok({ authenticated: false });
-		const payload = await verifyAccessToken(token);
-		if (!payload) return ok({ authenticated: false });
-		return ok({ authenticated: true, username: payload.sub });
+		if (token) {
+			const payload = await verifyAccessToken(token);
+			if (payload) {
+				const current = Math.floor(Date.now() / 1000);
+				return ok({
+					authenticated: true,
+					username: payload.sub,
+					expiresIn: Math.max(0, payload.exp - current),
+				});
+			}
+		}
+		const rt = dequel_refresh.value;
+		if (rt) {
+			const username = await validateRefreshToken(rt);
+			if (username) {
+				await blacklistRefreshToken(rt);
+				const accessToken = await signAccessToken(username);
+				const newRefreshToken = generateRefreshToken();
+				await storeRefreshToken(username, newRefreshToken);
+				dequel_session.value = accessToken;
+				dequel_session.set({ ...SESSION_COOKIE_OPTS, secure: isSecure });
+				dequel_refresh.value = newRefreshToken;
+				dequel_refresh.set({ ...REFRESH_COOKIE_OPTS, secure: isSecure });
+				return ok({
+					authenticated: true,
+					username,
+					expiresIn: 900,
+				});
+			}
+		}
+		return ok({ authenticated: false });
 	});
