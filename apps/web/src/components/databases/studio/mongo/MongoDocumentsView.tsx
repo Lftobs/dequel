@@ -1,23 +1,21 @@
 import {
+	Braces,
 	ChevronLeft,
 	ChevronRight,
 	Database,
-	Edit3,
 	FileJson,
 	Filter,
-	Layers,
 	Plus,
 	RefreshCw,
 	SlidersHorizontal,
 	Table as TableIcon,
-	Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import type { QueryExecResult } from "../../../../types";
-import { Badge } from "../../../ui/badge";
 import { Button } from "../../../ui/button";
 import { MongoDocumentCard } from "./MongoDocumentCard";
 import { MongoDocumentModal } from "./MongoDocumentModal";
+import { MongoDocumentsTableView } from "./MongoDocumentsTableView";
 
 interface MongoDocumentsViewProps {
 	selectedCollection: string | null;
@@ -54,19 +52,29 @@ export function MongoDocumentsView({
 	onUpdateDocument,
 	onDeleteDocument,
 }: MongoDocumentsViewProps) {
-	const [viewMode, setViewMode] = useState<"json" | "table">("json");
+	const [viewMode, setViewMode] = useState<"json" | "table">("table");
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingDoc, setEditingDoc] = useState<Record<string, unknown> | null>(null);
+	const [isAddingInline, setIsAddingInline] = useState(false);
 
 	const docs = dataResult?.rows ?? [];
 	const columns = dataResult?.columns ?? [];
 
-	const handleOpenInsert = () => {
+	const handleStartAdd = () => {
+		if (columns.length === 0 || viewMode === "json") {
+			setEditingDoc(null);
+			setIsModalOpen(true);
+			return;
+		}
+		setIsAddingInline(true);
+	};
+
+	const handleOpenInsertModal = () => {
 		setEditingDoc(null);
 		setIsModalOpen(true);
 	};
 
-	const handleOpenEdit = (doc: Record<string, unknown>) => {
+	const handleOpenEditModal = (doc: Record<string, unknown>) => {
 		setEditingDoc(doc);
 		setIsModalOpen(true);
 	};
@@ -82,7 +90,7 @@ export function MongoDocumentsView({
 	if (isLoading) {
 		return (
 			<div className="flex h-64 items-center justify-center border border-border/60 bg-card/60 rounded-3xl backdrop-blur-md">
-				<RefreshCw className="h-6 w-6 animate-spin text-emerald-500" />
+				<RefreshCw className="h-6 w-6 animate-spin text-orange-500" />
 			</div>
 		);
 	}
@@ -95,36 +103,47 @@ export function MongoDocumentsView({
 					<div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-border/40">
 						<button
 							type="button"
-							onClick={() => setViewMode("json")}
-							className={`px-3 py-1 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 ${
-								viewMode === "json"
-									? "bg-emerald-600 text-white shadow-sm"
-									: "text-muted-foreground hover:text-foreground"
-							}`}
-						>
-							<FileJson className="h-3.5 w-3.5" /> JSON Cards
-						</button>
-						<button
-							type="button"
 							onClick={() => setViewMode("table")}
 							className={`px-3 py-1 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 ${
 								viewMode === "table"
-									? "bg-emerald-600 text-white shadow-sm"
+									? "bg-orange-500 text-white shadow-sm"
 									: "text-muted-foreground hover:text-foreground"
 							}`}
 						>
 							<TableIcon className="h-3.5 w-3.5" /> Table View
 						</button>
+						<button
+							type="button"
+							onClick={() => setViewMode("json")}
+							className={`px-3 py-1 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 ${
+								viewMode === "json"
+									? "bg-orange-500 text-white shadow-sm"
+									: "text-muted-foreground hover:text-foreground"
+							}`}
+						>
+							<FileJson className="h-3.5 w-3.5" /> JSON Cards
+						</button>
 					</div>
 
 					<div className="flex items-center gap-2">
+						{viewMode === "table" && (
+							<Button
+								size="sm"
+								onClick={handleStartAdd}
+								disabled={!selectedCollection || isAddingInline}
+								className="bg-orange-500 hover:bg-orange-600 text-white text-xs rounded-xl gap-1.5 shadow-md"
+							>
+								<Plus className="h-3.5 w-3.5" /> Add Document
+							</Button>
+						)}
 						<Button
 							size="sm"
-							onClick={handleOpenInsert}
+							variant="outline"
+							onClick={handleOpenInsertModal}
 							disabled={!selectedCollection}
-							className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-xl gap-1.5 shadow-md"
+							className="border-border/60 text-xs rounded-xl gap-1.5"
 						>
-							<Plus className="h-3.5 w-3.5" /> Insert Document
+							<Braces className="h-3.5 w-3.5 text-orange-400" /> JSON Insert
 						</Button>
 					</div>
 				</div>
@@ -167,7 +186,7 @@ export function MongoDocumentsView({
 			</div>
 
 			{/* Documents List */}
-			{docs.length === 0 ? (
+			{docs.length === 0 && !isAddingInline ? (
 				<div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
 					<Database className="h-10 w-10 text-muted-foreground/40" />
 					<div className="space-y-1">
@@ -178,8 +197,8 @@ export function MongoDocumentsView({
 					</div>
 					<Button
 						size="sm"
-						onClick={handleOpenInsert}
-						className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-xl gap-1.5 mt-2"
+						onClick={handleStartAdd}
+						className="bg-orange-500 hover:bg-orange-600 text-white text-xs rounded-xl gap-1.5 mt-2"
 					>
 						<Plus className="h-3.5 w-3.5" /> Insert First Document
 					</Button>
@@ -191,82 +210,22 @@ export function MongoDocumentsView({
 							key={String(doc._id ?? doc.id ?? idx)}
 							doc={doc}
 							index={idx}
-							onEdit={handleOpenEdit}
+							onEdit={handleOpenEditModal}
 							onDelete={onDeleteDocument}
 						/>
 					))}
 				</div>
 			) : (
-				/* Table View */
-				<div className="overflow-x-auto rounded-2xl border border-border/50 bg-black/30 font-mono text-xs">
-					<table className="w-full text-left border-collapse">
-						<thead className="bg-zinc-900/80 text-muted-foreground border-b border-border/50">
-							<tr>
-								{columns.map((col) => (
-									<th key={col} className="p-3 font-semibold text-foreground whitespace-nowrap">
-										{col}
-									</th>
-								))}
-								<th className="p-3 text-right">Actions</th>
-							</tr>
-						</thead>
-						<tbody className="divide-y divide-border/20">
-							{docs.map((doc, idx) => {
-								const docId = String(doc._id ?? doc.id ?? idx);
-								return (
-									<tr key={docId} className="hover:bg-white/5 transition-colors">
-										{columns.map((col) => {
-											const val = doc[col];
-											const isObject = typeof val === "object" && val !== null;
-											return (
-												<td key={col} className="p-3 max-w-xs truncate">
-													{isObject ? (
-														<Badge
-															variant="outline"
-															className="text-[10px] border-border/60 bg-card font-mono truncate max-w-full"
-														>
-															{JSON.stringify(val)}
-														</Badge>
-													) : val === null || val === undefined ? (
-														<span className="text-zinc-600">null</span>
-													) : typeof val === "boolean" ? (
-														<span className="text-purple-400">{String(val)}</span>
-													) : typeof val === "number" ? (
-														<span className="text-amber-400">{val}</span>
-													) : (
-														<span className="text-zinc-200">{String(val)}</span>
-													)}
-												</td>
-											);
-										})}
-										<td className="p-3 text-right whitespace-nowrap">
-											<div className="flex items-center justify-end gap-1">
-												<Button
-													type="button"
-													variant="ghost"
-													size="sm"
-													onClick={() => handleOpenEdit(doc)}
-													className="h-7 w-7 p-0 text-orange-400 hover:text-orange-300"
-												>
-													<Edit3 className="h-3 w-3" />
-												</Button>
-												<Button
-													type="button"
-													variant="ghost"
-													size="sm"
-													onClick={() => onDeleteDocument(docId)}
-													className="h-7 w-7 p-0 text-red-400 hover:text-red-300"
-												>
-													<Trash2 className="h-3 w-3" />
-												</Button>
-											</div>
-										</td>
-									</tr>
-								);
-							})}
-						</tbody>
-					</table>
-				</div>
+				<MongoDocumentsTableView
+					docs={docs}
+					columns={columns}
+					onInsertDocument={onInsertDocument}
+					onUpdateDocument={onUpdateDocument}
+					onDeleteDocument={onDeleteDocument}
+					onOpenEditModal={handleOpenEditModal}
+					isAddingInline={isAddingInline}
+					onCancelAddInline={() => setIsAddingInline(false)}
+				/>
 			)}
 
 			{/* Pagination Footer */}

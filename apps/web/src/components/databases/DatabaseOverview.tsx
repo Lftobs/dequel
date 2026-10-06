@@ -12,69 +12,45 @@ interface DatabaseOverviewProps {
 
 export function DatabaseOverview({ database, creds }: DatabaseOverviewProps) {
 	const [showPassword, setShowPassword] = useState(false);
-	const [copied, setCopied] = useState<string | null>(null);
+	const [copied, setCopied] = useState(false);
 
-	const copyToClipboard = (text: string, label: string) => {
+	const connectionUrl = creds?.externalConnectionString || creds?.internalConnectionString || database.connectionString;
+
+	const copyToClipboard = (text: string) => {
 		navigator.clipboard.writeText(text);
-		setCopied(label);
-		setTimeout(() => setCopied(null), 2000);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 2000);
 	};
 
 	return (
 		<Card className="border-border/60 bg-card/60 backdrop-blur-md shadow-xl rounded-3xl p-6 space-y-6">
 			<CardHeader className="p-0 border-b border-border/40 pb-4">
-				<CardTitle className="text-base font-bold text-foreground">Connection Strings & Credentials</CardTitle>
+				<CardTitle className="text-base font-bold text-foreground">Connection String &amp; Credentials</CardTitle>
 				<CardDescription className="text-xs text-muted-foreground">
-					Use internal mesh URL inside Dequel project containers, or external endpoint for remote clients.
+					Connect your applications and database clients using this connection URL.
 				</CardDescription>
 			</CardHeader>
 
 			<CardContent className="p-0 space-y-6">
 				<div className="space-y-3">
-					<label className="text-xs font-bold text-foreground uppercase tracking-wider">
-						Internal Connection String
-					</label>
+					<label className="text-xs font-bold text-foreground uppercase tracking-wider">Connection URL</label>
 					<div className="flex items-center gap-2">
 						<Input
 							readOnly
-							value={creds?.internalConnectionString || database.connectionString}
+							value={connectionUrl}
 							className="bg-black/40 border-border/60 font-mono text-xs text-orange-400 rounded-xl h-10"
 						/>
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={() => copyToClipboard(creds?.internalConnectionString || database.connectionString, "internal")}
+							onClick={() => copyToClipboard(connectionUrl)}
 							className="h-10 px-3 rounded-xl border-border/60 text-xs gap-1.5"
 						>
 							<Copy className="h-3.5 w-3.5" />
-							{copied === "internal" ? "Copied" : "Copy"}
+							{copied ? "Copied" : "Copy"}
 						</Button>
 					</div>
 				</div>
-
-				{creds?.externalConnectionString && (
-					<div className="space-y-3 pt-4 border-t border-border/40">
-						<label className="text-xs font-bold text-foreground uppercase tracking-wider">
-							External Connection String
-						</label>
-						<div className="flex items-center gap-2">
-							<Input
-								readOnly
-								value={creds.externalConnectionString}
-								className="bg-black/40 border-border/60 font-mono text-xs text-blue-400 rounded-xl h-10"
-							/>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => copyToClipboard(creds.externalConnectionString!, "external")}
-								className="h-10 px-3 rounded-xl border-border/60 text-xs gap-1.5"
-							>
-								<Copy className="h-3.5 w-3.5" />
-								{copied === "external" ? "Copied" : "Copy"}
-							</Button>
-						</div>
-					</div>
-				)}
 
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-border/40 font-mono text-xs">
 					<div className="p-3 bg-black/20 rounded-xl border border-border/40">

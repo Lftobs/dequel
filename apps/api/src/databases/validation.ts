@@ -77,6 +77,12 @@ export const validateDatabaseCreate = (
 			publicAccess,
 			allowPublicAccessFromAnywhere,
 			allowedCidrs,
+			backupEnabled: body.backupEnabled !== undefined ? Boolean(body.backupEnabled) : true,
+			backupSchedule:
+				typeof body.backupSchedule === "string" && body.backupSchedule.trim()
+					? body.backupSchedule.trim()
+					: "0 */6 * * *",
+			backupRetention: typeof body.backupRetention === "number" && body.backupRetention > 0 ? body.backupRetention : 7,
 		},
 	};
 };

@@ -83,7 +83,7 @@ export function MongoIndexesView({ database, selectedCollection }: MongoIndexesV
 			<div className="flex items-center justify-between border-b border-border/40 pb-3">
 				<div>
 					<h3 className="text-xs font-bold text-foreground flex items-center gap-2">
-						<Layers className="h-4 w-4 text-emerald-400" />
+						<Layers className="h-4 w-4 text-orange-400" />
 						Indexes for &quot;{selectedCollection || "collection"}&quot;
 					</h3>
 					<p className="text-[11px] text-muted-foreground mt-0.5">
@@ -104,7 +104,7 @@ export function MongoIndexesView({ database, selectedCollection }: MongoIndexesV
 						size="sm"
 						onClick={() => setShowCreateModal(true)}
 						disabled={!selectedCollection}
-						className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-xl gap-1.5 shadow-md h-8"
+						className="bg-orange-500 hover:bg-orange-600 text-white text-xs rounded-xl gap-1.5 shadow-md h-8"
 					>
 						<Plus className="h-3.5 w-3.5" /> Create Index
 					</Button>
@@ -115,7 +115,7 @@ export function MongoIndexesView({ database, selectedCollection }: MongoIndexesV
 
 			{isLoading ? (
 				<div className="py-12 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-					<RefreshCw className="h-4 w-4 animate-spin text-emerald-400" /> Loading indexes…
+					<RefreshCw className="h-4 w-4 animate-spin text-orange-400" /> Loading indexes…
 				</div>
 			) : indexes.length === 0 ? (
 				<p className="text-xs text-muted-foreground py-8 text-center">No indexes found on this collection.</p>
@@ -138,12 +138,12 @@ export function MongoIndexesView({ database, selectedCollection }: MongoIndexesV
 										<td className="p-3 font-semibold text-foreground">
 											{idx.name}
 											{isPrimary && (
-												<Badge variant="outline" className="ml-2 text-[9px] border-emerald-500/30 text-emerald-400">
+												<Badge variant="outline" className="ml-2 text-[9px] border-orange-500/30 text-orange-400">
 													primary
 												</Badge>
 											)}
 										</td>
-										<td className="p-3 text-emerald-300">{JSON.stringify(idx.key)}</td>
+										<td className="p-3 text-orange-300">{JSON.stringify(idx.key)}</td>
 										<td className="p-3">
 											{idx.unique && (
 												<Badge variant="outline" className="text-[9px] border-orange-500/30 text-orange-400 mr-1.5">
@@ -184,7 +184,7 @@ export function MongoIndexesView({ database, selectedCollection }: MongoIndexesV
 					<form onSubmit={handleCreateIndex} className="space-y-4">
 						<DialogHeader>
 							<DialogTitle className="text-base font-semibold flex items-center gap-2">
-								<Layers className="h-4 w-4 text-emerald-400" /> Create Index
+								<Layers className="h-4 w-4 text-orange-400" /> Create Index
 							</DialogTitle>
 							<DialogDescription className="text-xs text-muted-foreground">
 								Specify the index key pattern (1 for ascending, -1 for descending).
@@ -197,7 +197,7 @@ export function MongoIndexesView({ database, selectedCollection }: MongoIndexesV
 								value={indexKeyJson}
 								onChange={(e) => setIndexKeyJson(e.target.value)}
 								rows={4}
-								className="w-full bg-black/50 border border-border/80 rounded-xl p-3 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+								className="w-full bg-black/50 border border-border/80 rounded-xl p-3 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-orange-500/50"
 							/>
 						</div>
 
@@ -207,7 +207,7 @@ export function MongoIndexesView({ database, selectedCollection }: MongoIndexesV
 								id="unique-chk"
 								checked={isUnique}
 								onChange={(e) => setIsUnique(e.target.checked)}
-								className="rounded border-border text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+								className="rounded border-border text-orange-500 focus:ring-orange-500 h-4 w-4"
 							/>
 							<label htmlFor="unique-chk" className="text-xs font-medium text-foreground">
 								Unique index (enforce unique values)
@@ -228,7 +228,7 @@ export function MongoIndexesView({ database, selectedCollection }: MongoIndexesV
 								type="submit"
 								size="sm"
 								disabled={isCreating || !indexKeyJson.trim()}
-								className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium"
+								className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium"
 							>
 								{isCreating ? "Creating…" : "Create Index"}
 							</Button>

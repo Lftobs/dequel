@@ -23,28 +23,6 @@ export const ensureSshKey = (server: {
 	return writeKeyToDisk(server.host, server.sshKey, server.id);
 };
 
-export const ensureSshKeyAsync = async (server: {
-	host: string;
-	port?: number;
-	sshUser?: string | null;
-	sshKey?: string | null;
-	sshKeyId?: string | null;
-	id?: string;
-}): Promise<string | null> => {
-	if (server.sshKeyId) {
-		const { resolveServerSshKey } = await import("../db/repo/ssh-keys");
-		const resolved = await resolveServerSshKey({
-			sshKeyId: server.sshKeyId,
-			sshKey: server.sshKey ?? undefined,
-			sshKeyIv: undefined,
-			sshKeyTag: undefined,
-		});
-		if (resolved) return writeKeyToDisk(server.host, resolved, server.id);
-	}
-	if (server.sshKey) return writeKeyToDisk(server.host, server.sshKey, server.id);
-	return null;
-};
-
 const writeKeyToDisk = (host: string, sshKey: string, id?: string): string | null => {
 	if (!existsSync(SSH_KEYS_DIR)) {
 		mkdirSync(SSH_KEYS_DIR, { recursive: true, mode: 0o700 });
@@ -80,32 +58,76 @@ export const getDockerSshTarget = (
 	return `ssh://${user}@${server.host}:${port}`;
 };
 
-export const testSshConnection = (server: {
+export interface SshConnectionResult {
+	ok: boolean;
+	ssh: boolean;
+	docker: boolean;
+	detail: string;
+}
+
+const probeDockerOverSsh = (server: {
 	host: string;
 	port?: number;
 	sshUser?: string | null;
 	sshKey?: string | null;
 	id?: string;
-}): Promise<boolean> => {
-	return new Promise((resolve) => {
+}): Promise<{ ok: boolean; detail: string }> =>
+	new Promise((resolve) => {
 		const target = getDockerSshTarget(server);
 		const child = spawn("docker", ["-H", target, "info", "--format", "{{.ServerVersion}}"], {
 			stdio: ["ignore", "pipe", "pipe"],
 			timeout: 15_000,
 		});
 		let output = "";
+		let errors = "";
 		child.stdout?.on("data", (chunk) => {
 			output += String(chunk);
 		});
-		child.on("close", (code) => {
-			resolve(code === 0 && output.trim().length > 0);
+		child.stderr?.on("data", (chunk) => {
+			errors += String(chunk);
 		});
-		child.on("error", () => resolve(false));
+		child.on("close", (code) => {
+			const version = output.trim();
+			if (code === 0 && version) {
+				resolve({ ok: true, detail: `Docker ${version}` });
+				return;
+			}
+			resolve({ ok: false, detail: (errors || output).trim() || `docker info exited with code ${code}` });
+		});
+		child.on("error", (err) => resolve({ ok: false, detail: err instanceof Error ? err.message : String(err) }));
 		child.on("timeout", () => {
 			child.kill();
-			resolve(false);
+			resolve({ ok: false, detail: "Timed out contacting the remote Docker daemon" });
 		});
 	});
+
+export const testSshConnection = async (server: {
+	host: string;
+	port?: number;
+	sshUser?: string | null;
+	sshKey?: string | null;
+	id?: string;
+}): Promise<SshConnectionResult> => {
+	const probe = await execRemoteCommand(server, "echo dequel-ok").catch((err: unknown) => ({
+		code: 1,
+		stdout: "",
+		stderr: err instanceof Error ? err.message : String(err),
+	}));
+	if (probe.code !== 0 || probe.stdout.trim() !== "dequel-ok") {
+		return {
+			ok: false,
+			ssh: false,
+			docker: false,
+			detail: probe.stderr || probe.stdout || `ssh exited with code ${probe.code}`,
+		};
+	}
+	const docker = await probeDockerOverSsh(server);
+	return {
+		ok: docker.ok,
+		ssh: true,
+		docker: docker.ok,
+		detail: docker.ok ? docker.detail : `SSH connected, but Docker is unavailable: ${docker.detail}`,
+	};
 };
 
 export const execDockerSshCommand = (
@@ -165,22 +187,26 @@ export const syncRemoteCaddyRoute = (
 	server: Server | { host: string; port?: number; sshUser?: string | null },
 	filename: string,
 	content: string,
-): Promise<boolean> => {
-	return new Promise((resolve) => {
+): Promise<void> =>
+	new Promise((resolve, reject) => {
+		const rejectRoute = (reason: string) =>
+			reject(new Error(`Failed to sync Caddy route ${filename} to ${server.host}: ${reason}`));
+
 		if (!/^[a-zA-Z0-9._-]+$/.test(filename) || filename.includes("..")) {
-			resolve(false);
+			rejectRoute("invalid route filename");
 			return;
 		}
 
 		const blockPattern = /^([^\n{]+?)\s*\{/gm;
 		let match: RegExpExecArray | null;
 		while ((match = blockPattern.exec(content)) !== null) {
-			const domainLine = match[1].trim();
-			const domains = domainLine.split(",").map((d) => d.trim());
+			const domains = match[1]
+				.trim()
+				.split(",")
+				.map((d) => d.trim());
 			for (const d of domains) {
 				if (/^:\d+$/.test(d)) {
-					console.error(`Rejected catch-all Caddy route in ${filename}: "${d}" — must include a hostname`);
-					resolve(false);
+					rejectRoute(`route block "${d}" must include a hostname`);
 					return;
 				}
 			}
@@ -200,7 +226,7 @@ export const syncRemoteCaddyRoute = (
 				"ConnectTimeout=10",
 				...keyArgs,
 				`${user}@${server.host}`,
-				`sudo mkdir -p /etc/caddy/routes && sudo tee /etc/caddy/routes/${filename} > /dev/null && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequel-caddy caddy reload || true)`,
+				`sudo mkdir -p /etc/caddy/routes && sudo tee /etc/caddy/routes/${filename} > /dev/null && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequel-caddy caddy reload --config /etc/caddy/Caddyfile || true)`,
 			],
 			{ stdio: ["pipe", "pipe", "pipe"] },
 		);
@@ -208,12 +234,19 @@ export const syncRemoteCaddyRoute = (
 		sshCmd.stdin?.write(content);
 		sshCmd.stdin?.end();
 
-		sshCmd.on("close", (code) => {
-			resolve(code === 0);
+		let stderr = "";
+		sshCmd.stderr?.on("data", (chunk) => {
+			stderr += String(chunk);
 		});
-		sshCmd.on("error", () => resolve(false));
+		sshCmd.on("close", (code) => {
+			if (code === 0) {
+				resolve();
+				return;
+			}
+			rejectRoute(stderr.trim() || `ssh exited with code ${code}`);
+		});
+		sshCmd.on("error", (err) => rejectRoute(err.message));
 	});
-};
 
 export const removeRemoteCaddyRoute = (
 	server: Server | { host: string; port?: number; sshUser?: string | null; sshKey?: string | null; id?: string },
@@ -239,7 +272,7 @@ export const removeRemoteCaddyRoute = (
 				"ConnectTimeout=10",
 				...keyArgs,
 				`${user}@${server.host}`,
-				`sudo rm -f /etc/caddy/routes/${filename} && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequel-caddy caddy reload || true)`,
+				`sudo rm -f /etc/caddy/routes/${filename} && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequel-caddy caddy reload --config /etc/caddy/Caddyfile || true)`,
 			],
 			{ stdio: ["ignore", "pipe", "pipe"] },
 		);

@@ -6,6 +6,7 @@ import { decryptValue, encryptValue } from "../../utils/crypto";
 import { getDb } from "../db-provider";
 import { servers } from "../schema";
 import { formatTimestamp, getRowsAffected, now } from "./helpers";
+import { resolveServerSshKey } from "./ssh-keys";
 
 const mapServer = (row: typeof servers.$inferSelect): Server => ({
 	id: row.id,
@@ -36,6 +37,14 @@ const mapServer = (row: typeof servers.$inferSelect): Server => ({
 	createdAt: formatTimestamp(row.createdAt),
 	updatedAt: formatTimestamp(row.updatedAt),
 });
+
+const hydrateSshKey = async <T extends { sshKeyId?: string | null; sshKey?: string | null }>(server: T): Promise<T> => {
+	if (server.sshKeyId && !server.sshKey) {
+		const pooled = await resolveServerSshKey({ sshKeyId: server.sshKeyId });
+		if (pooled) server.sshKey = pooled;
+	}
+	return server;
+};
 
 const parseJsonObject = (value: unknown): Record<string, unknown> => {
 	if (typeof value === "object" && value !== null && !Array.isArray(value)) return value;
@@ -78,7 +87,7 @@ export const createServer = async (input: CreateServerInput): Promise<Server> =>
 		})
 		.execute();
 	const [row] = await db.select().from(servers).where(eq(servers.id, id)).execute();
-	return mapServer(row);
+	return hydrateSshKey(mapServer(row));
 };
 
 export interface ServerConnection {
@@ -111,15 +120,19 @@ export const listServerConnections = async (): Promise<ServerConnection[]> => {
 		})
 		.from(servers)
 		.execute();
-	return rows.map((row) => ({
-		...row,
-		mode: row.mode as ServerMode,
-		sshKey:
-			row.sshKey && row.sshKeyIv && row.sshKeyTag
-				? decryptValue(row.sshKey, row.sshKeyIv, row.sshKeyTag, config.envEncryptionKey)
-				: (row.sshKey ?? null),
-		sshKeyId: row.sshKeyId ?? null,
-	}));
+	return Promise.all(
+		rows.map((row) =>
+			hydrateSshKey({
+				...row,
+				mode: row.mode as ServerMode,
+				sshKey:
+					row.sshKey && row.sshKeyIv && row.sshKeyTag
+						? decryptValue(row.sshKey, row.sshKeyIv, row.sshKeyTag, config.envEncryptionKey)
+						: (row.sshKey ?? null),
+				sshKeyId: row.sshKeyId ?? null,
+			}),
+		),
+	);
 };
 
 export const ensureLocalServer = async (): Promise<Server> => {
@@ -151,13 +164,13 @@ export const ensureLocalServer = async (): Promise<Server> => {
 export const listServers = async (): Promise<Server[]> => {
 	const db = await getDb();
 	const rows = await db.select().from(servers).orderBy(servers.name).execute();
-	return rows.map(mapServer);
+	return Promise.all(rows.map((row) => hydrateSshKey(mapServer(row))));
 };
 
 export const getServerById = async (id: string): Promise<Server | null> => {
 	const db = await getDb();
 	const [row] = await db.select().from(servers).where(eq(servers.id, id)).execute();
-	return row ? mapServer(row) : null;
+	return row ? hydrateSshKey(mapServer(row)) : null;
 };
 
 export const updateServerStatus = async (
