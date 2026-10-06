@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "../types";
+import { safeSpawn, terminateWithEscalation } from "./process-exec";
 
 export interface SshExecutionOptions {
 	env?: Record<string, string>;
@@ -96,7 +97,7 @@ const probeDockerOverSsh = (server: {
 		});
 		child.on("error", (err) => resolve({ ok: false, detail: err instanceof Error ? err.message : String(err) }));
 		child.on("timeout", () => {
-			child.kill();
+			terminateWithEscalation(child, 2000);
 			resolve({ ok: false, detail: "Timed out contacting the remote Docker daemon" });
 		});
 	});
@@ -135,51 +136,12 @@ export const execDockerSshCommand = (
 	args: string[],
 	options: SshExecutionOptions = {},
 ): Promise<{ code: number; stdout: string; stderr: string }> => {
-	return new Promise((resolve, reject) => {
-		const target = getDockerSshTarget(server);
-		const fullArgs = ["-H", target, ...args];
-		const child = spawn("docker", fullArgs, {
-			stdio: ["ignore", "pipe", "pipe"],
-			env: { ...process.env, ...options.env },
-		});
-
-		let stdout = "";
-		let stderr = "";
-
-		child.stdout?.on("data", (chunk) => {
-			const text = String(chunk);
-			stdout += text;
-			if (options.onLog) {
-				text
-					.split("\n")
-					.filter(Boolean)
-					.forEach((line) => options.onLog!(line));
-			}
-		});
-
-		child.stderr?.on("data", (chunk) => {
-			const text = String(chunk);
-			stderr += text;
-			if (options.onLog) {
-				text
-					.split("\n")
-					.filter(Boolean)
-					.forEach((line) => options.onLog!(line));
-			}
-		});
-
-		child.on("close", (code) => {
-			resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });
-		});
-
-		child.on("error", (err) => reject(err));
-
-		if (options.signal) {
-			options.signal.addEventListener("abort", () => {
-				child.kill("SIGTERM");
-				reject(new Error("SSH docker command aborted"));
-			});
-		}
+	const target = getDockerSshTarget(server);
+	const fullArgs = ["-H", target, ...args];
+	return safeSpawn("docker", fullArgs, {
+		env: options.env,
+		onLine: options.onLog ? (line) => options.onLog!(line) : undefined,
+		signal: options.signal,
 	});
 };
 
@@ -231,6 +193,7 @@ export const syncRemoteCaddyRoute = (
 			{ stdio: ["pipe", "pipe", "pipe"] },
 		);
 
+		sshCmd.stdout?.on("data", () => {});
 		sshCmd.stdin?.write(content);
 		sshCmd.stdin?.end();
 
@@ -276,6 +239,7 @@ export const removeRemoteCaddyRoute = (
 			],
 			{ stdio: ["ignore", "pipe", "pipe"] },
 		);
+		sshCmd.stdout?.on("data", () => {});
 		sshCmd.on("close", (code) => resolve(code === 0));
 		sshCmd.on("error", () => resolve(false));
 	});
@@ -286,58 +250,29 @@ export const execRemoteCommand = (
 	command: string,
 	options: { env?: Record<string, string>; onLog?: (line: string) => Promise<void> | void; signal?: AbortSignal } = {},
 ): Promise<{ code: number; stdout: string; stderr: string }> => {
-	return new Promise((resolve, reject) => {
-		const keyPath = ensureSshKey(server);
-		const keyArgs = keyPath ? ["-i", keyPath, "-o", "IdentitiesOnly=yes"] : [];
-		const user = server.sshUser || "root";
-		const port = server.port || 22;
-		const child = spawn(
-			"ssh",
-			[
-				"-p",
-				String(port),
-				"-o",
-				"StrictHostKeyChecking=no",
-				"-o",
-				"ConnectTimeout=30",
-				...keyArgs,
-				`${user}@${server.host}`,
-				command,
-			],
-			{ stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ...options.env } },
-		);
-
-		let stdout = "";
-		let stderr = "";
-		child.stdout?.on("data", (chunk) => {
-			const text = String(chunk);
-			stdout += text;
-			if (options.onLog) {
-				text
-					.split("\n")
-					.filter(Boolean)
-					.forEach((line) => options.onLog!(line));
-			}
-		});
-		child.stderr?.on("data", (chunk) => {
-			const text = String(chunk);
-			stderr += text;
-			if (options.onLog) {
-				text
-					.split("\n")
-					.filter(Boolean)
-					.forEach((line) => options.onLog!(line));
-			}
-		});
-		child.on("close", (code) => resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() }));
-		child.on("error", (err) => reject(err));
-		if (options.signal) {
-			options.signal.addEventListener("abort", () => {
-				child.kill("SIGTERM");
-				reject(new Error("Remote SSH command aborted"));
-			});
-		}
-	});
+	const keyPath = ensureSshKey(server);
+	const keyArgs = keyPath ? ["-i", keyPath, "-o", "IdentitiesOnly=yes"] : [];
+	const user = server.sshUser || "root";
+	const port = server.port || 22;
+	return safeSpawn(
+		"ssh",
+		[
+			"-p",
+			String(port),
+			"-o",
+			"StrictHostKeyChecking=no",
+			"-o",
+			"ConnectTimeout=30",
+			...keyArgs,
+			`${user}@${server.host}`,
+			command,
+		],
+		{
+			env: options.env,
+			onLine: options.onLog ? (line) => options.onLog!(line) : undefined,
+			signal: options.signal,
+		},
+	);
 };
 
 export const runRemoteScript = (
@@ -350,6 +285,7 @@ export const runRemoteScript = (
 		const keyArgs = keyPath ? ["-i", keyPath, "-o", "IdentitiesOnly=yes"] : [];
 		const user = server.sshUser || "root";
 		const port = server.port || 22;
+		const isPosix = process.platform !== "win32";
 		const child = spawn(
 			"ssh",
 			[
@@ -363,11 +299,26 @@ export const runRemoteScript = (
 				`${user}@${server.host}`,
 				"bash -s",
 			],
-			{ stdio: ["pipe", "pipe", "pipe"] },
+			{
+				detached: isPosix,
+				stdio: ["pipe", "pipe", "pipe"],
+				env: {
+					GIT_TERMINAL_PROMPT: "0",
+					SSH_ASKPASS: "",
+					...process.env,
+				},
+			},
 		);
 
 		let stdout = "";
 		let stderr = "";
+		let terminationHandle: { cancel: () => void } | null = null;
+
+		const terminate = () => {
+			if (terminationHandle) return;
+			terminationHandle = terminateWithEscalation(child, 3000);
+		};
+
 		child.stdout?.on("data", (chunk) => {
 			const text = String(chunk);
 			stdout += text;
@@ -388,13 +339,24 @@ export const runRemoteScript = (
 					.forEach((line) => options.onLog!(line));
 			}
 		});
-		child.on("close", (code) => resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() }));
-		child.on("error", (err) => reject(err));
+		child.on("close", (code) => {
+			if (terminationHandle) terminationHandle.cancel();
+			resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });
+		});
+		child.on("error", (err) => {
+			terminate();
+			reject(err);
+		});
 		if (options.signal) {
-			options.signal.addEventListener("abort", () => {
-				child.kill("SIGTERM");
+			if (options.signal.aborted) {
+				terminate();
 				reject(new Error("Remote build script aborted"));
-			});
+			} else {
+				options.signal.addEventListener("abort", () => {
+					terminate();
+					reject(new Error("Remote build script aborted"));
+				});
+			}
 		}
 		child.stdin.write(script);
 		child.stdin.end();

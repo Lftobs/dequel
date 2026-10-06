@@ -1,20 +1,9 @@
-import { spawn } from "node:child_process";
+import { safeSpawn } from "../utils/process-exec";
 
-export const run = (cmd: string, args: string[]) =>
-	new Promise<string>((resolve, reject) => {
-		const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
-		let stdout = "";
-		let stderr = "";
-		child.stdout.on("data", (chunk) => {
-			stdout += String(chunk);
-		});
-		child.stderr.on("data", (chunk) => {
-			stderr += String(chunk);
-		});
-		child.on("close", (code) => {
-			if (code === 0) resolve(`${stdout}\n${stderr}`.trim());
-			else reject(new Error(`${cmd} ${args.join(" ")} failed (${code}): ${stderr}`));
-		});
-	});
+export const run = async (cmd: string, args: string[]) => {
+	const res = await safeSpawn(cmd, args, { timeoutMs: 30_000 });
+	if (res.code === 0) return `${res.stdout}\n${res.stderr}`.trim();
+	throw new Error(`${cmd} ${args.join(" ")} failed (${res.code}): ${res.stderr}`);
+};
 
 export const tryRun = (cmd: string, args: string[]) => run(cmd, args).catch(() => "");

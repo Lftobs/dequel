@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import type { Readable } from "node:stream";
 import type { Server } from "../types";
+import { safeSpawn, terminateWithEscalation } from "./process-exec";
 import { ensureSshKey, getDockerSshTarget } from "./ssh";
 
 export interface ExecResult {
@@ -19,20 +20,14 @@ export function getDockerTargetArgs(server?: Server | null): string[] {
 	return [];
 }
 
-export function dockerRun(cmd: string, args: string[], server?: Server | null): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const targetArgs = getDockerTargetArgs(server);
-		const fullArgs = targetArgs.length > 0 ? [...targetArgs, ...args] : args;
-		const child = spawn(cmd, fullArgs, { stdio: ["ignore", "pipe", "pipe"] });
-		let stdout = "";
-		let stderr = "";
-		child.stdout.on("data", (chunk) => (stdout += String(chunk)));
-		child.stderr.on("data", (chunk) => (stderr += String(chunk)));
-		child.on("close", (code) => {
-			if (code === 0) resolve(`${stdout}\n${stderr}`.trim());
-			else reject(new Error(`${cmd} ${fullArgs.join(" ")} failed (${code}): ${stderr}`));
-		});
-	});
+export async function dockerRun(cmd: string, args: string[], server?: Server | null): Promise<string> {
+	const targetArgs = getDockerTargetArgs(server);
+	const fullArgs = targetArgs.length > 0 ? [...targetArgs, ...args] : args;
+	const res = await safeSpawn(cmd, fullArgs, { timeoutMs: 120_000 });
+	if (res.code === 0) {
+		return `${res.stdout}\n${res.stderr}`.trim();
+	}
+	throw new Error(`${cmd} ${fullArgs.join(" ")} failed (${res.code}): ${res.stderr}`);
 }
 
 export async function dockerRunTry(cmd: string, args: string[], server?: Server | null): Promise<string | undefined> {
@@ -47,7 +42,28 @@ export function dockerExecStream(containerName: string, cmd: string[], server?: 
 	const targetArgs = getDockerTargetArgs(server);
 	const args = ["exec", containerName, ...cmd];
 	const fullArgs = targetArgs.length > 0 ? [...targetArgs, ...args] : args;
-	const child = spawn("docker", fullArgs, { stdio: ["ignore", "pipe", "pipe"] });
+	const isPosix = process.platform !== "win32";
+	const child = spawn("docker", fullArgs, {
+		detached: isPosix,
+		stdio: ["ignore", "pipe", "pipe"],
+	});
+
+	let terminationHandle: { cancel: () => void } | null = null;
+	const terminate = () => {
+		if (terminationHandle) return;
+		terminationHandle = terminateWithEscalation(child, 3000);
+	};
+
+	child.stderr?.on("data", () => {});
+	child.on("error", () => terminate());
+
+	child.stdout?.on("close", () => {
+		if (!child.killed) terminate();
+	});
+	child.stdout?.on("error", () => {
+		if (!child.killed) terminate();
+	});
+
 	return child.stdout!;
 }
 
@@ -55,15 +71,12 @@ export async function dockerExec(containerName: string, cmd: string[], server?: 
 	const targetArgs = getDockerTargetArgs(server);
 	const args = ["exec", containerName, ...cmd];
 	const fullArgs = targetArgs.length > 0 ? [...targetArgs, ...args] : args;
-	return new Promise((resolve, reject) => {
-		const child = spawn("docker", fullArgs, { stdio: ["ignore", "pipe", "pipe"] });
-		let stdout = "";
-		let stderr = "";
-		child.stdout?.on("data", (chunk) => (stdout += String(chunk)));
-		child.stderr?.on("data", (chunk) => (stderr += String(chunk)));
-		child.on("close", (code) => resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() }));
-		child.on("error", reject);
-	});
+	const res = await safeSpawn("docker", fullArgs, { timeoutMs: 60_000 });
+	return {
+		code: res.code,
+		stdout: res.stdout,
+		stderr: res.stderr,
+	};
 }
 
 export async function dockerExecWithStdin(
@@ -75,13 +88,38 @@ export async function dockerExecWithStdin(
 	const targetArgs = getDockerTargetArgs(server);
 	const args = ["exec", "-i", containerName, ...cmd];
 	const fullArgs = targetArgs.length > 0 ? [...targetArgs, ...args] : args;
+	const isPosix = process.platform !== "win32";
+
 	return new Promise((resolve, reject) => {
-		const child = spawn("docker", fullArgs, { stdio: ["pipe", "ignore", "pipe"] });
+		const child = spawn("docker", fullArgs, {
+			detached: isPosix,
+			stdio: ["pipe", "ignore", "pipe"],
+		});
 		let stderr = "";
+		let terminationHandle: { cancel: () => void } | null = null;
+
+		const terminate = () => {
+			if (terminationHandle) return;
+			terminationHandle = terminateWithEscalation(child, 3000);
+		};
+
 		child.stderr?.on("data", (chunk) => (stderr += String(chunk)));
 		input.pipe(child.stdin!);
-		child.on("close", (code) => resolve({ code: code ?? 1, stdout: "", stderr: stderr.trim() }));
-		child.on("error", reject);
+
+		input.on("error", (err) => {
+			terminate();
+			reject(err);
+		});
+
+		child.on("close", (code) => {
+			if (terminationHandle) terminationHandle.cancel();
+			resolve({ code: code ?? 1, stdout: "", stderr: stderr.trim() });
+		});
+
+		child.on("error", (err) => {
+			terminate();
+			reject(err);
+		});
 	});
 }
 

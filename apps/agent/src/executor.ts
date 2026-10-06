@@ -3,71 +3,26 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { config } from "./config";
 import type { AgentJobEnvelope } from "./protocol";
+import type {
+	RemoteDeployResult,
+	RemoteDestroyPayload,
+	RemoteGitDeployPayload,
+	RemoteRollbackPayload,
+	RemoteRoutePayload,
+	RemoteRouteResult,
+	RemoteScalePayload,
+	RemoteScaleResult,
+} from "./types";
 
-export type RemoteGitDeployPayload = {
-	deploymentId: string;
-	projectId: string;
-	projectName: string;
-	gitUrl: string;
-	branch?: string;
-	commitSha?: string;
-	appPort: number;
-	cpuLimit?: number;
-	memoryLimitMb?: number;
-	environmentVariables: { key: string; value: string }[];
-};
-
-export type RemoteRollbackPayload = {
-	deploymentId: string;
-	projectId: string | null;
-	projectName: string | null;
-	imageTag: string;
-	appPort: number;
-	cpuLimit?: number | null;
-	memoryLimitMb?: number | null;
-	environmentVariables: { key: string; value: string }[];
-	volumes?: { volumeName: string; mountPath: string }[];
-};
-
-export type RemoteDestroyPayload = {
-	deploymentId: string;
-	containerName: string | null;
-	imageTag: string | null;
-};
-
-export type RemoteScalePayload = {
-	deploymentId: string;
-	projectId: string | null;
-	action: "up" | "down";
-	replicas: number;
-	imageTag: string;
-	appPort: number;
-	cpuLimit?: number | null;
-	memoryLimitMb?: number | null;
-	environmentVariables: { key: string; value: string }[];
-};
-
-export type RemoteRoutePayload = {
-	deploymentId: string | null;
-	action: "add" | "remove";
-	hostname: string;
-	routeFile: string;
-	port: number;
-	targetContainers: string[];
-	upstreamHost?: string;
-};
-
-export type RemoteRouteResult = {
-	routeFile: string;
-	status: "active" | "removed";
-};
-
-export type RemoteDeployResult = {
-	imageTag: string;
-	containerName: string;
-	hostPort: number;
-	liveUrl: string | null;
-	commitSha: string | null;
+export type {
+	RemoteDeployResult,
+	RemoteDestroyPayload,
+	RemoteGitDeployPayload,
+	RemoteRollbackPayload,
+	RemoteRoutePayload,
+	RemoteRouteResult,
+	RemoteScalePayload,
+	RemoteScaleResult,
 };
 
 type Progress = (stage: string, message: string) => void;
@@ -81,15 +36,26 @@ type ContainerSpec = {
 	volumes?: { volumeName: string; mountPath: string }[];
 };
 
-const ID_RE = /^[a-zA-Z0-9-]{1,100}$/;
-const ENV_KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const SHA_RE = /^[0-9a-f]{7,40}$/i;
-const IMAGE_TAG_RE = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*:[a-zA-Z0-9._-]+$/;
-const VOLUME_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/;
-const MOUNT_PATH_RE = /^\/(?:[a-zA-Z0-9._-]+\/?)+$/;
-const HOSTNAME_RE = /^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?(?::\d{1,5})?$/;
-const ROUTE_FILE_RE = /^[a-zA-Z0-9][a-zA-Z0-9.-]*\.caddy$/;
-const UPSTREAM_HOST_RE = /^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?(?::\d{1,5})?$/;
+import {
+	ID_RE,
+	IMAGE_TAG_RE,
+	MOUNT_PATH_RE,
+	SHA_RE,
+	VOLUME_NAME_RE,
+	validateDeploymentPayload,
+	validateDestroyPayload,
+	validateRollbackPayload,
+	validateRoutePayload,
+	validateScalePayload,
+} from "./validation";
+
+export {
+	validateDeploymentPayload,
+	validateDestroyPayload,
+	validateRollbackPayload,
+	validateRoutePayload,
+	validateScalePayload,
+};
 
 const run = (
 	command: string,
@@ -97,10 +63,69 @@ const run = (
 	options: { cwd?: string; signal?: AbortSignal; onLine?: (line: string) => void; timeoutMs?: number } = {},
 ) =>
 	new Promise<string>((resolve, reject) => {
-		const child = spawn(command, args, { cwd: options.cwd, signal: options.signal, stdio: ["ignore", "pipe", "pipe"] });
+		const isPosix = process.platform !== "win32";
+		const child = spawn(command, args, {
+			cwd: options.cwd,
+			detached: isPosix,
+			stdio: ["ignore", "pipe", "pipe"],
+			env: {
+				GIT_TERMINAL_PROMPT: "0",
+				SSH_ASKPASS: "",
+				...process.env,
+			},
+		});
 		let stdout = "";
 		let stderr = "";
 		let buffer = "";
+		let settled = false;
+		let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+		let escalationTimer: ReturnType<typeof setTimeout> | null = null;
+
+		const terminate = () => {
+			if (isPosix && child.pid) {
+				try {
+					process.kill(-child.pid, "SIGTERM");
+				} catch {}
+			} else {
+				try {
+					child.kill("SIGTERM");
+				} catch {}
+			}
+			escalationTimer = setTimeout(() => {
+				if (isPosix && child.pid) {
+					try {
+						process.kill(-child.pid, "SIGKILL");
+					} catch {}
+				} else {
+					try {
+						child.kill("SIGKILL");
+					} catch {}
+				}
+			}, 4000);
+			if (typeof escalationTimer.unref === "function") escalationTimer.unref();
+		};
+
+		const cleanup = () => {
+			settled = true;
+			if (timeoutTimer) clearTimeout(timeoutTimer);
+			if (escalationTimer) clearTimeout(escalationTimer);
+			if (options.signal) options.signal.removeEventListener("abort", onAbort);
+		};
+
+		const onAbort = () => {
+			terminate();
+		};
+
+		if (options.signal) {
+			if (options.signal.aborted) onAbort();
+			else options.signal.addEventListener("abort", onAbort, { once: true });
+		}
+
+		if (options.timeoutMs) {
+			timeoutTimer = setTimeout(() => terminate(), options.timeoutMs);
+			if (typeof timeoutTimer.unref === "function") timeoutTimer.unref();
+		}
+
 		const emit = (chunk: unknown) => {
 			const text = String(chunk);
 			buffer += text;
@@ -108,169 +133,25 @@ const run = (
 			buffer = lines.pop() || "";
 			for (const line of lines) if (line.trim()) options.onLine?.(line.trim());
 		};
-		child.stdout.on("data", (chunk) => {
+		child.stdout?.on("data", (chunk) => {
 			stdout += String(chunk);
 			emit(chunk);
 		});
-		child.stderr.on("data", (chunk) => {
+		child.stderr?.on("data", (chunk) => {
 			stderr += String(chunk);
 			emit(chunk);
 		});
-		const timeout = options.timeoutMs ? setTimeout(() => child.kill("SIGTERM"), options.timeoutMs) : null;
 		child.on("error", (error) => {
-			if (timeout) clearTimeout(timeout);
+			cleanup();
 			reject(error);
 		});
 		child.on("close", (code) => {
-			if (timeout) clearTimeout(timeout);
+			cleanup();
 			if (buffer.trim()) options.onLine?.(buffer.trim());
 			if (code === 0) resolve(stdout.trim());
 			else reject(new Error(`${command} failed (${code}): ${(stderr || stdout).trim()}`));
 		});
 	});
-
-const validatePayload = (value: unknown): RemoteGitDeployPayload => {
-	if (!value || typeof value !== "object" || Array.isArray(value))
-		throw new Error("Deployment payload must be an object");
-	const input = value as Record<string, unknown>;
-	if (typeof input.deploymentId !== "string" || !ID_RE.test(input.deploymentId))
-		throw new Error("Invalid deployment ID");
-	if (typeof input.projectId !== "string" || !ID_RE.test(input.projectId)) throw new Error("Invalid project ID");
-	if (typeof input.projectName !== "string" || !input.projectName.trim()) throw new Error("Invalid project name");
-	if (typeof input.gitUrl !== "string") throw new Error("Invalid Git URL");
-	const gitUrl = new URL(input.gitUrl);
-	if (gitUrl.protocol !== "https:" || gitUrl.username || gitUrl.password)
-		throw new Error("Only public HTTPS Git URLs are supported");
-	if (input.branch !== undefined && (typeof input.branch !== "string" || input.branch.startsWith("-")))
-		throw new Error("Invalid Git branch");
-	if (input.commitSha !== undefined && (typeof input.commitSha !== "string" || !SHA_RE.test(input.commitSha)))
-		throw new Error("Invalid commit SHA");
-	if (!Number.isInteger(input.appPort) || Number(input.appPort) < 1 || Number(input.appPort) > 65535)
-		throw new Error("Invalid application port");
-	if (input.cpuLimit !== undefined && (typeof input.cpuLimit !== "number" || input.cpuLimit <= 0))
-		throw new Error("Invalid CPU limit");
-	if (input.memoryLimitMb !== undefined && (typeof input.memoryLimitMb !== "number" || input.memoryLimitMb <= 0))
-		throw new Error("Invalid memory limit");
-	if (
-		!Array.isArray(input.environmentVariables) ||
-		input.environmentVariables.some(
-			(item) =>
-				!item ||
-				typeof item !== "object" ||
-				typeof item.key !== "string" ||
-				!ENV_KEY_RE.test(item.key) ||
-				typeof item.value !== "string",
-		)
-	)
-		throw new Error("Invalid environment variables");
-	return input as RemoteGitDeployPayload;
-};
-
-const validateRollbackPayloadImpl = (value: unknown): RemoteRollbackPayload => {
-	if (!value || typeof value !== "object" || Array.isArray(value))
-		throw new Error("Rollback payload must be an object");
-	const input = value as Record<string, unknown>;
-	if (typeof input.deploymentId !== "string" || !ID_RE.test(input.deploymentId))
-		throw new Error("Invalid deployment ID");
-	if (input.projectId !== null && (typeof input.projectId !== "string" || !ID_RE.test(input.projectId)))
-		throw new Error("Invalid project ID");
-	if (input.projectName !== null && (typeof input.projectName !== "string" || !input.projectName.trim()))
-		throw new Error("Invalid project name");
-	if (typeof input.imageTag !== "string" || !IMAGE_TAG_RE.test(input.imageTag)) throw new Error("Invalid image tag");
-	if (!Number.isInteger(input.appPort) || Number(input.appPort) < 1 || Number(input.appPort) > 65535)
-		throw new Error("Invalid application port");
-	if (
-		input.cpuLimit !== undefined &&
-		input.cpuLimit !== null &&
-		(typeof input.cpuLimit !== "number" || input.cpuLimit <= 0)
-	)
-		throw new Error("Invalid CPU limit");
-	if (
-		input.memoryLimitMb !== undefined &&
-		input.memoryLimitMb !== null &&
-		(typeof input.memoryLimitMb !== "number" || input.memoryLimitMb <= 0)
-	)
-		throw new Error("Invalid memory limit");
-	if (
-		!Array.isArray(input.environmentVariables) ||
-		input.environmentVariables.some(
-			(item) =>
-				!item ||
-				typeof item !== "object" ||
-				typeof item.key !== "string" ||
-				!ENV_KEY_RE.test(item.key) ||
-				typeof item.value !== "string",
-		)
-	)
-		throw new Error("Invalid environment variables");
-	if (
-		input.volumes !== undefined &&
-		(!Array.isArray(input.volumes) ||
-			input.volumes.some(
-				(v) =>
-					!v ||
-					typeof v !== "object" ||
-					typeof v.volumeName !== "string" ||
-					!VOLUME_NAME_RE.test(v.volumeName) ||
-					typeof v.mountPath !== "string" ||
-					!MOUNT_PATH_RE.test(v.mountPath),
-			))
-	)
-		throw new Error("Invalid volumes");
-	return input as RemoteRollbackPayload;
-};
-
-const validateDestroyPayloadImpl = (value: unknown): RemoteDestroyPayload => {
-	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Destroy payload must be an object");
-	const input = value as Record<string, unknown>;
-	if (typeof input.deploymentId !== "string" || !ID_RE.test(input.deploymentId))
-		throw new Error("Invalid deployment ID");
-	if (input.containerName !== null && (typeof input.containerName !== "string" || !ID_RE.test(input.containerName)))
-		throw new Error("Invalid container name");
-	if (input.imageTag !== null && (typeof input.imageTag !== "string" || !IMAGE_TAG_RE.test(input.imageTag)))
-		throw new Error("Invalid image tag");
-	return input as RemoteDestroyPayload;
-};
-
-const validateScalePayloadImpl = (value: unknown): RemoteScalePayload => {
-	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Scale payload must be an object");
-	const input = value as Record<string, unknown>;
-	if (typeof input.deploymentId !== "string" || !ID_RE.test(input.deploymentId))
-		throw new Error("Invalid deployment ID");
-	if (input.projectId !== null && (typeof input.projectId !== "string" || !ID_RE.test(input.projectId)))
-		throw new Error("Invalid project ID");
-	if (input.action !== "up" && input.action !== "down") throw new Error("Invalid scale action");
-	if (!Number.isInteger(input.replicas) || Number(input.replicas) < 1 || Number(input.replicas) > 50)
-		throw new Error("Invalid replica count");
-	if (typeof input.imageTag !== "string" || !IMAGE_TAG_RE.test(input.imageTag)) throw new Error("Invalid image tag");
-	if (!Number.isInteger(input.appPort) || Number(input.appPort) < 1 || Number(input.appPort) > 65535)
-		throw new Error("Invalid application port");
-	if (
-		input.cpuLimit !== undefined &&
-		input.cpuLimit !== null &&
-		(typeof input.cpuLimit !== "number" || input.cpuLimit <= 0)
-	)
-		throw new Error("Invalid CPU limit");
-	if (
-		input.memoryLimitMb !== undefined &&
-		input.memoryLimitMb !== null &&
-		(typeof input.memoryLimitMb !== "number" || input.memoryLimitMb <= 0)
-	)
-		throw new Error("Invalid memory limit");
-	if (
-		!Array.isArray(input.environmentVariables) ||
-		input.environmentVariables.some(
-			(item) =>
-				!item ||
-				typeof item !== "object" ||
-				typeof item.key !== "string" ||
-				!ENV_KEY_RE.test(item.key) ||
-				typeof item.value !== "string",
-		)
-	)
-		throw new Error("Invalid environment variables");
-	return input as RemoteScalePayload;
-};
 
 const slugify = (value: string) =>
 	value
@@ -499,7 +380,7 @@ export const executeJob = async (
 ): Promise<RemoteDeployResult | RemoteRouteResult | RemoteScaleResult | { ok: true }> => {
 	switch (job.type) {
 		case "deploy":
-			return deployFromGit(validatePayload(job.payload), signal, progress);
+			return deployFromGit(validateDeploymentPayload(job.payload), signal, progress);
 		case "rollback":
 			return rollbackToImage(validateRollbackPayload(job.payload), signal, progress);
 		case "destroy":
@@ -511,39 +392,6 @@ export const executeJob = async (
 		default:
 			throw new Error(`Agent executor does not support ${job.type} jobs yet`);
 	}
-};
-
-export const validateDeploymentPayload = validatePayload;
-export const validateRollbackPayload = validateRollbackPayloadImpl;
-export const validateDestroyPayload = validateDestroyPayloadImpl;
-export const validateScalePayload = validateScalePayloadImpl;
-
-const validateRoutePayloadImpl = (value: unknown): RemoteRoutePayload => {
-	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Route payload must be an object");
-	const input = value as Record<string, unknown>;
-	if (typeof input.deploymentId !== "string" && input.deploymentId !== null) throw new Error("Invalid deployment ID");
-	if (input.action !== "add" && input.action !== "remove") throw new Error("Invalid route action");
-	if (typeof input.hostname !== "string" || !HOSTNAME_RE.test(input.hostname)) throw new Error("Invalid hostname");
-	if (typeof input.routeFile !== "string" || !ROUTE_FILE_RE.test(input.routeFile))
-		throw new Error("Invalid route file name");
-	if (!Number.isInteger(input.port) || Number(input.port) < 1 || Number(input.port) > 65535)
-		throw new Error("Invalid application port");
-	if (
-		input.upstreamHost !== undefined &&
-		(typeof input.upstreamHost !== "string" || !UPSTREAM_HOST_RE.test(input.upstreamHost))
-	) {
-		throw new Error("Invalid upstream host");
-	}
-	if (
-		!Array.isArray(input.targetContainers) ||
-		input.targetContainers.some((c) => typeof c !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(c))
-	) {
-		throw new Error("Invalid target containers");
-	}
-	if (input.action === "add" && input.targetContainers.length === 0 && !input.upstreamHost) {
-		throw new Error("Target containers required for add action without upstream host");
-	}
-	return input as RemoteRoutePayload;
 };
 
 const reloadCaddyContainer = async () => {
@@ -580,5 +428,3 @@ const applyRoute = async (payload: RemoteRoutePayload, _signal: AbortSignal): Pr
 	await reloadCaddyContainer().catch(() => {});
 	return { routeFile: payload.routeFile, status: payload.action === "add" ? "active" : "removed" };
 };
-
-export const validateRoutePayload = validateRoutePayloadImpl;
