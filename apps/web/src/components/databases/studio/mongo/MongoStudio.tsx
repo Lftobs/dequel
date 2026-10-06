@@ -166,7 +166,7 @@ export function MongoStudio({ database }: MongoStudioProps) {
 							onClick={() => setActiveTab("documents")}
 							className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 ${
 								activeTab === "documents"
-									? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20"
+									? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20"
 									: "text-muted-foreground hover:text-foreground"
 							}`}
 						>
@@ -177,7 +177,7 @@ export function MongoStudio({ database }: MongoStudioProps) {
 							onClick={() => setActiveTab("indexes")}
 							className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 ${
 								activeTab === "indexes"
-									? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20"
+									? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20"
 									: "text-muted-foreground hover:text-foreground"
 							}`}
 						>
@@ -188,7 +188,7 @@ export function MongoStudio({ database }: MongoStudioProps) {
 							onClick={() => setActiveTab("shell")}
 							className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 ${
 								activeTab === "shell"
-									? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20"
+									? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20"
 									: "text-muted-foreground hover:text-foreground"
 							}`}
 						>

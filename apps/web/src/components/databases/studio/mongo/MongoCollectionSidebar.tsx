@@ -55,7 +55,7 @@ export function MongoCollectionSidebar({
 			<div className="space-y-3">
 				<div className="flex items-center justify-between">
 					<span className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-						<Boxes className="h-4 w-4 text-emerald-400" />
+						<Boxes className="h-4 w-4 text-orange-400" />
 						Collections
 					</span>
 					<div className="flex items-center gap-1">
@@ -63,7 +63,7 @@ export function MongoCollectionSidebar({
 							variant="ghost"
 							size="sm"
 							onClick={() => setShowCreateModal(true)}
-							className="h-7 w-7 p-0 text-muted-foreground hover:text-emerald-400 rounded-lg"
+							className="h-7 w-7 p-0 text-muted-foreground hover:text-orange-400 rounded-lg"
 							title="New Collection"
 						>
 							<Plus className="h-4 w-4" />
@@ -104,7 +104,7 @@ export function MongoCollectionSidebar({
 									onClick={() => onSelectCollection(c.name)}
 									className={`w-full text-left font-mono text-xs px-3 py-2.5 rounded-xl transition-all flex items-center justify-between border ${
 										isSelected
-											? "bg-gradient-to-r from-emerald-500/20 to-teal-500/10 border-emerald-500/50 text-emerald-300 font-semibold shadow-md"
+											? "bg-gradient-to-r from-orange-500/20 to-amber-500/10 border-orange-500/50 text-orange-400 font-semibold shadow-md"
 											: "bg-background/20 border-transparent text-foreground hover:bg-white/5"
 									}`}
 								>
@@ -133,7 +133,7 @@ export function MongoCollectionSidebar({
 					<form onSubmit={handleCreate} className="space-y-4">
 						<DialogHeader>
 							<DialogTitle className="text-base font-semibold flex items-center gap-2">
-								<Boxes className="h-4 w-4 text-emerald-400" /> Create Collection
+								<Boxes className="h-4 w-4 text-orange-400" /> Create Collection
 							</DialogTitle>
 							<DialogDescription className="text-xs text-muted-foreground">
 								Add a new document collection to the MongoDB database.
@@ -167,7 +167,7 @@ export function MongoCollectionSidebar({
 								type="submit"
 								size="sm"
 								disabled={isCreating || !newCollectionName.trim()}
-								className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium"
+								className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium"
 							>
 								{isCreating ? "Creating…" : "Create Collection"}
 							</Button>

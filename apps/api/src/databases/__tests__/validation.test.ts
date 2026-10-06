@@ -25,6 +25,23 @@ describe("database input validation", () => {
 		expect(result.ok).toBe(true);
 	});
 
+	it("preserves explicit backup settings including disabled backup", () => {
+		const result = validateDatabaseCreate({
+			name: "orders",
+			type: "postgresql",
+			publicAccess: false,
+			backupEnabled: false,
+			backupSchedule: "0 0 * * *",
+			backupRetention: 14,
+		});
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.input.backupEnabled).toBe(false);
+			expect(result.input.backupSchedule).toBe("0 0 * * *");
+			expect(result.input.backupRetention).toBe(14);
+		}
+	});
+
 	it("validates IPv4 CIDRs and rejects IPv6 ranges", () => {
 		expect(isValidCidr("10.0.0.0/8")).toBe(true);
 		expect(isValidCidr("203.0.113.4")).toBe(true);

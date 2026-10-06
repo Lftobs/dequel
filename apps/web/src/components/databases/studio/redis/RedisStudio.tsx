@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { Activity, Key, Terminal } from "lucide-react";
+import { Key, Terminal } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as api from "../../../../api/client";
-import type { Database, TableInfo } from "../../../../types";
+import type { Database } from "../../../../types";
 import { RedisCliView } from "./RedisCliView";
 import { RedisKeyExplorer } from "./RedisKeyExplorer";
 import { RedisKeysSidebar } from "./RedisKeysSidebar";
 import { RedisNewKeyDialog } from "./RedisNewKeyDialog";
-import { RedisServerInfoView } from "./RedisServerInfoView";
 
 interface RedisStudioProps {
 	database: Database;
@@ -16,7 +15,7 @@ interface RedisStudioProps {
 const escapeRedisArg = (str: string) => `"${str.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 
 export function RedisStudio({ database }: RedisStudioProps) {
-	const [activeTab, setActiveTab] = useState<"explorer" | "cli" | "info">("explorer");
+	const [activeTab, setActiveTab] = useState<"explorer" | "cli">("explorer");
 	const [selectedKey, setSelectedKey] = useState<string | null>(null);
 	const [pattern, setPattern] = useState("");
 	const [isNewKeyModalOpen, setIsNewKeyModalOpen] = useState(false);
@@ -148,17 +147,6 @@ export function RedisStudio({ database }: RedisStudioProps) {
 						>
 							<Terminal className="h-3.5 w-3.5" /> REDIS CLI
 						</button>
-						<button
-							type="button"
-							onClick={() => setActiveTab("info")}
-							className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1.5 ${
-								activeTab === "info"
-									? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20"
-									: "text-muted-foreground hover:text-foreground"
-							}`}
-						>
-							<Activity className="h-3.5 w-3.5" /> SERVER INFO
-						</button>
 					</div>
 
 					<div className="text-xs text-muted-foreground font-mono px-3">
@@ -177,8 +165,6 @@ export function RedisStudio({ database }: RedisStudioProps) {
 				)}
 
 				{activeTab === "cli" && <RedisCliView databaseId={database.id} />}
-
-				{activeTab === "info" && <RedisServerInfoView databaseId={database.id} />}
 			</div>
 
 			{/* New Key Creation Dialog */}

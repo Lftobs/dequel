@@ -10,8 +10,7 @@ interface RedisCliViewProps {
 	initialCommand?: string;
 }
 
-interface CliHistoryEntry {
-	id: string;
+interface CliResult {
 	command: string;
 	result: QueryExecResult | null;
 	error: string | null;
@@ -21,7 +20,7 @@ interface CliHistoryEntry {
 export function RedisCliView({ databaseId, initialCommand }: RedisCliViewProps) {
 	const [commandInput, setCommandInput] = useState(initialCommand || "INFO");
 	const [isExecuting, setIsExecuting] = useState(false);
-	const [history, setHistory] = useState<CliHistoryEntry[]>([]);
+	const [activeResult, setActiveResult] = useState<CliResult | null>(null);
 
 	const snippets = [
 		{ label: "INFO", cmd: "INFO" },
@@ -39,32 +38,23 @@ export function RedisCliView({ databaseId, initialCommand }: RedisCliViewProps) 
 		if (!cmd) return;
 		setIsExecuting(true);
 
-		const entryId = Math.random().toString(36).substring(7);
 		const timeStr = new Date().toLocaleTimeString();
 
 		try {
 			const res = await api.queryDatabase(databaseId, cmd);
-			setHistory((prev) => [
-				{
-					id: entryId,
-					command: cmd,
-					result: res,
-					error: null,
-					timestamp: timeStr,
-				},
-				...prev,
-			]);
+			setActiveResult({
+				command: cmd,
+				result: res,
+				error: null,
+				timestamp: timeStr,
+			});
 		} catch (err: any) {
-			setHistory((prev) => [
-				{
-					id: entryId,
-					command: cmd,
-					result: null,
-					error: err.message || "Command execution failed",
-					timestamp: timeStr,
-				},
-				...prev,
-			]);
+			setActiveResult({
+				command: cmd,
+				result: null,
+				error: err.message || "Command execution failed",
+				timestamp: timeStr,
+			});
 		} finally {
 			setIsExecuting(false);
 		}
@@ -86,20 +76,20 @@ export function RedisCliView({ databaseId, initialCommand }: RedisCliViewProps) 
 						Redis Command Line Interface (CLI)
 					</span>
 					<p className="text-[11px] text-muted-foreground mt-0.5">
-						Execute native Redis commands directly against the instance (supports multi-line batch commands)
+						Execute native Redis commands directly against the instance
 					</p>
 				</div>
 
 				<div className="flex items-center gap-2">
-					{history.length > 0 && (
+					{activeResult && (
 						<Button
 							variant="ghost"
 							size="sm"
-							onClick={() => setHistory([])}
+							onClick={() => setActiveResult(null)}
 							className="h-8 text-xs text-muted-foreground hover:text-foreground"
-							title="Clear console log"
+							title="Clear result"
 						>
-							<Trash2 className="h-3.5 w-3.5 mr-1" /> Clear
+							<Trash2 className="h-3.5 w-3.5 mr-1" /> Clear Result
 						</Button>
 					)}
 					<Button
@@ -141,46 +131,41 @@ export function RedisCliView({ databaseId, initialCommand }: RedisCliViewProps) 
 				/>
 			</div>
 
-			{/* Terminal Output Stream */}
-			<div className="space-y-3">
-				{history.length === 0 ? (
+			{/* Terminal Output */}
+			<div>
+				{!activeResult ? (
 					<div className="p-8 border border-border/30 rounded-2xl bg-black/30 text-center font-mono text-xs text-muted-foreground">
-						No commands executed yet. Select a quick command or type in the input above.
+						No command executed yet. Run a command above to see results.
 					</div>
 				) : (
-					history.map((entry) => (
-						<div
-							key={entry.id}
-							className="rounded-2xl border border-border/50 bg-black/70 overflow-hidden font-mono text-xs shadow-lg"
-						>
-							<div className="p-2.5 bg-black/90 border-b border-border/30 flex items-center justify-between text-muted-foreground text-[11px]">
-								<div className="flex items-center gap-2">
-									<span className="text-orange-400 font-bold">127.0.0.1:6379&gt;</span>
-									<span className="text-foreground font-semibold break-all">{entry.command}</span>
-								</div>
-								<div className="flex items-center gap-2 shrink-0">
-									{entry.result && (
-										<Badge variant="outline" className="text-[9px] px-1.5 py-0 border-orange-500/30 text-orange-400">
-											{entry.result.executionTimeMs} ms
-										</Badge>
-									)}
-									<span>{entry.timestamp}</span>
-								</div>
+					<div className="rounded-2xl border border-border/50 bg-black/70 overflow-hidden font-mono text-xs shadow-lg">
+						<div className="p-2.5 bg-black/90 border-b border-border/30 flex items-center justify-between text-muted-foreground text-[11px]">
+							<div className="flex items-center gap-2">
+								<span className="text-orange-400 font-bold">127.0.0.1:6379&gt;</span>
+								<span className="text-foreground font-semibold break-all">{activeResult.command}</span>
 							</div>
-
-							<div className="p-3 max-h-72 overflow-y-auto leading-relaxed">
-								{entry.error ? (
-									<span className="text-red-400">{entry.error}</span>
-								) : (
-									<pre className="text-zinc-200 whitespace-pre-wrap break-all">
-										{entry.result?.rawOutput ||
-											(entry.result?.rows || []).map((r) => `${r.result ?? ""}`).join("\n") ||
-											"(empty response)"}
-									</pre>
+							<div className="flex items-center gap-2 shrink-0">
+								{activeResult.result && (
+									<Badge variant="outline" className="text-[9px] px-1.5 py-0 border-orange-500/30 text-orange-400">
+										{activeResult.result.executionTimeMs} ms
+									</Badge>
 								)}
+								<span>{activeResult.timestamp}</span>
 							</div>
 						</div>
-					))
+
+						<div className="p-3 max-h-96 overflow-y-auto leading-relaxed">
+							{activeResult.error ? (
+								<span className="text-red-400">{activeResult.error}</span>
+							) : (
+								<pre className="text-zinc-200 whitespace-pre-wrap break-all">
+									{activeResult.result?.rawOutput ||
+										(activeResult.result?.rows || []).map((r) => `${r.result ?? ""}`).join("\n") ||
+										"(empty response)"}
+								</pre>
+							)}
+						</div>
+					</div>
 				)}
 			</div>
 		</div>

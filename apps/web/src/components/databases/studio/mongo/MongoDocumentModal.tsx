@@ -1,4 +1,4 @@
-import { Braces, Check, Copy, FileJson } from "lucide-react";
+import { Braces, FileJson } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../../../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../ui/dialog";
@@ -76,9 +76,9 @@ export function MongoDocumentModal({
 				<DialogHeader className="border-b border-border/40 pb-3">
 					<div className="flex items-center justify-between">
 						<DialogTitle className="text-base font-semibold flex items-center gap-2">
-							<FileJson className="h-4 w-4 text-emerald-400" />
+							<FileJson className="h-4 w-4 text-orange-400" />
 							{isEdit ? "Edit Document" : "Insert Document"} —{" "}
-							<span className="font-mono text-emerald-300">{collectionName}</span>
+							<span className="font-mono text-orange-400">{collectionName}</span>
 						</DialogTitle>
 						<Button
 							type="button"
@@ -103,7 +103,7 @@ export function MongoDocumentModal({
 						onChange={(e) => setJsonText(e.target.value)}
 						rows={14}
 						placeholder='{\n  "name": "Example",\n  "status": "active"\n}'
-						className="w-full bg-black/50 border border-border/80 rounded-xl p-4 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50 resize-y"
+						className="w-full bg-black/50 border border-border/80 rounded-xl p-4 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-orange-500/50 resize-y"
 					/>
 
 					{error && <p className="text-xs text-red-400 font-mono">{error}</p>}
@@ -118,7 +118,7 @@ export function MongoDocumentModal({
 						size="sm"
 						onClick={handleSave}
 						disabled={isSaving || !jsonText.trim()}
-						className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium"
+						className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium"
 					>
 						{isSaving ? "Saving…" : isEdit ? "Save Changes" : "Insert Document"}
 					</Button>
