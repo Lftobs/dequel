@@ -381,6 +381,10 @@ export const deploymentsRoutes = new Elysia()
 					stdio: ["ignore", "pipe", "pipe"],
 				});
 				childProcess = child;
+				if (closed) {
+					terminateWithEscalation(child, 2000);
+					return;
+				}
 				let seq = 0;
 				child.stdout.on("data", (chunk: Buffer) => {
 					if (closed) return;

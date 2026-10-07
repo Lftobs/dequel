@@ -69,9 +69,10 @@ const run = (
 			detached: isPosix,
 			stdio: ["ignore", "pipe", "pipe"],
 			env: {
-				GIT_TERMINAL_PROMPT: "0",
-				SSH_ASKPASS: "",
 				...process.env,
+				GIT_TERMINAL_PROMPT: "0",
+				GIT_ASKPASS: "",
+				SSH_ASKPASS: "",
 			},
 		});
 		let stdout = "";
@@ -82,6 +83,7 @@ const run = (
 		let escalationTimer: ReturnType<typeof setTimeout> | null = null;
 
 		const terminate = () => {
+			if (settled || escalationTimer) return;
 			if (isPosix && child.pid) {
 				try {
 					process.kill(-child.pid, "SIGTERM");
@@ -370,8 +372,6 @@ const scaleDeployment = async (payload: RemoteScalePayload, signal: AbortSignal,
 	progress("deploy", `Replica ${containerName} running`);
 	return { replicas: payload.replicas, started: true as const };
 };
-
-export type RemoteScaleResult = { replicas: number; removed: true } | { replicas: number; started: true };
 
 export const executeJob = async (
 	job: AgentJobEnvelope,

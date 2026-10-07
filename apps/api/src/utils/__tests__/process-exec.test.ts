@@ -59,4 +59,12 @@ describe("process-exec", () => {
 		expect(error).not.toBeNull();
 		expect(error?.message).toContain("timed out");
 	});
+
+	it("buffers partial lines and preserves multibyte characters across chunks", async () => {
+		const lines: string[] = [];
+		await safeSpawn("sh", ["-c", "printf 'line1-part'; sleep 0.05; printf '1-end\\n'; printf 'emoji: 🎉\\n'"], {
+			onLine: (l) => lines.push(l),
+		});
+		expect(lines).toEqual(["line1-part1-end", "emoji: 🎉"]);
+	});
 });

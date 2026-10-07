@@ -100,15 +100,18 @@ export function safeSpawn(cmd: string, args: string[], options: SafeSpawnOptions
 			detached: spawnOpts.detached ?? isPosix,
 			stdio: spawnOpts.stdio ?? ["ignore", "pipe", "pipe"],
 			env: {
-				GIT_TERMINAL_PROMPT: "0",
-				SSH_ASKPASS: "",
 				...process.env,
+				GIT_TERMINAL_PROMPT: "0",
+				GIT_ASKPASS: "",
+				SSH_ASKPASS: "",
 				...options.env,
 			},
 		});
 
 		let stdout = "";
 		let stderr = "";
+		let stdoutRemainder = "";
+		let stderrRemainder = "";
 		let settled = false;
 		let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
 		let terminationHandle: { cancel: () => void } | null = null;
@@ -124,7 +127,7 @@ export function safeSpawn(cmd: string, args: string[], options: SafeSpawnOptions
 		};
 
 		const terminate = (err?: Error) => {
-			if (settled) return;
+			if (settled || terminationHandle) return;
 			if (err) abortError = err;
 			terminationHandle = terminateWithEscalation(child, killSignalTimeoutMs ?? 4000);
 		};
@@ -150,22 +153,29 @@ export function safeSpawn(cmd: string, args: string[], options: SafeSpawnOptions
 			}
 		}
 
-		child.stdout?.on("data", (chunk: Buffer | string) => {
-			const str = String(chunk);
-			stdout += str;
+		child.stdout?.setEncoding("utf8");
+		child.stderr?.setEncoding("utf8");
+
+		child.stdout?.on("data", (chunk: string) => {
+			stdout += chunk;
 			if (onLine) {
-				for (const line of str.split("\n").filter(Boolean)) {
-					onLine(line);
+				const text = stdoutRemainder + chunk;
+				const lines = text.split("\n");
+				stdoutRemainder = lines.pop() ?? "";
+				for (const line of lines) {
+					if (line) onLine(line);
 				}
 			}
 		});
 
-		child.stderr?.on("data", (chunk: Buffer | string) => {
-			const str = String(chunk);
-			stderr += str;
+		child.stderr?.on("data", (chunk: string) => {
+			stderr += chunk;
 			if (onLine) {
-				for (const line of str.split("\n").filter(Boolean)) {
-					onLine(line);
+				const text = stderrRemainder + chunk;
+				const lines = text.split("\n");
+				stderrRemainder = lines.pop() ?? "";
+				for (const line of lines) {
+					if (line) onLine(line);
 				}
 			}
 		});
@@ -177,6 +187,10 @@ export function safeSpawn(cmd: string, args: string[], options: SafeSpawnOptions
 
 		child.on("close", (code) => {
 			cleanup();
+			if (onLine) {
+				if (stdoutRemainder) onLine(stdoutRemainder);
+				if (stderrRemainder) onLine(stderrRemainder);
+			}
 			if (abortError) {
 				reject(abortError);
 				return;
