@@ -49,7 +49,7 @@ const deployFromImage = async (
 	project: Project | null,
 	server: Server,
 	imageTag: string,
-	oldContainerName?: string,
+	oldDeployment?: Deployment,
 ) => {
 	const { updateDeploymentStatus } = await getRepo();
 	const { deployContainer } = await getRuntime();
@@ -65,7 +65,8 @@ const deployFromImage = async (
 			projectId: deployment.projectId ?? undefined,
 			projectName: project?.name,
 			baseDomain: project?.baseDomain,
-			oldContainerName,
+			oldContainerName: oldDeployment?.containerName ?? undefined,
+			oldDeploymentId: oldDeployment?.id,
 			envVars,
 			volumes,
 			cpuLimit: project?.cpuLimit,
@@ -315,7 +316,7 @@ export const sshExecutor: DeploymentExecutor = {
 			const all = await listDeployments(project.id);
 			const current = all.find((d) => d.status === "running" && d.id !== deployment.id);
 
-			await deployFromImage(deployment, project, server, buildResult.imageTag, current?.containerName ?? undefined);
+			await deployFromImage(deployment, project, server, buildResult.imageTag, current);
 
 			if (current) {
 				await updateDeploymentStatus(current.id, "inactive", {
@@ -341,13 +342,7 @@ export const sshExecutor: DeploymentExecutor = {
 			const all = await listDeployments(deployment.projectId ?? "");
 			const current = all.find((d) => d.status === "running" && d.id !== deployment.id);
 			const resolvedProject = project ?? (deployment.projectId ? await getProjectById(deployment.projectId) : null);
-			const runtime = await deployFromImage(
-				deployment,
-				resolvedProject,
-				server,
-				imageTag,
-				current?.containerName ?? undefined,
-			);
+			const runtime = await deployFromImage(deployment, resolvedProject, server, imageTag, current);
 			if (current) {
 				await updateDeploymentStatus(current.id, "inactive", {
 					failureReason: `Superseded by rollback to ${deployment.id.slice(0, 8)}`,
