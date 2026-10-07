@@ -129,9 +129,11 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 						</div>
 						<p className="break-all font-mono text-xs text-zinc-200">
 							{database.publicAccess
-								? credentials?.externalHost
-									? `${credentials.externalHost}:${credentials.externalPort}`
-									: "Provisioning..."
+								? credentials
+									? credentials.externalHost
+										? `${credentials.externalHost}:${credentials.externalPort}`
+										: "Provisioning..."
+									: "Reveal to view"
 								: "Disabled"}
 						</p>
 					</div>
