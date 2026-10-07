@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { connect as netConnect, createServer } from "node:net";
+import { createServer, connect as netConnect } from "node:net";
 import { connect as tlsConnect } from "node:tls";
 import { parseClientHello, parsePostgresPreamble, readClientHello } from "../peek";
 
@@ -88,6 +88,31 @@ describe("readClientHello", () => {
 			server.listen(0, "127.0.0.1", () => {
 				const port = (server.address() as { port: number }).port;
 				const c = netConnect(port, "127.0.0.1", () => c.write(hello));
+				c.on("close", () => resolve());
+			});
+		});
+	});
+
+	it("drains a hello delivered as several chunks in one readable event", async () => {
+		const hello = await captureClientHello("db-abc123.test.local");
+		const server = createServer((sock) => {
+			readClientHello(sock).then((buf) => {
+				expect(buf).not.toBeNull();
+				expect(parseClientHello(buf!)).toEqual({ kind: "tls", sni: "db-abc123.test.local" });
+				sock.destroy();
+				server.close();
+			});
+		});
+		await new Promise<void>((resolve, reject) => {
+			server.listen(0, "127.0.0.1", () => {
+				const port = (server.address() as { port: number }).port;
+				const c = netConnect(port, "127.0.0.1", () => {
+					const step = Math.ceil(hello.length / 3);
+					c.write(hello.subarray(0, step));
+					c.write(hello.subarray(step, step * 2));
+					c.write(hello.subarray(step * 2));
+				});
+				c.on("error", reject);
 				c.on("close", () => resolve());
 			});
 		});
