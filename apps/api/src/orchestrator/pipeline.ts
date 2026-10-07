@@ -528,6 +528,7 @@ export class PipelineOrchestrator {
 		if (proj?.buildType === "compose") {
 			throw new Error("Rollback is not supported for Docker Compose deployments");
 		}
+		const projectServer = proj?.serverId ? await getServerById(proj.serverId) : null;
 		const _slug = proj ? this.slugify(proj.name) : target.id;
 
 		const all = await listDeployments(target.projectId);
@@ -540,7 +541,7 @@ export class PipelineOrchestrator {
 			if (target.containerName) {
 				await emitLog(targetDeploymentId, "deploy", `Removing old container: ${target.containerName}`);
 				const { dockerBin } = await import("../utils/docker-bin");
-				await tryRun(dockerBin, ["rm", "-f", target.containerName]);
+				await tryRun(dockerBin, ["rm", "-f", target.containerName], projectServer);
 			}
 
 			let envVars: Record<string, string> | undefined;
@@ -579,6 +580,7 @@ export class PipelineOrchestrator {
 					volumes,
 					cpuLimit: proj?.cpuLimit,
 					memoryLimitMb: proj?.memoryLimitMb,
+					targetServer: projectServer,
 				},
 			);
 
