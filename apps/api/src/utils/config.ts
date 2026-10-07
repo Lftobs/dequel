@@ -49,4 +49,5 @@ export const config = {
 	wireguardServerEndpoint: withFile<string>("WIREGUARD_SERVER_ENDPOINT", ""),
 	wireguardServerIp: withFile<string>("WIREGUARD_SERVER_IP", "10.200.0.1"),
 	wireguardPeerCidr: withFile<string>("WIREGUARD_PEER_CIDR", "10.200.0.0/24"),
+	gatewayCertDir: withFile<string>("GATEWAY_CERT_DIR", "/app/data"),
 };

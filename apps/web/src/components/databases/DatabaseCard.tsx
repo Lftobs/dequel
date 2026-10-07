@@ -125,12 +125,12 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 					<div className="rounded-xl border border-border/80 bg-black/40 p-3 space-y-1">
 						<div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
 							<HardDrive className="h-3.5 w-3.5 text-blue-400" />
-							Public Port Access
+							Public Endpoint
 						</div>
-						<p className="font-mono text-xs text-zinc-200">
+						<p className="break-all font-mono text-xs text-zinc-200">
 							{database.publicAccess
-								? database.externalPort
-									? `:${database.externalPort}`
+								? credentials?.externalHost
+									? `${credentials.externalHost}:${credentials.externalPort}`
 									: "Provisioning..."
 								: "Disabled"}
 						</p>
