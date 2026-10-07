@@ -458,7 +458,8 @@ class ScalingEngine {
 		const hostname = `${slug}.${baseDomainFor()}`;
 		const routeFile = `${slug}.caddy`;
 		const appPort = project?.port || 3000;
-		const targets = [`deploy-${dep.id}`];
+		const primaryName = dep.containerName || `${slug}-${dep.id.slice(0, 8)}`;
+		const targets = [primaryName];
 		for (let i = 2; i <= replicas; i++) targets.push(`deploy-${dep.id}-replica-${i}`);
 		await upsertRoute({
 			serverId: server.id,
@@ -511,7 +512,8 @@ class ScalingEngine {
 		}
 
 		// Build proxy targets: primary + all replicas
-		const targets = [`deploy-${dep.id}:${port}`];
+		const primaryName = dep.containerName || `${slug}-${dep.id.slice(0, 8)}`;
+		const targets = [`${primaryName}:${port}`];
 		for (let i = 2; i <= replicaCount; i++) {
 			targets.push(`deploy-${dep.id}-replica-${i}:${port}`);
 		}
