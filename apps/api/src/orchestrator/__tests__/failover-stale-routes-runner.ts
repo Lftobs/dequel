@@ -1,5 +1,5 @@
 import { mock } from "bun:test";
-import http from "node:http";
+import net from "node:net";
 
 const fileUrl = (relPath: string) => new URL(relPath, import.meta.url).toString();
 
@@ -7,7 +7,7 @@ let platformSettings: { ingressServerId: string | null } = { ingressServerId: nu
 let servers: any[] = [];
 let projects: any[] = [];
 let routesByServer: Record<string, any[]> = {};
-let removedRouteFiles: { hostname: string; routeFile: string }[] = [];
+let removedRouteFiles: { hostname: string; routeFile: string; targetServerId: string | null }[] = [];
 let routeStatusUpdates: { hostname: string; status: string; serverId?: string }[] = [];
 let reachableHosts: Set<string> = new Set();
 
@@ -51,8 +51,8 @@ mock.module(fileUrl("../../utils/ingress.ts"), () => ({
 		if (!platformSettings.ingressServerId) return Promise.resolve(null);
 		return Promise.resolve(servers.find((s) => s.id === platformSettings.ingressServerId) ?? null);
 	}),
-	removeIngressRouteFile: mock((_ingressServer: any, info: { hostname: string; routeFile: string }) => {
-		removedRouteFiles.push(info);
+	removeIngressRouteFile: mock((routeServer: { id?: string } | null, info: { hostname: string; routeFile: string }) => {
+		removedRouteFiles.push({ ...info, targetServerId: routeServer?.id ?? null });
 		return Promise.resolve();
 	}),
 	syncIngressRoute: mock(() => Promise.resolve()),
@@ -60,33 +60,36 @@ mock.module(fileUrl("../../utils/ingress.ts"), () => ({
 	upsertIngressRoute: mock(() => Promise.resolve()),
 }));
 
-const _origHttpGet = http.get;
-(http as any).get = mock((url: string, _opts: any, cb: any) => {
-	const host = new URL(url).hostname;
-	const reachable = reachableHosts.has(host);
-	const req = {
-		on: mock(() => req),
+const _origCreateConnection = net.createConnection;
+(net as any).createConnection = mock((opts: { host?: string }) => {
+	const reachable = reachableHosts.has(opts.host ?? "");
+	const handlers: Record<string, () => void> = {};
+	const socket = {
+		setTimeout: (_ms: number, cb: () => void) => {
+			handlers.timeout = cb;
+			return socket;
+		},
+		once: (event: string, cb: () => void) => {
+			handlers[event] = cb;
+			return socket;
+		},
 		destroy: mock(() => {}),
 	};
-	if (reachable) {
-		process.nextTick(() => cb({ statusCode: 200, resume: mock(() => {}) }));
-	} else {
-		process.nextTick(() => {
-			const errCb = req.on.mock.calls.find((c: any) => c[0] === "error")?.[1];
-			if (errCb) errCb(new Error("ECONNREFUSED"));
-		});
-	}
-	return req;
+	process.nextTick(() => {
+		if (reachable) handlers.connect?.();
+		else handlers.error?.(new Error("ECONNREFUSED"));
+	});
+	return socket;
 });
 
-const { failoverMonitorTick } = await import("../failover");
+const { cleanupStaleRoutes, failoverMonitorTick } = await import("../failover");
 
 const results: any = {};
 
 // Test 1: clean up stale routes on recovery
 platformSettings = { ingressServerId: "ing" };
 servers = [
-	{ id: "ing", name: "Ingress", mode: "ssh" },
+	{ id: "ing", name: "Ingress", mode: "ssh", host: "10.0.0.9", status: "connected" },
 	{ id: "srv-a", name: "ServerA", mode: "ssh", host: "10.0.0.1", status: "connected" },
 	{ id: "srv-b", name: "ServerB", mode: "ssh", host: "10.0.0.2", status: "connected" },
 ];
@@ -147,5 +150,17 @@ reachableHosts.add("10.0.0.1");
 await failoverMonitorTick();
 
 results.test3 = { removedEmpty: removedRouteFiles.length === 0, updatesEmpty: routeStatusUpdates.length === 0 };
+
+// Test 4: never delete a route file owned by the ingress server itself
+removedRouteFiles = [];
+routeStatusUpdates = [];
+projects = [{ id: "p1", name: "proj-1", serverId: "srv-b" }];
+routesByServer = {
+	ing: [{ id: "r4", projectId: "p1", hostname: "p1.app.com", routeFile: "p1.conf", status: "active" }],
+};
+
+await cleanupStaleRoutes({ id: "ing", mode: "ssh" }, "ing");
+
+results.test4 = { removedFiles: removedRouteFiles, updates: routeStatusUpdates };
 
 console.log(JSON.stringify(results));

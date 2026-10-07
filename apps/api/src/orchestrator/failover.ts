@@ -1,4 +1,4 @@
-import http from "node:http";
+import net from "node:net";
 import {
 	appendLog,
 	createDeployment,
@@ -24,15 +24,14 @@ const previouslyUnreachableServers = new Set<string>();
 
 export const isServerReachable = (host: string, port: number = 22): Promise<boolean> =>
 	new Promise((resolve) => {
-		const req = http.get(`http://${host}:${port}/`, { timeout: CONNECT_TIMEOUT_MS }, (res) => {
-			res.resume();
-			resolve(res.statusCode !== undefined && res.statusCode < 500);
-		});
-		req.on("error", () => resolve(false));
-		req.on("timeout", () => {
-			req.destroy();
-			resolve(false);
-		});
+		const socket = net.createConnection({ host, port });
+		const finish = (reachable: boolean) => {
+			resolve(reachable);
+			socket.destroy();
+		};
+		socket.setTimeout(CONNECT_TIMEOUT_MS, () => finish(false));
+		socket.once("connect", () => finish(true));
+		socket.once("error", () => finish(false));
 	});
 
 export const failoverProject = async (projectId: string) => {
@@ -108,9 +107,15 @@ export const cleanupStaleRoutes = async (ingressServer: { id: string; mode: stri
 			console.log(
 				`[Failover] Cleaning stale route ${route.hostname} for project ${route.projectId} (no longer on server ${serverId})`,
 			);
-			await removeIngressRouteFile(ingressServer, { hostname: route.hostname, routeFile: route.routeFile }).catch(
-				() => {},
-			);
+			if (serverId !== ingressServer.id) {
+				const routeServer = await getServerById(serverId);
+				if (routeServer?.mode === "ssh") {
+					await removeIngressRouteFile(routeServer, {
+						hostname: route.hostname,
+						routeFile: route.routeFile,
+					}).catch(() => {});
+				}
+			}
 			await updateRouteStatus(route.hostname, "removed", null, serverId).catch(() => {});
 		}
 	}

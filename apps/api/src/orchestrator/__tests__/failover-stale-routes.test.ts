@@ -24,7 +24,9 @@ describe("failover monitor - stale route cleanup", () => {
 		expect(r.test1_firstTick.removedEmpty).toBe(true);
 		expect(r.test1_firstTick.updatesEmpty).toBe(true);
 
-		expect(r.test1_recovered.removedFiles).toEqual([{ hostname: "p1.app.com", routeFile: "p1.conf" }]);
+		expect(r.test1_recovered.removedFiles).toEqual([
+			{ hostname: "p1.app.com", routeFile: "p1.conf", targetServerId: "srv-a" },
+		]);
 		expect(r.test1_recovered.updates).toEqual([{ hostname: "p1.app.com", status: "removed", serverId: "srv-a" }]);
 	});
 
@@ -40,5 +42,12 @@ describe("failover monitor - stale route cleanup", () => {
 		const r = parse(stdout);
 		expect(r.test3.removedEmpty).toBe(true);
 		expect(r.test3.updatesEmpty).toBe(true);
+	});
+
+	it("never deletes a route file that lives on the ingress server", async () => {
+		const { stdout } = await run();
+		const r = parse(stdout);
+		expect(r.test4.removedFiles).toEqual([]);
+		expect(r.test4.updates).toEqual([{ hostname: "p1.app.com", status: "removed", serverId: "ing" }]);
 	});
 });
