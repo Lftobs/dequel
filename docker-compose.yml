@@ -152,6 +152,33 @@ services:
                 aliases:
                     - web
 
+    gateway:
+        image: ghcr.io/lftobs/dequel/api
+        # build:
+        #     context: ./apps/api
+        #     dockerfile: Dockerfile
+        restart: unless-stopped
+        command: ["bun", "src/tunnels/gateway.ts"]
+        environment:
+            DATABASE_URL: postgresql://${POSTGRES_USER:-dequel}:${POSTGRES_PASSWORD:-dequel}@postgres:5432/${POSTGRES_DB:-dequel}
+            CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
+            GATEWAY_CERT_DIR: /app/data
+        ports:
+            - "443:443"
+        volumes:
+            - api-data:/app/data
+        depends_on:
+            postgres:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/443'"]
+            interval: 30s
+            timeout: 5s
+            retries: 5
+            start_period: 5s
+        networks:
+            dequel:
+
     caddy:
         image: caddy:2.8-alpine
         restart: unless-stopped
@@ -170,7 +197,6 @@ services:
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
         ports:
             - "80:80"
-            - "443:443"
         volumes:
             - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
             - ./infra/caddy/routes:/etc/caddy/routes

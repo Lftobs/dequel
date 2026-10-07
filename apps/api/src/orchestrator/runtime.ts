@@ -19,6 +19,7 @@ export interface RuntimeOpts {
 	projectName?: string;
 	baseDomain?: string | null;
 	oldContainerName?: string;
+	oldDeploymentId?: string;
 	envVars?: Record<string, string>;
 	volumes?: { hostPath?: string; volumeName?: string; mountPath: string }[];
 	replicas?: number;
@@ -267,9 +268,41 @@ export const deployContainer = async (
 
 	if (opts.oldContainerName && opts.oldContainerName !== containerName) {
 		await onLog(`Gracefully stopping old container: ${opts.oldContainerName}`);
-		await tryRun(dockerBin, ["stop", "-t", "10", opts.oldContainerName]);
-		await tryRun(dockerBin, ["rm", "-f", opts.oldContainerName]);
-		await onLog(`Old container ${opts.oldContainerName} removed`);
+		await tryRun(dockerBin, ["stop", "-t", "10", opts.oldContainerName], opts.targetServer);
+		const removed = await tryRun(dockerBin, ["rm", "-f", opts.oldContainerName], opts.targetServer);
+		if (removed !== undefined) {
+			await onLog(`Old container ${opts.oldContainerName} removed`);
+		} else {
+			await onLog(`Could not confirm removal of old container ${opts.oldContainerName}`);
+		}
+	}
+
+	if (opts.oldDeploymentId && opts.oldDeploymentId !== deploymentId) {
+		const listed = await tryRun(
+			dockerBin,
+			["ps", "-a", "--format", "{{.Names}}", "--filter", `name=deploy-${opts.oldDeploymentId}-replica-`],
+			opts.targetServer,
+		);
+		const replicaNames = (listed ?? "")
+			.split("\n")
+			.map((line) => line.trim())
+			.filter(Boolean);
+		const removedNames: string[] = [];
+		const stuckNames: string[] = [];
+		for (const replicaName of replicaNames) {
+			await tryRun(dockerBin, ["stop", "-t", "10", replicaName], opts.targetServer);
+			const removed = await tryRun(dockerBin, ["rm", "-f", replicaName], opts.targetServer);
+			if (removed !== undefined) removedNames.push(replicaName);
+			else stuckNames.push(replicaName);
+		}
+		if (removedNames.length > 0) {
+			await onLog(
+				`Removed ${removedNames.length} replica(s) of previous deployment ${opts.oldDeploymentId.slice(0, 8)}`,
+			);
+		}
+		if (stuckNames.length > 0) {
+			await onLog(`Could not confirm removal of replica(s): ${stuckNames.join(", ")}`);
+		}
 	}
 
 	await onLog(`Deployment reachable at ${liveUrl}`);

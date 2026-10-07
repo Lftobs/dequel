@@ -12,6 +12,7 @@ import {
 	updateDatabaseStatus,
 } from "../../db/repo";
 import type { Database } from "../../types";
+import { config } from "../../utils/config";
 import { resolveServerIp } from "../../utils/dns";
 import { created, fail, ok } from "../response";
 import { executeDatabaseQuery, getDatabaseTables } from "./query";
@@ -107,6 +108,25 @@ export const databasesRoutes = new Elysia()
 	.get("/databases/:id/credentials", async ({ params: { id }, set }) => {
 		const dbRecord = await findDatabase(id, set);
 		if (!dbRecord) return fail("Database not found");
+		const baseDomain = config.caddyBaseDomain;
+		const gatewayHost =
+			dbRecord.publicAccess &&
+			dbRecord.status === "running" &&
+			dbRecord.type !== "mysql" &&
+			baseDomain &&
+			baseDomain !== "localhost"
+				? `${dbRecord.internalHost}.${baseDomain}`
+				: null;
+		if (gatewayHost) {
+			return ok({
+				username: dbRecord.username,
+				password: dbRecord.password,
+				internalConnectionString: dbRecord.connectionString,
+				externalConnectionString: buildGatewayConnectionString(dbRecord, gatewayHost),
+				externalHost: gatewayHost,
+				externalPort: 443,
+			});
+		}
 		const externalHost = dbRecord.publicAccess && dbRecord.externalPort ? await resolveServerIp() : null;
 		const usableHost = externalHost && isNonLoopbackIp(externalHost) ? externalHost : null;
 		const externalConnectionString = usableHost
@@ -250,4 +270,14 @@ const buildConnectionString = (dbRecord: DatabaseRecord, host: string, port: num
 	}
 	const protocol = dbRecord.type === "mysql" ? "mysql" : "postgresql";
 	return `${protocol}://${dbRecord.username}:${dbRecord.password}@${host}:${port}/${dbRecord.databaseName}`;
+};
+
+const buildGatewayConnectionString = (dbRecord: DatabaseRecord, host: string) => {
+	const auth = `${dbRecord.username}:${dbRecord.password}`;
+	const path = `/${dbRecord.databaseName}`;
+	if (dbRecord.type === "redis") return `rediss://:${dbRecord.password}@${host}:443`;
+	if (dbRecord.type === "mongodb") {
+		return `mongodb://${auth}@${host}:443${path}?authSource=admin&tls=true&tlsAllowInvalidCertificates=true`;
+	}
+	return `postgresql://${auth}@${host}:443${path}?sslmode=require`;
 };

@@ -22,10 +22,12 @@ Caddy ──▶ API ──▶ Buildkit
   ▼          ▼
  Web      PostgreSQL  Redis
 
+Gateway :443 ──▶ Caddy (app traffic) / managed databases (TLS SNI routing)
+
 Observability: cAdvisor → Prometheus → Grafana / Loki
 ```
 
-Services run in Docker Compose: Caddy, API, Web, Buildkit, PostgreSQL, Redis, cAdvisor, Prometheus, Loki, Promtail, Grafana.
+Services run in Docker Compose: Gateway, Caddy, API, Web, Buildkit, PostgreSQL, Redis, cAdvisor, Prometheus, Loki, Promtail, Grafana.
 
 ## Directory Structure
 
@@ -73,6 +75,7 @@ Services run in Docker Compose: Caddy, API, Web, Buildkit, PostgreSQL, Redis, cA
 | File | Purpose |
 |------|---------|
 | `apps/api/src/index.ts` | API entry point — bootstraps DB, queue, scaling engine, etc. |
+| `apps/api/src/tunnels/gateway.ts` | DB gateway entry — owns host :443, routes by TLS SNI to Caddy or database engines |
 | `apps/api/src/db/schema.ts` | Drizzle ORM schema definitions (all tables) |
 | `apps/api/src/db/db-provider.ts` | Database DI provider (setDbProvider/getDb) |
 | `apps/api/src/db/migrations/` | Drizzle Kit migration files (`drizzle-kit generate` outputs here) |
@@ -180,6 +183,7 @@ Requires secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
 | `CADDY_ROUTES_DIR` | `./infra/caddy/routes` | Caddy route output |
 | `CADDY_BASE_DOMAIN` | `localhost` | Base domain for deployment subdomains. Set to a real domain (e.g. `example.com`) for Let's Encrypt auto-SSL. Public links (e.g. failure email logs) derive their base URL from this. |
 | `CADDY_EMAIL` | _(empty)_ | Email for Let's Encrypt SSL certificate notifications |
+| `GATEWAY_CERT_DIR` | `/app/data` | Directory where the gateway stores its self-signed TLS certificate |
 | `DOCKER_NETWORK` | `dequel_net` | Docker network for deployments |
 | `BUILDKIT_HOST` | `tcp://buildkit:1234` | Buildkit daemon |
 | `RAILPACK_BUILD_TIMEOUT_MS` | `1200000` | Build timeout |
