@@ -287,14 +287,21 @@ export const deployContainer = async (
 			.split("\n")
 			.map((line) => line.trim())
 			.filter(Boolean);
+		const removedNames: string[] = [];
+		const stuckNames: string[] = [];
 		for (const replicaName of replicaNames) {
 			await tryRun(dockerBin, ["stop", "-t", "10", replicaName], opts.targetServer);
-			await tryRun(dockerBin, ["rm", "-f", replicaName], opts.targetServer);
+			const removed = await tryRun(dockerBin, ["rm", "-f", replicaName], opts.targetServer);
+			if (removed !== undefined) removedNames.push(replicaName);
+			else stuckNames.push(replicaName);
 		}
-		if (replicaNames.length > 0) {
+		if (removedNames.length > 0) {
 			await onLog(
-				`Removed ${replicaNames.length} replica(s) of previous deployment ${opts.oldDeploymentId.slice(0, 8)}`,
+				`Removed ${removedNames.length} replica(s) of previous deployment ${opts.oldDeploymentId.slice(0, 8)}`,
 			);
+		}
+		if (stuckNames.length > 0) {
+			await onLog(`Could not confirm removal of replica(s): ${stuckNames.join(", ")}`);
 		}
 	}
 
