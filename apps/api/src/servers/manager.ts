@@ -1,32 +1,12 @@
-import { spawn } from "node:child_process";
 import { listServerConnections, updateServerStatus } from "../db/repo";
+import { safeSpawn } from "../utils/process-exec";
 import { getDockerSshTarget } from "../utils/ssh";
 
-const run = (cmd: string, args: string[], timeoutMs = 10_000) =>
-	new Promise<string>((resolve, reject) => {
-		const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
-		let stdout = "";
-		let stderr = "";
-		child.stdout.on("data", (chunk) => {
-			stdout += String(chunk);
-		});
-		child.stderr.on("data", (chunk) => {
-			stderr += String(chunk);
-		});
-		const timer = setTimeout(() => {
-			child.kill();
-			reject(new Error("timeout"));
-		}, timeoutMs);
-		child.on("error", (err) => {
-			clearTimeout(timer);
-			reject(err);
-		});
-		child.on("close", (code) => {
-			clearTimeout(timer);
-			if (code === 0) resolve(stdout.trim());
-			else reject(new Error(`${cmd} ${args.join(" ")} failed (${code}): ${stderr}`));
-		});
-	});
+const run = async (cmd: string, args: string[], timeoutMs = 10_000) => {
+	const res = await safeSpawn(cmd, args, { timeoutMs, killSignalTimeoutMs: 2000 });
+	if (res.code === 0) return res.stdout.trim();
+	throw new Error(`${cmd} ${args.join(" ")} failed (${res.code}): ${res.stderr}`);
+};
 
 const tryRun = (cmd: string, args: string[], timeoutMs?: number) => run(cmd, args, timeoutMs).catch(() => "");
 

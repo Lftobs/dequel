@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { dockerBin } from "../utils/docker-bin";
+import { killProcessGroup, safeSpawn } from "../utils/process-exec";
 import { CancelledError } from "./railpack";
 
 export interface ComposeTarget {
@@ -199,22 +200,38 @@ const spawnComposeCommand = (
 	signal?: AbortSignal,
 ): Promise<{ code: number; stdout: string; stderr: string }> => {
 	return new Promise((resolve, reject) => {
+		const isPosix = process.platform !== "win32";
 		const child = spawn(dockerBin, ["compose", ...args], {
 			cwd,
 			env: envVars || {},
 			stdio: ["ignore", "pipe", "pipe"],
+			detached: isPosix,
 		});
 
 		let stdout = "";
 		let stderr = "";
 		let settled = false;
+		let escalationTimer: ReturnType<typeof setTimeout> | null = null;
+
+		const terminate = () => {
+			killProcessGroup(child, "SIGTERM");
+			escalationTimer = setTimeout(() => {
+				killProcessGroup(child, "SIGKILL");
+			}, 5000);
+			if (typeof escalationTimer.unref === "function") escalationTimer.unref();
+		};
+
+		const cleanup = () => {
+			if (escalationTimer) clearTimeout(escalationTimer);
+			if (signal) {
+				signal.removeEventListener("abort", onAbort);
+			}
+		};
 
 		const finish = (result?: { code: number; stdout: string; stderr: string }, error?: Error) => {
 			if (settled) return;
 			settled = true;
-			if (signal) {
-				signal.removeEventListener("abort", onAbort);
-			}
+			cleanup();
 			if (error) {
 				reject(error);
 				return;
@@ -223,7 +240,7 @@ const spawnComposeCommand = (
 		};
 
 		const onAbort = () => {
-			child.kill("SIGTERM");
+			terminate();
 			finish(undefined, new CancelledError());
 		};
 
@@ -350,25 +367,5 @@ export const getComposeContainerNames = async (projectName: string): Promise<Map
 };
 
 const runDocker = (args: string[]): Promise<{ code: number; stdout: string; stderr: string }> => {
-	return new Promise((resolve, reject) => {
-		const child = spawn(dockerBin, args, {
-			stdio: ["ignore", "pipe", "pipe"],
-		});
-
-		let stdout = "";
-		let stderr = "";
-
-		child.stdout.on("data", (chunk) => {
-			stdout += String(chunk);
-		});
-
-		child.stderr.on("data", (chunk) => {
-			stderr += String(chunk);
-		});
-
-		child.on("error", reject);
-		child.on("close", (code) => {
-			resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });
-		});
-	});
+	return safeSpawn(dockerBin, args, { timeoutMs: 60_000 });
 };

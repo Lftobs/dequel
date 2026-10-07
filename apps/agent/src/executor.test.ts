@@ -202,6 +202,8 @@ describe("remote route payload", () => {
 	});
 
 	it("rejects empty target containers", () => {
-		expect(() => validateRoutePayload({ ...routePayload, targetContainers: [] })).toThrow("Invalid target containers");
+		expect(() => validateRoutePayload({ ...routePayload, targetContainers: [] })).toThrow(
+			"Target containers required for add action without upstream host",
+		);
 	});
 });

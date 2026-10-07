@@ -1,22 +1,39 @@
 import { spawn } from "node:child_process";
 import type { AgentContainerStat } from "./protocol";
 
-const run = (command: string, args: string[]) =>
+const run = (command: string, args: string[], timeoutMs = 15_000) =>
 	new Promise<string>((resolve, reject) => {
-		const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
+		const isPosix = process.platform !== "win32";
+		const child = spawn(command, args, {
+			detached: isPosix,
+			stdio: ["ignore", "pipe", "pipe"],
+		});
 		let stdout = "";
 		let stderr = "";
-		child.stdout.on("data", (chunk) => {
+		const timer = setTimeout(() => {
+			try {
+				if (isPosix && child.pid) process.kill(-child.pid, "SIGKILL");
+				else child.kill("SIGKILL");
+			} catch {}
+			reject(new Error(`${command} timed out`));
+		}, timeoutMs);
+		if (typeof timer.unref === "function") timer.unref();
+
+		child.stdout?.on("data", (chunk) => {
 			stdout += String(chunk);
 		});
-		child.stderr.on("data", (chunk) => {
+		child.stderr?.on("data", (chunk) => {
 			stderr += String(chunk);
 		});
 		child.on("close", (code) => {
+			clearTimeout(timer);
 			if (code === 0) resolve(stdout.trim());
 			else reject(new Error(`${command} failed (${code}): ${stderr.trim()}`));
 		});
-		child.on("error", () => reject(new Error(`${command} not available`)));
+		child.on("error", () => {
+			clearTimeout(timer);
+			reject(new Error(`${command} not available`));
+		});
 	});
 
 let cached: { at: number; stats: AgentContainerStat[] } | null = null;

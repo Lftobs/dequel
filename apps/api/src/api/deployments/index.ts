@@ -17,6 +17,7 @@ import { orchestrator } from "../../orchestrator";
 import { summarizeDeploymentError } from "../../orchestrator/deployment-errors";
 import { logBus } from "../../orchestrator/log-bus";
 import { config } from "../../utils/config";
+import { terminateWithEscalation } from "../../utils/process-exec";
 import { isPrivateGitUrl } from "../../utils/validate";
 import { created, fail, ok } from "../response";
 
@@ -356,8 +357,13 @@ export const deploymentsRoutes = new Elysia()
 		const encoder = new TextEncoder();
 		const containerName = deployment.containerName || `deploy-${id}`;
 		let closed = false;
+		let childProcess: import("node:child_process").ChildProcess | null = null;
 		const stop = () => {
+			if (closed) return;
 			closed = true;
+			if (childProcess && !childProcess.killed) {
+				terminateWithEscalation(childProcess, 2000);
+			}
 		};
 		request.signal.addEventListener("abort", stop, {
 			once: true,
@@ -369,11 +375,19 @@ export const deploymentsRoutes = new Elysia()
 					controller.enqueue(encoder.encode(`event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`));
 				};
 				const { spawn } = await import("node:child_process");
+				const isPosix = process.platform !== "win32";
 				const child = spawn("docker", ["logs", "--tail", "100", "--follow", containerName], {
+					detached: isPosix,
 					stdio: ["ignore", "pipe", "pipe"],
 				});
+				childProcess = child;
+				if (closed) {
+					terminateWithEscalation(child, 2000);
+					return;
+				}
 				let seq = 0;
 				child.stdout.on("data", (chunk: Buffer) => {
+					if (closed) return;
 					const lines = chunk.toString().split("\n").filter(Boolean);
 					for (const line of lines) {
 						seq++;
@@ -386,6 +400,7 @@ export const deploymentsRoutes = new Elysia()
 					}
 				});
 				child.stderr.on("data", (chunk: Buffer) => {
+					if (closed) return;
 					const lines = chunk.toString().split("\n").filter(Boolean);
 					for (const line of lines) {
 						seq++;
@@ -397,15 +412,18 @@ export const deploymentsRoutes = new Elysia()
 						});
 					}
 				});
-				child.on("close", () => send("close", { reason: "container stopped" }));
-				request.signal.addEventListener(
-					"abort",
-					() => {
-						child.kill();
-						stop();
-					},
-					{ once: true },
-				);
+				child.on("close", () => {
+					send("close", { reason: "container stopped" });
+					try {
+						controller.close();
+					} catch {}
+				});
+				child.on("error", () => {
+					stop();
+					try {
+						controller.close();
+					} catch {}
+				});
 			},
 			cancel: stop,
 		});
