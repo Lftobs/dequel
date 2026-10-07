@@ -1,4 +1,6 @@
-export type GatewayRoute = { kind: "caddy" } | { kind: "engine"; host: string; port: number };
+import type { SshEngineTarget } from "./ssh-tunnel";
+
+export type GatewayRoute = { kind: "caddy" } | { kind: "engine"; host: string; port: number; ssh?: SshEngineTarget };
 
 export interface RouteRow {
 	internalHost: string;
@@ -7,6 +9,7 @@ export interface RouteRow {
 	publicAccess: boolean;
 	allowAnywhere: boolean;
 	allowedCidrs: string[];
+	ssh?: SshEngineTarget | null;
 }
 
 export interface RouteContext {
@@ -59,6 +62,9 @@ export const resolveGatewayRoute = async (sni: string | null, ctx: RouteContext)
 	if (!row.allowAnywhere) {
 		const allowed = row.allowedCidrs.some((cidr) => ipInCidr(ctx.remoteAddress, cidr));
 		if (!allowed) return { kind: "caddy" };
+	}
+	if (row.ssh) {
+		return { kind: "engine", host: row.internalHost, port: row.internalPort, ssh: row.ssh };
 	}
 	return { kind: "engine", host: row.internalHost, port: row.internalPort };
 };

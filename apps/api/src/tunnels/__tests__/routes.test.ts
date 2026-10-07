@@ -75,4 +75,21 @@ describe("resolveGatewayRoute", () => {
 		const lockedRow: RouteRow = { ...ROW, allowAnywhere: false, allowedCidrs: [] };
 		expect(await resolveGatewayRoute("db-abc123.db.example.com", ctxFor(lockedRow))).toEqual({ kind: "caddy" });
 	});
+
+	it("keeps the ssh tunnel target on routes for databases on other machines", async () => {
+		const tunnel = {
+			host: "13.49.231.115",
+			port: 22,
+			user: "admin",
+			key: "-----BEGIN OPENSSH PRIVATE KEY-----",
+			serverId: "725e3b8c-4a61-4e01-86e7-18ed9b6c4c38",
+			targetPort: 21628,
+		};
+		expect(await resolveGatewayRoute("db-abc123.db.example.com", ctxFor({ ...ROW, ssh: tunnel }))).toEqual({
+			kind: "engine",
+			host: "db-abc123",
+			port: 5432,
+			ssh: tunnel,
+		});
+	});
 });

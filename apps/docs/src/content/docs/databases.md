@@ -64,7 +64,7 @@ If **Public Access** is disabled, no external endpoint is issued — the databas
 Notes:
 
 - MySQL is the exception: its wire protocol begins with a server greeting before the client sends anything, so there is no hostname for the gateway to route on. Exposed MySQL databases keep the direct port path (`<server-ip>:<random-port>`); open that port in your firewall, or use the dashboard SQL console.
-- The gateway terminates TLS with a platform certificate. The generated strings already skip certificate verification where the format supports it (PostgreSQL `sslmode=require`, MongoDB `tlsAllowInvalidCertificates`). Redis clients verify certificates by default, so set `rejectUnauthorized: false` in your client configuration.
+- The gateway terminates TLS with a platform certificate. MongoDB strings skip verification (`tlsAllowInvalidCertificates`). For PostgreSQL, `sslmode=require` skips verification in libpq/psql, but the Node `pg` driver treats it as full verification — there, either append `&uselibpqcompat=true` (Node only; psql rejects that flag) or set `ssl: { rejectUnauthorized: false }` in client code. Redis clients verify certificates by default, so set `rejectUnauthorized: false` in your client configuration.
 - PostgreSQL clients work either way: classic clients send a plaintext `SSLRequest` first (the gateway answers it locally), and direct-TLS clients (`sslmode=direct`) announce the hostname immediately.
 - Every new connection is checked against the database status, the Public Access toggle, and the optional IP allowlist before any bytes are forwarded.
 
