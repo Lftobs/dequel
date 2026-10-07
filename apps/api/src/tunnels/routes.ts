@@ -56,7 +56,7 @@ export const resolveGatewayRoute = async (sni: string | null, ctx: RouteContext)
 	const row = await ctx.lookup(candidate);
 	if (!row) return { kind: "caddy" };
 	if (row.status !== "running" || !row.publicAccess) return { kind: "caddy" };
-	if (!row.allowAnywhere && row.allowedCidrs.length > 0) {
+	if (!row.allowAnywhere) {
 		const allowed = row.allowedCidrs.some((cidr) => ipInCidr(ctx.remoteAddress, cidr));
 		if (!allowed) return { kind: "caddy" };
 	}

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test";
-import { ipInCidr, resolveGatewayRoute, type RouteRow } from "../routes";
+import { ipInCidr, type RouteRow, resolveGatewayRoute } from "../routes";
 
 const ROW: RouteRow = {
 	internalHost: "db-abc123",
 	internalPort: 5432,
 	status: "running",
 	publicAccess: true,
-	allowAnywhere: false,
+	allowAnywhere: true,
 	allowedCidrs: [],
 };
 
@@ -55,8 +55,8 @@ describe("resolveGatewayRoute", () => {
 		});
 	});
 
-	it("enforces allowed CIDRs only when configured", async () => {
-		const cidrRow: RouteRow = { ...ROW, allowedCidrs: ["198.51.100.0/24"] };
+	it("enforces allowed CIDRs when anywhere access is off", async () => {
+		const cidrRow: RouteRow = { ...ROW, allowAnywhere: false, allowedCidrs: ["198.51.100.0/24"] };
 		expect(
 			await resolveGatewayRoute("db-abc123.db.example.com", ctxFor(cidrRow, { remoteAddress: "198.51.100.4" })),
 		).toEqual({ kind: "engine", host: "db-abc123", port: 5432 });
@@ -69,5 +69,10 @@ describe("resolveGatewayRoute", () => {
 			host: "db-abc123",
 			port: 5432,
 		});
+	});
+
+	it("denies every source when anywhere access is off and no CIDR is configured", async () => {
+		const lockedRow: RouteRow = { ...ROW, allowAnywhere: false, allowedCidrs: [] };
+		expect(await resolveGatewayRoute("db-abc123.db.example.com", ctxFor(lockedRow))).toEqual({ kind: "caddy" });
 	});
 });
