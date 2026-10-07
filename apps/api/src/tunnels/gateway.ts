@@ -1,11 +1,11 @@
+import type { AddressInfo } from "node:net";
 import { connect, createServer, type Socket } from "node:net";
 import { createServer as createTlsServer, type ServerOptions } from "node:tls";
-import type { AddressInfo } from "node:net";
 import { Pool } from "pg";
 import { config } from "../utils/config";
-import { loadOrCreateGatewayCert, type GatewayCert } from "./cert";
+import { type GatewayCert, loadOrCreateGatewayCert } from "./cert";
 import { parseClientHello, parsePostgresPreamble, readClientHello } from "./peek";
-import { resolveGatewayRoute, type RouteRow } from "./routes";
+import { type RouteRow, resolveGatewayRoute } from "./routes";
 
 export interface GatewayOptions {
 	port: number;
@@ -161,7 +161,6 @@ if (import.meta.main) {
 	console.log(`[Gateway] listening on :${handle.port} (base domain: ${config.caddyBaseDomain})`);
 	const shutdown = () => {
 		handle.close().then(() => process.exit(0));
-		process.exit(0);
 	};
 	process.on("SIGTERM", shutdown);
 	process.on("SIGINT", shutdown);
