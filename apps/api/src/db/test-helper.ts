@@ -48,9 +48,8 @@ export const setupTestDb = async () => {
 };
 
 export const truncateAllTables = async (pool: Pool) => {
-	for (const name of TABLE_NAMES) {
-		await pool.query(`TRUNCATE TABLE "${name}" CASCADE`);
-	}
+	const tables = TABLE_NAMES.map((name) => `"${name}"`).join(", ");
+	await pool.query(`TRUNCATE TABLE ${tables} CASCADE`);
 };
 
 export const teardownTestDb = async (pool: Pool) => {

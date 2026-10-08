@@ -10,7 +10,7 @@ describe("Rate Limiting Middleware", () => {
 
 	it("extracts client IP from headers with priority", () => {
 		const req1 = new Request("http://localhost/test", {
-			headers: { "cf-connecting-ip": "1.1.1.1", "x-forwarded-for": "2.2.2.2" },
+			headers: { "x-real-ip": "1.1.1.1", "cf-connecting-ip": "2.2.2.2" },
 		});
 		expect(getClientIp(req1)).toBe("1.1.1.1");
 
@@ -20,7 +20,7 @@ describe("Rate Limiting Middleware", () => {
 		expect(getClientIp(req2)).toBe("2.2.2.2");
 
 		const req3 = new Request("http://localhost/test", {
-			headers: { "x-real-ip": "4.4.4.4" },
+			headers: { "cf-connecting-ip": "4.4.4.4" },
 		});
 		expect(getClientIp(req3)).toBe("4.4.4.4");
 

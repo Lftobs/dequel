@@ -7,16 +7,31 @@ import { getDb } from "../db-provider";
 import { databases } from "../schema";
 import { getRowsAffected, now } from "./helpers";
 
-const mapDatabase = (row: typeof databases.$inferSelect): Database => ({
-	id: row.id,
-	projectId: row.projectId ?? null,
-	serverId: row.serverId ?? null,
-	name: row.name,
-	type: row.type as Database["type"],
-	version: row.version,
-	databaseName: row.databaseName,
-	username: row.username,
-	password: (() => {
+export const buildConnectionString = (
+	type: Database["type"],
+	username: string,
+	password: string,
+	host: string,
+	port: number,
+	databaseName: string,
+): string => {
+	if (type === "redis") {
+		return password ? `redis://:${password}@${host}:${port}` : `redis://${host}:${port}`;
+	}
+	if (type === "mongodb") {
+		const auth = password ? `${username}:${password}@` : "";
+		return `mongodb://${auth}${host}:${port}/${databaseName}?authSource=admin`;
+	}
+	if (type === "mysql") {
+		const auth = password ? `${username}:${password}@` : `${username}@`;
+		return `mysql://${auth}${host}:${port}/${databaseName}`;
+	}
+	const auth = password ? `${username}:${password}@` : `${username}@`;
+	return `postgresql://${auth}${host}:${port}/${databaseName}`;
+};
+
+const mapDatabase = (row: typeof databases.$inferSelect): Database => {
+	const password = (() => {
 		if (row.passwordEncrypted && row.passwordIv && row.passwordTag) {
 			try {
 				return decryptValue(row.passwordEncrypted, row.passwordIv, row.passwordTag, config.envEncryptionKey);
@@ -25,36 +40,57 @@ const mapDatabase = (row: typeof databases.$inferSelect): Database => ({
 			}
 		}
 		return row.password ?? "";
-	})(),
-	internalHost: row.internalHost,
-	internalPort: row.internalPort,
-	cpuLimit: row.cpuLimit,
-	memoryLimitMb: row.memoryLimitMb,
-	storageLimitMb: row.storageLimitMb,
-	storageUsedMb: row.storageUsedMb,
-	publicAccess: Boolean(row.publicAccess),
-	allowPublicAccessFromAnywhere: Boolean(row.allowPublicAccessFromAnywhere),
-	allowedCidrs: Array.isArray(row.allowedCidrs)
-		? row.allowedCidrs
-		: (() => {
-				try {
-					return JSON.parse(row.allowedCidrs || "[]");
-				} catch {
-					return [];
-				}
-			})(),
-	externalPort: row.externalPort,
-	proxyContainerName: row.proxyContainerName,
-	volumeName: row.volumeName,
-	connectionString: row.connectionString,
-	status: row.status as DatabaseStatus,
-	containerName: row.containerName,
-	backupEnabled: Boolean(row.backupEnabled),
-	backupSchedule: row.backupSchedule ?? "0 */6 * * *",
-	backupRetention: row.backupRetention ?? 7,
-	createdAt: row.createdAt,
-	updatedAt: row.updatedAt,
-});
+	})();
+
+	return {
+		id: row.id,
+		projectId: row.projectId ?? null,
+		serverId: row.serverId ?? null,
+		name: row.name,
+		type: row.type as Database["type"],
+		version: row.version,
+		databaseName: row.databaseName,
+		username: row.username,
+		password,
+		internalHost: row.internalHost,
+		internalPort: row.internalPort,
+		cpuLimit: row.cpuLimit,
+		memoryLimitMb: row.memoryLimitMb,
+		storageLimitMb: row.storageLimitMb,
+		storageUsedMb: row.storageUsedMb,
+		publicAccess: Boolean(row.publicAccess),
+		allowPublicAccessFromAnywhere: Boolean(row.allowPublicAccessFromAnywhere),
+		allowedCidrs: Array.isArray(row.allowedCidrs)
+			? row.allowedCidrs
+			: (() => {
+					try {
+						return JSON.parse(row.allowedCidrs || "[]");
+					} catch {
+						return [];
+					}
+				})(),
+		externalPort: row.externalPort,
+		proxyContainerName: row.proxyContainerName,
+		volumeName: row.volumeName,
+		connectionString: password
+			? buildConnectionString(
+					row.type as Database["type"],
+					row.username,
+					password,
+					row.internalHost,
+					row.internalPort,
+					row.databaseName,
+				)
+			: row.connectionString,
+		status: row.status as DatabaseStatus,
+		containerName: row.containerName,
+		backupEnabled: Boolean(row.backupEnabled),
+		backupSchedule: row.backupSchedule ?? "0 */6 * * *",
+		backupRetention: row.backupRetention ?? 7,
+		createdAt: row.createdAt,
+		updatedAt: row.updatedAt,
+	};
+};
 
 export const createDatabase = async (input: CreateDatabaseInput): Promise<Database> => {
 	const id = randomUUID();
@@ -68,16 +104,7 @@ export const createDatabase = async (input: CreateDatabaseInput): Promise<Databa
 	const internalPort =
 		input.type === "redis" ? 6379 : input.type === "mongodb" ? 27017 : input.type === "mysql" ? 3306 : 5432;
 
-	let connStr = "";
-	if (input.type === "redis") {
-		connStr = `redis://:${password}@${internalHost}:${internalPort}`;
-	} else if (input.type === "mongodb") {
-		connStr = `mongodb://${username}:${password}@${internalHost}:${internalPort}/${dbName}?authSource=admin`;
-	} else if (input.type === "mysql") {
-		connStr = `mysql://${username}:${password}@${internalHost}:${internalPort}/${dbName}`;
-	} else {
-		connStr = `postgresql://${username}:${password}@${internalHost}:${internalPort}/${dbName}`;
-	}
+	const storedConnStr = buildConnectionString(input.type, username, "***", internalHost, internalPort, dbName);
 	const db = await getDb();
 	await db
 		.insert(databases)
@@ -106,7 +133,7 @@ export const createDatabase = async (input: CreateDatabaseInput): Promise<Databa
 			externalPort: null,
 			proxyContainerName: null,
 			volumeName,
-			connectionString: connStr,
+			connectionString: storedConnStr,
 			status: "provisioning",
 			backupEnabled: input.backupEnabled ?? true,
 			backupSchedule: input.backupSchedule ?? "0 */6 * * *",

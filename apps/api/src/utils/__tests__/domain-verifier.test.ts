@@ -240,4 +240,25 @@ describe("buildCaddySnippet", () => {
 			delete process.env.CLOUDFLARE_PROXIED;
 		}
 	});
+
+	it("retains trusted_proxies for custom domain without target overrides when global is disabled", async () => {
+		const listFn = mock().mockResolvedValue([
+			{
+				id: "d-1",
+				domain: "custom.example.com",
+				type: "custom",
+				validationStatus: "verified",
+				sslStatus: "provisioned",
+				targetService: null,
+				targetPort: null,
+				cloudflareProxied: true,
+				createdAt: "",
+				updatedAt: "",
+			},
+		]);
+		const snippet = await buildCaddySnippet("my-app", "deploy-abc", "proj-1", listFn, APP_PORT, snippetOpts);
+		expect(snippet).toContain(
+			"custom.example.com {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy deploy-abc:3000 {\n    header_up Host {upstream_hostport}\n    trusted_proxies private_ranges 173.245.48.0/20",
+		);
+	});
 });

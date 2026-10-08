@@ -1,54 +1,102 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
-import { PassThrough, Transform } from "node:stream";
+import { Transform } from "node:stream";
 import { config } from "../utils/config";
 import { deriveKey } from "../utils/crypto";
 
-const ALGO = "aes-256-cbc";
-const IV_LEN = 16;
+const ALGO = "aes-256-gcm";
+const IV_LEN = 12;
+const TAG_LEN = 16;
 
-export const createBackupEncryptStream = () => {
-	const iv = randomBytes(IV_LEN);
-	const key = deriveKey(config.envEncryptionKey || "dev-env-key-change-me");
-	const cipher = createCipheriv(ALGO, key, iv);
-	const output = new PassThrough();
-
-	output.write(iv);
-	cipher.pipe(output);
-
-	return { input: cipher, output };
+const getEncryptionKey = (): string => {
+	const key = config.envEncryptionKey;
+	if (!key || (process.env.NODE_ENV === "production" && key === "dev-env-key-change-me")) {
+		throw new Error("ENV_ENCRYPTION_KEY must be configured in production");
+	}
+	return key;
 };
 
-export const createBackupDecryptStream = () => {
-	let ivBuffer = Buffer.alloc(0);
-	let decipher: ReturnType<typeof createDecipheriv> | null = null;
-	const output = new PassThrough();
+export const createBackupEncryptStream = () => {
+	const key = deriveKey(getEncryptionKey());
+	const iv = randomBytes(IV_LEN);
+	const cipher = createCipheriv(ALGO, key, iv);
+	let ivSent = false;
 
 	const transform = new Transform({
 		transform(chunk: Buffer, _encoding, callback) {
-			if (!decipher) {
-				ivBuffer = Buffer.concat([ivBuffer, chunk]);
-				if (ivBuffer.length >= IV_LEN) {
-					const iv = ivBuffer.subarray(0, IV_LEN);
-					const remaining = ivBuffer.subarray(IV_LEN);
-					const key = deriveKey(config.envEncryptionKey || "dev-env-key-change-me");
-					decipher = createDecipheriv(ALGO, key, iv);
-					decipher.pipe(output);
-					if (remaining.length > 0) {
-						decipher.write(remaining);
-					}
+			try {
+				if (!ivSent) {
+					this.push(iv);
+					ivSent = true;
 				}
-			} else {
-				decipher.write(chunk);
+				const data = cipher.update(chunk);
+				if (data.length > 0) this.push(data);
+				callback();
+			} catch (err) {
+				callback(err as Error);
 			}
-			callback();
 		},
 		flush(callback) {
-			if (decipher) {
-				decipher.end();
+			try {
+				if (!ivSent) {
+					this.push(iv);
+					ivSent = true;
+				}
+				const finalData = cipher.final();
+				if (finalData.length > 0) this.push(finalData);
+				const tag = cipher.getAuthTag();
+				this.push(tag);
+				callback();
+			} catch (err) {
+				callback(err as Error);
 			}
-			callback();
 		},
 	});
 
-	return { input: transform, output };
+	return { input: transform, output: transform };
+};
+
+export const createBackupDecryptStream = () => {
+	const key = deriveKey(getEncryptionKey());
+	let buffer = Buffer.alloc(0);
+	let decipher: ReturnType<typeof createDecipheriv> | null = null;
+
+	const transform = new Transform({
+		transform(chunk: Buffer, _encoding, callback) {
+			try {
+				buffer = Buffer.concat([buffer, chunk]);
+				if (!decipher) {
+					if (buffer.length < IV_LEN + TAG_LEN) {
+						return callback();
+					}
+					const iv = buffer.subarray(0, IV_LEN);
+					decipher = createDecipheriv(ALGO, key, iv);
+					buffer = buffer.subarray(IV_LEN);
+				}
+				if (buffer.length > TAG_LEN) {
+					const cipherText = buffer.subarray(0, buffer.length - TAG_LEN);
+					buffer = buffer.subarray(buffer.length - TAG_LEN);
+					const plain = decipher.update(cipherText);
+					if (plain.length > 0) this.push(plain);
+				}
+				callback();
+			} catch (err) {
+				callback(err as Error);
+			}
+		},
+		flush(callback) {
+			try {
+				if (!decipher || buffer.length !== TAG_LEN) {
+					return callback(new Error("Invalid backup payload: missing or truncated authentication tag"));
+				}
+				decipher.setAuthTag(buffer);
+				const finalPlain = decipher.final();
+				if (finalPlain.length > 0) this.push(finalPlain);
+				callback();
+			} catch (err) {
+				callback(err as Error);
+			}
+		},
+	});
+
+	return { input: transform, output: transform };
 };

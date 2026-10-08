@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Duplex } from "node:stream";
@@ -18,9 +18,21 @@ const KEYS_DIR = join(tmpdir(), "dequel_gateway_keys");
 const safeName = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, "_");
 
 export const writeIdentityFile = (target: SshEngineTarget): string => {
-	if (!existsSync(KEYS_DIR)) mkdirSync(KEYS_DIR, { recursive: true, mode: 0o700 });
+	if (!existsSync(KEYS_DIR)) {
+		mkdirSync(KEYS_DIR, { recursive: true, mode: 0o700 });
+	}
+	try {
+		chmodSync(KEYS_DIR, 0o700);
+	} catch {}
+
 	const path = join(KEYS_DIR, `id_${safeName(target.serverId)}`);
+	try {
+		if (existsSync(path)) unlinkSync(path);
+	} catch {}
 	writeFileSync(path, `${target.key.trim()}\n`, { mode: 0o600 });
+	try {
+		chmodSync(path, 0o600);
+	} catch {}
 	return path;
 };
 
@@ -45,7 +57,16 @@ export const buildSshArgs = (target: SshEngineTarget, keyPath: string): string[]
 ];
 
 export const forwardViaSsh = (stream: Duplex, target: SshEngineTarget) => {
-	const child = spawn("ssh", buildSshArgs(target, writeIdentityFile(target)), {
+	let keyPath: string;
+	try {
+		keyPath = writeIdentityFile(target);
+	} catch (err) {
+		console.error("[Gateway SSH] Failed to write identity file:", err);
+		stream.destroy(err as Error);
+		return null;
+	}
+
+	const child = spawn("ssh", buildSshArgs(target, keyPath), {
 		stdio: ["pipe", "pipe", "ignore"],
 	});
 	const kill = () => {
@@ -60,6 +81,10 @@ export const forwardViaSsh = (stream: Duplex, target: SshEngineTarget) => {
 		stream.destroy();
 		return child;
 	}
+	child.stdin.on("error", () => {
+		kill();
+		stream.destroy();
+	});
 	stream.pipe(child.stdin);
 	child.stdout.pipe(stream);
 	return child;

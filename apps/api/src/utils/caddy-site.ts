@@ -35,7 +35,7 @@ export const caddySite = (hosts: string, reverseProxy: string, options?: CaddySi
 
 export const caddyReverseProxy = (targets: string, options?: CaddyReverseProxyOptions): string => {
 	const trustedProxies = options?.cloudflareProxied
-		? `\n    trusted_proxies private_ranges ${CADDY_CLOUDFLARE_TRUSTED_PROXIES}`
+		? `\n    trusted_proxies private_ranges ${CADDY_CLOUDFLARE_TRUSTED_PROXIES}\n    header_up X-Real-IP {client_ip}`
 		: "";
 
 	return `  reverse_proxy ${targets} {\n    header_up Host {upstream_hostport}${trustedProxies}\n  }`;
