@@ -91,6 +91,7 @@ export const domainsRoutes = new Elysia()
 			type: body.type ?? "custom",
 			targetService: body.targetService || null,
 			targetPort,
+			cloudflareProxied: Boolean(body.cloudflareProxied),
 		});
 		const { validateDomain, resolveServerIp } = await import("../../utils/dns");
 		const project = await getProjectById(params.id);

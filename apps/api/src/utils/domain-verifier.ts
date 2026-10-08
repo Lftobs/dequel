@@ -6,6 +6,7 @@ import { getProjectById, listDomains, listEnvironmentVariablesForDeploy, updateD
 import { domains } from "../db/schema";
 import { reloadCaddy } from "../orchestrator/runtime";
 import { caddyReverseProxy, caddySite } from "./caddy-site";
+import { isCloudflareProxied, isGlobalCloudflareProxied } from "./cloudflare";
 import { config } from "./config";
 import { resolveServerIp, validateDomain } from "./dns";
 
@@ -206,7 +207,10 @@ export const buildCaddySnippet = async (
 					}
 				}
 				const tPort = d.targetPort || port;
-				customBlocks.push(caddySite(entryDomain, caddyReverseProxy(`${targetContainer}:${tPort}`)));
+				const isProxied = isCloudflareProxied((d as any).cloudflareProxied);
+				customBlocks.push(
+					caddySite(entryDomain, caddyReverseProxy(`${targetContainer}:${tPort}`, { cloudflareProxied: isProxied })),
+				);
 			} else {
 				if (!defaultDomains.includes(entryDomain)) defaultDomains.push(entryDomain);
 			}
@@ -245,7 +249,11 @@ export const buildCaddySnippet = async (
 		}
 	}
 
-	const primaryBlock = caddySite(defaultDomains.join(", "), caddyReverseProxy(`${containerName}:${port}`));
+	const isBaseProxied = isGlobalCloudflareProxied();
+	const primaryBlock = caddySite(
+		defaultDomains.join(", "),
+		caddyReverseProxy(`${containerName}:${port}`, { cloudflareProxied: isBaseProxied }),
+	);
 
 	return [primaryBlock, ...customBlocks].join("\n");
 };

@@ -140,6 +140,7 @@ mock.module(fileUrl("../../utils/config"), () => ({
 		caddyBaseDomain: "localhost",
 		appInternalPort: 3000,
 		dockerNetwork: "dequel_net",
+		envEncryptionKey: "dev-env-key-change-me",
 	},
 }));
 

@@ -151,6 +151,7 @@ export const createDomain = (
 	type?: string,
 	targetService?: string,
 	targetPort?: number,
+	cloudflareProxied?: boolean,
 ) =>
 	apiFetch<Domain>(`/projects/${projectId}/domains`, {
 		method: "POST",
@@ -159,6 +160,7 @@ export const createDomain = (
 			type,
 			targetService,
 			targetPort,
+			cloudflareProxied,
 		}),
 	});
 export const getDomain = (id: string) => apiFetch<Domain>(`/domains/${id}`);

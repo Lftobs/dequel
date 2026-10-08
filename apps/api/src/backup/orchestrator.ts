@@ -12,6 +12,7 @@ import type { BackupContext } from "./adapter";
 import { getAdapter } from "./adapters";
 import type { BackupStorage } from "./storage";
 import { createStorage } from "./storage/index";
+import { createBackupDecryptStream, createBackupEncryptStream } from "./crypto";
 import type { BackupJob, BackupTarget, StorageConfig } from "./types";
 
 async function buildContext(target: BackupTarget): Promise<BackupContext> {
@@ -45,15 +46,19 @@ export class BackupOrchestrator {
 			await this.updateJob(job.id, { status: "compressing" });
 			const compressed = dump.pipe(createGzip());
 
+			const { input: encInput, output: encOutput } = createBackupEncryptStream();
+			compressed.pipe(encInput);
+
 			await this.updateJob(job.id, { status: "uploading" });
-			const filename = `${target.id}-${new Date().toISOString().replace(/[:.]/g, "-")}.sql.gz`;
-			const { path: storagePath, size: sizeBytes } = await this.storage.upload(filename, compressed);
+			const filename = `${target.id}-${new Date().toISOString().replace(/[:.]/g, "-")}.sql.gz.enc`;
+			const { path: storagePath, size: sizeBytes } = await this.storage.upload(filename, encOutput);
 
 			const completed = await this.updateJob(job.id, {
 				status: "completed",
 				filename,
 				storagePath,
 				sizeBytes,
+				isEncrypted: true,
 				completedAt: new Date(),
 			});
 
@@ -72,9 +77,17 @@ export class BackupOrchestrator {
 		const ctx = await buildContext(target);
 		const adapter = getAdapter(target.engine);
 
-		const compressed = await this.storage.download(job.storagePath!);
+		const downloaded = await this.storage.download(job.storagePath!);
 		const { createGunzip } = await import("node:zlib");
-		const dump = compressed.pipe(createGunzip());
+
+		let streamToGunzip: any = downloaded;
+		if (job.isEncrypted) {
+			const { input: decInput, output: decOutput } = createBackupDecryptStream();
+			downloaded.pipe(decInput);
+			streamToGunzip = decOutput;
+		}
+
+		const dump = streamToGunzip.pipe(createGunzip());
 		await adapter.restore(ctx, dump);
 	}
 
@@ -100,6 +113,7 @@ export class BackupOrchestrator {
 			storageType: this.storageType,
 			storagePath: null,
 			sizeBytes: null,
+			isEncrypted: true,
 			status: "pending",
 			error: null,
 		});
