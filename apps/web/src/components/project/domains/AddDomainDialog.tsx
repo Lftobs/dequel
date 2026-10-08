@@ -13,6 +13,8 @@ interface AddDomainDialogProps {
 	targetPort: string;
 	setTargetPort: (v: string) => void;
 	isCompose: boolean;
+	cloudflareProxied: boolean;
+	setCloudflareProxied: (v: boolean) => void;
 	isAdding: boolean;
 	onAdd: (e: React.FormEvent) => Promise<void>;
 }
@@ -27,6 +29,8 @@ export function AddDomainDialog({
 	targetPort,
 	setTargetPort,
 	isCompose,
+	cloudflareProxied,
+	setCloudflareProxied,
 	isAdding,
 	onAdd,
 }: AddDomainDialogProps) {
@@ -34,9 +38,7 @@ export function AddDomainDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[420px] bg-card border-border text-foreground rounded-2xl shadow-2xl">
 				<DialogHeader>
-					<DialogTitle className="text-lg font-bold text-foreground">
-						Add Custom Domain
-					</DialogTitle>
+					<DialogTitle className="text-lg font-bold text-foreground">Add Custom Domain</DialogTitle>
 					<DialogDescription className="text-xs text-muted-foreground">
 						Attach domain endpoints to route external web requests to your container proxy.
 					</DialogDescription>
@@ -82,6 +84,24 @@ export function AddDomainDialog({
 							</div>
 						</div>
 					)}
+
+					<div className="flex items-center justify-between rounded-xl border border-border/60 bg-[#0d0d11] p-3 text-left">
+						<div className="space-y-0.5 pr-2">
+							<label htmlFor="cf-proxied-toggle" className="text-xs font-semibold text-foreground cursor-pointer">
+								Cloudflare Edge Proxy
+							</label>
+							<p className="text-[11px] text-muted-foreground leading-normal">
+								Enable if proxied through Cloudflare to restore real client IPs and trust Cloudflare CIDRs.
+							</p>
+						</div>
+						<input
+							id="cf-proxied-toggle"
+							type="checkbox"
+							checked={cloudflareProxied}
+							onChange={(e) => setCloudflareProxied(e.target.checked)}
+							className="h-4 w-4 rounded border-input bg-card text-primary focus:ring-primary cursor-pointer shrink-0"
+						/>
+					</div>
 
 					<div className="flex justify-end gap-2 pt-2 border-t border-border/40">
 						<Button

@@ -26,6 +26,7 @@ export interface BackupJob {
 	storageType: "local" | "s3";
 	storagePath: string | null;
 	sizeBytes: number | null;
+	isEncrypted?: boolean;
 	status: BackupStatus;
 	error: string | null;
 	createdAt: Date;

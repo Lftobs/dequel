@@ -210,4 +210,34 @@ describe("buildCaddySnippet", () => {
 		const snippet = await buildCaddySnippet("my-app", "deploy-abc", "proj-3", noDomains, APP_PORT, snippetOpts);
 		expect(snippet).toContain(":3000");
 	});
+
+	it("injects trusted_proxies when custom domain is cloudflare proxied", async () => {
+		const listFn = mock().mockResolvedValue([
+			{
+				id: "1",
+				projectId: "proj-1",
+				domain: "cf.example.com",
+				type: "custom",
+				validationStatus: "verified",
+				sslStatus: "provisioned",
+				targetService: null,
+				targetPort: 3000,
+				cloudflareProxied: true,
+				createdAt: "",
+				updatedAt: "",
+			},
+		]);
+		const snippet = await buildCaddySnippet("my-app", "deploy-abc", "proj-1", listFn, APP_PORT, snippetOpts);
+		expect(snippet).toContain("trusted_proxies private_ranges 173.245.48.0/20");
+	});
+
+	it("injects trusted_proxies when global CLOUDFLARE_PROXIED is enabled", async () => {
+		process.env.CLOUDFLARE_PROXIED = "true";
+		try {
+			const snippet = await buildCaddySnippet("my-app", "deploy-abc", "proj-1", noDomains, APP_PORT, snippetOpts);
+			expect(snippet).toContain("trusted_proxies private_ranges 173.245.48.0/20");
+		} finally {
+			delete process.env.CLOUDFLARE_PROXIED;
+		}
+	});
 });

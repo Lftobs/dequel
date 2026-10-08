@@ -25,6 +25,7 @@ mock.module(fileUrl("../runtime"), () => ({
 mock.module(fileUrl("../../utils/config"), () => ({
 	config: {
 		redisUrl: "redis://localhost:6379",
+		envEncryptionKey: "dev-env-key-change-me",
 	},
 }));
 

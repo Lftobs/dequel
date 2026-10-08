@@ -337,6 +337,7 @@ cmd_help() {
 	echo "  backup            Create a backup of the database"
 	echo "  backup list       List all backups"
 	echo "  backup restore    Restore from a backup"
+	echo "  firewall          Manage host firewall (status, setup)"
 	echo "  uninstall         Remove Dequel completely (config, images, volumes)"
 	echo "  --version         Show version"
 	echo "  --help            Show this help"
@@ -359,6 +360,19 @@ cmd_help() {
 	echo "  DEQUEL_HOME  Config directory (default: auto-detected from install path)"
 }
 
+cmd_firewall() {
+	shift
+	local script="$DEQUEL_HOME/scripts/firewall-setup.sh"
+	if [ ! -f "$script" ]; then
+		script="$(dirname "$SCRIPT_PATH")/firewall-setup.sh"
+	fi
+	if [ -f "$script" ]; then
+		bash "$script" "$@"
+	else
+		fail "firewall-setup.sh not found."
+	fi
+}
+
 case "${1:-}" in
 	start)    cmd_start ;;
 	stop)     cmd_stop ;;
@@ -366,6 +380,7 @@ case "${1:-}" in
 	status)   cmd_status ;;
 	logs)     cmd_logs "$@" ;;
 	update)   cmd_update "$@" ;;
+	firewall) cmd_firewall "$@" ;;
 	backup)
 		shift
 		case "${1:-}" in
