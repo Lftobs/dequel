@@ -31,10 +31,9 @@ EXPOSE 3000
 CMD ["npm", "run", "start"]
 ```
 
-> [!TIP]
-> **Custom Ports**
->
-> Dequel reads the `PORT` environment variable inside your container to automatically route incoming traffic. Ensure your app listens on the port specified by this variable.
+:::tip[Custom Ports]
+Dequel reads the `PORT` environment variable inside your container to automatically route incoming traffic. Ensure your app listens on the port specified by this variable.
+:::
 
 
 ## Step 3: Trigger the Deploy
