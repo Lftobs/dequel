@@ -123,8 +123,13 @@ services:
 });
 
 describe("spawnComposeCommand env isolation", () => {
+	let originalSpawn: any;
+
 	afterEach(() => {
 		mock.restore();
+		if (originalSpawn) {
+			mock.module("node:child_process", () => ({ spawn: originalSpawn }));
+		}
 	});
 
 	test("does not pass process.env to docker compose subprocess", async () => {
@@ -133,7 +138,7 @@ describe("spawnComposeCommand env isolation", () => {
 		process.env.WORKSPACE_ROOT = "./workspace";
 
 		let capturedEnv: Record<string, string> | undefined;
-		const originalSpawn = (await import("node:child_process")).spawn;
+		originalSpawn = (await import("node:child_process")).spawn;
 		mock.module("node:child_process", () => ({
 			spawn: (...args: any[]) => {
 				capturedEnv = args[2]?.env;
