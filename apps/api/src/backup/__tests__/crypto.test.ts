@@ -31,4 +31,36 @@ describe("Backup Crypto Streams", () => {
 
 		expect(decryptedText).toBe(plainText);
 	});
+
+	it("fails authentication when encrypted data is tampered with", async () => {
+		const plainText = "SELECT * FROM secrets;";
+		const source = Readable.from([Buffer.from(plainText, "utf-8")]);
+
+		const { input: encInput, output: encOutput } = createBackupEncryptStream();
+		source.pipe(encInput);
+
+		const chunks: Buffer[] = [];
+		for await (const chunk of encOutput) {
+			chunks.push(chunk as Buffer);
+		}
+		const encryptedBytes = Buffer.concat(chunks);
+
+		// Tamper with one byte in the ciphertext
+		encryptedBytes[15] ^= 0xff;
+
+		const encSource = Readable.from([encryptedBytes]);
+		const { input: decInput, output: decOutput } = createBackupDecryptStream();
+		encSource.pipe(decInput);
+
+		let errored = false;
+		try {
+			for await (const _ of decOutput) {
+				// drain
+			}
+		} catch {
+			errored = true;
+		}
+
+		expect(errored).toBe(true);
+	});
 });

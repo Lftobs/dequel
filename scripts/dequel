@@ -112,6 +112,7 @@ cmd_update() {
 	curl -fsSL "$base_url/docker-compose.yml" -o "$tmp_dir/docker-compose.yml" || fail "Failed to download docker-compose.yml"
 	curl -fsSL "$base_url/infra/caddy/Caddyfile" -o "$tmp_dir/Caddyfile" || fail "Failed to download Caddyfile"
 	curl -fsSL "$base_url/scripts/dequel" -o "$tmp_dir/dequel" || fail "Failed to download dequel CLI"
+	curl -fsSL "$base_url/scripts/firewall-setup.sh" -o "$tmp_dir/firewall-setup.sh" 2>/dev/null || true
 	curl -fsSL "$base_url/VERSION" -o "$tmp_dir/VERSION" 2>/dev/null || echo "${tag#v}" > "$tmp_dir/VERSION"
 
 	mkdir -p "$tmp_dir/infra/monitoring/grafana/datasources" \
@@ -172,6 +173,11 @@ with open('$tmp_dir/docker-compose.yml', 'w') as f:
 	for f in pam-server.py pam-verify.py; do
 		[ -f "$tmp_dir/scripts/auth/$f" ] && mv "$tmp_dir/scripts/auth/$f" "$DEQUEL_HOME/scripts/auth/$f"
 	done
+	if [ -f "$tmp_dir/firewall-setup.sh" ]; then
+		mkdir -p "$DEQUEL_HOME/scripts"
+		mv "$tmp_dir/firewall-setup.sh" "$DEQUEL_HOME/scripts/firewall-setup.sh"
+		chmod +x "$DEQUEL_HOME/scripts/firewall-setup.sh" 2>/dev/null || true
+	fi
 
 	mv "$tmp_dir/VERSION" "$DEQUEL_HOME/VERSION"
 	chmod +x "$tmp_dir/dequel"

@@ -44,10 +44,18 @@ export class BackupOrchestrator {
 			const dump = await adapter.dump(ctx);
 
 			await this.updateJob(job.id, { status: "compressing" });
-			const compressed = dump.pipe(createGzip());
-
+			const gzip = createGzip();
 			const { input: encInput, output: encOutput } = createBackupEncryptStream();
-			compressed.pipe(encInput);
+
+			dump.on("error", (err) => {
+				gzip.destroy(err);
+				encInput.destroy(err);
+			});
+			gzip.on("error", (err) => {
+				encInput.destroy(err);
+			});
+
+			dump.pipe(gzip).pipe(encInput);
 
 			await this.updateJob(job.id, { status: "uploading" });
 			const filename = `${target.id}-${new Date().toISOString().replace(/[:.]/g, "-")}.sql.gz.enc`;
@@ -79,15 +87,27 @@ export class BackupOrchestrator {
 
 		const downloaded = await this.storage.download(job.storagePath!);
 		const { createGunzip } = await import("node:zlib");
+		const gunzip = createGunzip();
 
 		let streamToGunzip: any = downloaded;
 		if (job.isEncrypted) {
 			const { input: decInput, output: decOutput } = createBackupDecryptStream();
+			downloaded.on("error", (err) => {
+				decInput.destroy(err);
+				gunzip.destroy(err);
+			});
+			decOutput.on("error", (err) => {
+				gunzip.destroy(err);
+			});
 			downloaded.pipe(decInput);
 			streamToGunzip = decOutput;
+		} else {
+			downloaded.on("error", (err) => {
+				gunzip.destroy(err);
+			});
 		}
 
-		const dump = streamToGunzip.pipe(createGunzip());
+		const dump = streamToGunzip.pipe(gunzip);
 		await adapter.restore(ctx, dump);
 	}
 

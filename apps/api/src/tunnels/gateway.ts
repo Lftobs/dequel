@@ -198,6 +198,14 @@ const createPoolLookup =
 		);
 		const row = result.rows[0];
 		if (!row) return null;
+		const isRemote = Boolean(
+			row.server_id && row.server_mode && row.server_id !== "local" && row.server_mode !== "local",
+		);
+		const ssh = await resolveSshTarget(pool, row);
+		if (isRemote && !ssh) {
+			console.warn(`[Gateway] Remote database on server ${row.server_id} cannot resolve SSH credentials`);
+			return null;
+		}
 		return {
 			internalHost: row.internal_host,
 			internalPort: row.internal_port,
@@ -207,7 +215,7 @@ const createPoolLookup =
 			allowedCidrs: Array.isArray(row.allowed_cidrs)
 				? row.allowed_cidrs.filter((value): value is string => typeof value === "string")
 				: [],
-			ssh: await resolveSshTarget(pool, row),
+			ssh,
 		};
 	};
 

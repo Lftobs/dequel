@@ -125,6 +125,8 @@ download_configs() {
 	download_if_missing "$BASE_URL/infra/caddy/Caddyfile" "$INSTALL_DIR/infra/caddy/Caddyfile"
 	download_if_missing "$BASE_URL/scripts/dequel" "$INSTALL_DIR/dequel"
 	download_if_missing "$BASE_URL/scripts/auth/pam-server.py" "$INSTALL_DIR/scripts/auth/pam-server.py"
+	download_if_missing "$BASE_URL/scripts/firewall-setup.sh" "$INSTALL_DIR/scripts/firewall-setup.sh"
+	chmod +x "$INSTALL_DIR/scripts/firewall-setup.sh" 2>/dev/null || true
 
 	for f in prometheus.yml loki-config.yml promtail-config.yml; do
 		download_if_missing "$BASE_URL/infra/monitoring/$f" "$INSTALL_DIR/infra/monitoring/$f"
