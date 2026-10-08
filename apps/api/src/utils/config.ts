@@ -50,4 +50,6 @@ export const config = {
 	wireguardServerIp: withFile<string>("WIREGUARD_SERVER_IP", "10.200.0.1"),
 	wireguardPeerCidr: withFile<string>("WIREGUARD_PEER_CIDR", "10.200.0.0/24"),
 	gatewayCertDir: withFile<string>("GATEWAY_CERT_DIR", "/app/data"),
+	failoverDisabled: withFile<string>("FAILOVER_DISABLED", ""),
+	failoverMinIntervalMs: withFile<number>("FAILOVER_MIN_INTERVAL_MS", "600000", Number),
 };

@@ -1,4 +1,5 @@
 import { mock } from "bun:test";
+import net from "node:net";
 
 const fileUrl = (relPath: string) => new URL(relPath, import.meta.url).toString();
 
@@ -6,6 +7,22 @@ let platformSettings: { ingressServerId: string | null } = { ingressServerId: nu
 let servers: any[] = [];
 let projects: any[] = [];
 let deploymentsByProject: Record<string, any[]> = {};
+
+const dockerCalls: any[][] = [];
+
+mock.module(fileUrl("../../utils/docker-run"), () => ({
+	getDockerTargetArgs: mock(() => []),
+	dockerRun: mock(() => Promise.resolve("")),
+	dockerRunTry: mock((...args: any[]) => {
+		dockerCalls.push(args);
+		return Promise.resolve("");
+	}),
+	dockerExecStream: mock(() => null),
+	dockerExec: mock(() => Promise.resolve({ code: 0, stdout: "", stderr: "" })),
+	dockerExecWithStdin: mock(() => Promise.resolve({ code: 0, stdout: "", stderr: "" })),
+	ensureContainerRemoved: mock(() => Promise.resolve()),
+	ensureVolumeRemoved: mock(() => Promise.resolve()),
+}));
 
 mock.module(fileUrl("../../db/repo"), () => ({
 	getPlatformSettings: mock(() => Promise.resolve(platformSettings)),
@@ -46,6 +63,10 @@ mock.module(fileUrl("../../executors/dispatch"), () => ({
 		deploy: mock(() => Promise.resolve({ ok: true })),
 	})),
 }));
+
+const probeListener = net.createServer();
+await new Promise<void>((resolve) => probeListener.listen(0, "127.0.0.1", resolve));
+const probePort = (probeListener.address() as net.AddressInfo).port;
 
 const { failoverProject } = await import("../failover");
 
@@ -115,12 +136,20 @@ try {
 	platformSettings = { ingressServerId: "ing" };
 	servers = [
 		{ id: "ing", name: "Ingress", mode: "ssh" },
-		{ id: "a", name: "Current", mode: "ssh", status: "connected" },
-		{ id: "b", name: "Target", mode: "ssh", status: "connected" },
+		{ id: "a", name: "Current", mode: "ssh", status: "connected", host: "127.0.0.1", port: probePort },
+		{ id: "b", name: "Target", mode: "ssh", status: "connected", host: "127.0.0.1", port: probePort },
 	];
 	projects = [{ id: "p1", name: "proj-1", serverId: "a" }];
 	deploymentsByProject = {
-		p1: [{ id: "dep-1", sourceType: "git", sourceRef: "https://github.com/x/y.git", branch: "main" }],
+		p1: [
+			{
+				id: "dep-1",
+				sourceType: "git",
+				sourceRef: "https://github.com/x/y.git",
+				branch: "main",
+				containerName: "app-old",
+			},
+		],
 	};
 
 	const deployment = await failoverProject("p1");
@@ -133,4 +162,61 @@ try {
 	results.test5 = { ok: false, error: e.message };
 }
 
+// Test 6: aborts when the chosen target is not actually reachable
+let createDeploymentCallsBefore6 = 0;
+try {
+	platformSettings = { ingressServerId: "ing" };
+	servers = [
+		{ id: "ing", name: "Ingress", mode: "ssh" },
+		{ id: "a", name: "Current", mode: "ssh", status: "connected", host: "127.0.0.1", port: probePort },
+		{ id: "b", name: "DeadTarget", mode: "ssh", status: "connected", host: "127.0.0.1", port: 1 },
+	];
+	projects = [{ id: "p1", name: "proj-1", serverId: "a" }];
+	deploymentsByProject = {
+		p1: [
+			{
+				id: "dep-1",
+				sourceType: "git",
+				sourceRef: "https://github.com/x/y.git",
+				branch: "main",
+				containerName: "app-old",
+			},
+		],
+	};
+	const repo6 = await import("../../db/repo");
+	createDeploymentCallsBefore6 = (repo6.createDeployment as any).mock.calls.length;
+	await failoverProject("p1");
+	results.test6 = { ok: false, error: "should have thrown" };
+} catch (e: any) {
+	const repo = await import("../../db/repo");
+	const created = (repo.createDeployment as any).mock.calls.length - createDeploymentCallsBefore6;
+	results.test6 = {
+		ok: e.message?.includes("not reachable") && created === 0,
+		error: e.message,
+	};
+}
+
+// Test 7: stops the previous deployment's containers on the old server
+try {
+	const primaryRm = dockerCalls.some(
+		(args) => args[1]?.[0] === "rm" && args[1]?.includes("app-old") && args[2]?.id === "a",
+	);
+	const replicaList = dockerCalls.some(
+		(args) =>
+			args[1]?.[0] === "ps" && args[1]?.some((a: string) => a.includes("deploy-dep-1-replica-")) && args[2]?.id === "a",
+	);
+	results.test7 = { ok: primaryRm && replicaList };
+} catch (e: any) {
+	results.test7 = { ok: false, error: e.message };
+}
+
+// Test 8: refuses a second automatic failover within the minimum interval
+try {
+	await failoverProject("p1", { trigger: "auto" });
+	results.test8 = { ok: false, error: "should have thrown" };
+} catch (e: any) {
+	results.test8 = { ok: e.message?.includes("before another failover"), error: e.message };
+}
+
+probeListener.close();
 console.log(JSON.stringify(results));

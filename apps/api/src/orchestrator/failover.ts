@@ -11,16 +11,24 @@ import {
 	updateProject,
 	updateRouteStatus,
 } from "../db/repo";
+import type { Server } from "../types";
+import { config } from "../utils/config";
+import { dockerBin } from "../utils/docker-bin";
+import { dockerRunTry } from "../utils/docker-run";
 import { getIngressServer, removeIngressRouteFile } from "../utils/ingress";
 import { pickBestServer } from "../utils/server-default";
+import { getContainerName } from "./runtime";
 
 const CHECK_INTERVAL_MS = 30_000;
 const GRACE_MS = 180_000;
 const CONNECT_TIMEOUT_MS = 5_000;
+const OLD_CONTAINER_CLEANUP_TIMEOUT_MS = 30_000;
 
 const unreachableSince = new Map<string, number>();
 const failingOver = new Set<string>();
 const previouslyUnreachableServers = new Set<string>();
+const lastFailoverAt = new Map<string, number>();
+const rateLimitWarned = new Set<string>();
 
 export const isServerReachable = (host: string, port: number = 22): Promise<boolean> =>
 	new Promise((resolve) => {
@@ -34,11 +42,69 @@ export const isServerReachable = (host: string, port: number = 22): Promise<bool
 		socket.once("error", () => finish(false));
 	});
 
-export const failoverProject = async (projectId: string) => {
+const isFailoverDisabled = () => /^(1|true|yes)$/i.test(config.failoverDisabled);
+
+const bestEffort = (work: Promise<unknown>, label: string): Promise<void> =>
+	Promise.race([
+		work,
+		new Promise<void>((_resolve, reject) => {
+			const timer = setTimeout(() => reject(new Error("timed out")), OLD_CONTAINER_CLEANUP_TIMEOUT_MS);
+			timer.unref?.();
+		}),
+	])
+		.then(() => undefined)
+		.catch((error) => {
+			console.error(`[Failover] ${label} failed:`, error instanceof Error ? error.message : error);
+		});
+
+const removeOldServerContainers = (
+	server: Server,
+	deployment: { id: string; containerName?: string | null },
+	project: { name?: string | null; id: string },
+): Promise<void> => {
+	const primaryName =
+		deployment.containerName || getContainerName(deployment.id, project.name ?? undefined, project.id);
+	const remove = async () => {
+		const listed = await dockerRunTry(
+			dockerBin,
+			["ps", "-a", "--format", "{{.Names}}", "--filter", `name=deploy-${deployment.id}-replica-`],
+			server,
+		);
+		const replicas = (listed ?? "")
+			.split("\n")
+			.map((line) => line.trim())
+			.filter(Boolean);
+		const names = [primaryName, ...replicas];
+		let removed = 0;
+		for (const name of names) {
+			await dockerRunTry(dockerBin, ["stop", "-t", "10", name], server);
+			const result = await dockerRunTry(dockerBin, ["rm", "-f", name], server);
+			if (result !== undefined) removed++;
+		}
+		console.log(
+			`[Failover] old-container cleanup on ${server.name}: removed ${removed}/${names.length} (${names.join(", ")})`,
+		);
+	};
+	return bestEffort(remove(), `old-container cleanup on ${server.name}`);
+};
+
+export const failoverProject = async (
+	projectId: string,
+	opts: { trigger?: "manual" | "auto" } = {},
+): Promise<Awaited<ReturnType<typeof createDeployment>>> => {
 	if (failingOver.has(projectId)) throw new Error("Failover already in progress for this project");
 	const project = await getProjectById(projectId);
 	if (!project) throw new Error("Project not found");
 	if (!project.serverId) throw new Error("Project has no server assigned");
+	if ((opts.trigger ?? "manual") === "auto") {
+		const last = lastFailoverAt.get(projectId);
+		const since = last ? Date.now() - last : Number.POSITIVE_INFINITY;
+		if (since < config.failoverMinIntervalMs) {
+			throw new Error(
+				`Project failed over ${Math.round(since / 1000)}s ago — waiting ${config.failoverMinIntervalMs / 1000}s before another failover`,
+			);
+		}
+	}
 	const ingressServer = await getIngressServer();
 	if (!ingressServer) throw new Error("No ingress server configured");
 	const currentServer = await getServerById(project.serverId);
@@ -57,6 +123,10 @@ export const failoverProject = async (projectId: string) => {
 		}
 		const targetServer = await getServerById(targetId);
 		if (!targetServer) throw new Error("Target server not found");
+		const targetReachable = await isServerReachable(targetServer.host, targetServer.port || 22);
+		if (!targetReachable) {
+			throw new Error(`Target server ${targetServer.name} is not reachable — failover aborted`);
+		}
 
 		const deployment = await createDeployment({
 			projectId,
@@ -82,11 +152,17 @@ export const failoverProject = async (projectId: string) => {
 			await queueRemoteDeployment(deployment, project);
 		}
 
+		await removeOldServerContainers(currentServer, latest, project);
 		await updateProject(projectId, { serverId: targetId });
+		lastFailoverAt.set(projectId, Date.now());
+		rateLimitWarned.delete(projectId);
 		unreachableSince.delete(projectId);
 		await updateDeploymentStatus(latest.id, "inactive", {
 			failureReason: `Superseded by failover deployment to ${targetServer.name}`,
 		}).catch(() => {});
+		console.log(
+			`[Failover] project ${project.name ?? projectId} moved from ${currentServer.name} to ${targetServer.name} (deployment ${deployment.id})`,
+		);
 		return deployment;
 	} finally {
 		failingOver.delete(projectId);
@@ -148,7 +224,15 @@ export const failoverMonitorTick = async () => {
 				console.log(
 					`[Failover] Server ${server.name} unreachable for ${Math.round((Date.now() - firstSeen) / 1000)}s — failing over project ${project.name}`,
 				);
-				failoverProject(project.id).catch((error) => {
+				failoverProject(project.id, { trigger: "auto" }).catch((error) => {
+					const message = error instanceof Error ? error.message : String(error);
+					if (message.includes("before another failover")) {
+						if (!rateLimitWarned.has(project.id)) {
+							rateLimitWarned.add(project.id);
+							console.log(`[Failover] skipping project ${project.name}: ${message}`);
+						}
+						return;
+					}
 					console.error(`[Failover] Auto-failover for project ${project.id} failed:`, error);
 					unreachableSince.delete(project.id);
 				});
@@ -170,14 +254,20 @@ export const failoverMonitorTick = async () => {
 };
 
 export const startFailoverMonitor = () => {
+	if (isFailoverDisabled()) {
+		console.log("[Failover] monitor disabled via FAILOVER_DISABLED");
+		return null;
+	}
 	const handle = setInterval(failoverMonitorTick, CHECK_INTERVAL_MS);
 	failoverMonitorTick();
 	return handle;
 };
 
 export const failoverState = () => ({
+	disabled: isFailoverDisabled(),
 	unreachable: [...unreachableSince.entries()].map(([projectId, since]) => ({
 		projectId,
 		unreachableForMs: Date.now() - since,
 	})),
+	minIntervalMs: config.failoverMinIntervalMs,
 });
