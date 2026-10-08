@@ -15,10 +15,11 @@ In the project console, click the **Environment Variables** tab:
 - Enter the value. All values are securely stored and encrypted in the cluster database.
 - Click **Add Variable**.
 
-<div class="p-4 rounded-xl border border-primary/20 bg-primary/5 text-xs text-zinc-300 space-y-1">
-  <span class="font-bold text-primary uppercase tracking-wider text-[10px]">💡 Note: Masked Displays</span>
-  <p>For security, all environment variable values are masked on load. Click the eye icon to reveal them, or copy them securely via the copy badge.</p>
-</div>
+> [!NOTE]
+> **Masked Displays**
+>
+> For security, all environment variable values are masked on load. Click the eye icon to reveal them, or copy them securely via the copy badge.
+
 
 ## Redeployment Prompts
 

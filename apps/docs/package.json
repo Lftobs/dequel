@@ -3,16 +3,13 @@
   "type": "module",
   "version": "0.4.0",
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro"
+    "dev": "blume dev",
+    "start": "blume dev",
+    "build": "blume build",
+    "preview": "blume preview",
+    "check": "blume check"
   },
   "dependencies": {
-    "@astrojs/markdown-satteri": "^0.2.2",
-    "@astrojs/tailwind": "^5.1.0",
-    "astro": "^4.15.0",
-    "tailwindcss": "^3.4.1"
+    "blume": "^1.7.1"
   }
 }

@@ -1,0 +1,9 @@
+:root {
+  --blume-accent: oklch(0.65 0.22 40);
+  --blume-radius: 0.5rem;
+}
+
+:root[data-theme="dark"] {
+  --blume-background: #0a0a0c;
+  --blume-accent: oklch(0.68 0.22 40);
+}

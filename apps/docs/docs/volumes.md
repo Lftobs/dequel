@@ -17,10 +17,11 @@ Under the **Volumes** tab, click **Add Volume**:
 2. Click **Add Volume**.
 3. Dequel allocates block storage space on the cluster nodes and maps it to your container's target folder.
 
-<div class="p-4 rounded-xl border border-primary/20 bg-primary/5 text-xs text-zinc-300 space-y-1">
-  <span class="font-bold text-primary uppercase tracking-wider text-[10px]">💡 Note: Redeployment Requirement</span>
-  <p>Adding or deleting volumes modifies the low-level container host bindings. To apply these mount pathways, you must trigger a container restart via the <strong>Redeploy Now</strong> prompt banner at the top of the volumes tab.</p>
-</div>
+> [!NOTE]
+> **Redeployment Requirement**
+>
+> Adding or deleting volumes modifies the low-level container host bindings. To apply these mount pathways, you must trigger a container restart via the **Redeploy Now** prompt banner at the top of the volumes tab.
+
 
 ## Data Security & Backups
 

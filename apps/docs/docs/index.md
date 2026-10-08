@@ -13,10 +13,11 @@ Dequel provides developers with a Heroku-like platform experience on top of virt
 - **State Isolation:** Web containers are designed to be ephemeral. Persistent state is kept cleanly separated in managed databases or mapped node volumes.
 - **Self-Healing Runtimes:** Failed container instances are automatically replaced, and scaling adjustments occur automatically based on CPU usage.
 
-<div class="p-4 rounded-xl border border-primary/20 bg-primary/5 text-xs text-zinc-300 space-y-1">
-  <span class="font-bold text-primary uppercase tracking-wider text-[10px]">💡 Key Concept: Projects</span>
-  <p>A Project in Dequel represents a single service (a container build) along with its environment configurations, database attachments, routing domains, and active deployments.</p>
-</div>
+> [!NOTE]
+> **Key Concept: Projects**
+>
+> A Project in Dequel represents a single service (a container build) along with its environment configurations, database attachments, routing domains, and active deployments.
+
 
 ## How Dequel Works
 

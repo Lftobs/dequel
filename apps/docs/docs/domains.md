@@ -18,10 +18,11 @@ In your DNS registrar's control panel (Cloudflare, GoDaddy, Namecheap, etc.), ad
 - **For Subdomains:** Add a `CNAME` record pointing your subdomain (e.g. `blog`) to the cluster's base domain.
 - **For Apex/Root Domains:** Add an `A` record pointing `@` directly to the Dequel cluster server IP.
 
-<div class="p-4 rounded-xl border border-primary/20 bg-primary/5 text-xs text-zinc-300 space-y-1">
-  <span class="font-bold text-primary uppercase tracking-wider text-[10px]">💡 Note: DNS Propagation</span>
-  <p>DNS changes can take up to 24–48 hours to propagate globally. Dequel will run automated validation checks in the background until the records resolve correctly.</p>
-</div>
+> [!NOTE]
+> **DNS Propagation**
+>
+> DNS changes can take up to 24–48 hours to propagate globally. Dequel will run automated validation checks in the background until the records resolve correctly.
+
 
 ## Validation Statuses
 

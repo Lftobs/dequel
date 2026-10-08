@@ -1,5 +1,5 @@
 ---
-title: Changelog
+title: Release History
 category: Release
 description: All notable changes to Dequel, tracked per release.
 slug: changelog

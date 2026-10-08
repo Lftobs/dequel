@@ -20,10 +20,11 @@ Dequel interfaces directly with **Let's Encrypt** (a free, automated, open Certi
 
 Let's Encrypt certificates are valid for 90 days. Dequel's router checks certificates once daily and schedules automatic renewals 30 days before expiration, ensuring zero downtime and avoiding manual keys management.
 
-<div class="p-4 rounded-xl border border-primary/20 bg-primary/5 text-xs text-zinc-300 space-y-1">
-  <span class="font-bold text-primary uppercase tracking-wider text-[10px]">💡 Key Security Spec</span>
-  <p>Dequel configures modern TLS 1.3 as the default cipher suite block, providing maximum security, fast TLS handshakes, and strict protection against legacy protocol exploits.</p>
-</div>
+> [!NOTE]
+> **Key Security Spec**
+>
+> Dequel configures modern TLS 1.3 as the default cipher suite block, providing maximum security, fast TLS handshakes, and strict protection against legacy protocol exploits.
+
 
 ## Troubleshooting SSL
 

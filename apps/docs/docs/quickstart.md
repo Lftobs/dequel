@@ -19,11 +19,8 @@ Navigate to the Dequel dashboard (at `http://localhost` or your configured `CADD
 
 Dequel builds applications using a standard container blueprint. Ensure your project includes a valid `Dockerfile` in its root directory:
 
-<div class="rounded-xl border border-border bg-[#070709] overflow-hidden">
-  <div class="bg-[#0b0b0f] px-4 py-2 border-b border-border flex items-center justify-between">
-    <span class="text-[10px] font-mono text-zinc-500">Dockerfile</span>
-  </div>
-  <pre class="p-4 font-mono text-[11px] text-zinc-300 overflow-x-auto"><code>FROM node:18-alpine
+```dockerfile Dockerfile
+FROM node:18-alpine
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
@@ -31,13 +28,14 @@ COPY . .
 RUN npm run build
 ENV PORT=3000
 EXPOSE 3000
-CMD ["npm", "run", "start"]</code></pre>
-</div>
+CMD ["npm", "run", "start"]
+```
 
-<div class="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-zinc-300 space-y-1">
-  <span class="font-bold text-emerald-400 uppercase tracking-wider text-[10px]">💡 Pro Tip: Custom Ports</span>
-  <p>Dequel reads the <code>PORT</code> environment variable inside your container to automatically route incoming traffic. Ensure your app listens on the port specified by this variable.</p>
-</div>
+> [!TIP]
+> **Custom Ports**
+>
+> Dequel reads the `PORT` environment variable inside your container to automatically route incoming traffic. Ensure your app listens on the port specified by this variable.
+
 
 ## Step 3: Trigger the Deploy
 
