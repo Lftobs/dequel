@@ -1,4 +1,6 @@
-import { summarizeDeploymentError } from "../orchestrator/deployment-errors";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { remoteScriptFailure, summarizeDeploymentError } from "../orchestrator/deployment-errors";
 import type { Deployment, Project, Server } from "../types";
 import { config } from "../utils/config";
 import { CANCELLED_FAILURE_REASON } from "../utils/failure-outcome";
@@ -14,6 +16,8 @@ import type { DeploymentExecutor, ExecutorCancelInput, ExecutorDeployInput, Exec
 
 let repoModule: typeof import("../db/repo") | null = null;
 let runtimeModule: typeof import("../orchestrator/runtime") | null = null;
+
+const railpackGenerator = readFileSync(join(import.meta.dir, "../orchestrator/railpack-config-utils.ts"), "utf8");
 
 const getRepo = async () => (repoModule ??= await import("../db/repo"));
 const getRuntime = async () => (runtimeModule ??= await import("../orchestrator/runtime"));
@@ -108,7 +112,7 @@ const deployComposeRemote = async (deployment: Deployment, project: Project, ser
 			await emitLog(deployment.id, "build", line);
 		},
 	});
-	if (result.code !== 0) throw new Error(result.stderr || result.stdout || "Remote compose build failed");
+	if (result.code !== 0) throw new Error(remoteScriptFailure(result, "Remote compose build failed"));
 
 	const composeResult = parseRemoteComposeResult(result.stdout);
 	if (!composeResult) throw new Error("Remote compose completed without a result marker");
@@ -297,6 +301,13 @@ export const sshExecutor: DeploymentExecutor = {
 			imageTag,
 			clearCache: deployment.clearCache ?? false,
 			environmentVariables: envVars,
+			sourceDir: project.sourceDir,
+			projectType: project.projectType,
+			buildCommand: project.buildCommand,
+			installCommand: project.installCommand,
+			outputDir: project.outputDir,
+			startCommand: project.startCommand,
+			railpackGenerator,
 		});
 
 		try {
@@ -305,7 +316,7 @@ export const sshExecutor: DeploymentExecutor = {
 					await emitLog(deployment.id, "build", line);
 				},
 			});
-			if (result.code !== 0) throw new Error(result.stderr || result.stdout || "Remote build failed");
+			if (result.code !== 0) throw new Error(remoteScriptFailure(result, "Remote build failed"));
 
 			const buildResult = parseRemoteBuildResult(result.stdout);
 			if (!buildResult) throw new Error("Remote build completed without a result marker");
