@@ -14,6 +14,7 @@ const mapDomain = (row: typeof domains.$inferSelect): Domain => ({
 	sslStatus: row.sslStatus as SslStatus,
 	targetService: row.targetService ?? null,
 	targetPort: row.targetPort ?? null,
+	cloudflareProxied: Boolean(row.cloudflareProxied),
 	createdAt: row.createdAt,
 	updatedAt: row.updatedAt,
 });
@@ -33,6 +34,7 @@ export const createDomain = async (input: CreateDomainInput): Promise<Domain> =>
 			sslStatus: "pending",
 			targetService: input.targetService ?? null,
 			targetPort: input.targetPort ?? null,
+			cloudflareProxied: Boolean(input.cloudflareProxied),
 			createdAt: timestamp,
 			updatedAt: timestamp,
 		})

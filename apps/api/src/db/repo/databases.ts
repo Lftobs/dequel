@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { desc, eq } from "drizzle-orm";
 import type { CreateDatabaseInput, Database, DatabaseStatus } from "../../types";
+import { config } from "../../utils/config";
+import { decryptValue, encryptValue } from "../../utils/crypto";
 import { getDb } from "../db-provider";
 import { databases } from "../schema";
 import { getRowsAffected, now } from "./helpers";
@@ -14,7 +16,16 @@ const mapDatabase = (row: typeof databases.$inferSelect): Database => ({
 	version: row.version,
 	databaseName: row.databaseName,
 	username: row.username,
-	password: row.password,
+	password: (() => {
+		if (row.passwordEncrypted && row.passwordIv && row.passwordTag) {
+			try {
+				return decryptValue(row.passwordEncrypted, row.passwordIv, row.passwordTag, config.envEncryptionKey);
+			} catch {
+				return row.password ?? "";
+			}
+		}
+		return row.password ?? "";
+	})(),
 	internalHost: row.internalHost,
 	internalPort: row.internalPort,
 	cpuLimit: row.cpuLimit,
@@ -52,6 +63,7 @@ export const createDatabase = async (input: CreateDatabaseInput): Promise<Databa
 	const volumeName = `db-${id.slice(0, 12)}`;
 	const username = `user_${id.slice(0, 8)}`;
 	const password = randomUUID().replace(/-/g, "").slice(0, 24);
+	const encPassword = encryptValue(password, config.envEncryptionKey);
 	const internalHost = `db-${id.slice(0, 8)}`;
 	const internalPort =
 		input.type === "redis" ? 6379 : input.type === "mongodb" ? 27017 : input.type === "mysql" ? 3306 : 5432;
@@ -78,7 +90,10 @@ export const createDatabase = async (input: CreateDatabaseInput): Promise<Databa
 			version: input.version ?? null,
 			databaseName: dbName,
 			username,
-			password,
+			password: null,
+			passwordEncrypted: encPassword.encrypted,
+			passwordIv: encPassword.iv,
+			passwordTag: encPassword.tag,
 			internalHost,
 			internalPort,
 			cpuLimit: input.cpuLimit ?? null,

@@ -1,8 +1,10 @@
 import { Elysia } from "elysia";
 import { fail } from "./response";
+import { rateLimitMiddleware } from "./rate-limit";
 import { agentRoutes } from "./agents";
 import { alertsRoutes } from "./alerts";
 import { apiKeysRoutes } from "./api-keys";
+import { auditLogsRoutes } from "./audit-logs";
 import { authRoutes } from "./auth";
 import { backupRoutes } from "./backups";
 import { databasesRoutes } from "./databases";
@@ -94,8 +96,10 @@ export const apiRoutes = new Elysia({
 		}
 		return fail(message);
 	})
+	.use(rateLimitMiddleware)
 	.use(authRoutes)
 	.use(authMiddleware)
+	.use(auditLogsRoutes)
 	.use(agentRoutes)
 	.use(healthRoutes)
 	.use(projectsRoutes)

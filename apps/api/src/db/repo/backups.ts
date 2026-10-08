@@ -11,6 +11,7 @@ export interface BackupRecord {
 	storageType: string;
 	storagePath: string | null;
 	sizeBytes: number | null;
+	isEncrypted: boolean;
 	error: string | null;
 	status: string;
 	createdAt: Date;
@@ -25,6 +26,7 @@ export async function createBackupRecord(
 		.insert(backups)
 		.values({
 			...record,
+			isEncrypted: record.isEncrypted ?? false,
 			createdAt: new Date(),
 		})
 		.returning();
