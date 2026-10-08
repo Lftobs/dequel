@@ -19,6 +19,8 @@ describe("ingress route shapes", () => {
 		const snippet = ingressSite("app.example.com", "203.0.113.10");
 		expect(snippet).toContain("reverse_proxy 203.0.113.10:80");
 		expect(snippet).not.toContain("header_up Host");
+		expect(snippet).toContain("log {");
+		expect(snippet).toContain("output stdout");
 	});
 });
 

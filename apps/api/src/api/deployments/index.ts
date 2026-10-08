@@ -16,6 +16,7 @@ import { executorFor } from "../../executors/dispatch";
 import { orchestrator } from "../../orchestrator";
 import { summarizeDeploymentError } from "../../orchestrator/deployment-errors";
 import { logBus } from "../../orchestrator/log-bus";
+import { readRuntimeLogs, runtimeLogFollowerArgs } from "../../orchestrator/runtime-logs";
 import { config } from "../../utils/config";
 import { isPrivateGitUrl } from "../../utils/validate";
 import { created, fail, ok } from "../response";
@@ -329,20 +330,8 @@ export const deploymentsRoutes = new Elysia()
 			set.status = 404;
 			return fail("Deployment not found");
 		}
-		const { run } = await import("../../orchestrator/runtime");
-		const containerName = deployment.containerName || `deploy-${id}`;
 		try {
-			const output = await run("docker", ["logs", "--tail", "200", containerName]);
-			const lines = output
-				.split("\n")
-				.filter(Boolean)
-				.map((line, i) => ({
-					sequence: i + 1,
-					message: line,
-					timestamp: new Date().toISOString(),
-					stage: "runtime" as const,
-				}));
-			return ok(lines);
+			return ok(await readRuntimeLogs(deployment));
 		} catch {
 			return ok([]);
 		}
@@ -354,7 +343,6 @@ export const deploymentsRoutes = new Elysia()
 			return fail("Deployment not found");
 		}
 		const encoder = new TextEncoder();
-		const containerName = deployment.containerName || `deploy-${id}`;
 		let closed = false;
 		const stop = () => {
 			closed = true;
@@ -369,8 +357,18 @@ export const deploymentsRoutes = new Elysia()
 					controller.enqueue(encoder.encode(`event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`));
 				};
 				const { spawn } = await import("node:child_process");
-				const child = spawn("docker", ["logs", "--tail", "100", "--follow", containerName], {
+				const child = spawn("docker", await runtimeLogFollowerArgs(deployment), {
 					stdio: ["ignore", "pipe", "pipe"],
+				});
+				child.on("error", (err) => {
+					send("log", {
+						sequence: 0,
+						message: `docker logs failed: ${err.message}`,
+						timestamp: new Date().toISOString(),
+						stage: "runtime",
+					});
+					send("close", { reason: "spawn failed" });
+					stop();
 				});
 				let seq = 0;
 				child.stdout.on("data", (chunk: Buffer) => {
