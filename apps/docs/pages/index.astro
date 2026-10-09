@@ -31,7 +31,7 @@ import CTA from "../components/CTA.astro";
 			crossorigin
 		/>
 		<link
-			href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&family=Instrument+Serif:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;700&display=swap"
+			href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..600;1,9..40,400..600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap"
 			rel="stylesheet"
 		/>
 		<link
@@ -204,22 +204,22 @@ import CTA from "../components/CTA.astro";
 						>dequel</span
 					>
 				</div>
-				<div class="dq-footer-links flex gap-6 text-xs text-[#7f7f8a]">
+				<div class="dq-footer-links flex gap-6 text-xs">
 					<a
 						href="/docs"
-						class="hover:text-white transition-colors"
+						class="text-[#7f7f8a] hover:text-white transition-colors"
 						>Documentation</a
 					>
 					<a
 						href="/docs/installation"
-						class="hover:text-white transition-colors"
+						class="text-[#7f7f8a] hover:text-white transition-colors"
 						>Installation</a
 					>
 					<a
 						href="https://github.com/Lftobs/dequel"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="hover:text-white transition-colors"
+						class="text-[#7f7f8a] hover:text-white transition-colors"
 						>GitHub</a
 					>
 				</div>
@@ -384,6 +384,66 @@ import CTA from "../components/CTA.astro";
 							target.scrollIntoView({ behavior: "smooth", block: "start" });
 						}
 					}
+				});
+			});
+
+			// ── Micro-interaction: Hero One-Click Command Copy ──
+			const heroCopy = document.getElementById("hero-copy-cmd");
+			if (heroCopy) {
+				heroCopy.addEventListener("click", async () => {
+					const cmd = heroCopy.getAttribute("data-cmd");
+					if (!cmd) return;
+					try {
+						await navigator.clipboard.writeText(cmd);
+						const copyIcon = heroCopy.querySelector(".copy-icon");
+						const checkIcon = heroCopy.querySelector(".check-icon");
+						const feedbackText = heroCopy.querySelector(".copy-feedback-text");
+						
+						copyIcon?.classList.add("hidden");
+						checkIcon?.classList.remove("hidden");
+						feedbackText?.classList.remove("hidden");
+						heroCopy.classList.add("border-green-500/50");
+
+						setTimeout(() => {
+							copyIcon?.classList.remove("hidden");
+							checkIcon?.classList.add("hidden");
+							feedbackText?.classList.add("hidden");
+							heroCopy.classList.remove("border-green-500/50");
+						}, 2200);
+					} catch (e) {}
+				});
+			}
+
+			// ── Micro-interaction: Feature code snippet copy ──
+			document.querySelectorAll(".feature-copy-btn").forEach((btn) => {
+				btn.addEventListener("click", async () => {
+					const code = btn.getAttribute("data-code");
+					if (!code) return;
+					try {
+						await navigator.clipboard.writeText(code);
+						const copyIcon = btn.querySelector(".f-copy-icon");
+						const checkIcon = btn.querySelector(".f-check-icon");
+						copyIcon?.classList.add("hidden");
+						checkIcon?.classList.remove("hidden");
+						setTimeout(() => {
+							copyIcon?.classList.remove("hidden");
+							checkIcon?.classList.add("hidden");
+						}, 2000);
+					} catch (e) {}
+				});
+			});
+
+			// ── Micro-interaction: Cursor spotlight on cards ──
+			const spotlightCards = document.querySelectorAll(
+				".cf-hero-card, #comparison > div > div, .tab-panel > div"
+			);
+			spotlightCards.forEach((card) => {
+				card.addEventListener("mousemove", (e) => {
+					const rect = (card as HTMLElement).getBoundingClientRect();
+					const x = (e as MouseEvent).clientX - rect.left;
+					const y = (e as MouseEvent).clientY - rect.top;
+					(card as HTMLElement).style.setProperty("--mouse-x", `${x}px`);
+					(card as HTMLElement).style.setProperty("--mouse-y", `${y}px`);
 				});
 			});
 		</script>

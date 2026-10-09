@@ -15,25 +15,32 @@ export default defineConfig({
 			category: z.string().optional(),
 		},
 	},
+	feedback: false,
 	theme: {
 		accent: "orange",
 		mode: "dark",
 		radius: "md",
+		fonts: {
+			display: "space-grotesk",
+			body: "dm-sans",
+			mono: "jetbrains-mono",
+		},
 	},
 	navigation: {
-		actions: [{ href: "https://github.com/Lftobs/dequel", label: "GitHub" }],
+		actions: [{ href: "/", label: "HOME" }],
+		cta: { href: "/docs/installation", label: "INSTALL →" },
 		sidebar: [
-			{
-				label: "Getting Started",
-				items: ["/docs", "/docs/control-plane", "/docs/installation", "/docs/quickstart", "/docs/configuration"],
-			},
+			"/docs",
+			"/docs/installation",
+			"/docs/quickstart",
+			"/docs/configuration",
 			{
 				label: "Core Architecture",
-				items: ["/docs/deployments", "/docs/agent-caddy-routes", "/docs/env-vars"],
+				items: ["/docs/deployments", "/docs/env-vars", "/docs/scaling", "/docs/system-config"],
 			},
 			{
 				label: "Deployment",
-				items: ["/docs/scaling", "/docs/ai-diagnosis", "/docs/system-config"],
+				items: ["/docs/ai-diagnosis", "/docs/agent-caddy-routes"],
 			},
 			{
 				label: "Cluster Storage & Data",

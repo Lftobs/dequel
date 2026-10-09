@@ -1,0 +1,246 @@
+---
+---
+
+<div class="w-full overflow-x-auto py-2">
+  <svg
+    id="dequel-arch-svg"
+    viewBox="0 0 960 390"
+    class="w-full min-w-[760px] h-auto select-none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <defs>
+      <linearGradient id="dq-grad-line" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#ea580c" />
+        <stop offset="100%" stop-color="#f59e0b" />
+      </linearGradient>
+      <filter id="dq-glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="3" result="blur" />
+        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      </filter>
+    </defs>
+
+    <!-- ── Connecting Circuit Pipes & Progressing Flow Beams ── -->
+    <g stroke-width="1.6" fill="none">
+      <!-- Triggers to API -->
+      <path id="dq-path-trigger-git" d="M 160 73 C 190 73, 195 145, 220 145" class="dq-pipe" />
+      <path id="dq-beam-trigger-git" d="M 160 73 C 190 73, 195 145, 220 145" class="dq-beam" pathLength="100" />
+
+      <path id="dq-path-trigger-cli" d="M 160 123 C 185 123, 195 148, 220 148" class="dq-pipe" />
+      <path id="dq-beam-trigger-cli" d="M 160 123 C 185 123, 195 148, 220 148" class="dq-beam" pathLength="100" />
+
+      <path id="dq-path-trigger-web" d="M 160 173 C 185 173, 195 158, 220 158" class="dq-pipe" />
+      <path id="dq-beam-trigger-web" d="M 160 173 C 185 173, 195 158, 220 158" class="dq-beam" pathLength="100" />
+
+      <path id="dq-path-trigger-ai" d="M 160 223 C 190 223, 195 165, 220 165" class="dq-pipe" />
+      <path id="dq-beam-trigger-ai" d="M 160 223 C 190 223, 195 165, 220 165" class="dq-beam" pathLength="100" />
+
+      <!-- API to BuildKit -->
+      <path id="dq-path-api-build" d="M 350 154 L 405 154" class="dq-pipe" />
+      <path id="dq-beam-api-build" d="M 350 154 L 405 154" class="dq-beam" pathLength="100" />
+
+      <!-- BuildKit to Snapshots -->
+      <path id="dq-path-build-snapshot" d="M 472 193 L 472 245" class="dq-pipe" />
+      <path id="dq-beam-build-snapshot" d="M 472 193 L 472 245" class="dq-beam" pathLength="100" />
+
+      <!-- BuildKit to App Container -->
+      <path id="dq-path-build-runtime" d="M 540 154 C 570 154, 575 168, 605 168" class="dq-pipe" />
+      <path id="dq-beam-build-runtime" d="M 540 154 C 570 154, 575 168, 605 168" class="dq-beam" pathLength="100" />
+
+      <!-- Attached Managed DBs to App -->
+      <path id="dq-path-runtime-db" d="M 670 106 L 670 132" class="dq-pipe" />
+      <path id="dq-beam-runtime-db" d="M 670 106 L 670 132" class="dq-beam" pathLength="100" />
+
+      <!-- App Container to Caddy -->
+      <path id="dq-path-runtime-caddy" d="M 735 174 C 765 174, 775 201, 800 201" class="dq-pipe" />
+      <path id="dq-beam-runtime-caddy" d="M 735 174 C 765 174, 775 201, 800 201" class="dq-beam" pathLength="100" />
+
+      <!-- Gateway SNI to Caddy -->
+      <path id="dq-path-gateway-caddy" d="M 862 135 L 862 165" class="dq-pipe" />
+      <path id="dq-beam-gateway-caddy" d="M 862 135 L 862 165" class="dq-beam" pathLength="100" />
+
+      <!-- Caddy to Users -->
+      <path id="dq-path-caddy-users" d="M 862 237 L 862 275" class="dq-pipe" />
+      <path id="dq-beam-caddy-users" d="M 862 237 L 862 275" class="dq-beam" pathLength="100" />
+
+      <!-- Telemetry loop back to API -->
+      <path id="dq-path-telemetry" d="M 670 218 C 670 345, 285 345, 285 193" class="dq-pipe" stroke-dasharray="4 4" />
+      <path id="dq-beam-telemetry" d="M 670 218 C 670 345, 285 345, 285 193" class="dq-beam" pathLength="100" />
+    </g>
+
+    <!-- ── 1. Ingestion Triggers (Left Column) ── -->
+    <g id="dq-node-triggers" class="transition-all duration-300">
+      <g class="dq-node-pill cursor-pointer" data-step="1" transform="translate(30, 55)">
+        <rect width="130" height="36" rx="8" fill="#0f0f13" stroke="#222228" stroke-width="1.2" class="pill-rect" />
+        <text x="65" y="18" fill="#f4f4f5" font-size="11.5" font-weight="600" text-anchor="middle" font-family="'Space Grotesk', sans-serif">Git Webhook</text>
+        <text x="65" y="28" fill="#71717a" font-size="8.5" text-anchor="middle" font-family="'JetBrains Mono', monospace">push to main</text>
+      </g>
+      <g class="dq-node-pill cursor-pointer" data-step="1" transform="translate(30, 105)">
+        <rect width="130" height="36" rx="8" fill="#0f0f13" stroke="#222228" stroke-width="1.2" class="pill-rect" />
+        <text x="65" y="18" fill="#f4f4f5" font-size="11.5" font-weight="600" text-anchor="middle" font-family="'Space Grotesk', sans-serif">CLI <tspan fill="#ea580c" font-size="9.5" font-weight="700">(soon)</tspan></text>
+        <text x="65" y="28" fill="#71717a" font-size="8.5" text-anchor="middle" font-family="'JetBrains Mono', monospace">dequel deploy</text>
+      </g>
+      <g class="dq-node-pill cursor-pointer" data-step="1" transform="translate(30, 155)">
+        <rect width="130" height="36" rx="8" fill="#0f0f13" stroke="#222228" stroke-width="1.2" class="pill-rect" />
+        <text x="65" y="18" fill="#f4f4f5" font-size="11.5" font-weight="600" text-anchor="middle" font-family="'Space Grotesk', sans-serif">Web Dashboard</text>
+        <text x="65" y="28" fill="#71717a" font-size="8.5" text-anchor="middle" font-family="'JetBrains Mono', monospace">TanStack React</text>
+      </g>
+      <g class="dq-node-pill cursor-pointer" data-step="1" transform="translate(30, 205)">
+        <rect width="130" height="36" rx="8" fill="#0f0f13" stroke="#222228" stroke-width="1.2" class="pill-rect" />
+        <text x="65" y="18" fill="#f4f4f5" font-size="11.5" font-weight="600" text-anchor="middle" font-family="'Space Grotesk', sans-serif">Agent <tspan fill="#ea580c" font-size="9.5" font-weight="700">(soon)</tspan></text>
+        <text x="65" y="28" fill="#71717a" font-size="8.5" text-anchor="middle" font-family="'JetBrains Mono', monospace">automated / MCP</text>
+      </g>
+    </g>
+
+    <!-- ── 2. Control Plane (Bun + Elysia + Redis) ── -->
+    <g id="dq-node-api" class="dq-block cursor-pointer transition-all duration-300" data-step="2" transform="translate(220, 115)">
+      <rect width="130" height="78" rx="12" fill="#0e0e13" stroke="#222228" stroke-width="1.5" class="block-rect" />
+      <text x="65" y="24" fill="#ea580c" font-size="8.5" font-weight="700" letter-spacing="1" text-anchor="middle" font-family="'JetBrains Mono', monospace">CONTROL PLANE</text>
+      <text x="65" y="44" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle" font-family="'Space Grotesk', sans-serif">Dequel API</text>
+      <text x="65" y="58" fill="#a1a1aa" font-size="8.5" text-anchor="middle" font-family="'JetBrains Mono', monospace">ElysiaJS + Bun</text>
+      <text x="65" y="69" fill="#71717a" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">Redis Queue (ioredis)</text>
+    </g>
+
+    <!-- ── 3. BuildKit Daemon & Railpack ── -->
+    <g id="dq-node-buildkit" class="dq-block cursor-pointer transition-all duration-300" data-step="3" transform="translate(405, 115)">
+      <rect width="135" height="78" rx="12" fill="#0e0e13" stroke="#222228" stroke-width="1.5" class="block-rect" />
+      <text x="67.5" y="24" fill="#ea580c" font-size="8.5" font-weight="700" letter-spacing="1" text-anchor="middle" font-family="'JetBrains Mono', monospace">BUILD ENGINE</text>
+      <text x="67.5" y="44" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle" font-family="'Space Grotesk', sans-serif">BuildKit Daemon</text>
+      <text x="67.5" y="58" fill="#a1a1aa" font-size="8.5" text-anchor="middle" font-family="'JetBrains Mono', monospace">Railpack Compiler</text>
+      <text x="67.5" y="69" fill="#71717a" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">Layer Caching</text>
+    </g>
+
+    <!-- ── Immutable Snapshots Registry ── -->
+    <g id="dq-group-snapshots" class="cursor-pointer transition-all duration-300" data-step="6" transform="translate(405, 245)">
+      <rect width="135" height="64" rx="10" fill="#09090d" stroke="#222228" stroke-dasharray="3 3" stroke-width="1" class="snapshot-rect" />
+      <text x="67.5" y="18" fill="#52525b" font-size="7.5" font-weight="700" letter-spacing="1" text-anchor="middle" font-family="'JetBrains Mono', monospace">IMMUTABLE SNAPSHOTS</text>
+      <g transform="translate(13, 27)">
+        <rect x="0" y="0" width="22" height="20" rx="4" fill="#141418" stroke="#222228" stroke-width="1" />
+        <text x="11" y="14" fill="#71717a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">v1</text>
+        <rect x="27" y="0" width="22" height="20" rx="4" fill="#141418" stroke="#222228" stroke-width="1" />
+        <text x="38" y="14" fill="#71717a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">v2</text>
+        <rect id="dq-chip-v3" x="54" y="0" width="24" height="20" rx="4" fill="#141418" stroke="#222228" stroke-width="1" />
+        <text x="66" y="14" fill="#71717a" font-size="9" text-anchor="middle" font-family="'JetBrains Mono', monospace">v3</text>
+        <rect id="dq-chip-v4" x="83" y="0" width="26" height="20" rx="4" fill="#ea580c" stroke="#ea580c" stroke-width="1" />
+        <text x="96" y="14" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">v4</text>
+      </g>
+    </g>
+
+    <!-- ── Isolated Host Runtime Cluster (dequel_net Boundary) ── -->
+    <g id="dq-runtime-cluster" transform="translate(590, 42)">
+      <rect width="160" height="200" rx="14" fill="#08080b" stroke="#1f1f24" stroke-dasharray="4 4" stroke-width="1.2" />
+      <text x="12" y="18" fill="#71717a" font-size="8" font-weight="600" font-family="'JetBrains Mono', monospace">dequel_net</text>
+      <text x="148" y="18" fill="#52525b" font-size="7.5" text-anchor="end" font-family="'JetBrains Mono', monospace">bridge</text>
+
+      <!-- Managed DBs -->
+      <g id="dq-node-dbs" class="cursor-pointer transition-all duration-300" data-step="4" transform="translate(15, 26)">
+        <rect width="130" height="40" rx="8" fill="#0e0e13" stroke="#222228" stroke-width="1" class="aux-rect" />
+        <text x="65" y="15" fill="#52525b" font-size="7.5" font-weight="700" letter-spacing="0.5" text-anchor="middle" font-family="'JetBrains Mono', monospace">MANAGED DATABASES</text>
+        <text x="65" y="29" fill="#d4d4d8" font-size="9" text-anchor="middle" font-family="'Space Grotesk', sans-serif">Postgres • Redis DB</text>
+      </g>
+
+      <!-- App Container -->
+      <g id="dq-node-app" class="dq-block cursor-pointer transition-all duration-300" data-step="4" transform="translate(15, 90)">
+        <rect width="130" height="88" rx="10" fill="#0e0e13" stroke="#222228" stroke-width="1.5" class="block-rect" />
+        <text x="65" y="22" fill="#ea580c" font-size="8.5" font-weight="700" letter-spacing="1" text-anchor="middle" font-family="'JetBrains Mono', monospace">APP CONTAINER</text>
+        <text x="65" y="43" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle" font-family="'Space Grotesk', sans-serif">Docker Runtime</text>
+        <text x="65" y="59" fill="#a1a1aa" font-size="8.5" text-anchor="middle" font-family="'JetBrains Mono', monospace">replica 1/1 (healthy)</text>
+        <text x="65" y="73" fill="#10b981" font-size="8" font-weight="600" text-anchor="middle" font-family="'JetBrains Mono', monospace">port: isolated 80</text>
+      </g>
+    </g>
+
+    <!-- ── 5. Gateway :443 (TLS SNI Routing) ── -->
+    <g id="dq-node-gateway" class="dq-block cursor-pointer transition-all duration-300" data-step="5" transform="translate(800, 75)">
+      <rect width="125" height="60" rx="10" fill="#0e0e13" stroke="#222228" stroke-width="1.5" class="block-rect" />
+      <text x="62.5" y="20" fill="#ea580c" font-size="8.5" font-weight="700" letter-spacing="1" text-anchor="middle" font-family="'JetBrains Mono', monospace">HOST GATEWAY</text>
+      <text x="62.5" y="38" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle" font-family="'Space Grotesk', sans-serif">Port :443 SNI</text>
+      <text x="62.5" y="50" fill="#71717a" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">TLS Route Demux</text>
+    </g>
+
+    <!-- ── 6. Caddy Dynamic Ingress ── -->
+    <g id="dq-node-caddy" class="dq-block cursor-pointer transition-all duration-300" data-step="5" transform="translate(800, 165)">
+      <rect width="125" height="72" rx="10" fill="#0e0e13" stroke="#222228" stroke-width="1.5" class="block-rect" />
+      <text x="62.5" y="22" fill="#ea580c" font-size="8.5" font-weight="700" letter-spacing="1" text-anchor="middle" font-family="'JetBrains Mono', monospace">EDGE INGRESS</text>
+      <text x="62.5" y="41" fill="#ffffff" font-size="12.5" font-weight="700" text-anchor="middle" font-family="'Space Grotesk', sans-serif">Caddy Engine</text>
+      <text x="62.5" y="54" fill="#a1a1aa" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">Dynamic Route Files</text>
+      <text x="62.5" y="64" fill="#71717a" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', monospace">Let's Encrypt Auto-SSL</text>
+    </g>
+
+    <!-- ── 7. Public Visitors ── -->
+    <g id="dq-node-users" class="cursor-pointer transition-all duration-300" data-step="5" transform="translate(800, 275)">
+      <rect width="125" height="34" rx="17" fill="#121217" stroke="#222228" stroke-width="1.2" class="visitors-rect" />
+      <text x="62.5" y="21" fill="#f4f4f5" font-size="11.5" font-weight="600" text-anchor="middle" font-family="'Space Grotesk', sans-serif">HTTPS Visitors</text>
+    </g>
+
+    <!-- Telemetry Loop Subtitle -->
+    <g transform="translate(420, 345)">
+      <text x="60" y="14" fill="#52525b" font-size="8" font-family="'JetBrains Mono', monospace">cAdvisor & Prometheus Telemetry Loop</text>
+    </g>
+  </svg>
+</div>
+
+<style is:global>
+  /* Base Circuit Pipes */
+  .dq-pipe {
+    stroke: #222228;
+    stroke-width: 1.6;
+    fill: none;
+    transition: stroke 300ms ease, stroke-width 300ms ease;
+  }
+
+  .dq-pipe-active {
+    stroke: #ea580c !important;
+    stroke-width: 2.5 !important;
+    filter: drop-shadow(0 0 8px rgba(234, 88, 12, 0.75)) !important;
+  }
+
+  /* Progressing Fading Flow Beams */
+  .dq-beam {
+    fill: none;
+    stroke: transparent;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @keyframes dq-beam-travel {
+    0% {
+      stroke-dashoffset: 100;
+      opacity: 0;
+    }
+    15% {
+      opacity: 1;
+    }
+    85% {
+      opacity: 1;
+    }
+    100% {
+      stroke-dashoffset: 0;
+      opacity: 0;
+    }
+  }
+
+  .dq-beam-active {
+    opacity: 1 !important;
+    stroke: #ffffff !important;
+    stroke-width: 3.5 !important;
+    stroke-linecap: round !important;
+    stroke-dasharray: 22 78 !important;
+    animation: dq-beam-travel 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+    filter: drop-shadow(0 0 6px #ffedd5) drop-shadow(0 0 12px #ea580c) !important;
+  }
+
+  /* Interactive Architecture Blocks & Halos */
+  .block-rect,
+  .pill-rect,
+  .visitors-rect,
+  .snapshot-rect,
+  .aux-rect {
+    transition: all 250ms ease;
+  }
+
+  .block-active {
+    stroke: #ea580c !important;
+    stroke-width: 2 !important;
+    fill: #18151c !important;
+    filter: drop-shadow(0 0 14px rgba(234, 88, 12, 0.5)) !important;
+  }
+</style>

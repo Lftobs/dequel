@@ -1,148 +1,167 @@
 ---
+import ArchCanvas from "./architecture/ArchCanvas.astro";
 ---
-<section class="dq-how-it-works dq-reveal py-24 max-w-[1150px] mx-auto px-4" id="how-it-works">
+
+<section class="py-24 max-w-[1150px] mx-auto px-4 dq-reveal" id="how-it-works">
+  <!-- Section Title & Header -->
   <div class="text-center mb-16">
-    <div class="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#ea580c] mb-3">Engine Architecture</div>
-    <h2 class="text-3xl md:text-5xl font-bold tracking-tight mb-4">
+    <div class="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#ea580c] mb-3 font-mono">Engine Architecture</div>
+    <h2 class="text-3xl md:text-5xl font-bold tracking-tight mb-4 text-white font-display">
       Your own PaaS, running on <span class="text-[#ea580c]">your own servers</span>.
     </h2>
-    <p class="text-sm text-[#7f7f8a] max-w-2xl mx-auto leading-relaxed">
-      Dequel orchestrates raw Docker containers, Buildkit compilation, Redis job queues, SQLite data, and dynamic Caddy routing into one unified platform.
+    <p class="text-sm text-[#7f7f8a] max-w-2xl mx-auto leading-relaxed font-sans">
+      Dequel orchestrates raw Docker containers, Buildkit compilation, Redis job queues, PostgreSQL persistence, and dynamic Caddy routing into one unified platform.
     </p>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-    <!-- Steps -->
-    <div class="lg:col-span-5 space-y-6">
-      <div class="group border border-[#222228] rounded-xl p-6 hover:border-[#ea580c] transition-all bg-[#111114]">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-mono font-bold text-[#ea580c]">STEP 01</span>
-          <span class="text-[0.65rem] font-mono text-[#7f7f8a]">Debian / Ubuntu VPS</span>
-        </div>
-        <h3 class="text-lg font-bold mb-2 text-[#e2e2e8]">Connect Your Server</h3>
-        <p class="text-xs text-[#7f7f8a] leading-relaxed">
-          Run our 1-command installer. Dequel bootstraps its API control plane, Redis job queue, SQLite persistence, and cAdvisor monitoring inside a dedicated Docker network.
-        </p>
-      </div>
+  <!-- Interactive Architecture Emulation Canvas Card -->
+  <div class="relative bg-[#070709] border border-[#222228] rounded-3xl p-5 md:p-8 shadow-2xl overflow-hidden">
+    <!-- Subtle architectural background glow -->
+    <div class="absolute -top-32 -left-32 w-80 h-80 bg-[#ea580c]/5 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-32 -right-32 w-80 h-80 bg-[#f59e0b]/5 rounded-full blur-3xl pointer-events-none"></div>
 
-      <div class="group border border-[#222228] rounded-xl p-6 hover:border-[#ea580c] transition-all bg-[#111114]">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-mono font-bold text-[#ea580c]">STEP 02</span>
-          <span class="text-[0.65rem] font-mono text-[#7f7f8a]">Git / ZIP / Dockerfile</span>
-        </div>
-        <h3 class="text-lg font-bold mb-2 text-[#e2e2e8]">Push Code & Build</h3>
-        <p class="text-xs text-[#7f7f8a] leading-relaxed">
-          Dequel uses Railpack to analyze your repository, autodetects your language runtime, and compiles isolated container images locally via Buildkit.
-        </p>
+    <!-- Top Canvas Status Pill -->
+    <div class="flex items-center justify-between border-b border-[#1c1c20] pb-4 mb-4 text-xs font-mono">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+        <span class="text-[#f4f4f5] font-semibold">DEQUEL ENGINE TOPOLOGY</span>
+        <span class="text-[#52525b]">•</span>
+        <span class="text-[#71717a]">dequel_net bridge</span>
       </div>
-
-      <div class="group border border-[#222228] rounded-xl p-6 hover:border-[#ea580c] transition-all bg-[#111114]">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-mono font-bold text-[#ea580c]">STEP 03</span>
-          <span class="text-[0.65rem] font-mono text-[#7f7f8a]">Caddy Proxy + Auto-SSL</span>
-        </div>
-        <h3 class="text-lg font-bold mb-2 text-[#e2e2e8]">Instant Auto Routing</h3>
-        <p class="text-xs text-[#7f7f8a] leading-relaxed">
-          The internal Caddy engine reloads dynamic routes without zero-downtime, automatically provisions Let's Encrypt certificates, and connects public traffic directly to your app.
-        </p>
+      <div class="hidden sm:flex items-center gap-3 text-[#71717a] text-[11px]">
+        <span>Bun v1.2</span>
+        <span>•</span>
+        <span>BuildKit Daemon</span>
+        <span>•</span>
+        <span>Caddy v2.9</span>
       </div>
     </div>
 
-    <!-- Visual Illustrative Diagram -->
-    <div class="lg:col-span-7 border border-[#222228] bg-[#000000] rounded-2xl p-6 md:p-8 relative overflow-hidden min-h-[460px] flex flex-col justify-between shadow-2xl">
-      <!-- Background Grid/Scanlines -->
-      <div class="absolute inset-0 opacity-10 pointer-events-none bg-[linear-gradient(rgba(234,88,12,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(234,88,12,0.15)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-      
-      <!-- Top header / Status bar -->
-      <div class="flex items-center justify-between border-b border-[#151519] pb-4 z-10">
-        <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block animate-pulse"></span>
-          <span class="text-[0.65rem] font-mono tracking-wider text-[#e2e2e8]">NODE: vps-dequel-01 (ONLINE)</span>
+    <!-- SVG Canvas Component -->
+    <ArchCanvas />
+
+    <!-- ── Interactive Step Navigation Controls ── -->
+    <div class="flex flex-wrap items-center justify-center gap-2 md:gap-3 mt-4 pt-6 border-t border-[#1c1c20]" id="dq-stepper">
+      <button class="dq-step-pill active" data-step="1" type="button">
+        <span class="step-dot"></span>
+        <span class="step-num">01</span>
+        <span class="step-label">Ingest</span>
+      </button>
+
+      <button class="dq-step-pill" data-step="2" type="button">
+        <span class="step-dot"></span>
+        <span class="step-num">02</span>
+        <span class="step-label">Orchestrate</span>
+      </button>
+
+      <button class="dq-step-pill" data-step="3" type="button">
+        <span class="step-dot"></span>
+        <span class="step-num">03</span>
+        <span class="step-label">Compile</span>
+      </button>
+
+      <button class="dq-step-pill" data-step="4" type="button">
+        <span class="step-dot"></span>
+        <span class="step-num">04</span>
+        <span class="step-label">Runtime & Wire</span>
+      </button>
+
+      <button class="dq-step-pill" data-step="5" type="button">
+        <span class="step-dot"></span>
+        <span class="step-num">05</span>
+        <span class="step-label">Edge Ingress</span>
+      </button>
+
+      <button class="dq-step-pill" data-step="6" type="button">
+        <span class="step-dot"></span>
+        <span class="step-num">06</span>
+        <span class="step-label">Rollback</span>
+      </button>
+    </div>
+
+    <!-- ── Live Architecture Emulation Explanation Card ── -->
+    <div class="mt-6 p-5 rounded-2xl bg-[#0e0e13] border border-[#222228] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="text-[10px] font-mono uppercase tracking-widest text-[#ea580c] font-bold" id="dq-expl-tag">STAGE 01: INGESTION</span>
+          <span class="text-[10px] text-[#52525b] font-mono">• Zero DevOps overhead</span>
         </div>
-        <span class="text-[0.65rem] font-mono text-[#7f7f8a]">dequel-network (10.0.0.0/16)</span>
+        <h4 class="text-base md:text-lg font-bold text-white font-display mb-1" id="dq-expl-title">
+          01. Multi-Channel Trigger Ingestion
+        </h4>
+        <p class="text-xs md:text-sm text-[#8e8e99] font-sans leading-relaxed max-w-3xl" id="dq-expl-desc">
+          Push code via GitHub webhooks (`push to main`), the Web Dashboard, or upcoming CLI & Agent triggers. Webhooks spawn instant staging jobs without polling.
+        </p>
       </div>
 
-      <!-- Diagram Body -->
-      <div class="grid grid-cols-12 gap-3 my-auto relative z-10">
-        <!-- Client Request / Ingress -->
-        <div class="col-span-3 flex flex-col justify-center gap-3">
-          <div class="border border-[#ea580c] rounded-lg p-2.5 bg-[#111114] text-center w-full relative group">
-            <span class="text-[0.6rem] font-mono font-bold text-[#ea580c] block">HTTP Traffic</span>
-            <div class="text-[0.55rem] text-[#7f7f8a]">app.domain.com</div>
-            <div class="absolute -right-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-4 h-4 bg-[#ea580c]/10 border border-[#ea580c]/30 rounded-full">
-              <span class="w-1.5 h-1.5 bg-[#ea580c] rounded-full animate-ping absolute"></span>
-              <span class="w-1.5 h-1.5 bg-[#ea580c] rounded-full"></span>
-            </div>
-          </div>
-          <div class="border border-[#222228] rounded-lg p-2.5 bg-[#111114] text-center w-full relative">
-            <span class="text-[0.6rem] font-mono font-bold text-[#e2e2e8] block">Git Webhook</span>
-            <div class="text-[0.55rem] text-[#7f7f8a]">Push to main</div>
-            <div class="absolute -right-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-4 h-4 bg-[#7f7f8a]/10 border border-[#222228] rounded-full">
-              <span class="w-1.5 h-1.5 bg-[#7f7f8a] rounded-full"></span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Caddy & API Orchestrator -->
-        <div class="col-span-5 flex flex-col justify-center gap-3">
-          <!-- Ingress (Caddy) -->
-          <div class="border border-[#222228] rounded-lg p-3 bg-[#0d0d0f] relative flex items-center justify-between">
-            <div>
-              <span class="text-[0.65rem] font-mono font-bold text-[#e2e2e8] block">Caddy Ingress Engine</span>
-              <span class="text-[0.55rem] font-mono text-[#7f7f8a]">Auto SSL / Reverse Proxy</span>
-            </div>
-            <span class="text-[0.55rem] bg-[#ea580c]/10 text-[#ea580c] px-1.5 py-0.5 rounded font-mono">PORT 80/443</span>
-            <div class="absolute -right-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-4 h-4 bg-[#ea580c]/10 border border-[#ea580c]/30 rounded-full">
-              <span class="w-1.5 h-1.5 bg-[#ea580c] rounded-full"></span>
-            </div>
-          </div>
-
-          <!-- API Control Plane -->
-          <div class="border border-[#ea580c] rounded-lg p-3 bg-[#111114] relative">
-            <span class="text-[0.65rem] font-mono font-bold text-[#ea580c] block">Dequel API Orchestrator</span>
-            <span class="text-[0.55rem] font-mono text-[#7f7f8a]">ElysiaJS + Bun Runtime</span>
-            <div class="absolute -right-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center w-4 h-4 bg-[#e2e2e8]/10 border border-[#222228] rounded-full">
-              <span class="w-1.5 h-1.5 bg-[#e2e2e8] rounded-full"></span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Deployments / Containers -->
-        <div class="col-span-4 flex flex-col justify-center gap-2.5">
-          <div class="border border-green-500/50 rounded-lg p-2 bg-[#0a0a0c] flex items-center justify-between">
-            <div>
-              <span class="text-[0.6rem] font-mono font-bold text-green-400 block">web-app-prod</span>
-              <span class="text-[0.5rem] font-mono text-[#7f7f8a]">Replica #1 (Healthy)</span>
-            </div>
-            <span class="w-1.5 h-1.5 bg-green-500 rounded-full inline-block"></span>
-          </div>
-
-          <div class="border border-dashed border-[#ea580c]/50 rounded-lg p-2 bg-[#0a0a0c] flex items-center justify-between">
-            <div>
-              <span class="text-[0.6rem] font-mono font-bold text-[#ea580c] block">buildkit-daemon</span>
-              <span class="text-[0.5rem] font-mono text-[#7f7f8a]">Railpack compiling...</span>
-            </div>
-            <span class="w-1.5 h-1.5 bg-[#ea580c] rounded-full inline-block animate-pulse"></span>
-          </div>
-
-          <div class="border border-blue-500/50 rounded-lg p-2 bg-[#0a0a0c] flex items-center justify-between">
-            <div>
-              <span class="text-[0.6rem] font-mono font-bold text-blue-400 block">postgres-db-1</span>
-              <span class="text-[0.5rem] font-mono text-[#7f7f8a]">Mounted Data Volume</span>
-            </div>
-            <span class="w-1.5 h-1.5 bg-blue-500 rounded-full inline-block"></span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bottom Status bar -->
-      <div class="flex items-center justify-between border-t border-[#151519] pt-4 z-10">
-        <div class="flex gap-4">
-          <span class="text-[0.6rem] font-mono text-[#4b4b54]">SQLite: ./data/dequel.db</span>
-          <span class="text-[0.6rem] font-mono text-[#4b4b54]">Redis: Task Queue</span>
-        </div>
-        <span class="text-[0.6rem] font-mono text-[#ea580c]">Zero Infrastructure Markup</span>
+      <div class="shrink-0 flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#ea580c] bg-[#ea580c]/10 px-3 py-1.5 rounded-full border border-[#ea580c]/20" id="dq-expl-metric">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#ea580c] animate-pulse"></span>
+          <span>Trigger: Instant Webhook</span>
+        </span>
       </div>
     </div>
   </div>
 </section>
+
+<style>
+  .dq-step-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.95rem;
+    border-radius: 9999px;
+    background: #111115;
+    border: 1px solid #222228;
+    color: #8e8e99;
+    cursor: pointer;
+    transition: all 180ms ease;
+    user-select: none;
+  }
+  .dq-step-pill:hover {
+    border-color: #3f3f46;
+    color: #f4f4f5;
+    background: #16161c;
+  }
+  .dq-step-pill .step-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #52525b;
+    transition: all 180ms ease;
+  }
+  .dq-step-pill .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #52525b;
+  }
+  .dq-step-pill .step-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .dq-step-pill.active {
+    background: rgba(234, 88, 12, 0.12);
+    border-color: #ea580c;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(234, 88, 12, 0.25);
+  }
+  .dq-step-pill.active .step-dot {
+    background-color: #ea580c;
+    box-shadow: 0 0 8px #ea580c;
+  }
+  .dq-step-pill.active .step-num {
+    color: #ea580c;
+  }
+</style>
+
+
+<script>
+  import { initArchController } from "./architecture/archController";
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initArchController);
+  } else {
+    initArchController();
+  }
+  document.addEventListener("astro:page-load", initArchController);
+</script>
