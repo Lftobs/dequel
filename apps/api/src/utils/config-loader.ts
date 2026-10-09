@@ -5,24 +5,24 @@ import { resolve } from "node:path";
 const XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME || `${homedir()}/.config`;
 
 export interface FileConfig {
-	port?: number;
-	databaseUrl?: string;
-	workspaceRoot?: string;
-	caddyRoutesDir?: string;
-	caddyBaseDomain?: string;
-	dockerNetwork?: string;
-	appInternalPort?: number;
-	buildkitHost?: string;
-	envEncryptionKey?: string;
-	redisUrl?: string;
-	queueConcurrency?: number;
-	queueRetryMax?: number;
-	queueRetryBaseMs?: number;
-	alertEvalIntervalMs?: number;
-	githubClientId?: string;
-	githubClientSecret?: string;
-	githubAppName?: string;
-	githubWebhookSecret?: string;
+	CADDY_BASE_DOMAIN?: string;
+	CONTROL_PLANE_URL?: string;
+	AGENT_TUNNEL_URL?: string;
+	QUEUE_CONCURRENCY?: number;
+	QUEUE_RETRY_MAX?: number;
+	QUEUE_RETRY_BASE_MS?: number;
+	ALERT_EVAL_INTERVAL_MS?: number;
+	FAILURE_SWEEP_INTERVAL_MS?: number;
+	GRAFANA_URL?: string;
+	GRAFANA_USER?: string;
+	GRAFANA_PASS?: string;
+	WIREGUARD_SERVER_CONTAINER?: string;
+	WIREGUARD_SERVER_PUBLIC_KEY?: string;
+	WIREGUARD_SERVER_ENDPOINT?: string;
+	WIREGUARD_SERVER_IP?: string;
+	WIREGUARD_PEER_CIDR?: string;
+	FAILOVER_DISABLED?: string;
+	FAILOVER_MIN_INTERVAL_MS?: number;
 }
 
 const searchPaths = (): string[] => {

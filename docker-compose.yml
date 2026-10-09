@@ -48,8 +48,8 @@ services:
             DOCKER_BIN: /usr/bin/docker
             RAILPACK_VERBOSE: "1"
             RAILPACK_BUILD_TIMEOUT_MS: "1200000"
-            GRAFANA_URL: http://grafana:3000/grafana
             POSTGRES_CONTAINER: ${POSTGRES_CONTAINER:-dequel-postgres-1}
+            ENV_ENCRYPTION_KEY: ${ENV_ENCRYPTION_KEY:-dev-env-key-change-me}
         volumes:
             - ./workspace:/app/workspace
             - ./infra/caddy/routes:/caddy/routes
@@ -172,6 +172,7 @@ services:
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
             GATEWAY_CERT_DIR: /app/data
             CADDY_DATA_DIR: /caddy-data/caddy
+            ENV_ENCRYPTION_KEY: ${ENV_ENCRYPTION_KEY:-dev-env-key-change-me}
         ports:
             - "443:443"
         volumes:

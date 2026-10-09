@@ -6,6 +6,7 @@ import { apiRoutes } from "./api";
 import { startBackupScheduler } from "./backup/scheduler";
 import { startDatabaseMonitoring } from "./databases/manager";
 import { getDb } from "./db/db-provider";
+import { migrateEncryptionKeys } from "./db/encryption-migration";
 import { migrate } from "./db/migrate";
 import { ensureLocalServer } from "./db/repo";
 import { markInterruptedDiagRuns } from "./db/repo/diag-runs";
@@ -34,6 +35,7 @@ const bootstrap = async () => {
 	initAuth(jwtSecret);
 
 	await migrate();
+	await migrateEncryptionKeys().catch((err) => console.error("[EncryptionMigration] failed:", err));
 	await ensureLocalServer();
 	const interrupted = await markInterruptedDiagRuns().catch(() => 0);
 	if (interrupted > 0) console.log(`[Fixdiag] Marked ${interrupted} interrupted diagnosis run(s) as failed`);
