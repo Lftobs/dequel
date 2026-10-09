@@ -32,6 +32,8 @@ export const getDatabaseCredentials = (id: string) =>
 		externalConnectionString: string | null;
 		externalHost: string | null;
 		externalPort: number | null;
+		externalReachable: boolean | null;
+		warning: string | null;
 	}>(`/databases/${id}/credentials`);
 export const startDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/start`, { method: "POST" });
 export const stopDatabase = (id: string) => apiFetch<Database>(`/databases/${id}/stop`, { method: "POST" });

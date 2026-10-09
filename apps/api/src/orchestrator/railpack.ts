@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import type { Server } from "../types";
 import { dockerBin } from "../utils/docker-bin";
+import { killChildTree } from "../utils/proc-group";
 import { generateDynamicRailpackJson } from "./railpack-config-utils";
 
 export interface RailpackBuildResult {
@@ -66,7 +67,7 @@ export class CancelledError extends Error {
 	}
 }
 
-const spawnAsync = (
+export const spawnAsync = (
 	cmd: string,
 	args: string[],
 	opts?: {
@@ -87,6 +88,7 @@ const spawnAsync = (
 			stdio: ["ignore", "pipe", "pipe"],
 			env: opts?.env ?? process.env,
 			cwd: opts?.cwd,
+			detached: true,
 		});
 		let stdout = "";
 		let stderr = "";
@@ -94,10 +96,10 @@ const spawnAsync = (
 
 		const onAbort = () => {
 			if (settled) return;
-			child.kill("SIGTERM");
+			killChildTree(child, "SIGTERM");
 			setTimeout(() => {
 				if (!settled) {
-					child.kill("SIGKILL");
+					killChildTree(child, "SIGKILL");
 				}
 			}, 5000);
 			finish(undefined, new CancelledError());
@@ -116,10 +118,10 @@ const spawnAsync = (
 				? setTimeout(() => {
 						if (settled) return;
 						opts.onTimeout?.();
-						child.kill("SIGTERM");
+						killChildTree(child, "SIGTERM");
 						setTimeout(() => {
 							if (!settled) {
-								child.kill("SIGKILL");
+								killChildTree(child, "SIGKILL");
 							}
 						}, 5000);
 						finish(undefined, new Error(`${cmd} timed out after ${opts.timeoutMs}ms`));

@@ -44,6 +44,11 @@ export const isServerReachable = (host: string, port: number = 22): Promise<bool
 
 const isFailoverDisabled = () => /^(1|true|yes)$/i.test(config.failoverDisabled);
 
+const formatError = (error: unknown): string => {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.trim() || "unknown error";
+};
+
 const bestEffort = (work: Promise<unknown>, label: string): Promise<void> =>
 	Promise.race([
 		work,
@@ -54,7 +59,7 @@ const bestEffort = (work: Promise<unknown>, label: string): Promise<void> =>
 	])
 		.then(() => undefined)
 		.catch((error) => {
-			console.error(`[Failover] ${label} failed:`, error instanceof Error ? error.message : error);
+			console.error(`[Failover] ${label} failed: ${formatError(error)}`);
 		});
 
 const removeOldServerContainers = (
@@ -112,14 +117,14 @@ export const failoverProject = async (
 
 	const deployments = await listDeployments(projectId, 0, 1);
 	const latest = deployments[0];
-	if (!latest) throw new Error("Project has no deployments to fail over");
+	if (!latest) throw new Error(`Project ${project.name ?? projectId} has no deployments to fail over`);
 	if (latest.sourceType !== "git") throw new Error("Failover requires a Git deployment");
 
 	failingOver.add(projectId);
 	try {
 		const targetId = await pickBestServer(null, project.serverId, ["ssh"]);
 		if (!targetId || targetId === project.serverId || targetId === "local") {
-			throw new Error("No other healthy server available for failover");
+			throw new Error(`No other healthy server available for failover of project ${project.name ?? projectId}`);
 		}
 		const targetServer = await getServerById(targetId);
 		if (!targetServer) throw new Error("Target server not found");
@@ -145,7 +150,7 @@ export const failoverProject = async (
 			void executorFor("ssh")
 				.deploy({ deployment, project, server: targetServer })
 				.catch((error) => {
-					console.error(`[Failover] Deployment ${deployment.id} failed:`, error);
+					console.error(`[Failover] Deployment ${deployment.id} failed: ${formatError(error)}`);
 				});
 		} else {
 			const { queueRemoteDeployment } = await import("../agents/deployments");
@@ -225,7 +230,7 @@ export const failoverMonitorTick = async () => {
 					`[Failover] Server ${server.name} unreachable for ${Math.round((Date.now() - firstSeen) / 1000)}s — failing over project ${project.name}`,
 				);
 				failoverProject(project.id, { trigger: "auto" }).catch((error) => {
-					const message = error instanceof Error ? error.message : String(error);
+					const message = formatError(error);
 					if (message.includes("before another failover")) {
 						if (!rateLimitWarned.has(project.id)) {
 							rateLimitWarned.add(project.id);
@@ -233,7 +238,7 @@ export const failoverMonitorTick = async () => {
 						}
 						return;
 					}
-					console.error(`[Failover] Auto-failover for project ${project.id} failed:`, error);
+					console.error(`[Failover] Auto-failover for project ${project.id} failed: ${message}`);
 					unreachableSince.delete(project.id);
 				});
 			});
@@ -243,13 +248,13 @@ export const failoverMonitorTick = async () => {
 		for (const serverId of recoveredServers) {
 			console.log(`[Failover] Server ${serverId} recovered — cleaning up stale routes`);
 			await cleanupStaleRoutes(ingressServer, serverId).catch((error) => {
-				console.error(`[Failover] Stale route cleanup for server ${serverId} failed:`, error);
+				console.error(`[Failover] Stale route cleanup for server ${serverId} failed: ${formatError(error)}`);
 			});
 		}
 		previouslyUnreachableServers.clear();
 		for (const id of currentUnreachableServers) previouslyUnreachableServers.add(id);
 	} catch (error) {
-		console.error("[Failover] Monitor tick failed:", error);
+		console.error(`[Failover] Monitor tick failed: ${formatError(error)}`);
 	}
 };
 

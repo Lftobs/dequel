@@ -4,6 +4,7 @@ import { AlertCircle, ArrowLeft, Rocket, Server } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as api from "../api/client";
 import { getGithubIntegration } from "../api/client";
+import { ApiError } from "../api/http";
 import { BuildStrategySection, type ComposeServiceRow } from "../components/project/create/BuildStrategySection";
 import { CreationStatusOverlay } from "../components/project/create/CreationStatusOverlay";
 import { DeploymentTargetSection, getDeploymentTargets } from "../components/project/create/DeploymentTargetSection";
@@ -80,6 +81,12 @@ export function CreateProjectPage() {
 		"idle" | "creating_project" | "creating_envs" | "done" | "error"
 	>("idle");
 	const [errorMessage, setErrorMessage] = useState("");
+	const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+	const clearError = () => {
+		setErrorMessage("");
+		setErrorStatus(null);
+	};
 
 	useEffect(() => {
 		getGithubIntegration()
@@ -124,10 +131,12 @@ export function CreateProjectPage() {
 
 	const handleRetry = () => {
 		setSubmittingStatus("idle");
-		setErrorMessage("");
+		clearError();
 	};
 
 	const handleSubmit = async () => {
+		clearError();
+
 		if (!name.trim()) {
 			setErrorMessage("Please enter a project name.");
 			return;
@@ -144,16 +153,8 @@ export function CreateProjectPage() {
 		}
 
 		setSubmittingStatus("creating_project");
-		setErrorMessage("");
 
 		try {
-			let finalRepoUrl = repoUrl;
-
-			if (sourceType === "upload" && zipFile) {
-				const uploadRes = await api.uploadSourceZip(zipFile);
-				finalRepoUrl = uploadRes.filePath;
-			}
-
 			let composeServicesPayload: string | undefined;
 			if (buildType === "compose" && composeServicesList.length > 0) {
 				const validServices = composeServicesList.filter((s) => s.serviceName.trim());
@@ -167,8 +168,8 @@ export function CreateProjectPage() {
 				description: description.trim() || undefined,
 				serverId: getDeploymentTargets(servers).some((s) => s.id === serverId) ? serverId : "local",
 				sourceType,
-				repoUrl: finalRepoUrl,
-				repoBranch: repoBranch.trim() || undefined,
+				repoUrl: sourceType === "upload" ? undefined : repoUrl,
+				repoBranch: sourceType === "upload" ? undefined : repoBranch.trim() || undefined,
 				buildType,
 				projectType,
 				sourceDir: sourceDir.trim() || undefined,
@@ -206,13 +207,26 @@ export function CreateProjectPage() {
 				await api.linkSharedEnvVars(project.id, stagedSharedVarIds);
 			}
 
+			if (sourceType === "upload" && zipFile) {
+				const form = new FormData();
+				form.set("sourceType", "upload");
+				form.set("projectId", project.id);
+				form.set("archive", zipFile);
+				await api.createDeployment(form);
+			}
+
 			setSubmittingStatus("done");
 			setTimeout(() => {
 				navigate({ to: "/project/$projectId", params: { projectId: project.id }, search: { tab: "deployments" } });
 			}, 1000);
-		} catch (err: any) {
+		} catch (err: unknown) {
 			setSubmittingStatus("error");
-			setErrorMessage(err.message || "Failed to create project.");
+			if (err instanceof ApiError) {
+				setErrorStatus(err.status);
+				setErrorMessage(err.message || "Failed to create project.");
+			} else {
+				setErrorMessage(err instanceof Error && err.message ? err.message : "Failed to create project.");
+			}
 		}
 	};
 
@@ -297,12 +311,22 @@ export function CreateProjectPage() {
 					/>
 
 					{/* Environment Variables (with File Upload, Key-Value builder, and Bulk paste) */}
-					<EnvVarsSection stagedEnvs={stagedEnvs} setStagedEnvs={setStagedEnvs} stagedSharedVarIds={stagedSharedVarIds} setStagedSharedVarIds={setStagedSharedVarIds} />
+					<EnvVarsSection
+						stagedEnvs={stagedEnvs}
+						setStagedEnvs={setStagedEnvs}
+						stagedSharedVarIds={stagedSharedVarIds}
+						setStagedSharedVarIds={setStagedSharedVarIds}
+					/>
 
 					{/* Error Message Display */}
 					{errorMessage && (
 						<div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
 							<AlertCircle className="h-4 w-4 shrink-0" />
+							{errorStatus !== null && (
+								<span className="shrink-0 rounded-md bg-red-500/15 border border-red-500/40 px-1.5 py-0.5 font-mono font-bold text-[11px]">
+									HTTP {errorStatus}
+								</span>
+							)}
 							<span>{errorMessage}</span>
 						</div>
 					)}

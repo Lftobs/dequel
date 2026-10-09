@@ -6,22 +6,9 @@ export interface FetchModelsOptions {
 }
 
 export const DEFAULT_PROVIDER_MODELS: Record<string, string[]> = {
-	openai: ["gpt-4o", "gpt-4o-mini", "o1", "o3-mini", "gpt-4-turbo", "gpt-6.1-sol", "gpt-6-astra", "gpt-5.6-sol"],
-	anthropic: [
-		"claude-3-5-sonnet-latest",
-		"claude-3-5-haiku-latest",
-		"claude-3-opus-latest",
-		"claude-sonnet-5",
-		"claude-opus-5",
-	],
-	gemini: [
-		"gemini-2.5-flash",
-		"gemini-2.5-pro",
-		"gemini-1.5-pro",
-		"gemini-1.5-flash",
-		"gemini-3.8-flash",
-		"gemini-3.7-flash",
-	],
+	openai: ["gpt-4o", "gpt-4o-mini", "o1", "o3-mini", "gpt-4-turbo"],
+	anthropic: ["claude-3-5-sonnet-latest", "claude-3-5-haiku-latest", "claude-3-opus-latest"],
+	gemini: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-pro", "gemini-1.5-flash"],
 	groq: [
 		"llama-3.3-70b-versatile",
 		"llama-3.1-8b-instant",
@@ -29,7 +16,7 @@ export const DEFAULT_PROVIDER_MODELS: Record<string, string[]> = {
 		"moonshotai/kimi-k2-instruct",
 		"openai/gpt-oss-120b",
 	],
-	ollama: ["llama3:latest", "qwen2.5-coder:latest", "mistral:latest", "deepseek-r1:latest", "qwen3.5:0.8b"],
+	ollama: ["llama3:latest", "qwen2.5-coder:latest", "mistral:latest", "deepseek-r1:latest"],
 	custom: [],
 };
 

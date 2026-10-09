@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import { config } from "../utils/config";
 import { decryptValue } from "../utils/crypto";
 import { type GatewayCert, loadOrCreateGatewayCert } from "./cert";
+import { loadCaddyCert } from "./cert-store";
 import { parseClientHello, parsePostgresPreamble, readClientHello } from "./peek";
 import { type GatewayRoute, type RouteRow, resolveGatewayRoute } from "./routes";
 import { forwardViaSsh, type SshEngineTarget } from "./ssh-tunnel";
@@ -15,6 +16,7 @@ export interface GatewayOptions {
 	caddyHost: string;
 	caddyPort: number;
 	cert: GatewayCert;
+	caddyDataDir?: string;
 	lookup: (internalHost: string) => Promise<RouteRow | null>;
 }
 
@@ -45,12 +47,15 @@ const forwardToCaddy = (client: Socket, acc: Buffer, caddyHost: string, caddyPor
 	link([client, upstream]);
 };
 
-const terminateForEngine = (
+const terminateForEngine = async (
 	client: Socket,
 	acc: Buffer,
-	cert: GatewayCert,
 	route: Extract<GatewayRoute, { kind: "engine" }>,
+	sni: string | null,
+	options: GatewayOptions,
 ) => {
+	const caddyCert = options.caddyDataDir && sni ? await loadCaddyCert(options.caddyDataDir, sni) : null;
+	const cert = caddyCert ?? options.cert;
 	const tlsOptions: ServerOptions = { key: cert.key, cert: cert.cert };
 	const terminator = createTlsServer(tlsOptions, (plain) => {
 		if (route.ssh) {
@@ -102,7 +107,7 @@ export const startGateway = async (options: GatewayOptions): Promise<GatewayHand
 					lookup: options.lookup,
 				});
 				if (route.kind === "engine") {
-					terminateForEngine(client, buf, options.cert, route);
+					await terminateForEngine(client, buf, route, parse.kind === "tls" ? parse.sni : null, options);
 				} else {
 					forwardToCaddy(client, buf, options.caddyHost, options.caddyPort);
 				}
@@ -220,6 +225,7 @@ if (import.meta.main) {
 		caddyHost: process.env.CADDY_UPSTREAM_HOST ?? "caddy",
 		caddyPort: 443,
 		cert,
+		caddyDataDir: process.env.CADDY_DATA_DIR || undefined,
 		lookup: createPoolLookup(pool),
 	});
 	console.log(`[Gateway] listening on :${handle.port} (base domain: ${config.caddyBaseDomain})`);

@@ -1,5 +1,7 @@
-import { ensureLocalServer, getServerById, listProjects, listServers } from "../db/repo";
+import type { listServers } from "../db/repo";
 import { isServerPreparing } from "../servers/prepare";
+
+const repo = () => import("../db/repo");
 
 const isServerHealthy = (s: Awaited<ReturnType<typeof listServers>>[number]): boolean => {
 	if (isServerPreparing(s.id)) return false;
@@ -18,11 +20,13 @@ export const pickBestServer = async (
 	modeFilter?: string[],
 ): Promise<string> => {
 	if (preferredServerId && preferredServerId !== excludeServerId) {
+		const { getServerById } = await repo();
 		const preferred = await getServerById(preferredServerId);
 		if (preferred && (preferred.mode === "local" || isServerHealthy(preferred))) {
 			if (!modeFilter || modeFilter.includes(preferred.mode)) return preferredServerId;
 		}
 	}
+	const { ensureLocalServer, listProjects, listServers } = await repo();
 	const servers = await listServers();
 	const projects = await listProjects();
 	const projectCount = new Map<string, number>();

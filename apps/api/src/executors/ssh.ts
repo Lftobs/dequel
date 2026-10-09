@@ -4,7 +4,7 @@ import { remoteScriptFailure, summarizeDeploymentError } from "../orchestrator/d
 import type { Deployment, Project, Server } from "../types";
 import { config } from "../utils/config";
 import { CANCELLED_FAILURE_REASON } from "../utils/failure-outcome";
-import { removeRemoteCaddyRoute, runRemoteScript, syncRemoteCaddyRoute } from "../utils/ssh";
+import { RemoteScriptAbortedError, removeRemoteCaddyRoute, runRemoteScript, syncRemoteCaddyRoute } from "../utils/ssh";
 import { emitLog } from "./logging";
 import { buildRemoteDeployScript, parseRemoteBuildResult } from "./ssh-build-script";
 import {
@@ -175,10 +175,10 @@ const deployComposeRemote = async (deployment: Deployment, project: Project, ser
 		const domain = rawBaseDomain === "localhost" ? `${fallbackDomain}:80` : fallbackDomain;
 		snippet = `${domain} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${primary.container}:${primary.port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
 	}
-	const { DB_SERVICE_NAMES } = await import("../utils/compose-ingress");
+	const { isDbServiceName } = await import("../utils/compose-ingress");
 	for (const svc of webServices) {
 		if (svc.name === primaryServiceName) continue;
-		if (DB_SERVICE_NAMES.has(svc.name)) continue;
+		if (isDbServiceName(svc.name)) continue;
 		const customMatch = customMappings.find((c) => c.serviceName === svc.name);
 		const domains: string[] = [];
 		if (customMatch?.subdomain?.trim()) {
@@ -266,6 +266,26 @@ const markFailed = async (deploymentId: string, error: unknown) => {
 	await recordDeploymentFailure({ deploymentId, reason: message, source: "ssh" });
 };
 
+const remoteBuilds = new Map<string, { controller: AbortController; pgid?: string }>();
+
+export const parseRemoteBuildPgid = (line: string): string | undefined => {
+	const match = line.match(/DEQUEL_PGID:\s*(\d+)/);
+	return match?.[1];
+};
+
+export const killRemoteBuildGroup = async (
+	server: Parameters<typeof runRemoteScript>[0],
+	pgid: string,
+	run: typeof runRemoteScript = runRemoteScript,
+): Promise<void> => {
+	await run(
+		server,
+		`kill -TERM -- -${pgid} 2>/dev/null || true
+sleep 3
+kill -KILL -- -${pgid} 2>/dev/null || true`,
+	).catch(() => {});
+};
+
 export const sshExecutor: DeploymentExecutor = {
 	mode: "ssh",
 
@@ -292,7 +312,8 @@ export const sshExecutor: DeploymentExecutor = {
 
 		const imageTag = `${slugify(project.name)}-${deployment.id.slice(0, 8)}:latest`;
 		const envVars = await listEnvironmentVariablesForDeploy(project.id, deployment.environment ?? undefined);
-		const script = buildRemoteDeployScript({
+		const pgidEcho = `echo "DEQUEL_PGID:$(ps -o pgid= -p $$ | tr -d ' ')"`;
+		const script = `${pgidEcho}\n${buildRemoteDeployScript({
 			deploymentId: deployment.id,
 			workspaceRoot: config.workspaceRoot,
 			gitUrl: deployment.sourceRef,
@@ -308,11 +329,19 @@ export const sshExecutor: DeploymentExecutor = {
 			outputDir: project.outputDir,
 			startCommand: project.startCommand,
 			railpackGenerator,
-		});
+		})}`;
 
+		const buildEntry = { controller: new AbortController() };
+		remoteBuilds.set(deployment.id, buildEntry);
 		try {
 			const result = await runRemoteScript(server, script, {
+				signal: buildEntry.controller.signal,
 				onLog: async (line) => {
+					const pgid = parseRemoteBuildPgid(line);
+					if (pgid) {
+						buildEntry.pgid = pgid;
+						return;
+					}
 					await emitLog(deployment.id, "build", line);
 				},
 			});
@@ -336,7 +365,11 @@ export const sshExecutor: DeploymentExecutor = {
 				await emitLog(current.id, "system", `Marked inactive (superseded by ${deployment.id.slice(0, 8)})`);
 			}
 		} catch (error) {
-			await markFailed(deployment.id, error);
+			if (!(error instanceof RemoteScriptAbortedError)) {
+				await markFailed(deployment.id, error);
+			}
+		} finally {
+			remoteBuilds.delete(deployment.id);
 		}
 	},
 
@@ -412,7 +445,7 @@ export const sshExecutor: DeploymentExecutor = {
 		await deleteDeploymentAndLogs(deployment.id);
 	},
 
-	async cancel({ deployment }: ExecutorCancelInput) {
+	async cancel({ deployment, server }: ExecutorCancelInput) {
 		const { recordDeploymentCancellation } = await getRepo();
 		if (deployment.status !== "pending" && deployment.status !== "building") return;
 		await recordDeploymentCancellation({
@@ -420,6 +453,21 @@ export const sshExecutor: DeploymentExecutor = {
 			reason: CANCELLED_FAILURE_REASON,
 			source: "ssh",
 		});
-		await emitLog(deployment.id, "system", "Deployment cancelled by user (remote build may continue on the server)");
+		const entry = remoteBuilds.get(deployment.id);
+		let remoteStopped = false;
+		if (entry) {
+			entry.controller.abort();
+			if (entry.pgid) {
+				remoteStopped = true;
+				killRemoteBuildGroup(server, entry.pgid).catch(() => {});
+			}
+		}
+		await emitLog(
+			deployment.id,
+			"system",
+			remoteStopped
+				? "Deployment cancelled by user — remote build processes stopped"
+				: "Deployment cancelled by user (remote build may continue on the server)",
+		);
 	},
 };

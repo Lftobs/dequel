@@ -63,4 +63,10 @@ describe("failoverProject", () => {
 		const r = parse(stdout);
 		expect(r.test8.ok).toBe(true);
 	});
+
+	it("includes project context in the no-deployments error", async () => {
+		const { stdout } = await run();
+		const r = parse(stdout);
+		expect(r.test9.ok).toBe(true);
+	});
 });

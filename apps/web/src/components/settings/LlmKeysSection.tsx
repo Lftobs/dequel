@@ -38,15 +38,20 @@ export function LlmKeysSection() {
 	const configured = data?.filter((k) => k.configured) ?? [];
 	const currentStatus = data?.find((k) => k.provider === provider);
 	const currentMeta = PROVIDERS.find((p) => p.id === provider) ?? PROVIDERS[0];
+	const missingKey = !currentStatus?.configured && provider !== "ollama" && !apiKey.trim();
 
 	useEffect(() => {
 		setBaseURL(currentStatus?.baseUrl ?? currentMeta.defaultBaseUrl ?? "");
 		setApiKey("");
-		setSaveResult(null);
 	}, [provider, currentStatus?.baseUrl, currentMeta.defaultBaseUrl]);
+
+	useEffect(() => {
+		setSaveResult(null);
+	}, [provider]);
 
 	const save = async (e: React.FormEvent) => {
 		e.preventDefault();
+		if (missingKey) return;
 		setSaveResult(null);
 		setSaving(true);
 		try {
@@ -294,13 +299,18 @@ export function LlmKeysSection() {
 									)}
 									<span>{saveResult}</span>
 								</p>
+							) : missingKey && !saving ? (
+								<p className="text-xs font-medium flex items-center gap-1.5 text-amber-400">
+									<AlertCircle className="h-3.5 w-3.5 shrink-0" />
+									<span>Enter an API key to save.</span>
+								</p>
 							) : (
 								<span />
 							)}
 							<Button
 								type="submit"
 								size="sm"
-								disabled={saving}
+								disabled={saving || missingKey}
 								className="bg-orange-500 hover:bg-orange-600 text-white font-medium text-xs px-5 shadow-md w-full sm:w-auto gap-1.5"
 							>
 								{saving ? (

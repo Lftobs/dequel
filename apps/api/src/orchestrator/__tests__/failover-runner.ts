@@ -83,7 +83,10 @@ try {
 	await failoverProject("p1");
 	results.test1 = { ok: false, error: "should have thrown" };
 } catch (e: any) {
-	results.test1 = { ok: e.message?.includes("No other healthy server available") };
+	results.test1 = {
+		ok: e.message?.includes("No other healthy server available") && e.message?.includes("p1"),
+		error: e.message,
+	};
 }
 
 // Test 2: rejects non-ssh project servers
@@ -216,6 +219,25 @@ try {
 	results.test8 = { ok: false, error: "should have thrown" };
 } catch (e: any) {
 	results.test8 = { ok: e.message?.includes("before another failover"), error: e.message };
+}
+
+// Test 9: no-deployment error carries project context on a single line
+try {
+	platformSettings = { ingressServerId: "ing" };
+	servers = [
+		{ id: "ing", name: "Ingress", mode: "ssh" },
+		{ id: "a", name: "Current", mode: "ssh", status: "connected", host: "127.0.0.1", port: probePort },
+	];
+	projects = [{ id: "p1", serverId: "a" }];
+	deploymentsByProject = { p1: [] };
+	await failoverProject("p1");
+	results.test9 = { ok: false, error: "should have thrown" };
+} catch (e: any) {
+	const message = e.message ?? "";
+	results.test9 = {
+		ok: message.includes("no deployments to fail over") && message.includes("p1") && !message.includes("\n"),
+		error: message,
+	};
 }
 
 probeListener.close();

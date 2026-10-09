@@ -8,6 +8,14 @@ export interface ComposeIngressHostname {
 
 export const DB_SERVICE_NAMES = new Set(["db", "postgres", "mysql", "redis", "mongo", "database"]);
 
+const DB_NAME_PATTERN =
+	/(^|[-_])(db|dbs|postgres|postgresql|mysql|mariadb|mongo|mongodb|redis|valkey|database|elasticsearch|opensearch)($|[-_0-9])/i;
+
+export const isDbServiceName = (name: string): boolean => {
+	const lower = name.toLowerCase();
+	return DB_SERVICE_NAMES.has(lower) || lower.endsWith("db") || DB_NAME_PATTERN.test(lower);
+};
+
 export const computeComposeIngressHostnames = (
 	webServices: { name: string; port: number }[],
 	primaryServiceName: string,
@@ -29,7 +37,7 @@ export const computeComposeIngressHostnames = (
 		if (svc.name === primaryServiceName) continue;
 
 		const customMatch = customMappings.find((c) => c.serviceName === svc.name);
-		if (!customMatch && DB_SERVICE_NAMES.has(svc.name)) continue;
+		if (isDbServiceName(svc.name)) continue;
 
 		const subdomainPrefix = customMatch?.subdomain?.trim() || svc.name;
 

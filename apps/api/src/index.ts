@@ -9,7 +9,7 @@ import { getDb } from "./db/db-provider";
 import { migrate } from "./db/migrate";
 import { ensureLocalServer } from "./db/repo";
 import { markInterruptedDiagRuns } from "./db/repo/diag-runs";
-import { deployments } from "./db/schema";
+import { deployments, projects } from "./db/schema";
 import { alertEvaluator } from "./monitoring/evaluator";
 import { startFailureNotifier } from "./monitoring/failure-notifier";
 import { orchestrator } from "./orchestrator";
@@ -22,8 +22,6 @@ import { cleanupExpiredTokens, initAuth } from "./utils/auth";
 import { config } from "./utils/config";
 import { startDomainPolling } from "./utils/domain-verifier";
 import { loadOrCreateJwtSecret } from "./utils/secrets";
-
-import { projects } from "./db/schema";
 import { captureTelemetry } from "./utils/telemetry";
 
 const bootstrap = async () => {
@@ -97,7 +95,12 @@ dequel_uptime_seconds ${uptimeSec}
 	};
 
 	const app = new Elysia()
-		.use(cors())
+		.use(
+			cors({
+				origin: () => true,
+				credentials: false,
+			}),
+		)
 		.onBeforeHandle(() => {
 			metrics.requestsTotal++;
 		})

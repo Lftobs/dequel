@@ -142,9 +142,17 @@ export const deploymentsRoutes = new Elysia()
 			set.status = 400;
 			return fail("archive file is required for upload source");
 		}
+		const safeName = basename(file.name || "project.zip").replace(/[^a-zA-Z0-9._-]/g, "_");
+		if (![".zip", ".tar", ".tar.gz", ".tgz"].some((ext) => safeName.toLowerCase().endsWith(ext))) {
+			set.status = 400;
+			return fail("Unsupported archive format. Use .zip, .tar, .tar.gz, or .tgz");
+		}
+		if (file.size === 0) {
+			set.status = 400;
+			return fail("Archive file is empty");
+		}
 		const uploadsDir = join(config.workspaceRoot, "uploads");
 		await mkdir(uploadsDir, { recursive: true });
-		const safeName = basename(file.name || "project.zip").replace(/[^a-zA-Z0-9._-]/g, "_");
 		const uploadPath = join(uploadsDir, `${Date.now()}-${safeName}`);
 		const bytes = new Uint8Array(await file.arrayBuffer());
 		await writeFile(uploadPath, bytes);

@@ -102,13 +102,19 @@ services:
             - sh
             - -c
             - |
-                apt-get update -qq > /dev/null 2>&1 && apt-get install -y -qq libpam-modules > /dev/null 2>&1 && cp /app/dequel /etc/pam.d/dequel && exec python3 -u /app/pam-server.py
+                apt-get update -qq > /dev/null 2>&1 && apt-get install -y -qq libpam-modules > /dev/null 2>&1 && cp /app/dequel /etc/pam.d/dequel
+                sync_host_etc() {
+                    cp /host-etc/passwd /etc/passwd 2>/dev/null || true
+                    cp /host-etc/shadow /etc/shadow 2>/dev/null || true
+                    cp /host-etc/group /etc/group 2>/dev/null || true
+                }
+                sync_host_etc
+                ( while true; do sleep 2; sync_host_etc; done ) &
+                exec python3 -u /app/pam-server.py
         volumes:
             - ./scripts/auth/pam-server.py:/app/pam-server.py:ro
             - ./scripts/auth/dequel:/app/dequel:ro
-            - /etc/passwd:/etc/passwd:ro
-            - /etc/shadow:/etc/shadow:ro
-            - /etc/group:/etc/group:ro
+            - /etc:/host-etc:ro
         networks:
             dequel:
                 aliases:
@@ -161,10 +167,12 @@ services:
             DATABASE_URL: postgresql://${POSTGRES_USER:-dequel}:${POSTGRES_PASSWORD:-dequel}@postgres:5432/${POSTGRES_DB:-dequel}
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
             GATEWAY_CERT_DIR: /app/data
+            CADDY_DATA_DIR: /caddy-data/caddy
         ports:
             - "443:443"
         volumes:
             - api-data:/app/data
+            - caddy-data:/caddy-data:ro
         depends_on:
             postgres:
                 condition: service_healthy
@@ -198,6 +206,7 @@ services:
         volumes:
             - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
             - ./infra/caddy/routes:/etc/caddy/routes
+            - caddy-data:/data
         depends_on:
             api:
                 condition: service_healthy
@@ -388,6 +397,7 @@ networks:
 
 volumes:
     buildkit-data:
+    caddy-data:
     diag-sandbox-data:
     redis-data:
     postgres-data:

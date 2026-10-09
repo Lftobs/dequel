@@ -13,7 +13,9 @@ import {
 } from "../../db/repo";
 import type { Database } from "../../types";
 import { config } from "../../utils/config";
+import { removeDbGatewayRoute, syncDbGatewayRoute } from "../../utils/db-caddy-route";
 import { resolveServerIp } from "../../utils/dns";
+import { probeTcp } from "../../utils/tcp-probe";
 import { created, fail, ok } from "../response";
 import { executeDatabaseQuery, getDatabaseTables } from "./query";
 
@@ -76,6 +78,7 @@ const createManagedDatabase = async (body: any, projectId: string | null, set: a
 		return fail("A database with this name already exists");
 	}
 	const dbRecord = await createDbRecord({ ...validation.input, projectId });
+	void syncDbGatewayRoute(dbRecord);
 	const { provisionDatabase } = await import("../../databases/manager");
 	provisionDatabase(dbRecord).catch((err: Error) => console.error("DB provision failed", err));
 	return created(sanitizeDatabase(dbRecord));
@@ -118,27 +121,66 @@ export const databasesRoutes = new Elysia()
 				? `${dbRecord.internalHost}.${baseDomain}`
 				: null;
 		if (gatewayHost) {
+			const reachable = await probeTcp(gatewayHost, 443);
+			if (reachable) {
+				return ok({
+					username: dbRecord.username,
+					password: dbRecord.password,
+					internalConnectionString: dbRecord.connectionString,
+					externalConnectionString: buildGatewayConnectionString(dbRecord, gatewayHost),
+					externalHost: gatewayHost,
+					externalPort: 443,
+					externalReachable: true,
+					warning: null,
+				});
+			}
 			return ok({
 				username: dbRecord.username,
 				password: dbRecord.password,
 				internalConnectionString: dbRecord.connectionString,
-				externalConnectionString: buildGatewayConnectionString(dbRecord, gatewayHost),
+				externalConnectionString: null,
 				externalHost: gatewayHost,
 				externalPort: 443,
+				externalReachable: false,
+				warning: `Gateway endpoint ${gatewayHost}:443 is not reachable from the network — check the gateway service and DNS.`,
 			});
 		}
 		const externalHost = dbRecord.publicAccess && dbRecord.externalPort ? await resolveServerIp() : null;
 		const usableHost = externalHost && isNonLoopbackIp(externalHost) ? externalHost : null;
-		const externalConnectionString = usableHost
-			? buildConnectionString(dbRecord, usableHost, dbRecord.externalPort!)
-			: null;
+		if (usableHost && dbRecord.externalPort) {
+			const reachable = await probeTcp(usableHost, dbRecord.externalPort);
+			if (reachable) {
+				return ok({
+					username: dbRecord.username,
+					password: dbRecord.password,
+					internalConnectionString: dbRecord.connectionString,
+					externalConnectionString: buildConnectionString(dbRecord, usableHost, dbRecord.externalPort),
+					externalHost: usableHost,
+					externalPort: dbRecord.externalPort,
+					externalReachable: true,
+					warning: null,
+				});
+			}
+			return ok({
+				username: dbRecord.username,
+				password: dbRecord.password,
+				internalConnectionString: dbRecord.connectionString,
+				externalConnectionString: null,
+				externalHost: usableHost,
+				externalPort: dbRecord.externalPort,
+				externalReachable: false,
+				warning: `Public endpoint ${usableHost}:${dbRecord.externalPort} is not reachable — open the port in your cloud security group or firewall to allow external clients.`,
+			});
+		}
 		return ok({
 			username: dbRecord.username,
 			password: dbRecord.password,
 			internalConnectionString: dbRecord.connectionString,
-			externalConnectionString,
-			externalHost: usableHost,
-			externalPort: usableHost ? dbRecord.externalPort : null,
+			externalConnectionString: null,
+			externalHost: null,
+			externalPort: null,
+			externalReachable: null,
+			warning: null,
 		});
 	})
 	.post("/databases/:id/start", async ({ params: { id }, set }) => {
@@ -235,6 +277,7 @@ export const databasesRoutes = new Elysia()
 			backupSchedule: body?.backupSchedule,
 			backupRetention: body?.backupRetention,
 		});
+		void syncDbGatewayRoute(updated!);
 		return ok(sanitizeDatabase(updated!));
 	})
 	.delete("/databases/:id", async ({ params: { id }, set }) => {
@@ -259,6 +302,7 @@ export const databasesRoutes = new Elysia()
 				return fail("Database resources could not be deleted; cleanup will be retried automatically");
 			}
 			await deleteDatabase(id);
+			void removeDbGatewayRoute(current);
 			return ok(null, "Database deleted");
 		});
 	});
