@@ -9,7 +9,6 @@ import {
 	setGithubIntegration,
 } from "../../db/repo";
 import { orchestrator } from "../../orchestrator";
-import { config } from "../../utils/config";
 import { fail, ok } from "../response";
 
 const validateToken = async (token: string): Promise<boolean> => {
@@ -249,7 +248,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		}
 		const webhookUrl = `${publicUrl(request).origin}/api/github/webhook`;
 		const integration = await getGithubIntegration();
-		const secret = integration?.webhookSecret || config.githubWebhookSecret;
+		const secret = integration?.webhookSecret || "";
 
 		try {
 			const hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);

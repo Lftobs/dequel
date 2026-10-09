@@ -22,6 +22,29 @@ success() { printf "  ${GREEN}✓${NC} %s\n" "$*"; }
 warn()    { printf "  ${AMBER}⚠${NC} %s\n" "$*"; }
 fail()    { printf "  ${RED}✗${NC} %s\n" "$*"; exit 1; }
 
+ensure_encryption_key() {
+	[ -n "${ENV_ENCRYPTION_KEY:-}" ] && return 0
+	local key=""
+	if [ -f "$DEQUEL_HOME/data/dequel.json" ]; then
+		key="$(sed -n 's/^.*"ENV_ENCRYPTION_KEY"[[:space:]]*:[[:space:]]*"\([^"]*\)".*$/\1/p' "$DEQUEL_HOME/data/dequel.json" | head -n1)"
+	fi
+	if [ -z "$key" ]; then
+		key="$(openssl rand -hex 32 2>/dev/null || dd if=/dev/urandom bs=32 count=1 status=none 2>/dev/null | od -A n -t x1 | tr -d ' \n')"
+	fi
+	[ -n "$key" ] || fail "Cannot generate encryption key"
+	export ENV_ENCRYPTION_KEY="$key"
+	local env_file="$DEQUEL_HOME/.env"
+	if [ ! -f "$env_file" ]; then
+		printf '# Dequel environment configuration\n' > "$env_file"
+		chmod 600 "$env_file"
+	fi
+	if ! grep -q '^ENV_ENCRYPTION_KEY=..*' "$env_file" 2>/dev/null; then
+		sed -i '/^ENV_ENCRYPTION_KEY=/d' "$env_file" 2>/dev/null || true
+		echo "ENV_ENCRYPTION_KEY=$key" >> "$env_file"
+	fi
+}
+ensure_encryption_key
+
 cmd() {
 	if [ ! -f "$COMPOSE_FILE" ]; then
 		fail "Dequel not found at $DEQUEL_HOME. Run install.sh first or set \$DEQUEL_HOME."

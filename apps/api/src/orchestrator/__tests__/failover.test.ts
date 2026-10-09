@@ -45,4 +45,28 @@ describe("failoverProject", () => {
 		const r = parse(stdout);
 		expect(r.test5.ok).toBe(true);
 	});
+
+	it("aborts when the chosen target server is not reachable", async () => {
+		const { stdout } = await run();
+		const r = parse(stdout);
+		expect(r.test6.ok).toBe(true);
+	});
+
+	it("removes the previous deployment's containers on the old server", async () => {
+		const { stdout } = await run();
+		const r = parse(stdout);
+		expect(r.test7.ok).toBe(true);
+	});
+
+	it("refuses a second automatic failover within the minimum interval", async () => {
+		const { stdout } = await run();
+		const r = parse(stdout);
+		expect(r.test8.ok).toBe(true);
+	});
+
+	it("includes project context in the no-deployments error", async () => {
+		const { stdout } = await run();
+		const r = parse(stdout);
+		expect(r.test9.ok).toBe(true);
+	});
 });

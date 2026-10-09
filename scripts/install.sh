@@ -166,8 +166,7 @@ prompt_config() {
 	cat > "$INSTALL_DIR/data/dequel.json" <<EOF
 {
   "CADDY_BASE_DOMAIN": "$HOSTNAME",
-  "ENV_ENCRYPTION_KEY": "$ENC_KEY",
-  "GITHUB_APP_NAME": "Dequel"
+  "ENV_ENCRYPTION_KEY": "$ENC_KEY"
 }
 EOF
 	chmod 600 "$INSTALL_DIR/data/dequel.json"
@@ -178,6 +177,7 @@ EOF
 		echo "POSTGRES_USER=dequel"
 		echo "POSTGRES_PASSWORD=$PG_PASS"
 		echo "POSTGRES_DB=dequel"
+		echo "ENV_ENCRYPTION_KEY=$ENC_KEY"
 		[ -n "$ADMIN_EMAIL" ] && echo "CADDY_EMAIL=$ADMIN_EMAIL"
 		[ -n "$HOSTNAME" ] && echo "CADDY_BASE_DOMAIN=$HOSTNAME"
 	} > "$INSTALL_DIR/.env"

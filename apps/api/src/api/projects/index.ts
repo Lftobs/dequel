@@ -9,14 +9,17 @@ import {
 	listProjects,
 	updateProject,
 } from "../../db/repo";
+import { destroyComposeStack } from "../../orchestrator/compose";
 import { failoverProject } from "../../orchestrator/failover";
+import { cleanupProjectContainers } from "../../orchestrator/project-cleanup";
 import { reloadCaddy, tryRun } from "../../orchestrator/runtime";
 import { config } from "../../utils/config";
 import { dockerBin } from "../../utils/docker-bin";
+import { dockerRunTry, ensureContainerRemoved } from "../../utils/docker-run";
 import { removeFromCaddyRoute } from "../../utils/domain-verifier";
 import { buildProjectRequestHostRegex, caddyRequestLogSelector } from "../../utils/loki";
-import { isPort, isPrivateGitUrl, SERVICE_NAME_RE, validateComposeServices } from "../../utils/validate";
 import { captureTelemetry } from "../../utils/telemetry";
+import { isPort, isPrivateGitUrl, SERVICE_NAME_RE, validateComposeServices } from "../../utils/validate";
 import { created, fail, ok } from "../response";
 
 const validateComposeFields = (body: any): string | null => {
@@ -168,21 +171,15 @@ export const projectsRoutes = new Elysia()
 			return fail("Project not found");
 		}
 
-		for (const name of info.deploymentContainerNames) {
-			await tryRun(dockerBin, ["stop", "-t", "5", name]);
-			await tryRun(dockerBin, ["rm", "-f", name]);
-		}
-		for (const name of info.databaseContainerNames) {
-			await tryRun(dockerBin, ["stop", "-t", "5", name]);
-			await tryRun(dockerBin, ["rm", "-f", name]);
-		}
+		await cleanupProjectContainers(info, {
+			getServerById,
+			ensureContainerRemoved,
+			destroyComposeStack,
+			dockerRunTry,
+		});
 
 		for (const name of [...info.databaseVolumeNames, ...info.volumeDockerNames]) {
 			await tryRun(dockerBin, ["volume", "rm", "-f", name]);
-		}
-
-		for (const tag of info.deploymentImageTags) {
-			if (tag) await tryRun(dockerBin, ["rmi", "-f", tag]);
 		}
 
 		for (const { domain, projectName } of info.domains) {

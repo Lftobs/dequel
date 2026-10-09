@@ -13,6 +13,13 @@ export interface SshExecutionOptions {
 
 const SSH_KEYS_DIR = join(tmpdir(), "dequel_ssh_keys");
 
+export class RemoteScriptAbortedError extends Error {
+	constructor() {
+		super("Remote script aborted");
+		this.name = "RemoteScriptAbortedError";
+	}
+}
+
 export const ensureSshKey = (server: {
 	host: string;
 	port?: number;
@@ -348,15 +355,10 @@ export const runRemoteScript = (
 			reject(err);
 		});
 		if (options.signal) {
-			if (options.signal.aborted) {
-				terminate();
-				reject(new Error("Remote build script aborted"));
-			} else {
-				options.signal.addEventListener("abort", () => {
-					terminate();
-					reject(new Error("Remote build script aborted"));
-				});
-			}
+			options.signal.addEventListener("abort", () => {
+				child.kill("SIGTERM");
+				reject(new RemoteScriptAbortedError());
+			});
 		}
 		child.stdin.write(script);
 		child.stdin.end();

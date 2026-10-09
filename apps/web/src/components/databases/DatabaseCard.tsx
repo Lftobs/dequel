@@ -209,6 +209,12 @@ export function DatabaseCard({ database, project, onChanged, onDelete }: Databas
 							{credentialsError}
 						</p>
 					)}
+
+					{credentials?.warning && (
+						<p role="status" className="text-xs text-amber-400">
+							{credentials.warning}
+						</p>
+					)}
 				</div>
 
 				<div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-4">

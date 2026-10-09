@@ -18,11 +18,11 @@ import type {
 	SmtpSettingsStatus,
 	Volume,
 } from "../types";
-import { BASE, apiFetch } from "./http";
+import { apiFetch, BASE } from "./http";
 
-export * from "./http";
 export * from "./auth";
 export * from "./databases";
+export * from "./http";
 
 // Projects
 export const listProjects = () => apiFetch<Project[]>("/projects");
@@ -393,15 +393,6 @@ export const removeRepoHook = (owner: string, repo: string) =>
 
 export const setEnvVar = (projectId: string, key: string, value: string, environment?: string) =>
 	createEnvVar(projectId, { key, value, environment });
-
-export const uploadSourceZip = (file: File) => {
-	const formData = new FormData();
-	formData.append("file", file);
-	return apiFetch<{ filePath: string }>("/upload", {
-		method: "POST",
-		body: formData,
-	});
-};
 
 // Shared Environment Variables
 export const listSharedEnvVars = (environment?: string) =>

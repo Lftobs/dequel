@@ -16,6 +16,7 @@ import { executorFor } from "../../executors/dispatch";
 import { orchestrator } from "../../orchestrator";
 import { summarizeDeploymentError } from "../../orchestrator/deployment-errors";
 import { logBus } from "../../orchestrator/log-bus";
+import { readRuntimeLogs, runtimeLogFollowerArgs } from "../../orchestrator/runtime-logs";
 import { config } from "../../utils/config";
 import { terminateWithEscalation } from "../../utils/process-exec";
 import { isPrivateGitUrl } from "../../utils/validate";
@@ -142,9 +143,17 @@ export const deploymentsRoutes = new Elysia()
 			set.status = 400;
 			return fail("archive file is required for upload source");
 		}
+		const safeName = basename(file.name || "project.zip").replace(/[^a-zA-Z0-9._-]/g, "_");
+		if (![".zip", ".tar", ".tar.gz", ".tgz"].some((ext) => safeName.toLowerCase().endsWith(ext))) {
+			set.status = 400;
+			return fail("Unsupported archive format. Use .zip, .tar, .tar.gz, or .tgz");
+		}
+		if (file.size === 0) {
+			set.status = 400;
+			return fail("Archive file is empty");
+		}
 		const uploadsDir = join(config.workspaceRoot, "uploads");
 		await mkdir(uploadsDir, { recursive: true });
-		const safeName = basename(file.name || "project.zip").replace(/[^a-zA-Z0-9._-]/g, "_");
 		const uploadPath = join(uploadsDir, `${Date.now()}-${safeName}`);
 		const bytes = new Uint8Array(await file.arrayBuffer());
 		await writeFile(uploadPath, bytes);
@@ -330,20 +339,8 @@ export const deploymentsRoutes = new Elysia()
 			set.status = 404;
 			return fail("Deployment not found");
 		}
-		const { run } = await import("../../orchestrator/runtime");
-		const containerName = deployment.containerName || `deploy-${id}`;
 		try {
-			const output = await run("docker", ["logs", "--tail", "200", containerName]);
-			const lines = output
-				.split("\n")
-				.filter(Boolean)
-				.map((line, i) => ({
-					sequence: i + 1,
-					message: line,
-					timestamp: new Date().toISOString(),
-					stage: "runtime" as const,
-				}));
-			return ok(lines);
+			return ok(await readRuntimeLogs(deployment));
 		} catch {
 			return ok([]);
 		}
@@ -355,7 +352,6 @@ export const deploymentsRoutes = new Elysia()
 			return fail("Deployment not found");
 		}
 		const encoder = new TextEncoder();
-		const containerName = deployment.containerName || `deploy-${id}`;
 		let closed = false;
 		let childProcess: import("node:child_process").ChildProcess | null = null;
 		const stop = () => {
@@ -375,16 +371,19 @@ export const deploymentsRoutes = new Elysia()
 					controller.enqueue(encoder.encode(`event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`));
 				};
 				const { spawn } = await import("node:child_process");
-				const isPosix = process.platform !== "win32";
-				const child = spawn("docker", ["logs", "--tail", "100", "--follow", containerName], {
-					detached: isPosix,
+				const child = spawn("docker", await runtimeLogFollowerArgs(deployment), {
 					stdio: ["ignore", "pipe", "pipe"],
 				});
-				childProcess = child;
-				if (closed) {
-					terminateWithEscalation(child, 2000);
-					return;
-				}
+				child.on("error", (err) => {
+					send("log", {
+						sequence: 0,
+						message: `docker logs failed: ${err.message}`,
+						timestamp: new Date().toISOString(),
+						stage: "runtime",
+					});
+					send("close", { reason: "spawn failed" });
+					stop();
+				});
 				let seq = 0;
 				child.stdout.on("data", (chunk: Buffer) => {
 					if (closed) return;

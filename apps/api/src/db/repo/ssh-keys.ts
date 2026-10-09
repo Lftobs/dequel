@@ -7,7 +7,7 @@ import { getDb } from "../db-provider";
 import { sshKeys } from "../schema";
 import { getRowsAffected, now } from "./helpers";
 
-const computeFingerprint = (privateKey: string): string => {
+export const computeSshKeyFingerprint = (privateKey: string): string => {
 	return createHash("sha256").update(privateKey).digest("hex").slice(0, 32);
 };
 
@@ -24,7 +24,7 @@ const mapSshKey = (row: typeof sshKeys.$inferSelect): SshKey => ({
 export const createSshKey = async (input: CreateSshKeyInput): Promise<SshKey> => {
 	const id = randomUUID();
 	const timestamp = now();
-	const fingerprint = computeFingerprint(input.privateKey);
+	const fingerprint = computeSshKeyFingerprint(input.privateKey);
 	const encrypted = encryptValue(input.privateKey, config.envEncryptionKey);
 	const db = await getDb();
 	await db
@@ -54,6 +54,12 @@ export const listSshKeys = async (): Promise<SshKey[]> => {
 export const getSshKeyById = async (id: string): Promise<SshKey | null> => {
 	const db = await getDb();
 	const [row] = await db.select().from(sshKeys).where(eq(sshKeys.id, id)).execute();
+	return row ? mapSshKey(row) : null;
+};
+
+export const getSshKeyByFingerprint = async (fingerprint: string): Promise<SshKey | null> => {
+	const db = await getDb();
+	const [row] = await db.select().from(sshKeys).where(eq(sshKeys.fingerprint, fingerprint)).execute();
 	return row ? mapSshKey(row) : null;
 };
 

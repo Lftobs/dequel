@@ -7,7 +7,11 @@ import { Input } from "../ui/input";
 
 interface DatabaseOverviewProps {
 	database: Database;
-	creds: { internalConnectionString?: string; externalConnectionString?: string } | null;
+	creds?: {
+		internalConnectionString?: string | null;
+		externalConnectionString?: string | null;
+		warning?: string | null;
+	} | null;
 }
 
 export function DatabaseOverview({ database, creds }: DatabaseOverviewProps) {
@@ -50,6 +54,11 @@ export function DatabaseOverview({ database, creds }: DatabaseOverviewProps) {
 							{copied ? "Copied" : "Copy"}
 						</Button>
 					</div>
+					{creds?.warning && (
+						<p role="status" className="text-xs text-amber-400">
+							{creds.warning}
+						</p>
+					)}
 				</div>
 
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-border/40 font-mono text-xs">

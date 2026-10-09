@@ -50,6 +50,125 @@ if [ -n "$SUDO" ]; then
 fi
 log "docker" "Docker ready"
 
+find_container() {
+  docker ps -a --format '{{.Names}}' 2>/dev/null | grep -m1 "$1" || true
+}
+
+find_running_container() {
+  docker ps --format '{{.Names}}' 2>/dev/null | grep -m1 "$1" || true
+}
+
+remove_stopped() {
+  local label="$1" name="$2"
+  local all running
+  all="$(docker ps -a --format '{{.Names}}' 2>/dev/null || true)"
+  running="$(docker ps --format '{{.Names}}' 2>/dev/null || true)"
+  if grep -qxF "$name" <<< "$all" && ! grep -qxF "$name" <<< "$running"; then
+    if $SUDO docker rm -f "$name" >/dev/null 2>&1; then
+      log "$label" "Removed stopped container $name"
+    fi
+  fi
+}
+
+equivalent_caddy() {
+  local name image ports mounts
+  while IFS='|' read -r name image ports; do
+    if [ -z "$name" ]; then
+      continue
+    fi
+    case "$name" in
+      *dequel-caddy*)
+        echo "$name"
+        return 0
+        ;;
+    esac
+    case "$image" in
+      *caddy*) ;;
+      *) continue ;;
+    esac
+    case "$ports" in
+      *":80->"*|*":443->"*) ;;
+      *) continue ;;
+    esac
+    mounts="$(docker inspect -f '{{range .Mounts}}{{.Destination}} {{end}}' "$name" 2>/dev/null || true)"
+    case "$mounts" in
+      */etc/caddy/routes*)
+        echo "$name"
+        return 0
+        ;;
+    esac
+  done <<< "$(docker ps --format '{{.Names}}|{{.Image}}|{{.Ports}}' 2>/dev/null || true)"
+  return 0
+}
+
+equivalent_buildkit() {
+  local name image
+  while IFS='|' read -r name image; do
+    if [ -z "$name" ]; then
+      continue
+    fi
+    case "$name $image" in
+      *buildkit*)
+        echo "$name"
+        return 0
+        ;;
+    esac
+  done <<< "$(docker ps --format '{{.Names}}|{{.Image}}' 2>/dev/null || true)"
+  return 0
+}
+
+equivalent_running() {
+  case "$1" in
+    caddy)
+      equivalent_caddy
+      ;;
+    buildkit)
+      equivalent_buildkit
+      ;;
+  esac
+  return 0
+}
+
+ensure_container() {
+  local label="$1" name="$2"
+  shift 2
+  local running existing equivalent err
+  running="$(find_running_container "$name")"
+  if [ -n "$running" ]; then
+    log "$label" "Container already running as $running"
+    remove_stopped "$label" "$name"
+    return 0
+  fi
+  existing="$(find_container "$name")"
+  if [ -n "$existing" ]; then
+    log "$label" "Starting existing container $existing..."
+    if $SUDO docker start "$existing" >/dev/null 2>&1; then
+      log "$label" "Started $existing"
+      return 0
+    fi
+    remove_stopped "$label" "$name"
+    log "$label" "Existing container $existing did not start"
+  fi
+  log "$label" "Starting Dequel $label container..."
+  err=""
+  if err="$($SUDO docker run "$@" 2>&1 >/dev/null)"; then
+    log "$label" "Started $label container"
+    return 0
+  fi
+  equivalent="$(equivalent_running "$label")"
+  if [ -n "$equivalent" ]; then
+    log "$label" "Launch failed but equivalent container $equivalent is already running - reusing it"
+    remove_stopped "$label" "$name"
+    return 0
+  fi
+  remove_stopped "$label" "$name"
+  if [ -z "$err" ]; then
+    err="unknown docker error"
+  fi
+  echo "[prepare:$label] Failed to start $label container: $err" >&2
+  exit 1
+}
+
 install_caddy() {
   $SUDO mkdir -p /etc/caddy/routes
   if [ ! -f /etc/caddy/Caddyfile ]; then
@@ -60,12 +179,7 @@ install_caddy() {
   fi
 
   $SUDO docker network create dequel_net 2>/dev/null || true
-  if ! docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q '^dequel-caddy$'; then
-    log "caddy" "Starting Dequel Caddy container..."
-    $SUDO docker run -d --restart unless-stopped --name dequel-caddy --network dequel_net -p 80:80 -p 443:443 -v /etc/caddy/Caddyfile:/etc/caddy/Caddyfile -v /etc/caddy/routes:/etc/caddy/routes -v caddy_data:/data caddy:alpine 2>/dev/null || true
-  else
-    $SUDO docker start dequel-caddy 2>/dev/null || true
-  fi
+  ensure_container caddy dequel-caddy -d --restart unless-stopped --name dequel-caddy --network dequel_net -p 80:80 -p 443:443 -v /etc/caddy/Caddyfile:/etc/caddy/Caddyfile -v /etc/caddy/routes:/etc/caddy/routes -v caddy_data:/data caddy:alpine
 }
 
 install_caddy
@@ -83,10 +197,7 @@ else
   log "railpack" "Railpack install failed - builds will attempt auto-install"
 fi
 
-if ! docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q '^buildkit$'; then
-  log "buildkit" "Starting BuildKit container..."
-  $SUDO docker run -d --restart unless-stopped --name buildkit --privileged moby/buildkit:latest 2>/dev/null || true
-fi
+ensure_container buildkit buildkit -d --restart unless-stopped --name buildkit --privileged moby/buildkit:latest
 
 log "done" "Server preparation complete"
 `;

@@ -5,11 +5,15 @@ description: How the agent container manages Caddy route files for deployed appl
 slug: agent-caddy-routes
 ---
 
-The `CADDY_ROUTES_DIR` environment variable controls where the API writes Caddy route files. On agent servers, the default is `/etc/caddy/routes`. Each deployed application gets its own `.caddy` file in this directory.
+The API writes Caddy route files for local deployments to the fixed
+`/caddy/routes` directory. Each deployed application gets its own `.caddy` file
+in this directory.
 
 ## Route Directory
 
-The route directory path is resolved from the `CADDY_ROUTES_DIR` environment variable. In local mode (API and Caddy on the same host), this defaults to `/caddy/routes`. On remote agent servers, the agent writes to `/etc/caddy/routes`.
+The local route directory is fixed at `/caddy/routes` (the API creates it on
+startup). On remote servers, routes are written to `/etc/caddy/routes` — over
+SSH for SSH-mode servers, or by the agent for agent-mode servers.
 
 The directory must exist and be writable by the process managing Caddy. The API creates it automatically on startup.
 
@@ -39,7 +43,7 @@ my-app.localhost:80 {
     output stdout
     format json
   }
-  reverse_proxy my-app-abc12345:17476 {
+  reverse_proxy my-app-abc12345:3000 {
     header_up Host {upstream_hostport}
   }
 }
@@ -47,7 +51,7 @@ my-app.localhost:80 {
 
 - **Hostname:** `<project-slug>.<base-domain>` (e.g., `my-app.localhost:80` or `my-app.example.com`)
 - **Container name:** `<project-slug>-<deployment-id-prefix>` (e.g., `my-app-abc12345`)
-- **Port:** The application's internal port (default `17476`, or `PORT` env var value)
+- **Port:** The application's internal port (the platform default is `3000`, or the project's configured port)
 
 For custom domains, multiple hostnames are comma-separated on the first line:
 
@@ -57,7 +61,7 @@ my-app.localhost:80, blog.example.com:80 {
     output stdout
     format json
   }
-  reverse_proxy my-app-abc12345:17476 {
+  reverse_proxy my-app-abc12345:3000 {
     header_up Host {upstream_hostport}
   }
 }
@@ -70,7 +74,7 @@ my-app.localhost:80, blog.example.com:80 {
 When a deployment completes successfully:
 
 1. The API builds a Caddy snippet using `buildCaddySnippet()` from `apps/api/src/utils/domain-verifier.ts`.
-2. The snippet is written to `<CADDY_ROUTES_DIR>/<project-slug>.caddy`.
+2. The snippet is written to `/caddy/routes/<project-slug>.caddy`.
 3. Caddy is reloaded via `caddy reload --config /etc/caddy/Caddyfile`.
 4. A route record is persisted to the database with status `active`.
 
@@ -107,7 +111,7 @@ Reload is triggered after every route file change (deploy, rollback, delete, cus
 
 ### Route files not appearing
 
-1. Check that `CADDY_ROUTES_DIR` is set correctly and the directory exists.
+1. Check that the routes directory exists (`/caddy/routes` locally, `/etc/caddy/routes` on remote servers).
 2. Verify the API process has write permissions to the directory.
 3. For agent servers, ensure the agent is running and reachable (check heartbeat status in the dashboard).
 

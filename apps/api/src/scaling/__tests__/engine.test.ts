@@ -311,6 +311,52 @@ describe("evaluate", () => {
 		expect(mockWriteFilePath).toBeNull();
 	});
 
+	it("scales down at idle even when cpuThresholdPercent is 0", async () => {
+		mockGetScalingPolicyResult = () => ({
+			...TEST_POLICY,
+			cpuThresholdPercent: 0,
+			minReplicas: 1,
+			cooldownSeconds: 0,
+		});
+		mockRedisData = { lowCpuSince: String(Date.now() - 310_000), lastScaleDown: "0" };
+		mockReadFileContent = "proj-1.localhost:80 {\n  reverse_proxy deploy-dep-1:3000 deploy-dep-1-replica-2:3000\n}\n";
+		mockTryRunImpl = async () => "";
+		mockRunImpl = async (_cmd: string, args: string[]) => {
+			if (args.includes("stats")) return '{"CPUPerc":"0%","MemUsage":"64MiB / 512MiB"}';
+			if (args[0] === "stop") return "";
+			if (args[0] === "rm") return "";
+			if (args[0] === "ps") return "caddy-abc123\n";
+			if (args.includes("reload")) return "";
+			return "";
+		};
+
+		await (scalingEngine as any).evaluate(TEST_DEPLOYMENT);
+		expect(mockWriteFilePath).toBeTruthy();
+		expect(mockWriteContent).toContain("deploy-dep-1");
+		expect(mockWriteContent).not.toContain("replica-2");
+	});
+
+	it("scales up on any observed CPU when cpuThresholdPercent is 0", async () => {
+		mockGetScalingPolicyResult = () => ({ ...TEST_POLICY, cpuThresholdPercent: 0, cooldownSeconds: 0 });
+		mockRedisData = { highCpuSince: String(Date.now() - 10_000), lastScaleUp: "0" };
+		mockReadFileContent = "proj-1.localhost:80 {\n  reverse_proxy deploy-dep-1:3000\n}\n";
+
+		mockRunImpl = async (_cmd: string, args: string[]) => {
+			if (args.some((a) => a.includes("stats"))) return '{"CPUPerc":"1%","MemUsage":"128MiB / 512MiB"}';
+			if (args.some((a) => a.includes("Image"))) return "my-app:latest";
+			if (args.some((a) => a.includes("Env"))) return '["PORT=3000"]';
+			if (args.some((a) => a.includes("Mounts"))) return "[]";
+			if (args[0] === "run") return "new-container-id";
+			if (args[0] === "ps") return "caddy-abc123\n";
+			if (args.some((a) => a.includes("reload"))) return "";
+			return "";
+		};
+
+		await (scalingEngine as any).evaluate(TEST_DEPLOYMENT);
+		expect(mockWriteFilePath).toBeTruthy();
+		expect(mockWriteContent).toContain("deploy-dep-1-replica-2");
+	});
+
 	it("skips evaluation when the agent server is offline", async () => {
 		mockGetScalingPolicyResult = () => ({ ...TEST_POLICY, cooldownSeconds: 0 });
 		mockRedisData = { highCpuSince: String(Date.now() - 10_000), lastScaleUp: "0" };

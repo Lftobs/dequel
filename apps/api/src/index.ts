@@ -6,10 +6,11 @@ import { apiRoutes } from "./api";
 import { startBackupScheduler } from "./backup/scheduler";
 import { startDatabaseMonitoring } from "./databases/manager";
 import { getDb } from "./db/db-provider";
+import { migrateEncryptionKeys } from "./db/encryption-migration";
 import { migrate } from "./db/migrate";
 import { ensureLocalServer } from "./db/repo";
 import { markInterruptedDiagRuns } from "./db/repo/diag-runs";
-import { deployments } from "./db/schema";
+import { deployments, projects } from "./db/schema";
 import { alertEvaluator } from "./monitoring/evaluator";
 import { startFailureNotifier } from "./monitoring/failure-notifier";
 import { orchestrator } from "./orchestrator";
@@ -23,8 +24,6 @@ import { config } from "./utils/config";
 import { startDomainPolling } from "./utils/domain-verifier";
 import { initZombieReaper } from "./utils/process-exec";
 import { loadOrCreateJwtSecret } from "./utils/secrets";
-
-import { projects } from "./db/schema";
 import { captureTelemetry } from "./utils/telemetry";
 
 const bootstrap = async () => {
@@ -36,6 +35,7 @@ const bootstrap = async () => {
 	initAuth(jwtSecret);
 
 	await migrate();
+	await migrateEncryptionKeys().catch((err) => console.error("[EncryptionMigration] failed:", err));
 	await ensureLocalServer();
 	const interrupted = await markInterruptedDiagRuns().catch(() => 0);
 	if (interrupted > 0) console.log(`[Fixdiag] Marked ${interrupted} interrupted diagnosis run(s) as failed`);
@@ -99,7 +99,12 @@ dequel_uptime_seconds ${uptimeSec}
 	};
 
 	const app = new Elysia()
-		.use(cors())
+		.use(
+			cors({
+				origin: () => true,
+				credentials: false,
+			}),
+		)
 		.onBeforeHandle(() => {
 			metrics.requestsTotal++;
 		})

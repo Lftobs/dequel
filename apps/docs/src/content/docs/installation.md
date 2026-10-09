@@ -139,16 +139,15 @@ Dequel stores its configuration in `~/.dequel` (or `$DEQUEL_HOME` if set):
 
 ## Building from Source
 
-For local development, run the API and web dashboard directly:
+For local development, run the API and web dashboard directly. The API uses
+fixed paths for build staging and Caddy routes, so create them once:
+
+```bash
+sudo mkdir -p /app/workspace /caddy/routes
+```
 
 ```bash
 # Terminal 1 — API
-export DATABASE_PATH=./data/dequel.db \
-       WORKSPACE_ROOT=./workspace \
-       CADDY_ROUTES_DIR=./infra/caddy/routes \
-       CADDY_BASE_DOMAIN=localhost \
-       DOCKER_NETWORK=dequel_net \
-       APP_INTERNAL_PORT=3000
 bun apps/api/src/index.ts
 
 # Terminal 2 — Web

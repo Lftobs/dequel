@@ -1,8 +1,10 @@
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
+import type { Server } from "../types";
 import { dockerBin } from "../utils/docker-bin";
-import { killProcessGroup, safeSpawn } from "../utils/process-exec";
+import { dockerRun } from "../utils/docker-run";
+import { killChildTree } from "../utils/proc-group";
 import { CancelledError } from "./railpack";
 
 export interface ComposeTarget {
@@ -205,7 +207,7 @@ const spawnComposeCommand = (
 			cwd,
 			env: envVars || {},
 			stdio: ["ignore", "pipe", "pipe"],
-			detached: isPosix,
+			detached: true,
 		});
 
 		let stdout = "";
@@ -240,7 +242,8 @@ const spawnComposeCommand = (
 		};
 
 		const onAbort = () => {
-			terminate();
+			killChildTree(child, "SIGTERM");
+			setTimeout(() => killChildTree(child, "SIGKILL"), 5000);
 			finish(undefined, new CancelledError());
 		};
 
@@ -339,14 +342,14 @@ export const deployWithCompose = async (
 	await onLog("Docker Compose stack started.");
 };
 
-export const destroyComposeStack = async (projectName: string): Promise<void> => {
+export const destroyComposeStack = async (projectName: string, server?: Server | null): Promise<void> => {
 	const filter = `label=com.docker.compose.project=${projectName}`;
-	const ps = await runDocker(["ps", "-aq", "--filter", filter]);
-	const ids = ps.stdout.split(/\s+/).filter(Boolean);
+	const ps = await dockerRun(dockerBin, ["ps", "-aq", "--filter", filter], server).catch(() => "");
+	const ids = ps.split(/\s+/).filter((s) => /^[0-9a-f]{12,}$/.test(s));
 	for (const id of ids) {
-		await runDocker(["rm", "-f", id]);
+		await dockerRun(dockerBin, ["rm", "-f", id], server).catch(() => {});
 	}
-	await runDocker(["network", "rm", `${projectName}_default`]).catch(() => {});
+	await dockerRun(dockerBin, ["network", "rm", `${projectName}_default`], server).catch(() => {});
 };
 
 export const getComposeContainerNames = async (projectName: string): Promise<Map<string, string>> => {

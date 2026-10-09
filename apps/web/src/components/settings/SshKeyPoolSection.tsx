@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { KeyRound, Plus, Shield, Trash2, Upload } from "lucide-react";
+import { KeyRound, Plus, Shield, ShieldAlert, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import * as api from "../../api/client";
 import { Badge } from "../ui/badge";
@@ -18,8 +18,12 @@ export function SshKeyPoolSection() {
 	const [name, setName] = useState("");
 	const [privateKey, setPrivateKey] = useState("");
 	const [isAdding, setIsAdding] = useState(false);
+	const [addError, setAddError] = useState("");
+	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [deletingId, setDeletingId] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	const deletingKey = keys.find((k) => k.id === deletingId);
 
 	const detectedType = privateKey.includes("ED25519")
 		? "Ed25519"
@@ -48,11 +52,24 @@ export function SshKeyPoolSection() {
 	const add = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!name.trim() || !privateKey.trim()) return;
-		await api.createSshKey({ name: name.trim(), privateKey: privateKey.trim() });
-		setName("");
-		setPrivateKey("");
-		setIsAdding(false);
-		refetch();
+		setAddError("");
+		setIsSubmitting(true);
+		try {
+			await api.createSshKey({ name: name.trim(), privateKey: privateKey.trim() });
+			setName("");
+			setPrivateKey("");
+			setIsAdding(false);
+			refetch();
+		} catch (err) {
+			setAddError(err instanceof Error ? err.message : "Failed to add SSH key");
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	const toggleForm = () => {
+		setAddError("");
+		setIsAdding((open) => !open);
 	};
 
 	const handleDelete = async () => {
@@ -78,7 +95,7 @@ export function SshKeyPoolSection() {
 						</div>
 					</div>
 					<Button
-						onClick={() => setIsAdding(!isAdding)}
+						onClick={toggleForm}
 						size="sm"
 						className="bg-orange-500 hover:bg-orange-600 text-white font-medium shadow-md transition-all gap-1.5 self-start sm:self-auto"
 					>
@@ -155,12 +172,22 @@ export function SshKeyPoolSection() {
 							</div>
 						</div>
 
+						{addError && (
+							<p role="alert" className="text-xs text-red-400 flex items-center gap-1.5">
+								<ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+								{addError}
+							</p>
+						)}
+
 						<div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-border/40">
 							<Button
 								type="button"
 								variant="ghost"
 								size="sm"
-								onClick={() => setIsAdding(false)}
+								onClick={() => {
+									setAddError("");
+									setIsAdding(false);
+								}}
 								className="text-xs text-muted-foreground hover:text-foreground"
 							>
 								Cancel
@@ -168,9 +195,10 @@ export function SshKeyPoolSection() {
 							<Button
 								type="submit"
 								size="sm"
+								disabled={isSubmitting}
 								className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium px-4"
 							>
-								Add Key to Pool
+								{isSubmitting ? "Adding..." : "Add Key to Pool"}
 							</Button>
 						</div>
 					</form>
@@ -218,7 +246,7 @@ export function SshKeyPoolSection() {
 											variant="outline"
 											className="font-mono text-[11px] bg-black/40 text-zinc-400 border-border/60"
 										>
-											{k.fingerprint || "SHA256:..."}
+											{k.fingerprint || "0123456789abcdef0123456789abcdef"}
 										</Badge>
 									</div>
 
@@ -253,7 +281,7 @@ export function SshKeyPoolSection() {
 								<TableHeader className="bg-muted/40">
 									<TableRow className="border-border/60 hover:bg-transparent">
 										<TableHead className="text-xs font-semibold">Key Identifier</TableHead>
-										<TableHead className="text-xs font-semibold">Fingerprint</TableHead>
+										<TableHead className="text-xs font-semibold">Key Hash</TableHead>
 										<TableHead className="text-xs font-semibold">Tags</TableHead>
 										<TableHead className="text-xs font-semibold">Added Date</TableHead>
 										<TableHead className="text-xs font-semibold text-right">Actions</TableHead>
@@ -273,7 +301,7 @@ export function SshKeyPoolSection() {
 													variant="outline"
 													className="font-mono text-[11px] bg-black/40 text-zinc-400 border-border/60"
 												>
-													{k.fingerprint || "SHA256:..."}
+													{k.fingerprint || "0123456789abcdef0123456789abcdef"}
 												</Badge>
 											</TableCell>
 											<TableCell className="text-xs text-muted-foreground py-3.5">
@@ -320,8 +348,8 @@ export function SshKeyPoolSection() {
 					<DialogHeader>
 						<DialogTitle className="text-lg font-bold text-foreground">Delete SSH Key</DialogTitle>
 						<DialogDescription className="text-xs text-muted-foreground mt-2 leading-relaxed">
-							Are you sure you want to remove this key from the pool? Servers relying on this key will lose remote
-							management access.
+							Are you sure you want to remove "{deletingKey?.name ?? "this key"}" from the pool? Servers relying on this
+							key will lose remote management access.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t border-border/40">

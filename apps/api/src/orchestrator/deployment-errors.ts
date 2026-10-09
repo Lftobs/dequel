@@ -29,3 +29,6 @@ export const summarizeDeploymentError = (error: unknown): string => {
 
 	return "Deployment failed. Check the deployment logs for details.";
 };
+
+export const remoteScriptFailure = (result: { stdout: string; stderr: string }, fallback: string): string =>
+	[result.stdout, result.stderr].filter(Boolean).join("\n") || fallback;
