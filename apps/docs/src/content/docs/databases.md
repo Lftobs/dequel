@@ -52,7 +52,7 @@ Exposed databases receive strings that require TLS:
 </div>
 
 <div class="rounded-xl border border-border bg-[#070709] p-4 font-mono text-[11px] text-zinc-400 break-all select-none">
-  mongodb://user:password@db-1a2b3c4d.dequel.example.com:443/dbname?authSource=admin&tls=true&tlsAllowInvalidCertificates=true
+  mongodb://user:password@db-1a2b3c4d.dequel.example.com:443/dbname?authSource=admin&tls=true
 </div>
 
 <div class="rounded-xl border border-border bg-[#070709] p-4 font-mono text-[11px] text-zinc-400 break-all select-none">
@@ -64,7 +64,7 @@ If **Public Access** is disabled, no external endpoint is issued — the databas
 Notes:
 
 - MySQL is the exception: its wire protocol begins with a server greeting before the client sends anything, so there is no hostname for the gateway to route on. Exposed MySQL databases keep the direct port path (`<server-ip>:<random-port>`); open that port in your firewall, or use the dashboard SQL console.
-- The gateway terminates TLS with a Let's Encrypt certificate for the database hostname — Caddy issues it within seconds of enabling Public Access and renews it automatically — so the strings above verify out of the box. In the gaps (right after enabling Public Access, or on a `localhost` setup with no base domain) the gateway falls back to a self-signed certificate: MongoDB strings already skip verification (`tlsAllowInvalidCertificates`); for PostgreSQL append `&uselibpqcompat=true` (Node only; psql rejects that flag) or set `ssl: { rejectUnauthorized: false }` in client code; Redis clients verify certificates by default, so set `rejectUnauthorized: false` in your client configuration while the fallback is in effect.
+- The gateway terminates TLS with a Let's Encrypt certificate for the database hostname — Caddy issues it within seconds of enabling Public Access and renews it automatically — so the strings above verify out of the box. In the gaps (right after enabling Public Access, or on a `localhost` setup with no base domain) the gateway falls back to a self-signed certificate: MongoDB strings carry `tlsAllowInvalidCertificates=true` (verification off) until a real certificate exists; for PostgreSQL append `&uselibpqcompat=true` (Node only; psql rejects that flag) or set `ssl: { rejectUnauthorized: false }` in client code; Redis clients verify certificates by default, so set `rejectUnauthorized: false` in your client configuration while the fallback is in effect.
 - PostgreSQL clients work either way: classic clients send a plaintext `SSLRequest` first (the gateway answers it locally), and direct-TLS clients (`sslmode=direct`) announce the hostname immediately.
 - Every new connection is checked against the database status, the Public Access toggle, and the optional IP allowlist before any bytes are forwarded.
 

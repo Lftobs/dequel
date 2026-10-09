@@ -24,6 +24,7 @@ export const config = {
 	databaseUrl: withFile<string>("DATABASE_URL", ""),
 	workspaceRoot: withFile<string>("WORKSPACE_ROOT", "/app/workspace"),
 	caddyRoutesDir: withFile<string>("CADDY_ROUTES_DIR", "/caddy/routes"),
+	caddyDataDir: withFile<string>("CADDY_DATA_DIR", ""),
 	port: withFile<number>("PORT", "17474", Number),
 	caddyBaseDomain: withFile<string>("CADDY_BASE_DOMAIN", "localhost"),
 	controlPlaneUrl: withFile<string>("CONTROL_PLANE_URL", ""),

@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import type { Server } from "../types";
 import { dockerBin } from "../utils/docker-bin";
-import { killChildTree } from "../utils/proc-group";
+import { killProcessGroup } from "../utils/process-exec";
 import { generateDynamicRailpackJson } from "./railpack-config-utils";
 
 export interface RailpackBuildResult {
@@ -67,7 +67,7 @@ export class CancelledError extends Error {
 	}
 }
 
-export const spawnAsync = (
+const spawnAsync = (
 	cmd: string,
 	args: string[],
 	opts?: {
@@ -93,7 +93,7 @@ export const spawnAsync = (
 				...(opts?.env ?? process.env),
 			},
 			cwd: opts?.cwd,
-			detached: true,
+			detached: isPosix,
 		});
 		let stdout = "";
 		let stderr = "";
@@ -101,13 +101,10 @@ export const spawnAsync = (
 		let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
 		let escalationTimer: ReturnType<typeof setTimeout> | null = null;
 
-		const onAbort = () => {
-			if (settled) return;
-			killChildTree(child, "SIGTERM");
-			setTimeout(() => {
-				if (!settled) {
-					killChildTree(child, "SIGKILL");
-				}
+		const terminate = () => {
+			killProcessGroup(child, "SIGTERM");
+			escalationTimer = setTimeout(() => {
+				killProcessGroup(child, "SIGKILL");
 			}, 5000);
 			if (typeof escalationTimer.unref === "function") escalationTimer.unref();
 		};
@@ -118,23 +115,7 @@ export const spawnAsync = (
 			if (opts?.signal) {
 				opts.signal.removeEventListener("abort", onAbort);
 			}
-			opts.signal.addEventListener("abort", onAbort, { once: true });
 		};
-
-		const timeout =
-			opts?.timeoutMs && opts.timeoutMs > 0
-				? setTimeout(() => {
-						if (settled) return;
-						opts.onTimeout?.();
-						killChildTree(child, "SIGTERM");
-						setTimeout(() => {
-							if (!settled) {
-								killChildTree(child, "SIGKILL");
-							}
-						}, 5000);
-						finish(undefined, new Error(`${cmd} timed out after ${opts.timeoutMs}ms`));
-					}, opts.timeoutMs)
-				: null;
 
 		const finish = (
 			result?: {

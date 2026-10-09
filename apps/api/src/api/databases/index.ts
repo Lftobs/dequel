@@ -6,11 +6,13 @@ import {
 	deleteDatabase,
 	getDatabaseById,
 	getProjectById,
+	getServerById,
 	listAllDatabases,
 	listDatabases,
 	updateDatabaseSettings,
 	updateDatabaseStatus,
 } from "../../db/repo";
+import { loadCaddyCert } from "../../tunnels/cert-store";
 import type { Database } from "../../types";
 import { config } from "../../utils/config";
 import { removeDbGatewayRoute, syncDbGatewayRoute } from "../../utils/db-caddy-route";
@@ -60,6 +62,14 @@ const busyError = (dbRecord: DatabaseRecord, set: any) => {
 const isNonLoopbackIp = (value: string): boolean => {
 	if (isIP(value) !== 4) return false;
 	return !value.startsWith("127.");
+};
+
+const resolveDbExternalHost = async (serverId: string | null): Promise<string> => {
+	if (serverId) {
+		const server = await getServerById(serverId);
+		if (server && isNonLoopbackIp(server.host)) return server.host;
+	}
+	return resolveServerIp();
 };
 
 const createManagedDatabase = async (body: any, projectId: string | null, set: any) => {
@@ -123,11 +133,14 @@ export const databasesRoutes = new Elysia()
 		if (gatewayHost) {
 			const reachable = await probeTcp(gatewayHost, 443);
 			if (reachable) {
+				const hasRealCert = config.caddyDataDir
+					? (await loadCaddyCert(config.caddyDataDir, gatewayHost)) !== null
+					: false;
 				return ok({
 					username: dbRecord.username,
 					password: dbRecord.password,
 					internalConnectionString: dbRecord.connectionString,
-					externalConnectionString: buildGatewayConnectionString(dbRecord, gatewayHost),
+					externalConnectionString: buildGatewayConnectionString(dbRecord, gatewayHost, hasRealCert),
 					externalHost: gatewayHost,
 					externalPort: 443,
 					externalReachable: true,
@@ -145,7 +158,8 @@ export const databasesRoutes = new Elysia()
 				warning: `Gateway endpoint ${gatewayHost}:443 is not reachable from the network — check the gateway service and DNS.`,
 			});
 		}
-		const externalHost = dbRecord.publicAccess && dbRecord.externalPort ? await resolveServerIp() : null;
+		const externalHost =
+			dbRecord.publicAccess && dbRecord.externalPort ? await resolveDbExternalHost(dbRecord.serverId ?? null) : null;
 		const usableHost = externalHost && isNonLoopbackIp(externalHost) ? externalHost : null;
 		if (usableHost && dbRecord.externalPort) {
 			const reachable = await probeTcp(usableHost, dbRecord.externalPort);
@@ -316,12 +330,13 @@ const buildConnectionString = (dbRecord: DatabaseRecord, host: string, port: num
 	return `${protocol}://${dbRecord.username}:${dbRecord.password}@${host}:${port}/${dbRecord.databaseName}`;
 };
 
-const buildGatewayConnectionString = (dbRecord: DatabaseRecord, host: string) => {
+const buildGatewayConnectionString = (dbRecord: DatabaseRecord, host: string, hasRealCert: boolean) => {
 	const auth = `${dbRecord.username}:${dbRecord.password}`;
 	const path = `/${dbRecord.databaseName}`;
 	if (dbRecord.type === "redis") return `rediss://:${dbRecord.password}@${host}:443`;
 	if (dbRecord.type === "mongodb") {
-		return `mongodb://${auth}@${host}:443${path}?authSource=admin&tls=true&tlsAllowInvalidCertificates=true`;
+		const tls = hasRealCert ? "tls=true" : "tls=true&tlsAllowInvalidCertificates=true";
+		return `mongodb://${auth}@${host}:443${path}?authSource=admin&${tls}`;
 	}
 	return `postgresql://${auth}@${host}:443${path}?sslmode=require`;
 };

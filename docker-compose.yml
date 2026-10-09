@@ -41,6 +41,7 @@ services:
             WORKSPACE_ROOT: /app/workspace
             CADDY_ROUTES_DIR: /caddy/routes
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
+            CADDY_DATA_DIR: /caddy-data/caddy
             DOCKER_NETWORK: dequel_net
             APP_INTERNAL_PORT: 3000
             BUILDKIT_HOST: tcp://buildkit:1234
@@ -55,6 +56,7 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock
             - railpack-cache:/tmp/railpack
             - api-data:/app/data
+            - caddy-data:/caddy-data:ro
             - backup-data:/data/backups
             - /etc/passwd:/etc/passwd:ro
             - /etc/group:/etc/group:ro
