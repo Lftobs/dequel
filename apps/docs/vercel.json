@@ -1,6 +1,6 @@
 {
-	"framework": "astro",
-	"buildCommand": "astro build",
+	"framework": null,
+	"buildCommand": "bun run build",
 	"outputDirectory": "dist",
 	"installCommand": "bun install"
 }
