@@ -2,7 +2,7 @@ FROM oven/bun:1
 
 ARG BUILD_TIME=0
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git caddy gnupg iproute2 wireguard-tools \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git caddy gnupg iproute2 wireguard-tools tini \
   && install -m 0755 -d /etc/apt/keyrings \
   && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
   && chmod a+r /etc/apt/keyrings/docker.asc \
@@ -19,4 +19,5 @@ COPY src ./src
 
 RUN mkdir -p /var/lib/dequel/workspace
 
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["bun", "src/index.ts"]

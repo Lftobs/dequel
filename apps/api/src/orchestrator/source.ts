@@ -1,7 +1,7 @@
-import { spawn } from "node:child_process";
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { config } from "../utils/config";
+import { safeSpawn } from "../utils/process-exec";
 
 const ensureSingleRoot = async (root: string): Promise<string> => {
 	const entries = await readdir(root, { withFileTypes: true });
@@ -13,26 +13,12 @@ const ensureSingleRoot = async (root: string): Promise<string> => {
 	return root;
 };
 
-const run = (cmd: string, args: string[], cwd?: string) =>
-	new Promise<void>((resolve, reject) => {
-		const child = spawn(cmd, args, {
-			cwd,
-			stdio: ["ignore", "pipe", "pipe"],
-		});
-
-		let stderr = "";
-		child.stderr.on("data", (chunk) => {
-			stderr += String(chunk);
-		});
-
-		child.on("close", (code) => {
-			if (code === 0) {
-				resolve();
-			} else {
-				reject(new Error(`${cmd} exited with code ${code}: ${stderr}`));
-			}
-		});
-	});
+const run = async (cmd: string, args: string[], cwd?: string) => {
+	const res = await safeSpawn(cmd, args, { cwd, timeoutMs: 120_000 });
+	if (res.code !== 0) {
+		throw new Error(`${cmd} exited with code ${res.code}: ${res.stderr || res.stdout}`);
+	}
+};
 
 const isValidSha = (s: string) => /^[0-9a-f]{7,40}$/i.test(s);
 
@@ -82,11 +68,8 @@ export const prepareUploadWorkspace = async (deploymentId: string, archivePath: 
 
 export const getHeadSha = async (repoPath: string): Promise<string | null> => {
 	try {
-		let output = "";
-		const child = spawn("git", ["rev-parse", "HEAD"], { cwd: repoPath });
-		for await (const chunk of child.stdout) output += String(chunk);
-		await new Promise<void>((resolve, reject) => child.on("close", (code) => (code === 0 ? resolve() : reject())));
-		return output.trim() || null;
+		const res = await safeSpawn("git", ["rev-parse", "HEAD"], { cwd: repoPath, timeoutMs: 15_000 });
+		return res.code === 0 ? res.stdout.trim() || null : null;
 	} catch {
 		return null;
 	}
@@ -94,12 +77,10 @@ export const getHeadSha = async (repoPath: string): Promise<string | null> => {
 
 export const getRemoteSha = async (gitUrl: string, branch?: string): Promise<string | null> => {
 	try {
-		let output = "";
 		const ref = branch ? `refs/heads/${branch}` : "HEAD";
-		const child = spawn("git", ["ls-remote", gitUrl, ref]);
-		for await (const chunk of child.stdout) output += String(chunk);
-		await new Promise<void>((resolve, reject) => child.on("close", (code) => (code === 0 ? resolve() : reject())));
-		const match = output.trim().split(/\s+/)[0];
+		const res = await safeSpawn("git", ["ls-remote", gitUrl, ref], { timeoutMs: 15_000 });
+		if (res.code !== 0) return null;
+		const match = res.stdout.trim().split(/\s+/)[0];
 		return match || null;
 	} catch {
 		return null;

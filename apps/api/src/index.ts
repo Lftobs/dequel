@@ -21,10 +21,12 @@ import { serverManager } from "./servers/manager";
 import { cleanupExpiredTokens, initAuth } from "./utils/auth";
 import { config } from "./utils/config";
 import { startDomainPolling } from "./utils/domain-verifier";
+import { initZombieReaper } from "./utils/process-exec";
 import { loadOrCreateJwtSecret } from "./utils/secrets";
 import { captureTelemetry } from "./utils/telemetry";
 
 const bootstrap = async () => {
+	initZombieReaper();
 	await mkdir(config.workspaceRoot, { recursive: true });
 	await mkdir(config.caddyRoutesDir, { recursive: true });
 

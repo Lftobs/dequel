@@ -1,6 +1,7 @@
 services:
     buildkit:
         image: moby/buildkit:latest
+        init: true
         restart: unless-stopped
         command:
             [
@@ -32,6 +33,7 @@ services:
         # build:
         #     context: ./apps/api
         #     dockerfile: Dockerfile
+        init: true
         restart: unless-stopped
         environment:
             PORT: 3001

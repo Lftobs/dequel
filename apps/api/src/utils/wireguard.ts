@@ -1,6 +1,6 @@
-import { spawn } from "node:child_process";
 import { generateKeyPairSync } from "node:crypto";
 import { config } from "./config";
+import { safeSpawn } from "./process-exec";
 
 export interface WireGuardPeerConfig {
 	peerIp: string;
@@ -43,22 +43,20 @@ export const buildWireGuardPeerConfig = (
 	};
 };
 
-const execWgCommand = (args: string[]): Promise<boolean> => {
-	if (!config.wireguardServerContainer) return Promise.resolve(false);
-	return new Promise((resolve) => {
-		const child = spawn("docker", ["exec", config.wireguardServerContainer!, "wg", ...args], {
-			stdio: ["ignore", "pipe", "pipe"],
+const execWgCommand = async (args: string[]): Promise<boolean> => {
+	if (!config.wireguardServerContainer) return false;
+	try {
+		const res = await safeSpawn("docker", ["exec", config.wireguardServerContainer, "wg", ...args], {
+			timeoutMs: 15_000,
 		});
-		let stderr = "";
-		child.stderr?.on("data", (chunk) => {
-			stderr += String(chunk);
-		});
-		child.on("close", (code) => {
-			if (code !== 0) console.warn(`[WireGuard] wg ${args[0]} failed: ${stderr.trim()}`);
-			resolve(code === 0);
-		});
-		child.on("error", () => resolve(false));
-	});
+		if (res.code !== 0) {
+			console.warn(`[WireGuard] wg ${args[0]} failed: ${res.stderr.trim()}`);
+			return false;
+		}
+		return true;
+	} catch {
+		return false;
+	}
 };
 
 export const provisionWireGuardPeer = async (peerIp: string, publicKey: string): Promise<boolean> => {
