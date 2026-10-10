@@ -6,8 +6,14 @@ import { testSshConnection } from "../../utils/ssh";
 import { isPort, SERVER_HOST_RE } from "../../utils/validate";
 import { created, fail, ok } from "../response";
 
+const redactServer = <T extends { sshKey?: string | null; sshPassword?: string | null }>(server: T): T => {
+	if (server.sshKey) server.sshKey = "[redacted]";
+	if (server.sshPassword) server.sshPassword = "[redacted]";
+	return server;
+};
+
 export const serversRoutes = new Elysia()
-	.get("/servers", async () => ok(await listServers()))
+	.get("/servers", async () => ok((await listServers()).map((server) => redactServer(server))))
 	.post("/servers", async ({ body, set }: any) => {
 		if (!body?.name || !body?.host) {
 			set.status = 400;
@@ -26,17 +32,19 @@ export const serversRoutes = new Elysia()
 			return fail("port must be between 1 and 65535");
 		}
 		return created(
-			await createServer({
-				name: body.name,
-				host: body.host,
-				port: body.port ? Number(body.port) : body.mode === "ssh" ? 22 : 2375,
-				mode: body.mode ?? "ssh",
-				sshUser: body.sshUser ?? "root",
-				sshKey: body.sshKey,
-				sshKeyId: body.sshKeyId,
-				sshPassword: body.sshPassword,
-				authToken: body.authToken,
-			}),
+			redactServer(
+				await createServer({
+					name: body.name,
+					host: body.host,
+					port: body.port ? Number(body.port) : body.mode === "ssh" ? 22 : 2375,
+					mode: body.mode ?? "ssh",
+					sshUser: body.sshUser ?? "root",
+					sshKey: body.sshKey,
+					sshKeyId: body.sshKeyId,
+					sshPassword: body.sshPassword,
+					authToken: body.authToken,
+				}),
+			),
 		);
 	})
 	.get("/servers/:id", async ({ params: { id }, set }) => {
@@ -45,7 +53,7 @@ export const serversRoutes = new Elysia()
 			set.status = 404;
 			return fail("Server not found");
 		}
-		return ok(server);
+		return ok(redactServer(server));
 	})
 	.get("/servers/:id/stats", async ({ params: { id }, set }) => {
 		const server = await getServerById(id);
@@ -166,8 +174,8 @@ export const serversRoutes = new Elysia()
 			return fail("Server not found");
 		}
 		if (server.mode === "ssh") {
-			const passed = await testSshConnection(server);
-			return ok({ ok: passed, mode: "ssh" });
+			const result = await testSshConnection(server);
+			return ok({ ...result, mode: "ssh" });
 		}
 		return ok({ ok: server.status === "connected", mode: server.mode });
 	})

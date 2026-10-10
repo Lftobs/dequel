@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     tar \
     openssh-client \
+    tini \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.5.1.tgz | tar -xz -C /usr/local/bin --strip-components=1 && \
@@ -32,4 +33,5 @@ RUN mkdir -p /app/data /app/workspace /caddy/routes
 
 EXPOSE 3001
 
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["bun", "src/index.ts"]

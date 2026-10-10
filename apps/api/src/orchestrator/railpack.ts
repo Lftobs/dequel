@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import type { Server } from "../types";
 import { dockerBin } from "../utils/docker-bin";
+import { killProcessGroup } from "../utils/process-exec";
 import { generateDynamicRailpackJson } from "./railpack-config-utils";
 
 export interface RailpackBuildResult {
@@ -83,48 +84,38 @@ const spawnAsync = (
 	code: number;
 }> => {
 	return new Promise((resolve, reject) => {
+		const isPosix = process.platform !== "win32";
 		const child = spawn(cmd, args, {
 			stdio: ["ignore", "pipe", "pipe"],
-			env: opts?.env ?? process.env,
+			env: {
+				GIT_TERMINAL_PROMPT: "0",
+				SSH_ASKPASS: "",
+				...(opts?.env ?? process.env),
+			},
 			cwd: opts?.cwd,
+			detached: isPosix,
 		});
 		let stdout = "";
 		let stderr = "";
 		let settled = false;
+		let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+		let escalationTimer: ReturnType<typeof setTimeout> | null = null;
 
-		const onAbort = () => {
-			if (settled) return;
-			child.kill("SIGTERM");
-			setTimeout(() => {
-				if (!settled) {
-					child.kill("SIGKILL");
-				}
+		const terminate = () => {
+			killProcessGroup(child, "SIGTERM");
+			escalationTimer = setTimeout(() => {
+				killProcessGroup(child, "SIGKILL");
 			}, 5000);
-			finish(undefined, new CancelledError());
+			if (typeof escalationTimer.unref === "function") escalationTimer.unref();
 		};
 
-		if (opts?.signal) {
-			if (opts.signal.aborted) {
-				onAbort();
-				return;
+		const cleanup = () => {
+			if (timeoutTimer) clearTimeout(timeoutTimer);
+			if (escalationTimer) clearTimeout(escalationTimer);
+			if (opts?.signal) {
+				opts.signal.removeEventListener("abort", onAbort);
 			}
-			opts.signal.addEventListener("abort", onAbort, { once: true });
-		}
-
-		const timeout =
-			opts?.timeoutMs && opts.timeoutMs > 0
-				? setTimeout(() => {
-						if (settled) return;
-						opts.onTimeout?.();
-						child.kill("SIGTERM");
-						setTimeout(() => {
-							if (!settled) {
-								child.kill("SIGKILL");
-							}
-						}, 5000);
-						finish(undefined, new Error(`${cmd} timed out after ${opts.timeoutMs}ms`));
-					}, opts.timeoutMs)
-				: null;
+		};
 
 		const finish = (
 			result?: {
@@ -136,16 +127,35 @@ const spawnAsync = (
 		) => {
 			if (settled) return;
 			settled = true;
-			if (timeout) clearTimeout(timeout);
-			if (opts?.signal) {
-				opts.signal.removeEventListener("abort", onAbort);
-			}
+			cleanup();
 			if (error) {
 				reject(error);
 				return;
 			}
 			resolve(result!);
 		};
+
+		const onAbort = () => {
+			terminate();
+			finish(undefined, new CancelledError());
+		};
+
+		if (opts?.signal) {
+			if (opts.signal.aborted) {
+				onAbort();
+				return;
+			}
+			opts.signal.addEventListener("abort", onAbort, { once: true });
+		}
+
+		if (opts?.timeoutMs && opts.timeoutMs > 0) {
+			timeoutTimer = setTimeout(() => {
+				opts.onTimeout?.();
+				terminate();
+				finish(undefined, new Error(`${cmd} timed out after ${opts.timeoutMs}ms`));
+			}, opts.timeoutMs);
+			if (typeof timeoutTimer.unref === "function") timeoutTimer.unref();
+		}
 
 		child.stdout.on("data", (chunk) => {
 			const str = String(chunk);

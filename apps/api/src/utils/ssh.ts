@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "../types";
+import { safeSpawn, terminateWithEscalation } from "./process-exec";
 
 export interface SshExecutionOptions {
 	env?: Record<string, string>;
@@ -21,28 +22,6 @@ export const ensureSshKey = (server: {
 }): string | null => {
 	if (!server.sshKey) return null;
 	return writeKeyToDisk(server.host, server.sshKey, server.id);
-};
-
-export const ensureSshKeyAsync = async (server: {
-	host: string;
-	port?: number;
-	sshUser?: string | null;
-	sshKey?: string | null;
-	sshKeyId?: string | null;
-	id?: string;
-}): Promise<string | null> => {
-	if (server.sshKeyId) {
-		const { resolveServerSshKey } = await import("../db/repo/ssh-keys");
-		const resolved = await resolveServerSshKey({
-			sshKeyId: server.sshKeyId,
-			sshKey: server.sshKey ?? undefined,
-			sshKeyIv: undefined,
-			sshKeyTag: undefined,
-		});
-		if (resolved) return writeKeyToDisk(server.host, resolved, server.id);
-	}
-	if (server.sshKey) return writeKeyToDisk(server.host, server.sshKey, server.id);
-	return null;
 };
 
 const writeKeyToDisk = (host: string, sshKey: string, id?: string): string | null => {
@@ -80,32 +59,76 @@ export const getDockerSshTarget = (
 	return `ssh://${user}@${server.host}:${port}`;
 };
 
-export const testSshConnection = (server: {
+export interface SshConnectionResult {
+	ok: boolean;
+	ssh: boolean;
+	docker: boolean;
+	detail: string;
+}
+
+const probeDockerOverSsh = (server: {
 	host: string;
 	port?: number;
 	sshUser?: string | null;
 	sshKey?: string | null;
 	id?: string;
-}): Promise<boolean> => {
-	return new Promise((resolve) => {
+}): Promise<{ ok: boolean; detail: string }> =>
+	new Promise((resolve) => {
 		const target = getDockerSshTarget(server);
 		const child = spawn("docker", ["-H", target, "info", "--format", "{{.ServerVersion}}"], {
 			stdio: ["ignore", "pipe", "pipe"],
 			timeout: 15_000,
 		});
 		let output = "";
+		let errors = "";
 		child.stdout?.on("data", (chunk) => {
 			output += String(chunk);
 		});
-		child.on("close", (code) => {
-			resolve(code === 0 && output.trim().length > 0);
+		child.stderr?.on("data", (chunk) => {
+			errors += String(chunk);
 		});
-		child.on("error", () => resolve(false));
+		child.on("close", (code) => {
+			const version = output.trim();
+			if (code === 0 && version) {
+				resolve({ ok: true, detail: `Docker ${version}` });
+				return;
+			}
+			resolve({ ok: false, detail: (errors || output).trim() || `docker info exited with code ${code}` });
+		});
+		child.on("error", (err) => resolve({ ok: false, detail: err instanceof Error ? err.message : String(err) }));
 		child.on("timeout", () => {
-			child.kill();
-			resolve(false);
+			terminateWithEscalation(child, 2000);
+			resolve({ ok: false, detail: "Timed out contacting the remote Docker daemon" });
 		});
 	});
+
+export const testSshConnection = async (server: {
+	host: string;
+	port?: number;
+	sshUser?: string | null;
+	sshKey?: string | null;
+	id?: string;
+}): Promise<SshConnectionResult> => {
+	const probe = await execRemoteCommand(server, "echo dequel-ok").catch((err: unknown) => ({
+		code: 1,
+		stdout: "",
+		stderr: err instanceof Error ? err.message : String(err),
+	}));
+	if (probe.code !== 0 || probe.stdout.trim() !== "dequel-ok") {
+		return {
+			ok: false,
+			ssh: false,
+			docker: false,
+			detail: probe.stderr || probe.stdout || `ssh exited with code ${probe.code}`,
+		};
+	}
+	const docker = await probeDockerOverSsh(server);
+	return {
+		ok: docker.ok,
+		ssh: true,
+		docker: docker.ok,
+		detail: docker.ok ? docker.detail : `SSH connected, but Docker is unavailable: ${docker.detail}`,
+	};
 };
 
 export const execDockerSshCommand = (
@@ -113,51 +136,12 @@ export const execDockerSshCommand = (
 	args: string[],
 	options: SshExecutionOptions = {},
 ): Promise<{ code: number; stdout: string; stderr: string }> => {
-	return new Promise((resolve, reject) => {
-		const target = getDockerSshTarget(server);
-		const fullArgs = ["-H", target, ...args];
-		const child = spawn("docker", fullArgs, {
-			stdio: ["ignore", "pipe", "pipe"],
-			env: { ...process.env, ...options.env },
-		});
-
-		let stdout = "";
-		let stderr = "";
-
-		child.stdout?.on("data", (chunk) => {
-			const text = String(chunk);
-			stdout += text;
-			if (options.onLog) {
-				text
-					.split("\n")
-					.filter(Boolean)
-					.forEach((line) => options.onLog!(line));
-			}
-		});
-
-		child.stderr?.on("data", (chunk) => {
-			const text = String(chunk);
-			stderr += text;
-			if (options.onLog) {
-				text
-					.split("\n")
-					.filter(Boolean)
-					.forEach((line) => options.onLog!(line));
-			}
-		});
-
-		child.on("close", (code) => {
-			resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });
-		});
-
-		child.on("error", (err) => reject(err));
-
-		if (options.signal) {
-			options.signal.addEventListener("abort", () => {
-				child.kill("SIGTERM");
-				reject(new Error("SSH docker command aborted"));
-			});
-		}
+	const target = getDockerSshTarget(server);
+	const fullArgs = ["-H", target, ...args];
+	return safeSpawn("docker", fullArgs, {
+		env: options.env,
+		onLine: options.onLog ? (line) => options.onLog!(line) : undefined,
+		signal: options.signal,
 	});
 };
 
@@ -165,22 +149,26 @@ export const syncRemoteCaddyRoute = (
 	server: Server | { host: string; port?: number; sshUser?: string | null },
 	filename: string,
 	content: string,
-): Promise<boolean> => {
-	return new Promise((resolve) => {
+): Promise<void> =>
+	new Promise((resolve, reject) => {
+		const rejectRoute = (reason: string) =>
+			reject(new Error(`Failed to sync Caddy route ${filename} to ${server.host}: ${reason}`));
+
 		if (!/^[a-zA-Z0-9._-]+$/.test(filename) || filename.includes("..")) {
-			resolve(false);
+			rejectRoute("invalid route filename");
 			return;
 		}
 
 		const blockPattern = /^([^\n{]+?)\s*\{/gm;
 		let match: RegExpExecArray | null;
 		while ((match = blockPattern.exec(content)) !== null) {
-			const domainLine = match[1].trim();
-			const domains = domainLine.split(",").map((d) => d.trim());
+			const domains = match[1]
+				.trim()
+				.split(",")
+				.map((d) => d.trim());
 			for (const d of domains) {
 				if (/^:\d+$/.test(d)) {
-					console.error(`Rejected catch-all Caddy route in ${filename}: "${d}" — must include a hostname`);
-					resolve(false);
+					rejectRoute(`route block "${d}" must include a hostname`);
 					return;
 				}
 			}
@@ -200,20 +188,28 @@ export const syncRemoteCaddyRoute = (
 				"ConnectTimeout=10",
 				...keyArgs,
 				`${user}@${server.host}`,
-				`sudo mkdir -p /etc/caddy/routes && sudo tee /etc/caddy/routes/${filename} > /dev/null && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequel-caddy caddy reload || true)`,
+				`sudo mkdir -p /etc/caddy/routes && sudo tee /etc/caddy/routes/${filename} > /dev/null && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequel-caddy caddy reload --config /etc/caddy/Caddyfile || true)`,
 			],
 			{ stdio: ["pipe", "pipe", "pipe"] },
 		);
 
+		sshCmd.stdout?.on("data", () => {});
 		sshCmd.stdin?.write(content);
 		sshCmd.stdin?.end();
 
-		sshCmd.on("close", (code) => {
-			resolve(code === 0);
+		let stderr = "";
+		sshCmd.stderr?.on("data", (chunk) => {
+			stderr += String(chunk);
 		});
-		sshCmd.on("error", () => resolve(false));
+		sshCmd.on("close", (code) => {
+			if (code === 0) {
+				resolve();
+				return;
+			}
+			rejectRoute(stderr.trim() || `ssh exited with code ${code}`);
+		});
+		sshCmd.on("error", (err) => rejectRoute(err.message));
 	});
-};
 
 export const removeRemoteCaddyRoute = (
 	server: Server | { host: string; port?: number; sshUser?: string | null; sshKey?: string | null; id?: string },
@@ -239,10 +235,11 @@ export const removeRemoteCaddyRoute = (
 				"ConnectTimeout=10",
 				...keyArgs,
 				`${user}@${server.host}`,
-				`sudo rm -f /etc/caddy/routes/${filename} && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequel-caddy caddy reload || true)`,
+				`sudo rm -f /etc/caddy/routes/${filename} && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequel-caddy caddy reload --config /etc/caddy/Caddyfile || true)`,
 			],
 			{ stdio: ["ignore", "pipe", "pipe"] },
 		);
+		sshCmd.stdout?.on("data", () => {});
 		sshCmd.on("close", (code) => resolve(code === 0));
 		sshCmd.on("error", () => resolve(false));
 	});
@@ -253,58 +250,29 @@ export const execRemoteCommand = (
 	command: string,
 	options: { env?: Record<string, string>; onLog?: (line: string) => Promise<void> | void; signal?: AbortSignal } = {},
 ): Promise<{ code: number; stdout: string; stderr: string }> => {
-	return new Promise((resolve, reject) => {
-		const keyPath = ensureSshKey(server);
-		const keyArgs = keyPath ? ["-i", keyPath, "-o", "IdentitiesOnly=yes"] : [];
-		const user = server.sshUser || "root";
-		const port = server.port || 22;
-		const child = spawn(
-			"ssh",
-			[
-				"-p",
-				String(port),
-				"-o",
-				"StrictHostKeyChecking=no",
-				"-o",
-				"ConnectTimeout=30",
-				...keyArgs,
-				`${user}@${server.host}`,
-				command,
-			],
-			{ stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ...options.env } },
-		);
-
-		let stdout = "";
-		let stderr = "";
-		child.stdout?.on("data", (chunk) => {
-			const text = String(chunk);
-			stdout += text;
-			if (options.onLog) {
-				text
-					.split("\n")
-					.filter(Boolean)
-					.forEach((line) => options.onLog!(line));
-			}
-		});
-		child.stderr?.on("data", (chunk) => {
-			const text = String(chunk);
-			stderr += text;
-			if (options.onLog) {
-				text
-					.split("\n")
-					.filter(Boolean)
-					.forEach((line) => options.onLog!(line));
-			}
-		});
-		child.on("close", (code) => resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() }));
-		child.on("error", (err) => reject(err));
-		if (options.signal) {
-			options.signal.addEventListener("abort", () => {
-				child.kill("SIGTERM");
-				reject(new Error("Remote SSH command aborted"));
-			});
-		}
-	});
+	const keyPath = ensureSshKey(server);
+	const keyArgs = keyPath ? ["-i", keyPath, "-o", "IdentitiesOnly=yes"] : [];
+	const user = server.sshUser || "root";
+	const port = server.port || 22;
+	return safeSpawn(
+		"ssh",
+		[
+			"-p",
+			String(port),
+			"-o",
+			"StrictHostKeyChecking=no",
+			"-o",
+			"ConnectTimeout=30",
+			...keyArgs,
+			`${user}@${server.host}`,
+			command,
+		],
+		{
+			env: options.env,
+			onLine: options.onLog ? (line) => options.onLog!(line) : undefined,
+			signal: options.signal,
+		},
+	);
 };
 
 export const runRemoteScript = (
@@ -317,6 +285,7 @@ export const runRemoteScript = (
 		const keyArgs = keyPath ? ["-i", keyPath, "-o", "IdentitiesOnly=yes"] : [];
 		const user = server.sshUser || "root";
 		const port = server.port || 22;
+		const isPosix = process.platform !== "win32";
 		const child = spawn(
 			"ssh",
 			[
@@ -330,11 +299,26 @@ export const runRemoteScript = (
 				`${user}@${server.host}`,
 				"bash -s",
 			],
-			{ stdio: ["pipe", "pipe", "pipe"] },
+			{
+				detached: isPosix,
+				stdio: ["pipe", "pipe", "pipe"],
+				env: {
+					GIT_TERMINAL_PROMPT: "0",
+					SSH_ASKPASS: "",
+					...process.env,
+				},
+			},
 		);
 
 		let stdout = "";
 		let stderr = "";
+		let terminationHandle: { cancel: () => void } | null = null;
+
+		const terminate = () => {
+			if (terminationHandle) return;
+			terminationHandle = terminateWithEscalation(child, 3000);
+		};
+
 		child.stdout?.on("data", (chunk) => {
 			const text = String(chunk);
 			stdout += text;
@@ -355,13 +339,24 @@ export const runRemoteScript = (
 					.forEach((line) => options.onLog!(line));
 			}
 		});
-		child.on("close", (code) => resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() }));
-		child.on("error", (err) => reject(err));
+		child.on("close", (code) => {
+			if (terminationHandle) terminationHandle.cancel();
+			resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });
+		});
+		child.on("error", (err) => {
+			terminate();
+			reject(err);
+		});
 		if (options.signal) {
-			options.signal.addEventListener("abort", () => {
-				child.kill("SIGTERM");
+			if (options.signal.aborted) {
+				terminate();
 				reject(new Error("Remote build script aborted"));
-			});
+			} else {
+				options.signal.addEventListener("abort", () => {
+					terminate();
+					reject(new Error("Remote build script aborted"));
+				});
+			}
 		}
 		child.stdin.write(script);
 		child.stdin.end();

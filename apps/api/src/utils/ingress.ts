@@ -41,7 +41,7 @@ export const projectServerSite = (
 	const targets = containers.map((c) => `${c}:${port}`).join(" ");
 	const proxy = caddyReverseProxy(targets);
 	if (viaIngress) {
-		return caddySite(":80", proxy);
+		return caddySite(`http://${hostname}`, proxy);
 	}
 	return caddySite(hostname, proxy);
 };

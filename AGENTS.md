@@ -7,7 +7,7 @@ Self-hosted deployment platform. Deploy apps from Git, ZIP, or Docker Compose wi
 - **Runtime**: Bun
 - **Backend**: ElysiaJS (`apps/api/`) — TypeScript, port 3001
 - **Frontend**: React 18 + Vite + TanStack Router + TanStack Query (`apps/web/`) — port 3000
-- **Docs**: Astro 4 + Tailwind CSS (`apps/docs/`) — deployed to Vercel
+- **Docs**: Blume (`apps/docs/`) — deployed to Vercel
 - **Database**: PostgreSQL (via Drizzle ORM + node-postgres)
 - **Queue**: Redis (`ioredis`) for async job queue
 - **Container build**: Railpack CLI + BuildKit daemon
@@ -22,10 +22,12 @@ Caddy ──▶ API ──▶ Buildkit
   ▼          ▼
  Web      PostgreSQL  Redis
 
+Gateway :443 ──▶ Caddy (app traffic) / managed databases (TLS SNI routing)
+
 Observability: cAdvisor → Prometheus → Grafana / Loki
 ```
 
-Services run in Docker Compose: Caddy, API, Web, Buildkit, PostgreSQL, Redis, cAdvisor, Prometheus, Loki, Promtail, Grafana.
+Services run in Docker Compose: Gateway, Caddy, API, Web, Buildkit, PostgreSQL, Redis, cAdvisor, Prometheus, Loki, Promtail, Grafana.
 
 ## Directory Structure
 
@@ -48,12 +50,12 @@ Services run in Docker Compose: Caddy, API, Web, Buildkit, PostgreSQL, Redis, cA
 │   │   │   ├── api/          # API client
 │   │   │   └── hooks/        # Custom hooks
 │   │   └── Dockerfile
-│   └── docs/         # Documentation site (Astro)
-│       ├── src/
-│       │   ├── content/docs/ # Markdown doc pages (content collection)
-│       │   ├── layouts/      # Layout component with sidebar
-│       │   ├── components/   # Landing page components
-│       │   └── styles/       # Global CSS
+│   └── docs/         # Documentation site (Blume)
+│       ├── docs/         # Markdown doc pages
+│       ├── pages/        # Custom pages (landing page)
+│       ├── components/   # Landing page components
+│       ├── styles/       # Global CSS
+│       ├── blume.config.ts # Blume configuration
 │       └── vercel.json
 ├── infra/
 │   ├── caddy/        # Caddyfile + dynamic route files
@@ -73,6 +75,7 @@ Services run in Docker Compose: Caddy, API, Web, Buildkit, PostgreSQL, Redis, cA
 | File | Purpose |
 |------|---------|
 | `apps/api/src/index.ts` | API entry point — bootstraps DB, queue, scaling engine, etc. |
+| `apps/api/src/tunnels/gateway.ts` | DB gateway entry — owns host :443, routes by TLS SNI to Caddy or database engines |
 | `apps/api/src/db/schema.ts` | Drizzle ORM schema definitions (all tables) |
 | `apps/api/src/db/db-provider.ts` | Database DI provider (setDbProvider/getDb) |
 | `apps/api/src/db/migrations/` | Drizzle Kit migration files (`drizzle-kit generate` outputs here) |
@@ -81,9 +84,9 @@ Services run in Docker Compose: Caddy, API, Web, Buildkit, PostgreSQL, Redis, cA
 | `apps/web/src/routes/index.tsx` | TanStack Router tree definition |
 | `apps/web/src/routes/Dashboard.tsx` | Main dashboard page |
 | `apps/web/src/components/Layout.tsx` | Shared app layout (sidebar, header) |
-| `apps/docs/src/layouts/Layout.astro` | Docs layout with sidebar (auto-generated from content collection) |
-| `apps/docs/src/pages/docs/[...slug].astro` | Catch-all route rendering content collection entries |
-| `apps/docs/src/content.config.ts` | Astro content collection schema |
+| `apps/docs/blume.config.ts` | Blume configuration (sidebar, theme, base path) |
+| `apps/docs/docs/` | Documentation markdown files |
+| `apps/docs/pages/index.astro` | Marketing landing page |
 | `scripts/install.sh` | Install script — downloads configs, pulls images, installs CLI |
 | `scripts/dequel` | CLI tool — `start`, `stop`, `status`, `logs`, `update`, `uninstall` |
 | `.github/workflows/release.yml` | On `v*` tag: build Docker images → ghcr.io, create GitHub Release |
@@ -106,8 +109,8 @@ bun run dev          # Vite dev server
 bun test             # Run tests
 
 # Inside apps/docs/
-bun run dev          # Astro dev server
-bun run build        # Astro build
+bun run dev          # Blume dev server
+bun run build        # Blume build
 
 # Docker
 docker compose up -d               # Start full stack
@@ -134,21 +137,19 @@ bun run sync-versions              # Syncs VERSION → sub-package.json files
 - No emojis in code or UI unless explicitly requested
 - Functional components with hooks (React)
 - Tailwind CSS for styling (both web and docs)
-- Astro content collections for docs
 
 ## Adding a Doc Page
 
-1. Create `.md` file in `apps/docs/src/content/docs/` with frontmatter:
+1. Create `.md` or `.mdx` file in `apps/docs/docs/` with frontmatter:
    ```yaml
    ---
    title: Page Title
    category: Category Name
    description: Short description.
-   slug: page-slug
    ---
    ```
-2. If it's a new category, add it to `categoryOrder` array in `apps/docs/src/layouts/Layout.astro`.
-3. The sidebar updates automatically from the content collection.
+2. Add the route to `navigation.sidebar` in `apps/docs/blume.config.ts`.
+3. The sidebar and search index update automatically.
 
 ## Release Process
 
@@ -180,6 +181,7 @@ Requires secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
 | `CADDY_ROUTES_DIR` | `./infra/caddy/routes` | Caddy route output |
 | `CADDY_BASE_DOMAIN` | `localhost` | Base domain for deployment subdomains. Set to a real domain (e.g. `example.com`) for Let's Encrypt auto-SSL. Public links (e.g. failure email logs) derive their base URL from this. |
 | `CADDY_EMAIL` | _(empty)_ | Email for Let's Encrypt SSL certificate notifications |
+| `GATEWAY_CERT_DIR` | `/app/data` | Directory where the gateway stores its self-signed TLS certificate |
 | `DOCKER_NETWORK` | `dequel_net` | Docker network for deployments |
 | `BUILDKIT_HOST` | `tcp://buildkit:1234` | Buildkit daemon |
 | `RAILPACK_BUILD_TIMEOUT_MS` | `1200000` | Build timeout |

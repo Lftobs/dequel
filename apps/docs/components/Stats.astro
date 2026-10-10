@@ -1,0 +1,30 @@
+---
+const stats = [
+  { value: "< 50s", label: "AVERAGE DEPLOY TIME", sub: "Railpack + BuildKit" },
+  { value: "100%", label: "SELF-HOSTED CONTROL", sub: "On your own VPS" },
+  { value: "$0", label: "THIRD-PARTY SAAS FEES", sub: "Zero vendor lock-in" },
+  { value: "0%", label: "INFRASTRUCTURE MARKUP", sub: "Pay only for raw VPS" },
+];
+---
+
+<section class="max-w-[1150px] mx-auto px-4 py-12 dq-reveal">
+  <div class="bg-[#0c0c0e] border border-[#222228] rounded-2xl overflow-hidden shadow-2xl">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#222228]">
+      {stats.map((stat) => (
+        <div class="px-8 py-7 flex flex-col justify-between group transition-all duration-200 hover:bg-[#121217] cursor-default">
+          <div class="text-3xl lg:text-4xl font-bold tracking-tight text-[#ea580c] font-display mb-3 transition-transform duration-200 group-hover:scale-105 group-hover:drop-shadow-[0_0_12px_rgba(234,88,12,0.4)]">
+            {stat.value}
+          </div>
+          <div>
+            <div class="text-[0.65rem] font-bold tracking-wider text-[#d4d4d8] uppercase mb-1 transition-colors group-hover:text-white">
+              {stat.label}
+            </div>
+            <div class="text-[0.68rem] font-mono text-[#71717a] transition-colors group-hover:text-[#a1a1aa]">
+              {stat.sub}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

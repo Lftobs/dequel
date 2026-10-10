@@ -62,12 +62,12 @@ export function MongoDocumentCard({ doc, index, onEdit, onDelete }: MongoDocumen
 	};
 
 	return (
-		<div className="rounded-2xl border border-border/70 bg-black/40 backdrop-blur-sm overflow-hidden shadow-md hover:border-emerald-500/30 transition-all">
+		<div className="rounded-2xl border border-border/70 bg-black/40 backdrop-blur-sm overflow-hidden shadow-md hover:border-orange-500/30 transition-all">
 			<div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-zinc-900/60 font-mono text-xs">
 				<div className="flex items-center gap-2">
 					<Badge
 						variant="outline"
-						className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px] font-mono px-2 py-0.5"
+						className="border-orange-500/30 bg-orange-500/10 text-orange-400 text-[10px] font-mono px-2 py-0.5"
 					>
 						_id: {docId}
 					</Badge>

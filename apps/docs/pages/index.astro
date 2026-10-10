@@ -1,0 +1,451 @@
+---
+import "../styles/global.css";
+import Hero from "../components/Hero.astro";
+import Stats from "../components/Stats.astro";
+import Comparison from "../components/Comparison.astro";
+import Features from "../components/Features.astro";
+import HowItWorks from "../components/HowItWorks.astro";
+import TerminalDemo from "../components/TerminalDemo.astro";
+import CTA from "../components/CTA.astro";
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="description"
+			content="Dequel — The self-hosted PaaS container platform. Deploy, route with auto-SSL, scale, and monitor applications on your own servers with zero vendor lock-in."
+		/>
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0"
+		/>
+		<link
+			rel="preconnect"
+			href="https://fonts.googleapis.com"
+		/>
+		<link
+			rel="preconnect"
+			href="https://fonts.gstatic.com"
+			crossorigin
+		/>
+		<link
+			href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..600;1,9..40,400..600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link
+			rel="icon"
+			type="image/svg+xml"
+			href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'%3E%3ClinearGradient id='g' x1='0' y1='0' x2='32' y2='32' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0%25' stop-color='%23f59e0b'/%3E%3Cstop offset='50%25' stop-color='%23ea580c'/%3E%3Cstop offset='100%25' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3Cpath d='M12 8H20C24.4183 8 28 11.5817 28 16C28 20.4183 24.4183 24 20 24H12' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M20 24H12C7.58172 24 4 20.4183 4 16C4 11.5817 7.58172 8 12 8H16' stroke='url(%23g)' stroke-width='3' stroke-linecap='round' stroke-dasharray='40 10'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='url(%23g)'/%3E%3C/svg%3E"
+		/>
+		<title>
+			Dequel — Self-Hosted PaaS Engine & Container Platform
+		</title>
+	</head>
+	<body class="dq-noise bg-[#0a0a0c] text-[#e2e2e8]">
+		<!-- Cloudflare-style Header Nav -->
+		<nav class="dq-nav">
+			<div class="dq-nav-inner">
+				<a href="/" class="dq-nav-brand">
+					<svg
+						viewBox="0 0 32 32"
+						fill="none"
+						xmlns="http://www.w3.org/2000/svg"
+						width="26"
+						height="26"
+					>
+						<defs>
+							<linearGradient
+								id="nav-logo-g"
+								x1="0"
+								y1="0"
+								x2="32"
+								y2="32"
+								gradientUnits="userSpaceOnUse"
+							>
+								<stop
+									offset="0%"
+									stop-color="#f59e0b"
+								></stop>
+								<stop
+									offset="50%"
+									stop-color="#ea580c"
+								></stop>
+								<stop
+									offset="100%"
+									stop-color="#ec4899"
+								></stop>
+							</linearGradient>
+						</defs>
+						<path
+							d="M12 8H20C24.4183 8 28 11.5817 28 16C28 20.4183 24.4183 24 20 24H12"
+							stroke="url(#nav-logo-g)"
+							stroke-width="3.5"
+							stroke-linecap="round"
+						></path>
+						<path
+							d="M20 24H12C7.58172 24 4 20.4183 4 16C4 11.5817 7.58172 8 12 8H16"
+							stroke="url(#nav-logo-g)"
+							stroke-width="3.5"
+							stroke-linecap="round"
+							stroke-dasharray="40 10"
+						></path>
+						<circle
+							cx="16"
+							cy="16"
+							r="3.5"
+							fill="url(#nav-logo-g)"
+						></circle>
+					</svg>
+					<span class="dq-nav-wordmark"
+						>dequel</span
+					>
+				</a>
+				<div class="dq-nav-links">
+					<a
+						href="#features"
+						class="dq-nav-link"
+						>Platform</a
+					>
+					<a
+						href="#comparison"
+						class="dq-nav-link"
+						>Why Dequel</a
+					>
+					<a
+						href="#how-it-works"
+						class="dq-nav-link"
+						>Architecture</a
+					>
+					<a
+						href="/docs"
+						class="dq-nav-link"
+						>Docs</a
+					>
+					<a
+						href="/docs/installation"
+						class="cf-pill-btn-white text-xs !py-2 !px-4"
+					>
+						Deploy Now <span
+							class="dq-btn-arrow"
+							>→</span
+						>
+					</a>
+				</div>
+			</div>
+		</nav>
+
+		<main class="space-y-4">
+			<Hero />
+			<Stats />
+			<Comparison />
+			<Features />
+			<HowItWorks />
+			<TerminalDemo />
+			<CTA />
+		</main>
+
+		<footer class="dq-footer bg-[#070709] border-t border-[#222228] mt-20">
+			<div class="dq-footer-inner max-w-[1150px] mx-auto px-4 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+				<div class="dq-footer-brand flex items-center gap-2">
+					<svg
+						viewBox="0 0 32 32"
+						fill="none"
+						xmlns="http://www.w3.org/2000/svg"
+						width="20"
+						height="20"
+					>
+						<defs>
+							<linearGradient
+								id="foot-logo-g"
+								x1="0"
+								y1="0"
+								x2="32"
+								y2="32"
+								gradientUnits="userSpaceOnUse"
+							>
+								<stop
+									offset="0%"
+									stop-color="#f59e0b"
+								></stop>
+								<stop
+									offset="50%"
+									stop-color="#ea580c"
+								></stop>
+								<stop
+									offset="100%"
+									stop-color="#ec4899"
+								></stop>
+							</linearGradient>
+						</defs>
+						<path
+							d="M12 8H20C24.4183 8 28 11.5817 28 16C28 20.4183 24.4183 24 20 24H12"
+							stroke="url(#foot-logo-g)"
+							stroke-width="3.5"
+							stroke-linecap="round"
+						></path>
+						<path
+							d="M20 24H12C7.58172 24 4 20.4183 4 16C4 11.5817 7.58172 8 12 8H16"
+							stroke="url(#foot-logo-g)"
+							stroke-width="3.5"
+							stroke-linecap="round"
+							stroke-dasharray="40 10"
+						></path>
+						<circle
+							cx="16"
+							cy="16"
+							r="3.5"
+							fill="url(#foot-logo-g)"
+						></circle>
+					</svg>
+					<span
+						style="font-weight:700;font-size:0.85rem;letter-spacing:0.04em;color:var(--dq-text-muted);"
+						>dequel</span
+					>
+				</div>
+				<div class="dq-footer-links flex gap-6 text-xs">
+					<a
+						href="/docs"
+						class="text-[#7f7f8a] hover:text-white transition-colors"
+						>Documentation</a
+					>
+					<a
+						href="/docs/installation"
+						class="text-[#7f7f8a] hover:text-white transition-colors"
+						>Installation</a
+					>
+					<a
+						href="https://github.com/Lftobs/dequel"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="text-[#7f7f8a] hover:text-white transition-colors"
+						>GitHub</a
+					>
+				</div>
+				<p class="dq-footer-copy text-xs text-[#4b4b54]">
+					© {new Date().getFullYear()} Dequel. Self-hosted PaaS container platform.
+				</p>
+			</div>
+		</footer>
+
+		<!-- ─── Interactive Scripts ─── -->
+		<script>
+			// ── Scroll reveal ──
+			const revealEls = document.querySelectorAll(".dq-reveal");
+			const revealObs = new IntersectionObserver(
+				(entries) => {
+					entries.forEach((entry) => {
+						if (entry.isIntersecting) {
+							entry.target.classList.add("dq-visible");
+						}
+					});
+				},
+				{ threshold: 0.1 }
+			);
+			revealEls.forEach((el) => revealObs.observe(el));
+
+			// ── Cloudflare Product Capability Tab Switcher ──
+			const tabBtns = document.querySelectorAll("#cf-tab-container .cf-tab-btn");
+			const tabPanels = document.querySelectorAll(".tab-panel");
+
+			tabBtns.forEach((btn) => {
+				btn.addEventListener("click", () => {
+					const targetTab = btn.getAttribute("data-tab");
+
+					tabBtns.forEach((b) => b.classList.remove("active"));
+					btn.classList.add("active");
+
+					tabPanels.forEach((panel) => {
+						if (panel.id === `tab-panel-${targetTab}`) {
+							panel.classList.remove("hidden");
+							panel.classList.add("block");
+						} else {
+							panel.classList.remove("block");
+							panel.classList.add("hidden");
+						}
+					});
+				});
+			});
+
+			// ── Terminal typing animation ──
+			const lines = [
+				{
+					type: "cmd",
+					text: "dequel deploy --project my-app",
+				},
+				{
+					type: "info",
+					text: "  ⠋ Railpack analyzing codebase (Node.js/Express)...",
+				},
+				{
+					type: "info",
+					text: "  ✓ Container image built via Buildkit (1.8s)",
+				},
+				{
+					type: "info",
+					text: "  ⠋ Reloading dynamic Caddy proxy routes & SSL...",
+				},
+				{
+					type: "success",
+					text: "  ✓ Deployed to container cluster (replica 1/1)",
+				},
+				{
+					type: "url",
+					text: "  → Live at https://my-app.dequel.dev",
+				},
+			];
+
+			const termBody = document.getElementById("terminal-output");
+			let cursor = document.getElementById("t-cursor");
+			let cmdSpan = document.getElementById("t-line-0");
+			let lineIdx = 0;
+			let charIdx = 0;
+			let phase = "typing";
+
+			function typeChar() {
+				if (lineIdx === 0 && phase === "typing" && cmdSpan) {
+					if (charIdx < lines[0].text.length) {
+						cmdSpan.textContent += lines[0].text[charIdx];
+						charIdx++;
+						setTimeout(typeChar, 30 + Math.random() * 40);
+					} else {
+						if (cursor) cursor.style.display = "none";
+						lineIdx = 1;
+						setTimeout(showLine, 600);
+					}
+				}
+			}
+
+			function showLine() {
+				if (!termBody) return;
+				if (lineIdx >= lines.length) {
+					setTimeout(resetTerminal, 3500);
+					return;
+				}
+				const line = lines[lineIdx];
+				const div = document.createElement("div");
+				
+				let colorClass = "text-[#7f7f8a]";
+				if (line.type === "success") colorClass = "text-green-400 font-semibold";
+				if (line.type === "url") colorClass = "text-amber-400 font-semibold";
+				if (line.type === "cmd") colorClass = "text-[#e2e2e8]";
+
+				div.innerHTML = `<span class="${colorClass}">${line.text}</span>`;
+				div.style.opacity = "0";
+				div.style.transform = "translateY(4px)";
+				termBody.appendChild(div);
+
+				requestAnimationFrame(() => {
+					div.style.transition = "opacity 150ms, transform 150ms";
+					div.style.opacity = "1";
+					div.style.transform = "translateY(0)";
+				});
+
+				lineIdx++;
+				const delay = line.type === "cmd" ? 200 : line.type === "success" || line.type === "url" ? 800 : 1000;
+				setTimeout(showLine, delay);
+			}
+
+			function resetTerminal() {
+				if (!termBody) return;
+				termBody.innerHTML = '<div><span class="text-[#ea580c]">$ </span><span class="text-[#e2e2e8]" id="t-line-0"></span><span class="inline-block w-2 h-4 bg-[#ea580c] align-middle animate-pulse" id="t-cursor"></span></div>';
+				cmdSpan = document.getElementById("t-line-0");
+				cursor = document.getElementById("t-cursor");
+				lineIdx = 0;
+				charIdx = 0;
+				phase = "typing";
+				setTimeout(typeChar, 500);
+			}
+
+			const termSection = document.getElementById("demo");
+			if (termSection) {
+				const termObs = new IntersectionObserver(
+					(entries) => {
+						entries.forEach((entry) => {
+							if (entry.isIntersecting) {
+								setTimeout(typeChar, 800);
+								termObs.unobserve(entry.target);
+							}
+						});
+					},
+					{ threshold: 0.3 }
+				);
+				termObs.observe(termSection);
+			}
+
+			document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+				anchor.addEventListener("click", (e) => {
+					const href = anchor.getAttribute("href");
+					if (href && href !== "#") {
+						e.preventDefault();
+						const target = document.querySelector(href);
+						if (target) {
+							target.scrollIntoView({ behavior: "smooth", block: "start" });
+						}
+					}
+				});
+			});
+
+			// ── Micro-interaction: Hero One-Click Command Copy ──
+			const heroCopy = document.getElementById("hero-copy-cmd");
+			if (heroCopy) {
+				heroCopy.addEventListener("click", async () => {
+					const cmd = heroCopy.getAttribute("data-cmd");
+					if (!cmd) return;
+					try {
+						await navigator.clipboard.writeText(cmd);
+						const copyIcon = heroCopy.querySelector(".copy-icon");
+						const checkIcon = heroCopy.querySelector(".check-icon");
+						const feedbackText = heroCopy.querySelector(".copy-feedback-text");
+						
+						copyIcon?.classList.add("hidden");
+						checkIcon?.classList.remove("hidden");
+						feedbackText?.classList.remove("hidden");
+						heroCopy.classList.add("border-green-500/50");
+
+						setTimeout(() => {
+							copyIcon?.classList.remove("hidden");
+							checkIcon?.classList.add("hidden");
+							feedbackText?.classList.add("hidden");
+							heroCopy.classList.remove("border-green-500/50");
+						}, 2200);
+					} catch (e) {}
+				});
+			}
+
+			// ── Micro-interaction: Feature code snippet copy ──
+			document.querySelectorAll(".feature-copy-btn").forEach((btn) => {
+				btn.addEventListener("click", async () => {
+					const code = btn.getAttribute("data-code");
+					if (!code) return;
+					try {
+						await navigator.clipboard.writeText(code);
+						const copyIcon = btn.querySelector(".f-copy-icon");
+						const checkIcon = btn.querySelector(".f-check-icon");
+						copyIcon?.classList.add("hidden");
+						checkIcon?.classList.remove("hidden");
+						setTimeout(() => {
+							copyIcon?.classList.remove("hidden");
+							checkIcon?.classList.add("hidden");
+						}, 2000);
+					} catch (e) {}
+				});
+			});
+
+			// ── Micro-interaction: Cursor spotlight on cards ──
+			const spotlightCards = document.querySelectorAll(
+				".cf-hero-card, #comparison > div > div, .tab-panel > div"
+			);
+			spotlightCards.forEach((card) => {
+				card.addEventListener("mousemove", (e) => {
+					const rect = (card as HTMLElement).getBoundingClientRect();
+					const x = (e as MouseEvent).clientX - rect.left;
+					const y = (e as MouseEvent).clientY - rect.top;
+					(card as HTMLElement).style.setProperty("--mouse-x", `${x}px`);
+					(card as HTMLElement).style.setProperty("--mouse-y", `${y}px`);
+				});
+			});
+		</script>
+	</body>
+</html>

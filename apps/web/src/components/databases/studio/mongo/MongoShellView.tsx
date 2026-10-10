@@ -1,4 +1,4 @@
-import { Play, Sparkles, Terminal } from "lucide-react";
+import { Play, Terminal } from "lucide-react";
 import type { QueryExecResult } from "../../../../types";
 import { Badge } from "../../../ui/badge";
 import { Button } from "../../../ui/button";
@@ -37,7 +37,7 @@ export function MongoShellView({
 			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40 pb-3">
 				<div>
 					<span className="text-xs font-bold text-foreground flex items-center gap-2">
-						<Terminal className="h-4 w-4 text-emerald-400" />
+						<Terminal className="h-4 w-4 text-orange-400" />
 						MongoDB Shell Console
 					</span>
 					<p className="text-[11px] text-muted-foreground mt-0.5">
@@ -49,7 +49,7 @@ export function MongoShellView({
 					onClick={onExecute}
 					disabled={isExecuting || !queryText.trim()}
 					size="sm"
-					className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs h-8 px-4 rounded-xl shadow-md gap-1.5 self-start sm:self-auto"
+					className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-8 px-4 rounded-xl shadow-md gap-1.5 self-start sm:self-auto"
 				>
 					<Play className="h-3.5 w-3.5 fill-current" />
 					{isExecuting ? "Executing…" : "Run Query"}
@@ -64,7 +64,7 @@ export function MongoShellView({
 						key={snip.label}
 						type="button"
 						onClick={() => onQueryChange(snip.code)}
-						className="rounded-lg border border-border/60 bg-black/40 px-2 py-1 text-[11px] font-mono text-zinc-300 hover:text-emerald-400 hover:border-emerald-500/40 transition-colors"
+						className="rounded-lg border border-border/60 bg-black/40 px-2 py-1 text-[11px] font-mono text-zinc-300 hover:text-orange-400 hover:border-orange-500/40 transition-colors"
 					>
 						{snip.label}
 					</button>
@@ -76,7 +76,7 @@ export function MongoShellView({
 				onChange={(e) => onQueryChange(e.target.value)}
 				rows={8}
 				placeholder={`db.${col}.find({}).limit(10)`}
-				className="w-full bg-black/50 border border-border/60 rounded-2xl p-4 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50 min-h-[160px] resize-y"
+				className="w-full bg-black/50 border border-border/60 rounded-2xl p-4 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-orange-500/50 min-h-[160px] resize-y"
 			/>
 
 			{error && (
@@ -88,7 +88,7 @@ export function MongoShellView({
 			{result && (
 				<div className="space-y-2 pt-2">
 					<div className="flex items-center gap-2">
-						<Badge variant="outline" className="text-[10px] font-mono border-emerald-500/30 text-emerald-400">
+						<Badge variant="outline" className="text-[10px] font-mono border-orange-500/30 text-orange-400">
 							{result.rows.length} {result.rows.length === 1 ? "result" : "results"} ({result.executionTimeMs} ms)
 						</Badge>
 					</div>

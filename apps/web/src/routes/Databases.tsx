@@ -3,7 +3,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { Database, HardDrive, Plus, RefreshCw, Server, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import * as api from "../api/client";
-import { CreateDatabaseDialog } from "../components/databases/CreateDatabaseDialog";
 import { DatabaseCard } from "../components/databases/DatabaseCard";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -19,7 +18,6 @@ import type { Database as DatabaseRecord } from "../types";
 
 export function Databases() {
 	const navigate = useNavigate();
-	const [isCreating, setIsCreating] = useState(false);
 	const [deleting, setDeleting] = useState<DatabaseRecord | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -128,7 +126,7 @@ export function Databases() {
 					</p>
 					<Button
 						size="sm"
-						onClick={() => setIsCreating(true)}
+						onClick={() => navigate({ to: "/databases/new" })}
 						variant="outline"
 						className="mt-5 text-xs border-orange-500/40 text-orange-400 hover:bg-orange-500/10 gap-1.5"
 					>
@@ -136,13 +134,6 @@ export function Databases() {
 					</Button>
 				</div>
 			)}
-
-			<CreateDatabaseDialog
-				open={isCreating}
-				onOpenChange={setIsCreating}
-				projects={projects.data ?? []}
-				onCreated={refresh}
-			/>
 
 			<Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
 				<DialogContent className="sm:max-w-[420px] bg-card border-border text-foreground rounded-2xl shadow-2xl backdrop-blur-xl">
