@@ -43,98 +43,86 @@ import CTA from "../components/CTA.astro";
 			Dequel — Self-Hosted PaaS Engine & Container Platform
 		</title>
 	</head>
-	<body class="dq-noise bg-[#0a0a0c] text-[#e2e2e8]">
+	<body class="dq-noise bg-[#0a0a0c] text-[#e2e2e8] overflow-x-hidden">
 		<!-- Cloudflare-style Header Nav -->
 		<nav class="dq-nav">
 			<div class="dq-nav-inner">
 				<a href="/" class="dq-nav-brand">
-					<svg
-						viewBox="0 0 32 32"
-						fill="none"
-						xmlns="http://www.w3.org/2000/svg"
-						width="26"
-						height="26"
-					>
+					<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="26" height="26">
 						<defs>
-							<linearGradient
-								id="nav-logo-g"
-								x1="0"
-								y1="0"
-								x2="32"
-								y2="32"
-								gradientUnits="userSpaceOnUse"
-							>
-								<stop
-									offset="0%"
-									stop-color="#f59e0b"
-								></stop>
-								<stop
-									offset="50%"
-									stop-color="#ea580c"
-								></stop>
-								<stop
-									offset="100%"
-									stop-color="#ec4899"
-								></stop>
+							<linearGradient id="nav-logo-g" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+								<stop offset="0%" stop-color="#f59e0b"></stop>
+								<stop offset="50%" stop-color="#ea580c"></stop>
+								<stop offset="100%" stop-color="#ec4899"></stop>
 							</linearGradient>
 						</defs>
-						<path
-							d="M12 8H20C24.4183 8 28 11.5817 28 16C28 20.4183 24.4183 24 20 24H12"
-							stroke="url(#nav-logo-g)"
-							stroke-width="3.5"
-							stroke-linecap="round"
-						></path>
-						<path
-							d="M20 24H12C7.58172 24 4 20.4183 4 16C4 11.5817 7.58172 8 12 8H16"
-							stroke="url(#nav-logo-g)"
-							stroke-width="3.5"
-							stroke-linecap="round"
-							stroke-dasharray="40 10"
-						></path>
-						<circle
-							cx="16"
-							cy="16"
-							r="3.5"
-							fill="url(#nav-logo-g)"
-						></circle>
+						<path d="M12 8H20C24.4183 8 28 11.5817 28 16C28 20.4183 24.4183 24 20 24H12" stroke="url(#nav-logo-g)" stroke-width="3.5" stroke-linecap="round"></path>
+						<path d="M20 24H12C7.58172 24 4 20.4183 4 16C4 11.5817 7.58172 8 12 8H16" stroke="url(#nav-logo-g)" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="40 10"></path>
+						<circle cx="16" cy="16" r="3.5" fill="url(#nav-logo-g)"></circle>
 					</svg>
-					<span class="dq-nav-wordmark"
-						>dequel</span
-					>
+					<span class="dq-nav-wordmark">dequel</span>
 				</a>
 				<div class="dq-nav-links">
-					<a
-						href="#features"
-						class="dq-nav-link"
-						>Platform</a
-					>
-					<a
-						href="#comparison"
-						class="dq-nav-link"
-						>Why Dequel</a
-					>
-					<a
-						href="#how-it-works"
-						class="dq-nav-link"
-						>Architecture</a
-					>
+					<a href="#features" class="dq-nav-link">Platform</a>
+					<a href="#comparison" class="dq-nav-link">Why Dequel</a>
+					<a href="#how-it-works" class="dq-nav-link">Architecture</a>
+					<a href="/docs" class="dq-nav-link">Docs</a>
+					<a href="/docs/installation" class="cf-pill-btn-white text-xs !py-2 !px-4">
+						Deploy Now <span class="dq-btn-arrow">→</span>
+					</a>
+				</div>
+				<div class="dq-nav-mobile-actions">
 					<a
 						href="/docs"
-						class="dq-nav-link"
-						>Docs</a
+						class="text-xs font-mono font-bold uppercase tracking-wider text-[#d4d4d8] hover:text-[#ea580c] px-2.5 py-1.5 rounded-md border border-[#222228] bg-[#141418]"
 					>
-					<a
-						href="/docs/installation"
-						class="cf-pill-btn-white text-xs !py-2 !px-4"
-					>
-						Deploy Now <span
-							class="dq-btn-arrow"
-							>→</span
-						>
+						Docs
 					</a>
+					<button
+						type="button"
+						id="dq-mobile-menu-btn"
+						class="dq-mobile-toggle"
+						aria-label="Toggle navigation menu"
+						aria-expanded="false"
+					>
+						<svg id="dq-menu-icon-open" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+							<line x1="3" y1="6" x2="21" y2="6"></line>
+							<line x1="3" y1="12" x2="21" y2="12"></line>
+							<line x1="3" y1="18" x2="21" y2="18"></line>
+						</svg>
+						<svg id="dq-menu-icon-close" class="w-4 h-4 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+							<line x1="18" y1="6" x2="6" y2="18"></line>
+							<line x1="6" y1="6" x2="18" y2="18"></line>
+						</svg>
+					</button>
 				</div>
 			</div>
 		</nav>
+
+		<div id="dq-mobile-menu" class="dq-mobile-menu" aria-label="Mobile Navigation">
+			<a href="#features" class="dq-mobile-menu-link">
+				<span>Platform Capabilities</span>
+				<span class="text-xs text-[#71717a] font-mono">01</span>
+			</a>
+			<a href="#comparison" class="dq-mobile-menu-link">
+				<span>Why Dequel</span>
+				<span class="text-xs text-[#71717a] font-mono">02</span>
+			</a>
+			<a href="#how-it-works" class="dq-mobile-menu-link">
+				<span>Engine Architecture</span>
+				<span class="text-xs text-[#71717a] font-mono">03</span>
+			</a>
+			<a href="/docs" class="dq-mobile-menu-link">
+				<span>Documentation</span>
+				<span class="text-xs text-[#ea580c] font-mono">DOCS →</span>
+			</a>
+			<div class="pt-2 mt-1 border-t border-[#1c1c22]">
+				<a href="/docs/installation" class="cf-pill-btn-white w-full text-xs !py-2.5">
+					<span>Deploy Now in 1 Command</span>
+					<span class="dq-btn-arrow">→</span>
+				</a>
+			</div>
+		</div>
 
 		<main class="space-y-4">
 			<Hero />
@@ -146,82 +134,27 @@ import CTA from "../components/CTA.astro";
 			<CTA />
 		</main>
 
-		<footer class="dq-footer bg-[#070709] border-t border-[#222228] mt-20">
+		<footer class="dq-footer bg-[#070709] border-t border-[#222228] mt-16 md:mt-20">
 			<div class="dq-footer-inner max-w-[1150px] mx-auto px-4 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
 				<div class="dq-footer-brand flex items-center gap-2">
-					<svg
-						viewBox="0 0 32 32"
-						fill="none"
-						xmlns="http://www.w3.org/2000/svg"
-						width="20"
-						height="20"
-					>
+					<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
 						<defs>
-							<linearGradient
-								id="foot-logo-g"
-								x1="0"
-								y1="0"
-								x2="32"
-								y2="32"
-								gradientUnits="userSpaceOnUse"
-							>
-								<stop
-									offset="0%"
-									stop-color="#f59e0b"
-								></stop>
-								<stop
-									offset="50%"
-									stop-color="#ea580c"
-								></stop>
-								<stop
-									offset="100%"
-									stop-color="#ec4899"
-								></stop>
+							<linearGradient id="foot-logo-g" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+								<stop offset="0%" stop-color="#f59e0b"></stop>
+								<stop offset="50%" stop-color="#ea580c"></stop>
+								<stop offset="100%" stop-color="#ec4899"></stop>
 							</linearGradient>
 						</defs>
-						<path
-							d="M12 8H20C24.4183 8 28 11.5817 28 16C28 20.4183 24.4183 24 20 24H12"
-							stroke="url(#foot-logo-g)"
-							stroke-width="3.5"
-							stroke-linecap="round"
-						></path>
-						<path
-							d="M20 24H12C7.58172 24 4 20.4183 4 16C4 11.5817 7.58172 8 12 8H16"
-							stroke="url(#foot-logo-g)"
-							stroke-width="3.5"
-							stroke-linecap="round"
-							stroke-dasharray="40 10"
-						></path>
-						<circle
-							cx="16"
-							cy="16"
-							r="3.5"
-							fill="url(#foot-logo-g)"
-						></circle>
+						<path d="M12 8H20C24.4183 8 28 11.5817 28 16C28 20.4183 24.4183 24 20 24H12" stroke="url(#foot-logo-g)" stroke-width="3.5" stroke-linecap="round"></path>
+						<path d="M20 24H12C7.58172 24 4 20.4183 4 16C4 11.5817 7.58172 8 12 8H16" stroke="url(#foot-logo-g)" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="40 10"></path>
+						<circle cx="16" cy="16" r="3.5" fill="url(#foot-logo-g)"></circle>
 					</svg>
-					<span
-						style="font-weight:700;font-size:0.85rem;letter-spacing:0.04em;color:var(--dq-text-muted);"
-						>dequel</span
-					>
+					<span style="font-weight:700;font-size:0.85rem;letter-spacing:0.04em;color:var(--dq-text-muted);">dequel</span>
 				</div>
 				<div class="dq-footer-links flex gap-6 text-xs">
-					<a
-						href="/docs"
-						class="text-[#7f7f8a] hover:text-white transition-colors"
-						>Documentation</a
-					>
-					<a
-						href="/docs/installation"
-						class="text-[#7f7f8a] hover:text-white transition-colors"
-						>Installation</a
-					>
-					<a
-						href="https://github.com/Lftobs/dequel"
-						target="_blank"
-						rel="noopener noreferrer"
-						class="text-[#7f7f8a] hover:text-white transition-colors"
-						>GitHub</a
-					>
+					<a href="/docs" class="text-[#7f7f8a] hover:text-white transition-colors">Documentation</a>
+					<a href="/docs/installation" class="text-[#7f7f8a] hover:text-white transition-colors">Installation</a>
+					<a href="https://github.com/Lftobs/dequel" target="_blank" rel="noopener noreferrer" class="text-[#7f7f8a] hover:text-white transition-colors">GitHub</a>
 				</div>
 				<p class="dq-footer-copy text-xs text-[#4b4b54]">
 					© {new Date().getFullYear()} Dequel. Self-hosted PaaS container platform.
@@ -231,6 +164,29 @@ import CTA from "../components/CTA.astro";
 
 		<!-- ─── Interactive Scripts ─── -->
 		<script>
+			// ── Mobile Navigation Menu Toggle ──
+			const mobileBtn = document.getElementById("dq-mobile-menu-btn");
+			const mobileMenu = document.getElementById("dq-mobile-menu");
+			const iconOpen = document.getElementById("dq-menu-icon-open");
+			const iconClose = document.getElementById("dq-menu-icon-close");
+
+			function setMobileMenu(open: boolean) {
+				if (!mobileMenu || !mobileBtn) return;
+				mobileMenu.classList.toggle("open", open);
+				mobileBtn.setAttribute("aria-expanded", String(open));
+				iconOpen?.classList.toggle("hidden", open);
+				iconClose?.classList.toggle("hidden", !open);
+			}
+
+			mobileBtn?.addEventListener("click", () => {
+				const isOpen = mobileMenu?.classList.contains("open") ?? false;
+				setMobileMenu(!isOpen);
+			});
+
+			mobileMenu?.querySelectorAll("a").forEach((link) => {
+				link.addEventListener("click", () => setMobileMenu(false));
+			});
+
 			// ── Scroll reveal ──
 			const revealEls = document.querySelectorAll(".dq-reveal");
 			const revealObs = new IntersectionObserver(
@@ -252,48 +208,24 @@ import CTA from "../components/CTA.astro";
 			tabBtns.forEach((btn) => {
 				btn.addEventListener("click", () => {
 					const targetTab = btn.getAttribute("data-tab");
-
 					tabBtns.forEach((b) => b.classList.remove("active"));
 					btn.classList.add("active");
-
 					tabPanels.forEach((panel) => {
-						if (panel.id === `tab-panel-${targetTab}`) {
-							panel.classList.remove("hidden");
-							panel.classList.add("block");
-						} else {
-							panel.classList.remove("block");
-							panel.classList.add("hidden");
-						}
+						const match = panel.id === `tab-panel-${targetTab}`;
+						panel.classList.toggle("block", match);
+						panel.classList.toggle("hidden", !match);
 					});
 				});
 			});
 
 			// ── Terminal typing animation ──
 			const lines = [
-				{
-					type: "cmd",
-					text: "dequel deploy --project my-app",
-				},
-				{
-					type: "info",
-					text: "  ⠋ Railpack analyzing codebase (Node.js/Express)...",
-				},
-				{
-					type: "info",
-					text: "  ✓ Container image built via Buildkit (1.8s)",
-				},
-				{
-					type: "info",
-					text: "  ⠋ Reloading dynamic Caddy proxy routes & SSL...",
-				},
-				{
-					type: "success",
-					text: "  ✓ Deployed to container cluster (replica 1/1)",
-				},
-				{
-					type: "url",
-					text: "  → Live at https://my-app.dequel.dev",
-				},
+				{ type: "cmd", text: "dequel deploy --project my-app" },
+				{ type: "info", text: "  ⠋ Railpack analyzing codebase (Node.js/Express)..." },
+				{ type: "info", text: "  ✓ Container image built via Buildkit (1.8s)" },
+				{ type: "info", text: "  ⠋ Reloading dynamic Caddy proxy routes & SSL..." },
+				{ type: "success", text: "  ✓ Deployed to container cluster (replica 1/1)" },
+				{ type: "url", text: "  → Live at https://my-app.dequel.dev" },
 			];
 
 			const termBody = document.getElementById("terminal-output");
@@ -325,7 +257,7 @@ import CTA from "../components/CTA.astro";
 				}
 				const line = lines[lineIdx];
 				const div = document.createElement("div");
-				
+
 				let colorClass = "text-[#7f7f8a]";
 				if (line.type === "success") colorClass = "text-green-400 font-semibold";
 				if (line.type === "url") colorClass = "text-amber-400 font-semibold";
@@ -398,7 +330,7 @@ import CTA from "../components/CTA.astro";
 						const copyIcon = heroCopy.querySelector(".copy-icon");
 						const checkIcon = heroCopy.querySelector(".check-icon");
 						const feedbackText = heroCopy.querySelector(".copy-feedback-text");
-						
+
 						copyIcon?.classList.add("hidden");
 						checkIcon?.classList.remove("hidden");
 						feedbackText?.classList.remove("hidden");

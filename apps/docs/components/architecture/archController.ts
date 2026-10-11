@@ -75,6 +75,15 @@ export function initArchController() {
 				chipV4.setAttribute("stroke", "#ea580c");
 			}
 		}
+
+		// 6. Auto-pan horizontal scroll container on mobile viewports
+		const scrollEl = document.getElementById("dq-arch-scroll");
+		if (scrollEl && scrollEl.scrollWidth > scrollEl.clientWidth) {
+			const ratios = [0, 0.25, 0.48, 0.72, 1.0, 0.48];
+			const ratio = ratios[stepIndex - 1] ?? 0;
+			const maxScroll = scrollEl.scrollWidth - scrollEl.clientWidth;
+			scrollEl.scrollTo({ left: maxScroll * ratio, behavior: "smooth" });
+		}
 	}
 
 	function startTimer() {

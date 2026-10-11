@@ -33,22 +33,45 @@ export default defineConfig({
 			"/docs",
 			"/docs/installation",
 			"/docs/quickstart",
-			"/docs/configuration",
 			{
-				label: "Core Architecture",
-				items: ["/docs/deployments", "/docs/env-vars", "/docs/scaling", "/docs/system-config"],
+				label: "Projects",
+				items: [
+					"/docs/deployments",
+					"/docs/configuration",
+					"/docs/env-vars",
+					"/docs/shared-env-vars",
+					"/docs/volumes",
+					"/docs/domains",
+					"/docs/scaling",
+				],
 			},
 			{
-				label: "Deployment",
-				items: ["/docs/ai-diagnosis", "/docs/agent-caddy-routes"],
+				label: "Data",
+				items: ["/docs/databases", "/docs/backups"],
 			},
 			{
-				label: "Cluster Storage & Data",
-				items: ["/docs/databases", "/docs/volumes"],
+				label: "Multi-Server",
+				items: ["/docs/servers", "/docs/agent-caddy-routes"],
 			},
 			{
-				label: "Networking & Security",
-				items: ["/docs/auth", "/docs/domains", "/docs/ssl"],
+				label: "AI & Diagnosis",
+				items: ["/docs/ai-diagnosis"],
+			},
+			{
+				label: "Observability",
+				items: ["/docs/observability", "/docs/alerts"],
+			},
+			{
+				label: "Integrations",
+				items: ["/docs/github", "/docs/settings"],
+			},
+			{
+				label: "Security",
+				items: ["/docs/auth", "/docs/keys", "/docs/ssl"],
+			},
+			{
+				label: "Platform",
+				items: ["/docs/system-config", "/docs/cli"],
 			},
 			{
 				label: "Release",
