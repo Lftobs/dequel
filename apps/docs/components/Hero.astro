@@ -12,25 +12,25 @@ const {
 } = Astro.props;
 ---
 
-<section class="max-w-[1150px] mx-auto px-4 pt-24 pb-12 dq-reveal" id="hero">
+<section class="max-w-[1150px] mx-auto px-4 pt-20 sm:pt-24 pb-8 sm:pb-12 dq-reveal" id="hero">
   <div class="cf-hero-card text-center flex flex-col items-center">
     <!-- Background bottom light glow -->
     <div class="cf-hero-card-glow"></div>
 
     <!-- Main Headline -->
-    <h1 class="text-4xl md:text-6xl font-bold tracking-tight leading-[1.08] max-w-4xl mb-6 z-10 text-white">
+    <h1 class="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight leading-[1.08] max-w-4xl mb-5 sm:mb-6 z-10 text-white">
       {titleNormal}. <br class="hidden md:inline" />
       <span class="underline decoration-amber-300/40 underline-offset-8">{titleItalic}</span>
     </h1>
 
     <!-- Subtitle -->
-    <p class="text-base md:text-lg text-orange-100/90 max-w-2xl leading-relaxed mb-10 z-10 font-normal">
+    <p class="text-sm sm:text-base md:text-lg text-orange-100/90 max-w-2xl leading-relaxed mb-7 sm:mb-10 z-10 font-normal">
       {subText}
     </p>
 
     <!-- Pill Action Buttons -->
-    <div class="flex flex-wrap items-center justify-center gap-4 z-10">
-      <a href="/docs/installation" class="cf-pill-btn-white group">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 w-full sm:w-auto z-10">
+      <a href="/docs/installation" class="cf-pill-btn-white group w-full sm:w-auto">
         <span>Get Started in 1 Command</span>
         <span class="transition-transform group-hover:translate-x-1">→</span>
       </a>
@@ -38,10 +38,10 @@ const {
         href="https://github.com/Lftobs/dequel"
         target="_blank"
         rel="noopener noreferrer"
-        class="cf-pill-btn-glass flex items-center gap-2"
+        class="cf-pill-btn-glass flex items-center justify-center gap-2 w-full sm:w-auto"
       >
         <svg
-          class="w-4 h-4 text-white"
+          class="w-4 h-4 text-white shrink-0"
           viewBox="0 0 16 16"
           fill="currentColor"
           aria-hidden="true"
@@ -56,16 +56,16 @@ const {
 
     <!-- Micro-interaction: Interactive 1-Command Install Copy Pill -->
     <div
-      class="mt-8 z-10 inline-flex items-center gap-3 px-4 py-2 rounded-full bg-[#121217]/90 border border-white/10 hover:border-[#ea580c]/60 shadow-xl backdrop-blur transition-all duration-200 cursor-pointer group active:scale-[0.98]"
+      class="mt-6 sm:mt-8 z-10 inline-flex items-center gap-2 sm:gap-3 px-3.5 sm:px-4 py-2 rounded-full bg-[#121217]/90 border border-white/10 hover:border-[#ea580c]/60 shadow-xl backdrop-blur transition-all duration-200 cursor-pointer group active:scale-[0.98] max-w-full overflow-hidden"
       id="hero-copy-cmd"
       data-cmd="curl -fsSL https://dequel.intrep.xyz/install.sh | bash"
       title="Click to copy install command"
     >
-      <span class="text-xs font-mono text-[#ea580c] font-bold select-none">$</span>
-      <code class="text-xs font-mono text-[#e2e2e8] group-hover:text-white transition-colors">curl -fsSL https://dequel.intrep.xyz/install.sh | bash</code>
+      <span class="text-xs font-mono text-[#ea580c] font-bold select-none shrink-0">$</span>
+      <code class="text-[11px] sm:text-xs font-mono text-[#e2e2e8] group-hover:text-white transition-colors truncate">curl -fsSL https://dequel.intrep.xyz/install.sh | bash</code>
       <button
         type="button"
-        class="ml-1 text-[#8e8e99] group-hover:text-[#ea580c] transition-colors"
+        class="ml-1 text-[#8e8e99] group-hover:text-[#ea580c] transition-colors shrink-0"
         aria-label="Copy install command"
       >
         <svg class="w-3.5 h-3.5 copy-icon transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -76,7 +76,7 @@ const {
           <polyline points="20 6 9 17 4 12"/>
         </svg>
       </button>
-      <span class="copy-feedback-text hidden text-[11px] font-mono text-green-400 font-semibold select-none">Copied!</span>
+      <span class="copy-feedback-text hidden text-[11px] font-mono text-green-400 font-semibold select-none shrink-0">Copied!</span>
     </div>
   </div>
 </section>
