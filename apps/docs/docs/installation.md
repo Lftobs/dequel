@@ -38,7 +38,7 @@ Then start the platform:
 dequel start
 ```
 
-Open `http://localhost` to access the dashboard. If you configured a base
+Open `https://<the base domain added while installing>` to access the dashboard. If you configured a base
 domain during install, the dashboard is also served on it.
 
 ![Dequel login page](/screenshots/login.png)

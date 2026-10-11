@@ -1,7 +1,7 @@
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createAgentJob, getPlatformSettings, getServerById, upsertRoute } from "../db/repo";
-import { caddyReverseProxy, caddySite } from "./caddy-site";
+import { CADDY_ACCESS_LOG_BLOCK, caddyReverseProxy, caddySite } from "./caddy-site";
 import { config } from "./config";
 import { removeRemoteCaddyRoute, syncRemoteCaddyRoute } from "./ssh";
 
@@ -47,7 +47,7 @@ export const projectServerSite = (
 };
 
 export const ingressSite = (hostname: string, upstreamHost: string): string =>
-	`${hostname} {\n  reverse_proxy ${upstreamHost}:80\n}\n`;
+	`${hostname} {\n${CADDY_ACCESS_LOG_BLOCK}\n  reverse_proxy ${upstreamHost}:80\n}\n`;
 
 export const syncIngressRoute = async (
 	ingressServer: { id: string; mode: string },

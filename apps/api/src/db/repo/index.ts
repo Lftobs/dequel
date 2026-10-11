@@ -45,6 +45,7 @@ export {
 	createDeployment,
 	deleteDeploymentAndLogs,
 	getDeploymentById,
+	getLatestRunningDeployment,
 	getLogs,
 	listDeployments,
 	updateDeploymentCommitSha,
@@ -116,7 +117,12 @@ export {
 	updateRouteStatus,
 	upsertRoute,
 } from "./routes";
-export { deleteScalingPolicy, getScalingPolicy, upsertScalingPolicy } from "./scaling";
+export {
+	ScalingRangeError,
+	deleteScalingPolicy,
+	getScalingPolicy,
+	upsertScalingPolicy,
+} from "./scaling";
 export type { ServerConnection } from "./servers";
 export {
 	createServer,
