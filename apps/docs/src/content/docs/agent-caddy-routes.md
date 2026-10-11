@@ -78,7 +78,7 @@ When a deployment completes successfully:
 3. Caddy is reloaded via `caddy reload --config /etc/caddy/Caddyfile`.
 4. A route record is persisted to the database with status `active`.
 
-For remote agent servers, the control plane sends a `reload_routes` job to the agent. The agent writes the file and reloads Caddy on the remote host.
+For remote agent servers, the control plane sends a `reload_routes` job to the agent. The agent writes the file and reloads Caddy on the remote host. For SSH-mode servers, the control plane writes the file and reloads Caddy over SSH instead.
 
 ### Rollback
 

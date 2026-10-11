@@ -8,7 +8,7 @@ import { sshKeys } from "../schema";
 import { getRowsAffected, now } from "./helpers";
 
 export const computeSshKeyFingerprint = (privateKey: string): string => {
-	return createHash("sha256").update(privateKey).digest("hex").slice(0, 32);
+	return createHash("sha256").update(privateKey.trim()).digest("hex").slice(0, 32);
 };
 
 const mapSshKey = (row: typeof sshKeys.$inferSelect): SshKey => ({

@@ -51,18 +51,18 @@ fi
 log "docker" "Docker ready"
 
 find_container() {
-  docker ps -a --format '{{.Names}}' 2>/dev/null | grep -m1 "$1" || true
+  $SUDO docker ps -a --format '{{.Names}}' 2>/dev/null | grep -m1 -x -F -- "$1" || true
 }
 
 find_running_container() {
-  docker ps --format '{{.Names}}' 2>/dev/null | grep -m1 "$1" || true
+  $SUDO docker ps --format '{{.Names}}' 2>/dev/null | grep -m1 -x -F -- "$1" || true
 }
 
 remove_stopped() {
   local label="$1" name="$2"
   local all running
-  all="$(docker ps -a --format '{{.Names}}' 2>/dev/null || true)"
-  running="$(docker ps --format '{{.Names}}' 2>/dev/null || true)"
+  all="$($SUDO docker ps -a --format '{{.Names}}' 2>/dev/null || true)"
+  running="$($SUDO docker ps --format '{{.Names}}' 2>/dev/null || true)"
   if grep -qxF "$name" <<< "$all" && ! grep -qxF "$name" <<< "$running"; then
     if $SUDO docker rm -f "$name" >/dev/null 2>&1; then
       log "$label" "Removed stopped container $name"

@@ -23,8 +23,6 @@ export const authMiddleware = (app: Elysia) =>
 			const { verifyAccessToken } = await import("../utils/auth");
 			const payload = await verifyAccessToken(match[1]);
 			if (payload) return;
-			set.status = 401;
-			return fail("Invalid session");
 		}
 
 		const authHeader = request.headers.get("authorization");

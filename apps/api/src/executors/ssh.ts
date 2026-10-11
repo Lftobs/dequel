@@ -270,20 +270,28 @@ const remoteBuilds = new Map<string, { controller: AbortController; pgid?: strin
 
 export const parseRemoteBuildPgid = (line: string): string | undefined => {
 	const match = line.match(/DEQUEL_PGID:\s*(\d+)/);
-	return match?.[1];
+	if (!match) return undefined;
+	const pgid = Number(match[1]);
+	if (!Number.isSafeInteger(pgid) || pgid <= 1) return undefined;
+	return match[1];
 };
 
 export const killRemoteBuildGroup = async (
 	server: Parameters<typeof runRemoteScript>[0],
 	pgid: string,
 	run: typeof runRemoteScript = runRemoteScript,
-): Promise<void> => {
-	await run(
-		server,
-		`kill -TERM -- -${pgid} 2>/dev/null || true
+): Promise<boolean> => {
+	try {
+		const result = await run(
+			server,
+			`kill -TERM -- -${pgid} 2>/dev/null || true
 sleep 3
 kill -KILL -- -${pgid} 2>/dev/null || true`,
-	).catch(() => {});
+		);
+		return result.code === 0;
+	} catch {
+		return false;
+	}
 };
 
 export const sshExecutor: DeploymentExecutor = {
@@ -339,7 +347,7 @@ export const sshExecutor: DeploymentExecutor = {
 				onLog: async (line) => {
 					const pgid = parseRemoteBuildPgid(line);
 					if (pgid) {
-						buildEntry.pgid = pgid;
+						if (buildEntry.pgid === undefined) buildEntry.pgid = pgid;
 						return;
 					}
 					await emitLog(deployment.id, "build", line);
@@ -458,8 +466,12 @@ export const sshExecutor: DeploymentExecutor = {
 		if (entry) {
 			entry.controller.abort();
 			if (entry.pgid) {
-				remoteStopped = true;
-				killRemoteBuildGroup(server, entry.pgid).catch(() => {});
+				let timer: ReturnType<typeof setTimeout> | undefined;
+				const timeout = new Promise<false>((resolve) => {
+					timer = setTimeout(() => resolve(false), 10_000);
+				});
+				remoteStopped = await Promise.race([killRemoteBuildGroup(server, entry.pgid), timeout]);
+				clearTimeout(timer);
 			}
 		}
 		await emitLog(
@@ -467,7 +479,9 @@ export const sshExecutor: DeploymentExecutor = {
 			"system",
 			remoteStopped
 				? "Deployment cancelled by user — remote build processes stopped"
-				: "Deployment cancelled by user (remote build may continue on the server)",
+				: entry?.pgid
+					? "Deployment cancelled by user — remote build termination could not be confirmed"
+					: "Deployment cancelled by user (remote build may continue on the server)",
 		);
 	},
 };

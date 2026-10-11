@@ -96,6 +96,7 @@ export function SshKeyPoolSection() {
 					</div>
 					<Button
 						onClick={toggleForm}
+						disabled={isSubmitting}
 						size="sm"
 						className="bg-orange-500 hover:bg-orange-600 text-white font-medium shadow-md transition-all gap-1.5 self-start sm:self-auto"
 					>

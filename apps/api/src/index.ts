@@ -33,7 +33,10 @@ const bootstrap = async () => {
 	initAuth(jwtSecret);
 
 	await migrate();
-	await migrateEncryptionKeys().catch((err) => console.error("[EncryptionMigration] failed:", err));
+	await migrateEncryptionKeys().catch((err) => {
+		console.error("[EncryptionMigration] failed:", err);
+		if (process.env.NODE_ENV === "production") throw err;
+	});
 	await ensureLocalServer();
 	const interrupted = await markInterruptedDiagRuns().catch(() => 0);
 	if (interrupted > 0) console.log(`[Fixdiag] Marked ${interrupted} interrupted diagnosis run(s) as failed`);

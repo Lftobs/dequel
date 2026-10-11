@@ -16,9 +16,10 @@ import {
 import { formatTimestamp, getRowsAffected, now } from "./helpers";
 
 export interface ProjectCleanupInfo {
+	isCompose: boolean;
+	projectServerId: string | null;
 	deploymentTargets: {
 		id: string;
-		sourceType: string;
 		containerName: string | null;
 		imageTag: string | null;
 		serverId: string | null;
@@ -28,7 +29,7 @@ export interface ProjectCleanupInfo {
 		proxyContainerName: string | null;
 		serverId: string | null;
 	}[];
-	databaseVolumeNames: string[];
+	databaseVolumes: { volumeName: string; serverId: string | null }[];
 	volumeDockerNames: string[];
 	domains: { domain: string; projectName: string }[];
 	slug: string;
@@ -176,7 +177,6 @@ export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupIn
 			id: deployments.id,
 			containerName: deployments.containerName,
 			imageTag: deployments.imageTag,
-			sourceType: deployments.sourceType,
 			serverId: deployments.serverId,
 		})
 		.from(deployments)
@@ -184,7 +184,6 @@ export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupIn
 		.execute();
 	const deploymentTargets = depRows.map((d) => ({
 		id: d.id,
-		sourceType: d.sourceType,
 		containerName: d.containerName,
 		imageTag: d.imageTag,
 		serverId: d.serverId,
@@ -219,7 +218,9 @@ export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupIn
 		proxyContainerName: d.proxyContainerName,
 		serverId: d.serverId,
 	}));
-	const databaseVolumeNames = dbRows.filter((d) => d.volumeName).map((d) => d.volumeName!);
+	const databaseVolumes = dbRows
+		.filter((d) => d.volumeName)
+		.map((d) => ({ volumeName: d.volumeName as string, serverId: d.serverId }));
 	await db.update(databases).set({ projectId: null, updatedAt: now() }).where(eq(databases.projectId, id)).execute();
 
 	const domainRows = await db
@@ -235,9 +236,11 @@ export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupIn
 	await db.delete(projects).where(eq(projects.id, id)).execute();
 
 	return {
+		isCompose: project.buildType === "compose",
+		projectServerId: project.serverId ?? null,
 		deploymentTargets,
 		databaseTargets,
-		databaseVolumeNames,
+		databaseVolumes,
 		volumeDockerNames,
 		domains: domainInfo,
 		slug,

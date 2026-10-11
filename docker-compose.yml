@@ -49,7 +49,7 @@ services:
             RAILPACK_VERBOSE: "1"
             RAILPACK_BUILD_TIMEOUT_MS: "1200000"
             POSTGRES_CONTAINER: ${POSTGRES_CONTAINER:-dequel-postgres-1}
-            ENV_ENCRYPTION_KEY: ${ENV_ENCRYPTION_KEY:-dev-env-key-change-me}
+            ENV_ENCRYPTION_KEY: '${ENV_ENCRYPTION_KEY:?ENV_ENCRYPTION_KEY is required - set it in .env (see .env.example) or generate with openssl rand -hex 32}'
         volumes:
             - ./workspace:/app/workspace
             - ./infra/caddy/routes:/caddy/routes
@@ -118,7 +118,9 @@ services:
         volumes:
             - ./scripts/auth/pam-server.py:/app/pam-server.py:ro
             - ./scripts/auth/dequel:/app/dequel:ro
-            - /etc:/host-etc:ro
+            - /etc/passwd:/host-etc/passwd:ro
+            - /etc/shadow:/host-etc/shadow:ro
+            - /etc/group:/host-etc/group:ro
         networks:
             dequel:
                 aliases:
@@ -172,7 +174,7 @@ services:
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
             GATEWAY_CERT_DIR: /app/data
             CADDY_DATA_DIR: /caddy-data/caddy
-            ENV_ENCRYPTION_KEY: ${ENV_ENCRYPTION_KEY:-dev-env-key-change-me}
+            ENV_ENCRYPTION_KEY: '${ENV_ENCRYPTION_KEY:?ENV_ENCRYPTION_KEY is required - set it in .env (see .env.example) or generate with openssl rand -hex 32}'
         ports:
             - "443:443"
         volumes:

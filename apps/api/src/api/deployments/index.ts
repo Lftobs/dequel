@@ -374,6 +374,14 @@ export const deploymentsRoutes = new Elysia()
 				const child = spawn("docker", await runtimeLogFollowerArgs(deployment), {
 					stdio: ["ignore", "pipe", "pipe"],
 				});
+				childProcess = child;
+				if (closed) {
+					terminateWithEscalation(child, 2000);
+					try {
+						controller.close();
+					} catch {}
+					return;
+				}
 				child.on("error", (err) => {
 					send("log", {
 						sequence: 0,

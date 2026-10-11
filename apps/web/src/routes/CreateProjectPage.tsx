@@ -88,6 +88,16 @@ export function CreateProjectPage() {
 		setErrorStatus(null);
 	};
 
+	const updateName = (value: string) => {
+		setName(value);
+		if (errorMessage) clearError();
+	};
+
+	const updateRepoUrl = (value: string) => {
+		setRepoUrl(value);
+		if (errorMessage) clearError();
+	};
+
 	useEffect(() => {
 		getGithubIntegration()
 			.then((status) => {
@@ -154,6 +164,7 @@ export function CreateProjectPage() {
 
 		setSubmittingStatus("creating_project");
 
+		let createdProjectId: string | null = null;
 		try {
 			let composeServicesPayload: string | undefined;
 			if (buildType === "compose" && composeServicesList.length > 0) {
@@ -182,6 +193,7 @@ export function CreateProjectPage() {
 			};
 
 			const project = await createProject.mutateAsync(projectPayload);
+			createdProjectId = project.id;
 
 			if (stagedEnvs.length > 0) {
 				setSubmittingStatus("creating_envs");
@@ -220,6 +232,11 @@ export function CreateProjectPage() {
 				navigate({ to: "/project/$projectId", params: { projectId: project.id }, search: { tab: "deployments" } });
 			}, 1000);
 		} catch (err: unknown) {
+			if (createdProjectId) {
+				try {
+					await api.deleteProject(createdProjectId);
+				} catch {}
+			}
 			setSubmittingStatus("error");
 			if (err instanceof ApiError) {
 				setErrorStatus(err.status);
@@ -259,7 +276,7 @@ export function CreateProjectPage() {
 						selectedRepo={selectedRepo}
 						onSelectRepo={handleSelectRepo}
 						repoUrl={repoUrl}
-						setRepoUrl={setRepoUrl}
+						setRepoUrl={updateRepoUrl}
 						repoBranch={repoBranch}
 						setRepoBranch={setRepoBranch}
 						showManualGit={showManualGit}
@@ -279,7 +296,12 @@ export function CreateProjectPage() {
 					/>
 
 					{/* Project Details */}
-					<ProjectNameSection name={name} setName={setName} description={description} setDescription={setDescription} />
+					<ProjectNameSection
+						name={name}
+						setName={updateName}
+						description={description}
+						setDescription={setDescription}
+					/>
 
 					{/* Deployment Target */}
 					<DeploymentTargetSection serverId={serverId} setServerId={setServerId} servers={servers} />

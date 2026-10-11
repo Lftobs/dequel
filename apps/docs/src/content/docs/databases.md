@@ -75,7 +75,27 @@ MySQL is the one exception. Its wire protocol sends a server greeting before the
 
 Notes:
 
-- The gateway terminates TLS with a Let's Encrypt certificate for the database hostname — Caddy issues it within seconds of enabling Public Access and renews it automatically — so the strings above verify out of the box. In the gaps (right after enabling Public Access, or on a `localhost` setup with no base domain) the gateway falls back to a self-signed certificate: MongoDB strings carry `tlsAllowInvalidCertificates=true` (verification off) until a real certificate exists; for PostgreSQL append `&uselibpqcompat=true` (Node only; psql rejects that flag) or set `ssl: { rejectUnauthorized: false }` in client code; Redis clients verify certificates by default, so set `rejectUnauthorized: false` in your client configuration while the fallback is in effect.
-- PostgreSQL clients work either way: classic clients send a plaintext `SSLRequest` first (the gateway answers it locally), and direct-TLS clients (`sslmode=direct`) announce the hostname immediately.
+- The gateway terminates TLS with a Let's Encrypt certificate for the database
+  hostname. Caddy issues the certificate within seconds of enabling Public
+  Access and renews it automatically, so the strings above verify out of the
+  box. Right after you enable Public Access, or on a `localhost` setup with no
+  base domain, the gateway falls back to a self-signed certificate that clients
+  cannot verify. We recommend waiting for the real certificate and connecting
+  with verification on. If you must connect during that gap, disable
+  verification only as a temporary measure, and turn it back on once the real
+  certificate is in place.
+
+> **Warning:** A connection with certificate verification disabled is open to
+> interception. Treat it as unencrypted until the real certificate is issued.
+
+  - MongoDB: the string carries `tlsAllowInvalidCertificates=true`.
+  - PostgreSQL: set `ssl: { rejectUnauthorized: false }` in client code. For
+    Node-only tooling you can append `&uselibpqcompat=true`; psql rejects that
+    flag.
+  - Redis: clients verify certificates by default, so set
+    `rejectUnauthorized: false` in your client configuration.
+- PostgreSQL clients work either way: classic clients send a plaintext
+  `SSLRequest` first (the gateway answers it locally), and direct-TLS clients
+  (`sslmode=direct`) announce the hostname immediately.
 - Every new connection is checked against the database status, the Public Access toggle, and the optional IP allowlist before any bytes are forwarded.
 

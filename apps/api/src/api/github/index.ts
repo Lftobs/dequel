@@ -249,6 +249,10 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		const webhookUrl = `${publicUrl(request).origin}/api/github/webhook`;
 		const integration = await getGithubIntegration();
 		const secret = integration?.webhookSecret || "";
+		if (!secret) {
+			set.status = 400;
+			return fail("Set a webhook secret in Settings before registering a webhook");
+		}
 
 		try {
 			const hooks = await fetchGitHub(`/repos/${params.owner}/${params.repo}/hooks`, token);

@@ -21,6 +21,18 @@ const withEnv = <T>(key: string, envDefault: string, transform?: (v: string) => 
 	return transform ? transform(envDefault) : (envDefault as unknown as T);
 };
 
+const isProductionEnv = process.env.NODE_ENV === "production";
+const envEncryptionKey = withEnv<string>("ENV_ENCRYPTION_KEY", DEFAULT_ENV_ENCRYPTION_KEY);
+if (isProductionEnv && envEncryptionKey === DEFAULT_ENV_ENCRYPTION_KEY) {
+	throw new Error(
+		"ENV_ENCRYPTION_KEY must be set to a unique value in production; refusing to fall back to the default development key",
+	);
+}
+const databaseUrl = withEnv<string>("DATABASE_URL", "");
+if (isProductionEnv && !databaseUrl) {
+	throw new Error("DATABASE_URL must be set in production");
+}
+
 const SYSTEM = {
 	dockerNetwork: "dequel_net",
 	buildkitHost: "tcp://buildkit:1234",
@@ -38,11 +50,11 @@ const SYSTEM = {
 
 export const config = {
 	...SYSTEM,
-	databaseUrl: withEnv<string>("DATABASE_URL", ""),
+	databaseUrl,
 	caddyBaseDomain: withFile<string>("CADDY_BASE_DOMAIN", "localhost"),
 	controlPlaneUrl: withFile<string>("CONTROL_PLANE_URL", ""),
 	agentTunnelUrl: withFile<string>("AGENT_TUNNEL_URL", ""),
-	envEncryptionKey: withEnv<string>("ENV_ENCRYPTION_KEY", DEFAULT_ENV_ENCRYPTION_KEY),
+	envEncryptionKey,
 	queueConcurrency: withFile<number>("QUEUE_CONCURRENCY", "3", Number),
 	queueRetryMax: withFile<number>("QUEUE_RETRY_MAX", "5", Number),
 	queueRetryBaseMs: withFile<number>("QUEUE_RETRY_BASE_MS", "5000", Number),

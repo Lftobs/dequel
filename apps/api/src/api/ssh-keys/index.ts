@@ -1,3 +1,4 @@
+import { createPrivateKey } from "node:crypto";
 import { Elysia } from "elysia";
 import {
 	computeSshKeyFingerprint,
@@ -13,15 +14,31 @@ const PRIVATE_KEY_PATTERN =
 	/^-----BEGIN ((?:[A-Z0-9]+ )*?)PRIVATE KEY-----\r?\n([\s\S]*?)-----END \1PRIVATE KEY-----\s*$/;
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
-const isValidPrivateKey = (value: string): boolean => {
-	const match = PRIVATE_KEY_PATTERN.exec(value.trim());
-	if (!match) return false;
-	const body = match[2]
-		.split(/\r?\n/)
-		.filter((line) => !line.includes(":"))
-		.join("")
-		.replace(/\s/g, "");
-	return body.length >= 16 && BASE64_PATTERN.test(body);
+const validatePrivateKey = (value: string): string | null => {
+	const trimmed = value.trim();
+	const match = PRIVATE_KEY_PATTERN.exec(trimmed);
+	if (!match) return "privateKey must be a PEM or OpenSSH private key";
+	const keyType = (match[1] ?? "").trim();
+	if (keyType === "OPENSSH") {
+		const body = match[2]
+			.split(/\r?\n/)
+			.filter((line) => !line.includes(":"))
+			.join("")
+			.replace(/\s/g, "");
+		if (body.length < 16 || !BASE64_PATTERN.test(body)) {
+			return "privateKey body is not valid base64";
+		}
+		return null;
+	}
+	try {
+		createPrivateKey(trimmed);
+		return null;
+	} catch (err) {
+		if (/passphrase/i.test((err as Error).message)) {
+			return "privateKey is passphrase-protected; provide an unencrypted key";
+		}
+		return "privateKey could not be parsed as a valid private key";
+	}
 };
 
 const isUniqueViolation = (err: unknown): boolean => {
@@ -41,13 +58,19 @@ export const sshKeysRoutes = new Elysia()
 		return ok(await listSshKeys());
 	})
 	.post("/ssh-keys", async ({ body, set }: any) => {
-		if (!body?.name || !body.privateKey) {
+		if (
+			typeof body?.name !== "string" ||
+			!body.name.trim() ||
+			typeof body.privateKey !== "string" ||
+			!body.privateKey
+		) {
 			set.status = 400;
 			return fail("name and privateKey are required");
 		}
-		if (!isValidPrivateKey(body.privateKey)) {
+		const keyError = validatePrivateKey(body.privateKey);
+		if (keyError) {
 			set.status = 400;
-			return fail("privateKey must be a valid PEM or OpenSSH private key");
+			return fail(keyError);
 		}
 		const fingerprint = computeSshKeyFingerprint(body.privateKey);
 		const existing = await duplicateKey(fingerprint, set);

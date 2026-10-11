@@ -2,9 +2,9 @@ import net from "node:net";
 import {
 	appendLog,
 	createDeployment,
+	getLatestRunningDeployment,
 	getProjectById,
 	getServerById,
-	listDeployments,
 	listProjects,
 	listRoutes,
 	updateDeploymentStatus,
@@ -115,9 +115,10 @@ export const failoverProject = async (
 	const currentServer = await getServerById(project.serverId);
 	if (currentServer?.mode !== "ssh") throw new Error("Failover only supports SSH project servers");
 
-	const deployments = await listDeployments(projectId, 0, 1);
-	const latest = deployments[0];
-	if (!latest) throw new Error(`Project ${project.name ?? projectId} has no deployments to fail over`);
+	const latest = await getLatestRunningDeployment(projectId);
+	if (!latest) {
+		throw new Error(`Project ${project.name ?? projectId} has no running deployment to fail over from`);
+	}
 	if (latest.sourceType !== "git") throw new Error("Failover requires a Git deployment");
 
 	failingOver.add(projectId);

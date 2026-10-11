@@ -5,6 +5,7 @@ import type { Server } from "../types";
 import { dockerBin } from "../utils/docker-bin";
 import { dockerRun } from "../utils/docker-run";
 import { killChildTree } from "../utils/proc-group";
+import { safeSpawn } from "../utils/process-exec";
 import { CancelledError } from "./railpack";
 
 export interface ComposeTarget {
@@ -213,18 +214,8 @@ const spawnComposeCommand = (
 		let stdout = "";
 		let stderr = "";
 		let settled = false;
-		let escalationTimer: ReturnType<typeof setTimeout> | null = null;
-
-		const terminate = () => {
-			killProcessGroup(child, "SIGTERM");
-			escalationTimer = setTimeout(() => {
-				killProcessGroup(child, "SIGKILL");
-			}, 5000);
-			if (typeof escalationTimer.unref === "function") escalationTimer.unref();
-		};
 
 		const cleanup = () => {
-			if (escalationTimer) clearTimeout(escalationTimer);
 			if (signal) {
 				signal.removeEventListener("abort", onAbort);
 			}

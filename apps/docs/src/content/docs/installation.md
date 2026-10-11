@@ -144,7 +144,12 @@ fixed paths for build staging and Caddy routes, so create them once:
 
 ```bash
 sudo mkdir -p /app/workspace /caddy/routes
+sudo chown -R "$USER" /app/workspace /caddy/routes
 ```
+
+The API writes build artifacts to `/app/workspace` and Caddy route files to
+`/caddy/routes`, so your user must own both directories when you run the API
+without `sudo`.
 
 ```bash
 # Terminal 1 — API

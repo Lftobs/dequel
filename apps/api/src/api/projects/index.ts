@@ -12,10 +12,9 @@ import {
 import { destroyComposeStack } from "../../orchestrator/compose";
 import { failoverProject } from "../../orchestrator/failover";
 import { cleanupProjectContainers } from "../../orchestrator/project-cleanup";
-import { reloadCaddy, tryRun } from "../../orchestrator/runtime";
+import { reloadCaddy } from "../../orchestrator/runtime";
 import { config } from "../../utils/config";
-import { dockerBin } from "../../utils/docker-bin";
-import { dockerRunTry, ensureContainerRemoved } from "../../utils/docker-run";
+import { dockerRunTry, ensureContainerRemoved, ensureVolumeRemoved } from "../../utils/docker-run";
 import { removeFromCaddyRoute } from "../../utils/domain-verifier";
 import { buildProjectRequestHostRegex, caddyRequestLogSelector } from "../../utils/loki";
 import { captureTelemetry } from "../../utils/telemetry";
@@ -171,15 +170,15 @@ export const projectsRoutes = new Elysia()
 			return fail("Project not found");
 		}
 
-		await cleanupProjectContainers(info, {
+		const cleanupFailures = await cleanupProjectContainers(info, {
 			getServerById,
 			ensureContainerRemoved,
+			ensureVolumeRemoved,
 			destroyComposeStack,
 			dockerRunTry,
 		});
-
-		for (const name of [...info.databaseVolumeNames, ...info.volumeDockerNames]) {
-			await tryRun(dockerBin, ["volume", "rm", "-f", name]);
+		if (cleanupFailures.length > 0) {
+			console.error(`Project ${id} cleanup incomplete:`, cleanupFailures);
 		}
 
 		for (const { domain, projectName } of info.domains) {

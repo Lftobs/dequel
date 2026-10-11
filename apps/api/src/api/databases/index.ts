@@ -132,30 +132,20 @@ export const databasesRoutes = new Elysia()
 				: null;
 		if (gatewayHost) {
 			const reachable = await probeTcp(gatewayHost, 443);
-			if (reachable) {
-				const hasRealCert = config.caddyDataDir
-					? (await loadCaddyCert(config.caddyDataDir, gatewayHost)) !== null
-					: false;
-				return ok({
-					username: dbRecord.username,
-					password: dbRecord.password,
-					internalConnectionString: dbRecord.connectionString,
-					externalConnectionString: buildGatewayConnectionString(dbRecord, gatewayHost, hasRealCert),
-					externalHost: gatewayHost,
-					externalPort: 443,
-					externalReachable: true,
-					warning: null,
-				});
-			}
+			const hasRealCert = config.caddyDataDir
+				? (await loadCaddyCert(config.caddyDataDir, gatewayHost)) !== null
+				: false;
 			return ok({
 				username: dbRecord.username,
 				password: dbRecord.password,
 				internalConnectionString: dbRecord.connectionString,
-				externalConnectionString: null,
+				externalConnectionString: buildGatewayConnectionString(dbRecord, gatewayHost, hasRealCert),
 				externalHost: gatewayHost,
 				externalPort: 443,
-				externalReachable: false,
-				warning: `Gateway endpoint ${gatewayHost}:443 is not reachable from the network — check the gateway service and DNS.`,
+				externalReachable: reachable,
+				warning: reachable
+					? null
+					: `Gateway endpoint ${gatewayHost}:443 is not reachable from the network — check the gateway service and DNS.`,
 			});
 		}
 		const externalHost =
@@ -163,27 +153,17 @@ export const databasesRoutes = new Elysia()
 		const usableHost = externalHost && isNonLoopbackIp(externalHost) ? externalHost : null;
 		if (usableHost && dbRecord.externalPort) {
 			const reachable = await probeTcp(usableHost, dbRecord.externalPort);
-			if (reachable) {
-				return ok({
-					username: dbRecord.username,
-					password: dbRecord.password,
-					internalConnectionString: dbRecord.connectionString,
-					externalConnectionString: buildConnectionString(dbRecord, usableHost, dbRecord.externalPort),
-					externalHost: usableHost,
-					externalPort: dbRecord.externalPort,
-					externalReachable: true,
-					warning: null,
-				});
-			}
 			return ok({
 				username: dbRecord.username,
 				password: dbRecord.password,
 				internalConnectionString: dbRecord.connectionString,
-				externalConnectionString: null,
+				externalConnectionString: buildConnectionString(dbRecord, usableHost, dbRecord.externalPort),
 				externalHost: usableHost,
 				externalPort: dbRecord.externalPort,
-				externalReachable: false,
-				warning: `Public endpoint ${usableHost}:${dbRecord.externalPort} is not reachable — open the port in your cloud security group or firewall to allow external clients.`,
+				externalReachable: reachable,
+				warning: reachable
+					? null
+					: `Public endpoint ${usableHost}:${dbRecord.externalPort} is not reachable — open the port in your cloud security group or firewall to allow external clients.`,
 			});
 		}
 		return ok({
@@ -291,8 +271,12 @@ export const databasesRoutes = new Elysia()
 			backupSchedule: body?.backupSchedule,
 			backupRetention: body?.backupRetention,
 		});
-		void syncDbGatewayRoute(updated!);
-		return ok(sanitizeDatabase(updated!));
+		if (!updated) {
+			set.status = 404;
+			return fail("Database not found");
+		}
+		void syncDbGatewayRoute(updated);
+		return ok(sanitizeDatabase(updated));
 	})
 	.delete("/databases/:id", async ({ params: { id }, set }) => {
 		const dbRecord = await findDatabase(id, set);

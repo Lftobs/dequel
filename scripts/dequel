@@ -42,6 +42,7 @@ ensure_encryption_key() {
 		sed -i '/^ENV_ENCRYPTION_KEY=/d' "$env_file" 2>/dev/null || true
 		echo "ENV_ENCRYPTION_KEY=$key" >> "$env_file"
 	fi
+	chmod 600 "$env_file" 2>/dev/null || true
 }
 ensure_encryption_key
 

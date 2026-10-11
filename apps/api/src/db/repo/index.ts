@@ -45,6 +45,7 @@ export {
 	createDeployment,
 	deleteDeploymentAndLogs,
 	getDeploymentById,
+	getLatestRunningDeployment,
 	getLogs,
 	listDeployments,
 	updateDeploymentCommitSha,

@@ -38,7 +38,7 @@ export function LlmKeysSection() {
 	const configured = data?.filter((k) => k.configured) ?? [];
 	const currentStatus = data?.find((k) => k.provider === provider);
 	const currentMeta = PROVIDERS.find((p) => p.id === provider) ?? PROVIDERS[0];
-	const missingKey = !currentStatus?.configured && provider !== "ollama" && !apiKey.trim();
+	const missingKey = !currentStatus?.configured && provider !== "ollama" && provider !== "custom" && !apiKey.trim();
 
 	useEffect(() => {
 		setBaseURL(currentStatus?.baseUrl ?? currentMeta.defaultBaseUrl ?? "");

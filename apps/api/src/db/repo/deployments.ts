@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { CreateDeploymentInput, Deployment, DeploymentLog, DeploymentStatus, LogEvent } from "../../types";
 import { getDb } from "../db-provider";
 import { deploymentLogs, deployments } from "../schema";
@@ -66,6 +66,18 @@ export const listDeployments = async (projectId?: string, offset = 0, limit = 50
 				.execute()
 		: await db.select().from(deployments).orderBy(desc(deployments.createdAt)).limit(limit).offset(offset).execute();
 	return rows.map(mapDeployment);
+};
+
+export const getLatestRunningDeployment = async (projectId: string): Promise<Deployment | null> => {
+	const db = await getDb();
+	const [row] = await db
+		.select()
+		.from(deployments)
+		.where(and(eq(deployments.projectId, projectId), eq(deployments.status, "running")))
+		.orderBy(desc(deployments.createdAt))
+		.limit(1)
+		.execute();
+	return row ? mapDeployment(row) : null;
 };
 
 export const countDeployments = async (projectId?: string): Promise<number> => {

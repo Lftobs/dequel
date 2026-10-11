@@ -32,6 +32,10 @@ mock.module(fileUrl("../../db/repo"), () => ({
 	listDeployments: mock((projectId?: string) =>
 		Promise.resolve(projectId ? (deploymentsByProject[projectId] ?? []) : []),
 	),
+	getLatestRunningDeployment: mock((projectId: string) => {
+		const list = deploymentsByProject[projectId] ?? [];
+		return Promise.resolve(list.find((d: any) => d.status === "running") ?? list[0] ?? null);
+	}),
 	createDeployment: mock((input: any) => Promise.resolve({ id: "dep-new", ...input })),
 	updateProject: mock(() => Promise.resolve()),
 	updateDeploymentStatus: mock(() => Promise.resolve()),
@@ -235,10 +239,15 @@ try {
 } catch (e: any) {
 	const message = e.message ?? "";
 	results.test9 = {
-		ok: message.includes("no deployments to fail over") && message.includes("p1") && !message.includes("\n"),
+		ok: message.includes("no running deployment to fail over") && message.includes("p1") && !message.includes("\n"),
 		error: message,
 	};
 }
 
 probeListener.close();
 console.log(JSON.stringify(results));
+const failed = Object.entries(results).filter(([, r]) => (r as any)?.ok !== true);
+if (failed.length > 0) {
+	console.error(`FAIL: ${failed.map(([k]) => k).join(", ")}`);
+	process.exit(1);
+}
