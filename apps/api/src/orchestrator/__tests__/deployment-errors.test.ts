@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { summarizeDeploymentError } from "../deployment-errors";
+import { remoteScriptFailure, summarizeDeploymentError } from "../deployment-errors";
 
 describe("summarizeDeploymentError", () => {
 	test("extracts an actionable runtime requirement from noisy build output", () => {
@@ -31,5 +31,26 @@ unrecognized image format`);
 		expect(summarizeDeploymentError(new Error("DEBU build stopped\nDONE"))).toBe(
 			"Deployment failed. Check the deployment logs for details.",
 		);
+	});
+});
+
+describe("remoteScriptFailure", () => {
+	test("prefers stdout so git progress on stderr cannot become the failure reason", () => {
+		const message = remoteScriptFailure(
+			{ stdout: "✖ Railpack could not determine how to build the app.", stderr: "Cloning into '.'..." },
+			"Remote build failed",
+		);
+		expect(message).toContain("Railpack could not determine");
+		expect(message).toContain("Cloning into");
+	});
+
+	test("keeps stderr when stdout is empty", () => {
+		expect(remoteScriptFailure({ stdout: "", stderr: "Permission denied (publickey)." }, "fallback")).toBe(
+			"Permission denied (publickey).",
+		);
+	});
+
+	test("falls back when both streams are empty", () => {
+		expect(remoteScriptFailure({ stdout: "", stderr: "" }, "Remote build failed")).toBe("Remote build failed");
 	});
 });

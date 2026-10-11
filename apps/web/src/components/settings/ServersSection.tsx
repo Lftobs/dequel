@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus, RefreshCw, Server, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as api from "../../api/client";
+import type { Server as DequelServer } from "../../types";
 import { StatusBadge } from "../StatusBadge";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -10,6 +11,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { AddServerForm } from "./servers/AddServerForm";
 import { ServerPreparationOutput } from "./servers/ServerPreparationOutput";
+
+function connectionLabel(s: DequelServer): string {
+	if (s.mode === "local") return "This Machine";
+	if (s.mode === "agent") return `WireGuard P2P ${s.agentVersion || ""}`;
+	return `SSH (${s.sshUser || "root"}@${s.host}:${s.port})`;
+}
 
 export function ServersSection() {
 	const { data: servers = [], refetch } = useQuery({
@@ -83,7 +90,8 @@ export function ServersSection() {
 						<div>
 							<CardTitle className="text-lg font-semibold text-foreground">Cluster Infrastructure Nodes</CardTitle>
 							<p className="text-xs text-muted-foreground mt-0.5">
-								Connect remote cloud servers (Hetzner, AWS, DigitalOcean) or homelab nodes for automated container deployment.
+								Connect remote cloud servers (Hetzner, AWS, DigitalOcean) or homelab nodes for automated container
+								deployment.
 							</p>
 						</div>
 					</div>
@@ -140,9 +148,7 @@ export function ServersSection() {
 										</div>
 										<StatusBadge status={s.status || "active"} />
 									</div>
-									<p className="text-xs font-mono text-muted-foreground break-all">
-										{s.mode === "agent" ? `WireGuard P2P ${s.agentVersion || ""}` : `SSH (${s.sshUser || "root"}@${s.host}:${s.port})`}
-									</p>
+									<p className="text-xs font-mono text-muted-foreground break-all">{connectionLabel(s)}</p>
 									<div className="flex items-center justify-end gap-2 pt-1 border-t border-border/30">
 										{s.mode !== "local" && (
 											<Button
@@ -152,7 +158,9 @@ export function ServersSection() {
 												disabled={preparingId !== null}
 												onClick={() => handlePrepare(s.id)}
 											>
-												<RefreshCw className={`h-3 w-3 ${preparingId === s.id ? "animate-spin text-orange-400" : ""}`} />
+												<RefreshCw
+													className={`h-3 w-3 ${preparingId === s.id ? "animate-spin text-orange-400" : ""}`}
+												/>
 												{preparingId === s.id ? "Preparing..." : "Prepare"}
 											</Button>
 										)}
@@ -193,9 +201,7 @@ export function ServersSection() {
 													variant="outline"
 													className="font-mono text-[11px] bg-black/40 text-zinc-300 border-border/60"
 												>
-													{s.mode === "agent"
-														? `WireGuard P2P ${s.agentVersion || ""}`
-														: `SSH (${s.sshUser || "root"}@${s.host}:${s.port})`}
+													{connectionLabel(s)}
 												</Badge>
 											</TableCell>
 											<TableCell className="py-3.5">

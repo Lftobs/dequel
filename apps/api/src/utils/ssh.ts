@@ -13,6 +13,13 @@ export interface SshExecutionOptions {
 
 const SSH_KEYS_DIR = join(tmpdir(), "dequel_ssh_keys");
 
+export class RemoteScriptAbortedError extends Error {
+	constructor() {
+		super("Remote script aborted");
+		this.name = "RemoteScriptAbortedError";
+	}
+}
+
 export const ensureSshKey = (server: {
 	host: string;
 	port?: number;
@@ -281,6 +288,10 @@ export const runRemoteScript = (
 	options: { onLog?: (line: string) => Promise<void> | void; signal?: AbortSignal } = {},
 ): Promise<{ code: number; stdout: string; stderr: string }> => {
 	return new Promise((resolve, reject) => {
+		if (options.signal?.aborted) {
+			reject(new RemoteScriptAbortedError());
+			return;
+		}
 		const keyPath = ensureSshKey(server);
 		const keyArgs = keyPath ? ["-i", keyPath, "-o", "IdentitiesOnly=yes"] : [];
 		const user = server.sshUser || "root";
@@ -319,27 +330,40 @@ export const runRemoteScript = (
 			terminationHandle = terminateWithEscalation(child, 3000);
 		};
 
+		const makeLineEmitter = () => {
+			let pending = "";
+			return {
+				write(text: string) {
+					pending += text;
+					const parts = pending.split("\n");
+					pending = parts.pop() ?? "";
+					for (const line of parts) {
+						if (line) options.onLog?.(line);
+					}
+				},
+				flush() {
+					if (pending) options.onLog?.(pending);
+					pending = "";
+				},
+			};
+		};
+
+		const emitStdout = options.onLog ? makeLineEmitter() : null;
+		const emitStderr = options.onLog ? makeLineEmitter() : null;
+
 		child.stdout?.on("data", (chunk) => {
 			const text = String(chunk);
 			stdout += text;
-			if (options.onLog) {
-				text
-					.split("\n")
-					.filter(Boolean)
-					.forEach((line) => options.onLog!(line));
-			}
+			emitStdout?.write(text);
 		});
 		child.stderr?.on("data", (chunk) => {
 			const text = String(chunk);
 			stderr += text;
-			if (options.onLog) {
-				text
-					.split("\n")
-					.filter(Boolean)
-					.forEach((line) => options.onLog!(line));
-			}
+			emitStderr?.write(text);
 		});
 		child.on("close", (code) => {
+			emitStdout?.flush();
+			emitStderr?.flush();
 			if (terminationHandle) terminationHandle.cancel();
 			resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });
 		});
@@ -347,16 +371,16 @@ export const runRemoteScript = (
 			terminate();
 			reject(err);
 		});
+		child.stdin?.on("error", () => {});
 		if (options.signal) {
-			if (options.signal.aborted) {
-				terminate();
-				reject(new Error("Remote build script aborted"));
-			} else {
-				options.signal.addEventListener("abort", () => {
-					terminate();
-					reject(new Error("Remote build script aborted"));
-				});
-			}
+			options.signal.addEventListener(
+				"abort",
+				() => {
+					child.kill("SIGTERM");
+					reject(new RemoteScriptAbortedError());
+				},
+				{ once: true },
+			);
 		}
 		child.stdin.write(script);
 		child.stdin.end();

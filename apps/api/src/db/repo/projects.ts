@@ -16,10 +16,20 @@ import {
 import { formatTimestamp, getRowsAffected, now } from "./helpers";
 
 export interface ProjectCleanupInfo {
-	deploymentContainerNames: string[];
-	deploymentImageTags: string[];
-	databaseContainerNames: string[];
-	databaseVolumeNames: string[];
+	isCompose: boolean;
+	projectServerId: string | null;
+	deploymentTargets: {
+		id: string;
+		containerName: string | null;
+		imageTag: string | null;
+		serverId: string | null;
+	}[];
+	databaseTargets: {
+		containerName: string | null;
+		proxyContainerName: string | null;
+		serverId: string | null;
+	}[];
+	databaseVolumes: { volumeName: string; serverId: string | null }[];
 	volumeDockerNames: string[];
 	domains: { domain: string; projectName: string }[];
 	slug: string;
@@ -163,12 +173,21 @@ export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupIn
 	const db = await getDb();
 
 	const depRows = await db
-		.select({ id: deployments.id, containerName: deployments.containerName, imageTag: deployments.imageTag })
+		.select({
+			id: deployments.id,
+			containerName: deployments.containerName,
+			imageTag: deployments.imageTag,
+			serverId: deployments.serverId,
+		})
 		.from(deployments)
 		.where(eq(deployments.projectId, id))
 		.execute();
-	const deploymentContainerNames = depRows.filter((d) => d.containerName).map((d) => d.containerName!);
-	const deploymentImageTags = depRows.filter((d) => d.imageTag).map((d) => d.imageTag!);
+	const deploymentTargets = depRows.map((d) => ({
+		id: d.id,
+		containerName: d.containerName,
+		imageTag: d.imageTag,
+		serverId: d.serverId,
+	}));
 
 	for (const dep of depRows) {
 		await db.delete(deploymentLogs).where(eq(deploymentLogs.deploymentId, dep.id)).execute();
@@ -185,12 +204,23 @@ export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupIn
 	await db.delete(volumes).where(eq(volumes.projectId, id)).execute();
 
 	const dbRows = await db
-		.select({ containerName: databases.containerName, volumeName: databases.volumeName })
+		.select({
+			containerName: databases.containerName,
+			proxyContainerName: databases.proxyContainerName,
+			serverId: databases.serverId,
+			volumeName: databases.volumeName,
+		})
 		.from(databases)
 		.where(eq(databases.projectId, id))
 		.execute();
-	const databaseContainerNames = dbRows.filter((d) => d.containerName).map((d) => d.containerName!);
-	const databaseVolumeNames = dbRows.filter((d) => d.volumeName).map((d) => d.volumeName!);
+	const databaseTargets = dbRows.map((d) => ({
+		containerName: d.containerName,
+		proxyContainerName: d.proxyContainerName,
+		serverId: d.serverId,
+	}));
+	const databaseVolumes = dbRows
+		.filter((d) => d.volumeName)
+		.map((d) => ({ volumeName: d.volumeName as string, serverId: d.serverId }));
 	await db.update(databases).set({ projectId: null, updatedAt: now() }).where(eq(databases.projectId, id)).execute();
 
 	const domainRows = await db
@@ -206,10 +236,11 @@ export const deleteProjectCascade = async (id: string): Promise<ProjectCleanupIn
 	await db.delete(projects).where(eq(projects.id, id)).execute();
 
 	return {
-		deploymentContainerNames,
-		deploymentImageTags,
-		databaseContainerNames,
-		databaseVolumeNames,
+		isCompose: project.buildType === "compose",
+		projectServerId: project.serverId ?? null,
+		deploymentTargets,
+		databaseTargets,
+		databaseVolumes,
 		volumeDockerNames,
 		domains: domainInfo,
 		slug,

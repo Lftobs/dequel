@@ -18,48 +18,62 @@ const mapScalingPolicy = (row: typeof scalingPolicies.$inferSelect): ScalingPoli
 	updatedAt: row.updatedAt,
 });
 
+export class ScalingRangeError extends Error {
+	constructor(message = "maxReplicas must be greater than or equal to minReplicas") {
+		super(message);
+		this.name = "ScalingRangeError";
+	}
+}
+
 export const upsertScalingPolicy = async (input: CreateScalingPolicyInput): Promise<ScalingPolicy> => {
 	const db = await getDb();
-	const existing = await db
-		.select()
-		.from(scalingPolicies)
-		.where(eq(scalingPolicies.projectId, input.projectId))
-		.execute();
 	const timestamp = now();
-	if (existing[0]) {
-		const updates: Record<string, unknown> = { updatedAt: timestamp };
-		if (input.minReplicas !== undefined) updates.minReplicas = input.minReplicas;
-		if (input.maxReplicas !== undefined) updates.maxReplicas = input.maxReplicas;
-		if (input.cpuThresholdPercent !== undefined) updates.cpuThresholdPercent = input.cpuThresholdPercent;
-		if (input.memoryThresholdPercent !== undefined) updates.memoryThresholdPercent = input.memoryThresholdPercent;
-		if (input.cooldownSeconds !== undefined) updates.cooldownSeconds = input.cooldownSeconds;
-		if (input.enabled !== undefined) updates.enabled = input.enabled;
-		await db.update(scalingPolicies).set(updates).where(eq(scalingPolicies.projectId, input.projectId)).execute();
-		const [updated] = await db
+	return db.transaction(async (tx) => {
+		const existing = await tx
 			.select()
 			.from(scalingPolicies)
 			.where(eq(scalingPolicies.projectId, input.projectId))
+			.for("update")
 			.execute();
-		return mapScalingPolicy(updated);
-	}
-	const id = randomUUID();
-	await db
-		.insert(scalingPolicies)
-		.values({
-			id,
-			projectId: input.projectId,
-			minReplicas: input.minReplicas ?? 1,
-			maxReplicas: input.maxReplicas ?? 5,
-			cpuThresholdPercent: input.cpuThresholdPercent ?? 70,
-			memoryThresholdPercent: input.memoryThresholdPercent ?? 85,
-			cooldownSeconds: input.cooldownSeconds ?? 120,
-			enabled: input.enabled !== undefined ? input.enabled : true,
-			createdAt: timestamp,
-			updatedAt: timestamp,
-		})
-		.execute();
-	const [row] = await db.select().from(scalingPolicies).where(eq(scalingPolicies.id, id)).execute();
-	return mapScalingPolicy(row);
+		const current = existing[0];
+		const minReplicas = input.minReplicas ?? current?.minReplicas ?? 1;
+		const maxReplicas = input.maxReplicas ?? current?.maxReplicas ?? 5;
+		if (maxReplicas < minReplicas) throw new ScalingRangeError();
+		if (current) {
+			const updates: Record<string, unknown> = { updatedAt: timestamp };
+			if (input.minReplicas !== undefined) updates.minReplicas = input.minReplicas;
+			if (input.maxReplicas !== undefined) updates.maxReplicas = input.maxReplicas;
+			if (input.cpuThresholdPercent !== undefined) updates.cpuThresholdPercent = input.cpuThresholdPercent;
+			if (input.memoryThresholdPercent !== undefined) updates.memoryThresholdPercent = input.memoryThresholdPercent;
+			if (input.cooldownSeconds !== undefined) updates.cooldownSeconds = input.cooldownSeconds;
+			if (input.enabled !== undefined) updates.enabled = input.enabled;
+			await tx.update(scalingPolicies).set(updates).where(eq(scalingPolicies.projectId, input.projectId)).execute();
+			const [updated] = await tx
+				.select()
+				.from(scalingPolicies)
+				.where(eq(scalingPolicies.projectId, input.projectId))
+				.execute();
+			return mapScalingPolicy(updated);
+		}
+		const id = randomUUID();
+		await tx
+			.insert(scalingPolicies)
+			.values({
+				id,
+				projectId: input.projectId,
+				minReplicas,
+				maxReplicas,
+				cpuThresholdPercent: input.cpuThresholdPercent ?? 70,
+				memoryThresholdPercent: input.memoryThresholdPercent ?? 85,
+				cooldownSeconds: input.cooldownSeconds ?? 120,
+				enabled: input.enabled !== undefined ? input.enabled : true,
+				createdAt: timestamp,
+				updatedAt: timestamp,
+			})
+			.execute();
+		const [row] = await tx.select().from(scalingPolicies).where(eq(scalingPolicies.id, id)).execute();
+		return mapScalingPolicy(row);
+	});
 };
 
 export const getScalingPolicy = async (projectId: string): Promise<ScalingPolicy | null> => {

@@ -135,8 +135,8 @@ export function Login() {
 							<span className="w-2 h-2 rounded-full bg-zinc-800" />
 							<span className="w-2 h-2 rounded-full bg-zinc-800" />
 						</div>
-						<div className="w-48 h-4 rounded bg-[#070708] border border-[#1a1a1f] flex items-center justify-center text-[8px] text-zinc-600 font-mono">
-							dequel.local/dashboard
+						<div className="w-48 h-4 rounded bg-[#070708] border border-[#1a1a1f] flex items-center justify-center text-[8px] text-zinc-600 font-mono truncate">
+							{typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"}
 						</div>
 						<div className="w-8" />
 					</div>
