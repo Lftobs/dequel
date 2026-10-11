@@ -1,0 +1,28 @@
+---
+title: Persistent Volumes
+category: Cluster Storage & Data
+description: Mount persistent cluster disk pathways inside container runtimes to preserve storage across updates.
+slug: volumes
+---
+
+Dequel container instances are ephemeral by default. When a new deployment occurs, the old container is deleted, taking all local filesystem changes with it.
+
+To store uploaded assets, databases, or local file caches, mount a **Persistent Volume**.
+
+## Creating a Volume Mount
+
+Under the **Volumes** tab, click **Add Volume**:
+
+1. Enter a mount path inside the container environment (e.g. `/app/uploads`).
+2. Click **Add Volume**.
+3. Dequel allocates block storage space on the cluster nodes and maps it to your container's target folder.
+
+:::note[Redeployment Requirement]
+Adding or deleting volumes modifies the low-level container host bindings. To apply these mount pathways, you must trigger a container restart via the **Redeploy Now** prompt banner at the top of the volumes tab.
+:::
+
+
+## Data Security & Backups
+
+Because data is tied directly to cluster block volumes, data persists even if you update environment variables, scale container replicas, or deploy code rollbacks.
+

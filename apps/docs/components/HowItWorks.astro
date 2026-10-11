@@ -1,0 +1,167 @@
+---
+import ArchCanvas from "./architecture/ArchCanvas.astro";
+---
+
+<section class="py-24 max-w-[1150px] mx-auto px-4 dq-reveal" id="how-it-works">
+  <!-- Section Title & Header -->
+  <div class="text-center mb-16">
+    <div class="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#ea580c] mb-3 font-mono">Engine Architecture</div>
+    <h2 class="text-3xl md:text-5xl font-bold tracking-tight mb-4 text-white font-display">
+      Your own PaaS, running on <span class="text-[#ea580c]">your own servers</span>.
+    </h2>
+    <p class="text-sm text-[#7f7f8a] max-w-2xl mx-auto leading-relaxed font-sans">
+      Dequel orchestrates raw Docker containers, Buildkit compilation, Redis job queues, PostgreSQL persistence, and dynamic Caddy routing into one unified platform.
+    </p>
+  </div>
+
+  <!-- Interactive Architecture Emulation Canvas Card -->
+  <div class="relative bg-[#070709] border border-[#222228] rounded-3xl p-5 md:p-8 shadow-2xl overflow-hidden">
+    <!-- Subtle architectural background glow -->
+    <div class="absolute -top-32 -left-32 w-80 h-80 bg-[#ea580c]/5 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-32 -right-32 w-80 h-80 bg-[#f59e0b]/5 rounded-full blur-3xl pointer-events-none"></div>
+
+    <!-- Top Canvas Status Pill -->
+    <div class="flex items-center justify-between border-b border-[#1c1c20] pb-4 mb-4 text-xs font-mono">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+        <span class="text-[#f4f4f5] font-semibold">DEQUEL ENGINE TOPOLOGY</span>
+        <span class="text-[#52525b]">•</span>
+        <span class="text-[#71717a]">dequel_net bridge</span>
+      </div>
+      <div class="hidden sm:flex items-center gap-3 text-[#71717a] text-[11px]">
+        <span>Bun v1.2</span>
+        <span>•</span>
+        <span>BuildKit Daemon</span>
+        <span>•</span>
+        <span>Caddy v2.9</span>
+      </div>
+    </div>
+
+    <!-- SVG Canvas Component -->
+    <ArchCanvas />
+
+    <!-- ── Interactive Step Navigation Controls ── -->
+    <div class="flex flex-wrap items-center justify-center gap-2 md:gap-3 mt-4 pt-6 border-t border-[#1c1c20]" id="dq-stepper">
+      <button class="dq-step-pill active" data-step="1" type="button">
+        <span class="step-dot"></span>
+        <span class="step-num">01</span>
+        <span class="step-label">Ingest</span>
+      </button>
+
+      <button class="dq-step-pill" data-step="2" type="button">
+        <span class="step-dot"></span>
+        <span class="step-num">02</span>
+        <span class="step-label">Orchestrate</span>
+      </button>
+
+      <button class="dq-step-pill" data-step="3" type="button">
+        <span class="step-dot"></span>
+        <span class="step-num">03</span>
+        <span class="step-label">Compile</span>
+      </button>
+
+      <button class="dq-step-pill" data-step="4" type="button">
+        <span class="step-dot"></span>
+        <span class="step-num">04</span>
+        <span class="step-label">Runtime & Wire</span>
+      </button>
+
+      <button class="dq-step-pill" data-step="5" type="button">
+        <span class="step-dot"></span>
+        <span class="step-num">05</span>
+        <span class="step-label">Edge Ingress</span>
+      </button>
+
+      <button class="dq-step-pill" data-step="6" type="button">
+        <span class="step-dot"></span>
+        <span class="step-num">06</span>
+        <span class="step-label">Rollback</span>
+      </button>
+    </div>
+
+    <!-- ── Live Architecture Emulation Explanation Card ── -->
+    <div class="mt-6 p-5 rounded-2xl bg-[#0e0e13] border border-[#222228] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="text-[10px] font-mono uppercase tracking-widest text-[#ea580c] font-bold" id="dq-expl-tag">STAGE 01: INGESTION</span>
+          <span class="text-[10px] text-[#52525b] font-mono">• Zero DevOps overhead</span>
+        </div>
+        <h4 class="text-base md:text-lg font-bold text-white font-display mb-1" id="dq-expl-title">
+          01. Multi-Channel Trigger Ingestion
+        </h4>
+        <p class="text-xs md:text-sm text-[#8e8e99] font-sans leading-relaxed max-w-3xl" id="dq-expl-desc">
+          Push code via GitHub webhooks (`push to main`), the Web Dashboard, or upcoming CLI & Agent triggers. Webhooks spawn instant staging jobs without polling.
+        </p>
+      </div>
+
+      <div class="shrink-0 flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#ea580c] bg-[#ea580c]/10 px-3 py-1.5 rounded-full border border-[#ea580c]/20" id="dq-expl-metric">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#ea580c] animate-pulse"></span>
+          <span>Trigger: Instant Webhook</span>
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .dq-step-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.95rem;
+    border-radius: 9999px;
+    background: #111115;
+    border: 1px solid #222228;
+    color: #8e8e99;
+    cursor: pointer;
+    transition: all 180ms ease;
+    user-select: none;
+  }
+  .dq-step-pill:hover {
+    border-color: #3f3f46;
+    color: #f4f4f5;
+    background: #16161c;
+  }
+  .dq-step-pill .step-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #52525b;
+    transition: all 180ms ease;
+  }
+  .dq-step-pill .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #52525b;
+  }
+  .dq-step-pill .step-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .dq-step-pill.active {
+    background: rgba(234, 88, 12, 0.12);
+    border-color: #ea580c;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(234, 88, 12, 0.25);
+  }
+  .dq-step-pill.active .step-dot {
+    background-color: #ea580c;
+    box-shadow: 0 0 8px #ea580c;
+  }
+  .dq-step-pill.active .step-num {
+    color: #ea580c;
+  }
+</style>
+
+
+<script>
+  import { initArchController } from "./architecture/archController";
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initArchController);
+  } else {
+    initArchController();
+  }
+  document.addEventListener("astro:page-load", initArchController);
+</script>

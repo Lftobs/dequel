@@ -1,2 +1,6 @@
 .vercel
 .env*.local
+.blume/
+dist/
+.astro/
+.blume-verify/

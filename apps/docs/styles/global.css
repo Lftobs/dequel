@@ -1,0 +1,221 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..600;1,9..40,400..600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+@import "tailwindcss";
+@source "../components/**/*.{astro,html,js,jsx,ts,tsx}";
+@source "../pages/**/*.{astro,html,js,jsx,ts,tsx}";
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 4.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 4.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 24 95% 53%; /* Orange #ea580c */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5.9% 10%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 5.9% 10%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 24 95% 53%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 10%;
+    --input: 240 5.9% 10%;
+    --ring: 24 95% 53%;
+    --radius: 0px;
+
+    /* Dequel brand tokens */
+    --dq-surface: #0a0a0c;
+    --dq-surface-raised: #111114;
+    --dq-surface-overlay: #18181c;
+    --dq-border: #222228;
+    --dq-border-subtle: #151519;
+    --dq-text: #e2e2e8;
+    --dq-text-muted: #7f7f8a;
+    --dq-text-faint: #4b4b54;
+
+    /* Brand Color Mix (Orange base + Amber + Pink) */
+    --dq-orange: #ea580c;
+    --dq-amber: #f59e0b;
+    --dq-pink: #ec4899;
+  }
+
+  body {
+    background-color: var(--dq-surface);
+    color: var(--dq-text);
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* Typography consistency */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--dq-text);
+  }
+
+  /* Serif display highlight */
+  em, .dq-serif-highlight {
+    font-style: italic;
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-weight: 400;
+    color: var(--dq-orange);
+  }
+
+  ::selection {
+    background: rgba(234, 88, 12, 0.35);
+    color: #ffffff;
+  }
+
+  .cf-compare-card--orange ::selection {
+    background: #ffffff;
+    color: #ea580c;
+  }
+
+
+  /* Prose adjustments for Docs consistency */
+  .prose h1 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    color: var(--dq-text);
+  }
+  .prose h2 {
+    font-size: 1.25rem;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    color: var(--dq-text);
+    border-bottom: 1px solid var(--dq-border-subtle);
+    padding-bottom: 0.25rem;
+  }
+  .prose h3 {
+    font-size: 1rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--dq-text);
+  }
+  .prose p {
+    color: var(--dq-text-muted);
+    font-size: 0.82rem;
+    line-height: 1.7;
+    margin-bottom: 1.25rem;
+  }
+  .prose ul {
+    color: var(--dq-text-muted);
+    font-size: 0.82rem;
+    line-height: 1.7;
+    margin-bottom: 1.25rem;
+    list-style-type: disc;
+    padding-left: 1.5em;
+  }
+  .prose ol {
+    color: var(--dq-text-muted);
+    font-size: 0.82rem;
+    line-height: 1.7;
+    margin-bottom: 1.25rem;
+    list-style-type: decimal;
+    padding-left: 1.5em;
+  }
+  .prose li strong {
+    color: var(--dq-text);
+  }
+  .prose code {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--dq-surface-raised);
+    border: 1px solid var(--dq-border);
+    padding: 0.12rem 0.3rem;
+    font-size: 0.75rem;
+    color: var(--dq-orange) !important;
+  }
+  .prose pre {
+    background: #000000 !important;
+    border: 1px solid var(--dq-border) !important;
+    padding: 1.25rem !important;
+    margin: 1.25rem 0 !important;
+    overflow-x: auto;
+  }
+  .prose pre code {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    color: var(--dq-text) !important;
+    font-size: 0.72rem !important;
+  }
+  .prose a {
+    color: var(--dq-orange);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: 700;
+  }
+  .prose a:hover {
+    color: var(--dq-text);
+  }
+
+  /* Custom next buttons in docs */
+  .prose a.inline-flex {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--dq-surface-raised);
+    color: var(--dq-text);
+    border: 1px solid var(--dq-border);
+    font-weight: 700;
+    padding: 0.6rem 1.25rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    transition: all 100ms;
+  }
+  .prose a.inline-flex:hover {
+    background: var(--dq-orange);
+    color: #ffffff;
+    border-color: var(--dq-orange);
+  }
+
+  /* Alert boxes inside docs */
+  .prose div.p-4 {
+    border: 1px solid var(--dq-border) !important;
+    background: var(--dq-surface-raised) !important;
+    padding: 1.25rem !important;
+    margin: 1.5rem 0 !important;
+  }
+  .prose div.p-4 span {
+    font-size: 0.65rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    color: var(--dq-orange) !important;
+  }
+  .prose div.p-4 p {
+    margin-bottom: 0 !important;
+    margin-top: 0.25rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1c1c21;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2b2b35;
+  }
+}
+/* ── Modular Landing & Brand Stylesheets ─────────────── */
+@import "./landing.css";
+@import "./landing-components.css";
+
