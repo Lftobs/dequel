@@ -4,26 +4,37 @@ category: Getting Started
 slug: docs
 ---
 
-Dequel provides developers with a Heroku-like platform experience on top of virtualized docker runtimes and cluster node providers. You get the simplicity of automated Git triggers, built-in let’s encrypt SSL proxy routing, and direct persistent volume attachments without wrestling with complex Kubernetes configurations.
+Dequel is a self-hosted deployment platform. You connect your servers,
+push code from Git or a ZIP file, and Dequel builds, runs, routes, and
+monitors your apps — with automatic HTTPS, managed databases, horizontal
+autoscaling, and AI-assisted failure diagnosis built in.
 
-## Core Philosophy
+If you have used Heroku, Render, or Railway, Dequel gives you that same
+push-to-deploy workflow on infrastructure you own. There is no control
+plane phoning home: the dashboard, API, builders, and observability stack
+all run as containers on your machine.
 
-- **Zero-Config Routing:** Incoming traffic is automatically proxied to active deployments based on project configuration.
-- **State Isolation:** Web containers are designed to be ephemeral. Persistent state is kept cleanly separated in managed databases or mapped node volumes.
-- **Self-Healing Runtimes:** Failed container instances are automatically replaced, and scaling adjustments occur automatically based on CPU usage.
+## How Dequel works
 
-:::note[Key Concept: Projects]
-A Project in Dequel represents a single service (a container build) along with its environment configurations, database attachments, routing domains, and active deployments.
+When you create a project and trigger a deployment:
+
+1. Dequel fetches your code from a Git repository (or unpacks your ZIP
+   upload) into a build workspace.
+2. It detects your framework automatically with Railpack — no Dockerfile
+   required — or follows your `docker-compose.yml` for multi-container
+   projects, then builds the image with BuildKit.
+3. It starts your container on the target server (the control plane
+   itself, a server you connected over SSH, or a WireGuard agent node)
+   and injects your environment variables and volume mounts.
+4. It writes a Caddy route file so your app is reachable at
+   `https://<project-slug>.<your-domain>` with an automatic Let's Encrypt
+   certificate, or at `http://<project-slug>.localhost` in local setups.
+5. It keeps watching: request logs, runtime logs, CPU and memory metrics,
+   alert rules, and autoscaling policies all run against the deployment.
+
+:::note[Key concept: projects]
+A project in Dequel is a single service — its source, build settings,
+environment variables, volumes, domains, scaling policy, alert rules,
+and deployment history. Databases are separate managed resources you
+attach to projects.
 :::
-
-
-## How Dequel Works
-
-When you connect a repository or upload a folder:
-
-1. Dequel reads your project's code directory and looks for a `Dockerfile` or builder configurations.
-2. It initiates a secure cluster builder environment to package your container image.
-3. The container image is pushed to the local cluster registry and distributed across running nodes.
-4. Caddy routing endpoints are automatically updated to direct traffic to the newly created instance ports.
-
-

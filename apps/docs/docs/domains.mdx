@@ -1,31 +1,51 @@
 ---
 title: Custom Domains
-category: Networking & Security
-description: Point custom web addresses to container deployment endpoints using DNS records.
+category: Projects
+description: Point your own domains at Dequel projects with automatic HTTPS.
 slug: domains
 ---
 
-Dequel provides public routing endpoints. You can route external domain request traffic (e.g. `app.mycompany.com`) by pointing DNS records to Dequel cluster host IP addresses.
+Every project gets a default URL on your base domain
+(`<project-slug>.<your-domain>`). Add **custom domains** on the
+project's **Domains** tab to serve the app on addresses you own, like
+`app.mycompany.com`.
 
-## Step 1: Add Domain in Dequel Console
+## Adding a domain
 
-Under the **Domains** tab, click **Add Domain**, enter your custom domain address (e.g., `blog.mydomain.com`), and save.
+1. Click **Add Domain** and enter the domain.
+2. For Docker Compose projects, pick the target service and port; for
+   single-service projects the running container is the target.
+3. Dequel shows DNS instructions. Create the record at your registrar:
+   - **Subdomain** (`app.mycompany.com`): a `CNAME` pointing at your
+     base domain, or an `A` record pointing at the server IP.
+   - **Apex domain** (`mycompany.com`): an `A` record pointing at the
+     server IP (find it under **Settings → Servers** or
+     `GET /server/ip`).
+4. Dequel verifies DNS in the background and marks the domain
+   `verified`. Caddy then serves it with an automatic Let's Encrypt
+   certificate (see [SSL](/docs/ssl)).
 
-## Step 2: Configure DNS Records
+The Domains tab shows live status per domain: validation state, SSL
+state, whether DNS resolves, and whether TLS handshakes succeed (polled
+continuously).
 
-In your DNS registrar's control panel (Cloudflare, GoDaddy, Namecheap, etc.), add the record displayed in the instructions box:
-
-- **For Subdomains:** Add a `CNAME` record pointing your subdomain (e.g. `blog`) to the cluster's base domain.
-- **For Apex/Root Domains:** Add an `A` record pointing `@` directly to the Dequel cluster server IP.
-
-:::note[DNS Propagation]
-DNS changes can take up to 24–48 hours to propagate globally. Dequel will run automated validation checks in the background until the records resolve correctly.
+:::note[DNS propagation]
+New records can take minutes to hours to propagate. Dequel keeps
+re-checking until they resolve — you don't need to click anything while
+waiting.
 :::
 
+## Validation states
 
-## Validation Statuses
+- **Pending** — waiting for DNS to resolve to the server.
+- **Verified** — DNS matches and the route is live.
+- **Failed** — records point somewhere else. Fix the DNS values and
+  Dequel re-checks.
 
-- **Pending:** Dequel is awaiting DNS propagation.
-- **Verified:** DNS records resolve correctly. The proxy router is configured.
-- **Failed:** Resolving record targets did not match the required target targets. Check your DNS values.
+Remove a domain any time with the delete action; its route is removed
+on the next Caddy reload.
 
+## Next steps
+
+- Read [SSL](/docs/ssl) for certificate details.
+- Read [Agent Caddy Routes](/docs/agent-caddy-routes) for the routing internals.
