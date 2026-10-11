@@ -17,6 +17,7 @@ mock.module(fileUrl("../../db/repo"), () => ({
 	getServerById: mock((id: string) => Promise.resolve(servers.find((s) => s.id === id) ?? null)),
 	listProjects: mock(() => Promise.resolve(projects)),
 	listDeployments: mock(() => Promise.resolve([])),
+	getLatestRunningDeployment: mock(() => Promise.resolve(null)),
 	createDeployment: mock(() => Promise.resolve({ id: "dep-new" })),
 	updateProject: mock(() => Promise.resolve()),
 	updateDeploymentStatus: mock(() => Promise.resolve()),

@@ -63,33 +63,6 @@ export function terminateWithEscalation(child: ChildProcess, escalationGraceMs =
 	};
 }
 
-let reaperInitialized = false;
-
-export function initZombieReaper(): void {
-	if (reaperInitialized) return;
-	reaperInitialized = true;
-
-	if (process.platform !== "linux") return;
-
-	try {
-		const { dlopen, FFIType } = require("bun:ffi");
-		const libc = dlopen("libc.so.6", {
-			waitpid: {
-				args: [FFIType.i32, FFIType.ptr, FFIType.i32],
-				returns: FFIType.i32,
-			},
-		});
-
-		const reap = () => {
-			try {
-				while (libc.symbols.waitpid(-1, null, 1) > 0) {}
-			} catch {}
-		};
-
-		process.on("SIGCHLD", reap);
-	} catch {}
-}
-
 export function safeSpawn(cmd: string, args: string[], options: SafeSpawnOptions = {}): Promise<SafeSpawnResult> {
 	return new Promise((resolve, reject) => {
 		const isPosix = process.platform !== "win32";

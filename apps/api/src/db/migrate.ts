@@ -1,7 +1,5 @@
 import { migrate as drizzleMigrate } from "drizzle-orm/node-postgres/migrator";
-import { config } from "../utils/config";
 import { getDb } from "./client";
-import { getGithubIntegration, setGithubIntegration } from "./repo/github";
 
 export const migrate = async () => {
 	const db = await getDb();
@@ -13,41 +11,10 @@ export const migrate = async () => {
 		const msg = err?.message ?? String(err);
 		const innerCode = err?.cause?.code;
 		if (err?.code === "42P07" || innerCode === "42P07" || msg.includes("already exists")) {
-			console.log("[Migrate] Some tables already exist, continuing to seed");
+			console.log("[Migrate] Some tables already exist, continuing");
 		} else {
 			console.error("[Migrate] Migration failed:", msg);
 			throw err;
-		}
-	}
-
-	await seedFromConfig();
-};
-
-const seedFromConfig = async () => {
-	if (config.githubClientId && config.githubClientSecret) {
-		const existing = await getGithubIntegration();
-		if (existing) {
-			if (
-				existing.clientId !== config.githubClientId ||
-				existing.clientSecret !== config.githubClientSecret ||
-				(config.githubWebhookSecret && existing.webhookSecret !== config.githubWebhookSecret)
-			) {
-				await setGithubIntegration({
-					clientId: config.githubClientId,
-					clientSecret: config.githubClientSecret,
-					appName: config.githubAppName,
-					webhookSecret: config.githubWebhookSecret || undefined,
-				});
-				console.log("[Config] Synced GitHub integration from config file");
-			}
-		} else {
-			await setGithubIntegration({
-				clientId: config.githubClientId,
-				clientSecret: config.githubClientSecret,
-				appName: config.githubAppName,
-				webhookSecret: config.githubWebhookSecret || undefined,
-			});
-			console.log("[Config] Seeded GitHub integration from config file");
 		}
 	}
 };

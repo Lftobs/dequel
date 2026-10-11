@@ -1,28 +1,43 @@
 ---
 title: Persistent Volumes
-category: Cluster Storage & Data
-description: Mount persistent cluster disk pathways inside container runtimes to preserve storage across updates.
+category: Projects
+description: Keep data across deployments with mounted Docker volumes.
 slug: volumes
 ---
 
-Dequel container instances are ephemeral by default. When a new deployment occurs, the old container is deleted, taking all local filesystem changes with it.
+Containers are ephemeral: each new deployment replaces the old
+container, and anything written to its local filesystem disappears with
+it. Mount a **persistent volume** for uploads, caches, SQLite files, or
+any data that must survive redeploys.
 
-To store uploaded assets, databases, or local file caches, mount a **Persistent Volume**.
+## Adding a volume
 
-## Creating a Volume Mount
+Open the project and switch to the **Volumes** tab, then click **Add
+Volume**:
 
-Under the **Volumes** tab, click **Add Volume**:
+1. Enter the mount path inside the container (for example
+   `/app/uploads`).
+2. Save. Dequel creates a Docker volume on the deployment's server and
+   records the mount.
 
-1. Enter a mount path inside the container environment (e.g. `/app/uploads`).
-2. Click **Add Volume**.
-3. Dequel allocates block storage space on the cluster nodes and maps it to your container's target folder.
+Mount changes apply on the next container start. The tab shows a
+redeploy banner after you add or delete a volume — click **Redeploy** to
+roll it out. Deleting a volume unmounts it; the volume record can be
+removed separately.
 
-:::note[Redeployment Requirement]
-Adding or deleting volumes modifies the low-level container host bindings. To apply these mount pathways, you must trigger a container restart via the **Redeploy Now** prompt banner at the top of the volumes tab.
+:::note[Volumes live on the deployment's server]
+Volumes are created on whichever server runs the deployment. If you move
+a project to another server (see [Servers](/docs/servers)), its data
+does not move with it — plan a copy step for stateful moves.
 :::
 
+## Databases vs volumes
 
-## Data Security & Backups
+- Use a [managed database](/docs/databases) for structured data with
+  querying, credentials, backups, and remote access.
+- Use a volume for flat files your app reads and writes directly.
 
-Because data is tied directly to cluster block volumes, data persists even if you update environment variables, scale container replicas, or deploy code rollbacks.
+## Next steps
 
+- Read [Managed Databases](/docs/databases) for the database option.
+- Read [Backups](/docs/backups) for snapshot and restore flows.

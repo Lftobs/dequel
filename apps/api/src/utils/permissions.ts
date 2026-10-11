@@ -23,3 +23,16 @@ export const hasPermission = (permissions: Permission[], requiredAction: string,
 		return false;
 	});
 };
+
+const READ_METHODS = new Set(["GET", "HEAD"]);
+
+const isReadMethod = (method: string): boolean => READ_METHODS.has(method.toUpperCase());
+
+export const requiredPermissionForMethod = (method: string): string =>
+	isReadMethod(method) ? "deploy:read" : "deploy:write";
+
+export const canPerformMethod = (permissions: Permission[], method: string): boolean => {
+	const canWrite = hasPermission(permissions, "deploy:write");
+	if (isReadMethod(method)) return canWrite || hasPermission(permissions, "deploy:read");
+	return canWrite;
+};

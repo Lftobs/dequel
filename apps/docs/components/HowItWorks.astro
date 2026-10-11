@@ -2,31 +2,31 @@
 import ArchCanvas from "./architecture/ArchCanvas.astro";
 ---
 
-<section class="py-24 max-w-[1150px] mx-auto px-4 dq-reveal" id="how-it-works">
+<section class="py-14 sm:py-24 max-w-[1150px] mx-auto px-4 dq-reveal" id="how-it-works">
   <!-- Section Title & Header -->
-  <div class="text-center mb-16">
+  <div class="text-center mb-10 sm:mb-16">
     <div class="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#ea580c] mb-3 font-mono">Engine Architecture</div>
-    <h2 class="text-3xl md:text-5xl font-bold tracking-tight mb-4 text-white font-display">
+    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold tracking-tight mb-4 text-white font-display">
       Your own PaaS, running on <span class="text-[#ea580c]">your own servers</span>.
     </h2>
-    <p class="text-sm text-[#7f7f8a] max-w-2xl mx-auto leading-relaxed font-sans">
+    <p class="text-xs sm:text-sm text-[#7f7f8a] max-w-2xl mx-auto leading-relaxed font-sans">
       Dequel orchestrates raw Docker containers, Buildkit compilation, Redis job queues, PostgreSQL persistence, and dynamic Caddy routing into one unified platform.
     </p>
   </div>
 
   <!-- Interactive Architecture Emulation Canvas Card -->
-  <div class="relative bg-[#070709] border border-[#222228] rounded-3xl p-5 md:p-8 shadow-2xl overflow-hidden">
+  <div class="relative bg-[#070709] border border-[#222228] rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl overflow-hidden">
     <!-- Subtle architectural background glow -->
     <div class="absolute -top-32 -left-32 w-80 h-80 bg-[#ea580c]/5 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute -bottom-32 -right-32 w-80 h-80 bg-[#f59e0b]/5 rounded-full blur-3xl pointer-events-none"></div>
 
     <!-- Top Canvas Status Pill -->
-    <div class="flex items-center justify-between border-b border-[#1c1c20] pb-4 mb-4 text-xs font-mono">
+    <div class="flex flex-wrap items-center justify-between border-b border-[#1c1c20] pb-3.5 mb-3 text-[11px] sm:text-xs font-mono gap-2">
       <div class="flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0"></span>
         <span class="text-[#f4f4f5] font-semibold">DEQUEL ENGINE TOPOLOGY</span>
-        <span class="text-[#52525b]">•</span>
-        <span class="text-[#71717a]">dequel_net bridge</span>
+        <span class="hidden sm:inline text-[#52525b]">•</span>
+        <span class="hidden sm:inline text-[#71717a]">dequel_net bridge</span>
       </div>
       <div class="hidden sm:flex items-center gap-3 text-[#71717a] text-[11px]">
         <span>Bun v1.2</span>
@@ -35,13 +35,14 @@ import ArchCanvas from "./architecture/ArchCanvas.astro";
         <span>•</span>
         <span>Caddy v2.9</span>
       </div>
+      <span class="sm:hidden text-[10px] text-[#71717a]">← Swipe diagram →</span>
     </div>
 
     <!-- SVG Canvas Component -->
     <ArchCanvas />
 
     <!-- ── Interactive Step Navigation Controls ── -->
-    <div class="flex flex-wrap items-center justify-center gap-2 md:gap-3 mt-4 pt-6 border-t border-[#1c1c20]" id="dq-stepper">
+    <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-center gap-2 md:gap-3 mt-4 pt-5 border-t border-[#1c1c20]" id="dq-stepper">
       <button class="dq-step-pill active" data-step="1" type="button">
         <span class="step-dot"></span>
         <span class="step-num">01</span>
@@ -80,13 +81,13 @@ import ArchCanvas from "./architecture/ArchCanvas.astro";
     </div>
 
     <!-- ── Live Architecture Emulation Explanation Card ── -->
-    <div class="mt-6 p-5 rounded-2xl bg-[#0e0e13] border border-[#222228] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div class="mt-5 sm:mt-6 p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-[#0e0e13] border border-[#222228] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       <div>
-        <div class="flex items-center gap-2 mb-1.5">
+        <div class="flex flex-wrap items-center gap-2 mb-1.5">
           <span class="text-[10px] font-mono uppercase tracking-widest text-[#ea580c] font-bold" id="dq-expl-tag">STAGE 01: INGESTION</span>
           <span class="text-[10px] text-[#52525b] font-mono">• Zero DevOps overhead</span>
         </div>
-        <h4 class="text-base md:text-lg font-bold text-white font-display mb-1" id="dq-expl-title">
+        <h4 class="text-sm sm:text-base md:text-lg font-bold text-white font-display mb-1" id="dq-expl-title">
           01. Multi-Channel Trigger Ingestion
         </h4>
         <p class="text-xs md:text-sm text-[#8e8e99] font-sans leading-relaxed max-w-3xl" id="dq-expl-desc">
@@ -108,8 +109,9 @@ import ArchCanvas from "./architecture/ArchCanvas.astro";
   .dq-step-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.45rem 0.95rem;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.85rem;
     border-radius: 9999px;
     background: #111115;
     border: 1px solid #222228;
@@ -117,6 +119,7 @@ import ArchCanvas from "./architecture/ArchCanvas.astro";
     cursor: pointer;
     transition: all 180ms ease;
     user-select: none;
+    white-space: nowrap;
   }
   .dq-step-pill:hover {
     border-color: #3f3f46;
@@ -129,6 +132,7 @@ import ArchCanvas from "./architecture/ArchCanvas.astro";
     border-radius: 50%;
     background-color: #52525b;
     transition: all 180ms ease;
+    flex-shrink: 0;
   }
   .dq-step-pill .step-num {
     font-family: 'JetBrains Mono', monospace;
@@ -137,7 +141,7 @@ import ArchCanvas from "./architecture/ArchCanvas.astro";
   }
   .dq-step-pill .step-label {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 600;
   }
   .dq-step-pill.active {

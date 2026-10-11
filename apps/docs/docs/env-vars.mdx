@@ -1,28 +1,39 @@
 ---
 title: Environment Variables
-category: Core Architecture
-description: Inject configuration values, API keys, and connection credentials securely into container environments.
+category: Projects
+description: Inject per-environment config and secrets into your containers.
 slug: env-vars
 ---
 
-Environment variables decouple application configurations from source code repositories. Secrets (like payment gateways, SMTP credentials, or database passwords) must always be injected this way to preserve security.
+Environment variables decouple configuration from code. API keys,
+database URLs, and feature flags go here instead of the repository.
+Values are encrypted at rest with `ENV_ENCRYPTION_KEY` and masked in
+the UI until you reveal them.
 
-## Adding Variables
+## Managing variables
 
-In the project console, click the **Environment Variables** tab:
+Open the project and switch to the **Env Variables** tab:
 
-- Enter a key name (e.g. `STRIPE_SECRET_KEY`). Key names should contain only alphanumeric characters and underscores.
-- Enter the value. All values are securely stored and encrypted in the cluster database.
-- Click **Add Variable**.
+- **Add** one variable or several at once, each scoped to an environment
+  (for example `production`). Keys are conventionally uppercase.
+- **Import** a local `.env` file to bulk-load variables.
+- **Reveal** a masked value with the eye icon (decrypts on demand), or
+  copy it without revealing.
+- **Edit** a value inline or **delete** the variable.
 
-:::note[Masked Displays]
-For security, all environment variable values are masked on load. Click the eye icon to reveal them, or copy them securely via the copy badge.
-:::
+Variables are injected when the container starts, so adding, editing, or
+deleting one requires a restart. Dequel shows a redeploy banner at the
+top of the tab after any change — click **Redeploy** to roll the new
+config out.
 
+## Shared variables
 
-## Redeployment Prompts
+Variables needed by several projects (a shared API key, a common feature
+flag) live once in the **Shared Env** library and are linked into
+projects. A project-level variable with the same key wins over the
+shared one. See [Shared Env Vars](/docs/shared-env-vars).
 
-Because environment variables are injected during container startup, modifying or deleting variables requires a container restart to take effect.
+## Next steps
 
-Dequel displays a **Redeployment Warning Banner** at the top of the tab whenever variables are mutated. Click the **Redeploy Now** button on the banner to execute a zero-downtime rolling update with the new configurations.
-
+- Read [Shared Env Vars](/docs/shared-env-vars) for cross-project config.
+- Read [Deployments](/docs/deployments) for the redeploy flow.
