@@ -174,6 +174,7 @@ export const removeFromCaddyRoute = async (
 export interface BuildSnippetOpts {
 	baseDomain?: string;
 	listEnvVarsFn?: typeof listEnvironmentVariablesForDeploy;
+	containerNames?: string[];
 }
 
 export const buildCaddySnippet = async (
@@ -245,7 +246,9 @@ export const buildCaddySnippet = async (
 		}
 	}
 
-	const primaryBlock = caddySite(defaultDomains.join(", "), caddyReverseProxy(`${containerName}:${port}`));
+	const upstreamNames = opts?.containerNames?.length ? opts.containerNames : [containerName];
+	const upstreams = upstreamNames.map((n) => `${n}:${port}`).join(" ");
+	const primaryBlock = caddySite(defaultDomains.join(", "), caddyReverseProxy(upstreams));
 
 	return [primaryBlock, ...customBlocks].join("\n");
 };

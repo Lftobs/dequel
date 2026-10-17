@@ -1,10 +1,11 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { config } from "../utils/config";
 import { DEFAULT_ENV_ENCRYPTION_KEY, decryptValue, encryptValue } from "../utils/crypto";
 import { getDb } from "./db-provider";
 import {
 	backupStorageSettings,
 	environmentVariables,
+	githubIntegrations,
 	githubSessions,
 	llmProviderKeys,
 	projects,
@@ -268,6 +269,78 @@ const STORES: Store[] = [
 						.execute(),
 				activeKey,
 			);
+		},
+	},
+	{
+		name: "github_integrations",
+		run: async (activeKey) => {
+			const db = await getDb();
+			const legacy = await db.select().from(githubIntegrations).where(isNull(githubIntegrations.clientSecretIv));
+			let migrated = 0;
+			for (const row of legacy) {
+				if (!row.clientSecret) continue;
+				const client = encryptValue(row.clientSecret, activeKey);
+				const webhook = row.webhookSecret ? encryptValue(row.webhookSecret, activeKey) : null;
+				await db
+					.update(githubIntegrations)
+					.set({
+						clientSecret: client.encrypted,
+						clientSecretIv: client.iv,
+						clientSecretTag: client.tag,
+						...(webhook
+							? { webhookSecret: webhook.encrypted, webhookSecretIv: webhook.iv, webhookSecretTag: webhook.tag }
+							: {}),
+					})
+					.where(eq(githubIntegrations.id, row.id))
+					.execute();
+				migrated += 1;
+			}
+			const encrypted = await db
+				.select()
+				.from(githubIntegrations)
+				.where(and(isNotNull(githubIntegrations.clientSecretIv), isNotNull(githubIntegrations.clientSecretTag)));
+			let unknown = 0;
+			for (const row of encrypted) {
+				const triples: { read: StoredTriple; write: (next: Triple) => Promise<unknown> }[] = [];
+				if (row.clientSecretIv) {
+					triples.push({
+						read: { enc: row.clientSecret, iv: row.clientSecretIv, tag: row.clientSecretTag },
+						write: (next) =>
+							db
+								.update(githubIntegrations)
+								.set({ clientSecret: next.encrypted, clientSecretIv: next.iv, clientSecretTag: next.tag })
+								.where(eq(githubIntegrations.id, row.id))
+								.execute(),
+					});
+				}
+				if (row.webhookSecretIv) {
+					triples.push({
+						read: { enc: row.webhookSecret, iv: row.webhookSecretIv, tag: row.webhookSecretTag },
+						write: (next) =>
+							db
+								.update(githubIntegrations)
+								.set({ webhookSecret: next.encrypted, webhookSecretIv: next.iv, webhookSecretTag: next.tag })
+								.where(eq(githubIntegrations.id, row.id))
+								.execute(),
+					});
+				}
+				for (const triple of triples) {
+					const { enc, iv, tag } = triple.read;
+					if (!enc || !iv || !tag) continue;
+					try {
+						decryptValue(enc, iv, tag, activeKey);
+						continue;
+					} catch {}
+					try {
+						const plain = decryptValue(enc, iv, tag, DEFAULT_ENV_ENCRYPTION_KEY);
+						await triple.write(encryptValue(plain, activeKey));
+						migrated += 1;
+					} catch {
+						unknown += 1;
+					}
+				}
+			}
+			return { migrated, unknown };
 		},
 	},
 	{

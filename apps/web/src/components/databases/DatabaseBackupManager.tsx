@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Clock, Download, HardDrive, RefreshCw, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
+import { Clock, FlaskConical, HardDrive, RefreshCw, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 import { useState } from "react";
 import * as api from "../../api/client";
-import type { BackupJob, Database } from "../../types";
+import type { BackupJob, Database, RestoreTestRecord } from "../../types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -13,6 +13,24 @@ interface DatabaseBackupManagerProps {
 	database: Database;
 }
 
+const timeAgo = (iso: string | null | undefined): string => {
+	if (!iso) return "";
+	const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+	if (minutes < 1) return "just now";
+	if (minutes < 60) return `${minutes}m ago`;
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return `${hours}h ago`;
+	return `${Math.floor(hours / 24)}d ago`;
+};
+
+const eventChipClass = (status: string, tone: "green" | "red" | "amber") => {
+	const base = "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-mono uppercase";
+	if (status === "running") return `${base} border border-amber-500/30 bg-amber-500/10 text-amber-400`;
+	return tone === "green"
+		? `${base} border border-emerald-500/30 bg-emerald-500/10 text-emerald-400`
+		: `${base} border border-red-500/30 bg-red-500/10 text-red-400`;
+};
+
 export function DatabaseBackupManager({ database }: DatabaseBackupManagerProps) {
 	const [isTriggering, setIsTriggering] = useState(false);
 	const [restoringBackup, setRestoringBackup] = useState<BackupJob | null>(null);
@@ -21,6 +39,8 @@ export function DatabaseBackupManager({ database }: DatabaseBackupManagerProps) 
 	const [deletingBackup, setDeletingBackup] = useState<BackupJob | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [testingBackupId, setTestingBackupId] = useState<string | null>(null);
+	const [testNotice, setTestNotice] = useState<{ ok: boolean; text: string } | null>(null);
 	const [page, setPage] = useState(1);
 	const pageSize = 5;
 
@@ -29,6 +49,22 @@ export function DatabaseBackupManager({ database }: DatabaseBackupManagerProps) 
 		queryFn: () => api.listBackups().catch(() => []),
 		refetchInterval: 10_000,
 	});
+
+	const { data: restoreEvents = [], refetch: refetchRestoreEvents } = useQuery({
+		queryKey: ["restore-tests", database.id],
+		queryFn: () => api.listRestoreTests({ targetId: database.id, limit: 100 }).catch(() => []),
+		refetchInterval: 10_000,
+	});
+
+	const latestByBackup = (kind: "test" | "restore") => {
+		const map: Record<string, RestoreTestRecord> = {};
+		for (const event of restoreEvents) {
+			if (event.kind === kind && !map[event.backupId]) map[event.backupId] = event;
+		}
+		return map;
+	};
+	const latestTests = latestByBackup("test");
+	const latestRestores = latestByBackup("restore");
 
 	const instanceBackups = allBackups.filter((b) => b.targetId === database.id);
 	const paginatedBackups = instanceBackups.slice((page - 1) * pageSize, page * pageSize);
@@ -53,14 +89,36 @@ export function DatabaseBackupManager({ database }: DatabaseBackupManagerProps) 
 		try {
 			await api.restoreBackup(restoringBackup.id);
 			setRestoreMessage("Instance database dump restored successfully.");
+			refetchRestoreEvents();
 			setTimeout(() => {
 				setRestoringBackup(null);
 				setRestoreMessage(null);
 			}, 2000);
 		} catch (err: any) {
 			setRestoreMessage(`Restore failed: ${err.message}`);
+			refetchRestoreEvents();
 		} finally {
 			setIsRestoring(false);
+		}
+	};
+
+	const handleRestoreTest = async (job: BackupJob) => {
+		setTestingBackupId(job.id);
+		setTestNotice(null);
+		try {
+			await api.triggerRestoreTest(job.id);
+			setTestNotice({
+				ok: true,
+				text: `Restore test passed for ${job.filename || job.id.slice(0, 8)}`,
+			});
+		} catch (err: any) {
+			setTestNotice({
+				ok: false,
+				text: `Restore test failed: ${err.message}`,
+			});
+		} finally {
+			setTestingBackupId(null);
+			refetchRestoreEvents();
 		}
 	};
 
@@ -116,6 +174,18 @@ export function DatabaseBackupManager({ database }: DatabaseBackupManagerProps) 
 							{error}
 						</div>
 					)}
+					{testNotice && (
+						<div
+							className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+								testNotice.ok
+									? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+									: "border-red-500/20 bg-red-500/10 text-red-400"
+							}`}
+						>
+							{testNotice.ok ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+							{testNotice.text}
+						</div>
+					)}
 
 					<div className="flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 						<span>Snapshots ({instanceBackups.length})</span>
@@ -154,18 +224,68 @@ export function DatabaseBackupManager({ database }: DatabaseBackupManagerProps) 
 											<span>{job.sizeBytes ? `${(job.sizeBytes / (1024 * 1024)).toFixed(2)} MB` : "Pending"}</span>
 											<span>{new Date(job.createdAt).toLocaleString()}</span>
 										</div>
+										{(latestTests[job.id] || latestRestores[job.id]) && (
+											<div className="flex items-center gap-2">
+												{latestTests[job.id] && (
+													<span
+														className={eventChipClass(
+															latestTests[job.id].status,
+															latestTests[job.id].status === "passed" ? "green" : "red",
+														)}
+													>
+														{latestTests[job.id].status === "running"
+															? "Testing…"
+															: latestTests[job.id].status === "passed"
+																? "Restorable"
+																: "Test failed"}
+														{latestTests[job.id].status !== "running" &&
+															` · ${timeAgo(latestTests[job.id].completedAt)}`}
+													</span>
+												)}
+												{latestRestores[job.id] && (
+													<span
+														className={eventChipClass(
+															latestRestores[job.id].status,
+															latestRestores[job.id].status === "passed" ? "green" : "red",
+														)}
+													>
+														{latestRestores[job.id].status === "running"
+															? "Restoring…"
+															: latestRestores[job.id].status === "passed"
+																? "Restored"
+																: "Restore failed"}
+														{latestRestores[job.id].status !== "running" &&
+															` · ${timeAgo(latestRestores[job.id].completedAt)}`}
+													</span>
+												)}
+											</div>
+										)}
 									</div>
 
 									<div className="flex items-center gap-2">
 										{job.status === "completed" && (
-											<Button
-												size="sm"
-												variant="outline"
-												onClick={() => setRestoringBackup(job)}
-												className="border-orange-500/40 text-orange-400 hover:bg-orange-500/10 text-xs h-8 px-3 rounded-lg"
-											>
-												Restore
-											</Button>
+											<>
+												<Button
+													size="sm"
+													variant="outline"
+													onClick={() => setRestoringBackup(job)}
+													className="border-orange-500/40 text-orange-400 hover:bg-orange-500/10 text-xs h-8 px-3 rounded-lg"
+												>
+													Restore
+												</Button>
+												<Button
+													size="sm"
+													variant="outline"
+													disabled={!!testingBackupId}
+													onClick={() => handleRestoreTest(job)}
+													className="border-sky-500/40 text-sky-400 hover:bg-sky-500/10 text-xs h-8 px-3 rounded-lg gap-1.5"
+												>
+													<FlaskConical
+														className={`h-3.5 w-3.5 ${testingBackupId === job.id ? "animate-pulse" : ""}`}
+													/>
+													{testingBackupId === job.id ? "Testing…" : "Test"}
+												</Button>
+											</>
 										)}
 										<Button
 											size="sm"

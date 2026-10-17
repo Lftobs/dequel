@@ -25,7 +25,7 @@ export function AddServerForm({ sshKeys, onServerAdded, onCancel }: AddServerFor
 
 	const addSshServer = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!name.trim() || !host.trim()) return;
+		if (!name.trim() || !host.trim() || !selectedKeyId) return;
 		setIsSubmitting(true);
 		try {
 			await api.createServer({
@@ -107,7 +107,8 @@ export function AddServerForm({ sshKeys, onServerAdded, onCancel }: AddServerFor
 			{activeTab === "ssh" ? (
 				<form onSubmit={addSshServer} className="space-y-4">
 					<p className="text-xs text-muted-foreground leading-relaxed">
-						Connect directly to any cloud VPS over SSH. Dequel manages container orchestration without requiring static agent installation.
+						Connect directly to any cloud VPS over SSH. Dequel manages container orchestration without requiring static
+						agent installation.
 					</p>
 					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
 						<div className="space-y-1">
@@ -164,10 +165,7 @@ export function AddServerForm({ sshKeys, onServerAdded, onCancel }: AddServerFor
 					</div>
 
 					<div className="space-y-1.5">
-						<label
-							htmlFor="server-ssh-key"
-							className="text-xs font-medium text-foreground flex items-center gap-1.5"
-						>
+						<label htmlFor="server-ssh-key" className="text-xs font-medium text-foreground flex items-center gap-1.5">
 							<KeyRound className="h-3.5 w-3.5 text-orange-400" />
 							Attached SSH Key
 						</label>
@@ -176,8 +174,11 @@ export function AddServerForm({ sshKeys, onServerAdded, onCancel }: AddServerFor
 							className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-orange-500/50"
 							value={selectedKeyId}
 							onChange={(e) => setSelectedKeyId(e.target.value)}
+							required
 						>
-							<option value="">No key selected (Inline key fallback)</option>
+							<option value="" disabled>
+								Select a key from the SSH key pool
+							</option>
 							{sshKeys.map((k) => (
 								<option key={k.id} value={k.id}>
 									{k.name} ({k.fingerprint || "SSH Key"})
@@ -185,6 +186,13 @@ export function AddServerForm({ sshKeys, onServerAdded, onCancel }: AddServerFor
 							))}
 						</select>
 					</div>
+
+					{sshKeys.length === 0 && (
+						<p className="text-xs text-amber-400 flex items-center gap-1.5">
+							<ShieldAlert className="h-3 w-3 shrink-0" />
+							No SSH keys in the pool yet. Add one in the SSH Key Pool section, then select it here.
+						</p>
+					)}
 
 					<div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-border/40">
 						<Button
@@ -209,7 +217,8 @@ export function AddServerForm({ sshKeys, onServerAdded, onCancel }: AddServerFor
 			) : (
 				<form onSubmit={createRegistration} className="space-y-4">
 					<p className="text-xs text-muted-foreground leading-relaxed">
-						Deploy a lightweight agent for firewalled nodes or local homelabs behind NAT. Establishes a secure P2P WireGuard tunnel.
+						Deploy a lightweight agent for firewalled nodes or local homelabs behind NAT. Establishes a secure P2P
+						WireGuard tunnel.
 					</p>
 					<div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
 						<div className="space-y-1 flex-1">

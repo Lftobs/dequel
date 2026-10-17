@@ -22,27 +22,51 @@ const run = async (cmd: string, args: string[], cwd?: string) => {
 
 const isValidSha = (s: string) => /^[0-9a-f]{7,40}$/i.test(s);
 
+export const isGithubHttpsUrl = (gitUrl: string) => /^https:\/\/github\.com\//i.test(gitUrl.trim());
+
+export const redactGitUrl = (gitUrl: string) => gitUrl.replace(/^(https:\/\/)[^/@]+@([^/]+)/i, "$1$2");
+
+export const buildAuthenticatedGitUrl = (gitUrl: string, token?: string | null) => {
+	if (!token) return gitUrl;
+	const trimmed = gitUrl.trim();
+	if (!isGithubHttpsUrl(trimmed)) return gitUrl;
+	if (trimmed.includes("@")) return gitUrl;
+	return trimmed.replace(/^https:\/\/github\.com\//i, `https://x-access-token:${token}@github.com/`);
+};
+
+export const resolveProjectGitUrl = async (projectId: string | null | undefined, gitUrl: string): Promise<string> => {
+	if (!projectId || !isGithubHttpsUrl(gitUrl)) return gitUrl;
+	try {
+		const { getProjectGithubToken } = await import("../db/repo/projects");
+		return buildAuthenticatedGitUrl(gitUrl, await getProjectGithubToken(projectId));
+	} catch {
+		return gitUrl;
+	}
+};
+
 export const prepareSourceWorkspace = async (
 	deploymentId: string,
 	gitUrl: string,
 	branch?: string,
 	commitSha?: string,
+	token?: string | null,
 ) => {
 	const root = join(config.workspaceRoot, deploymentId);
 	await rm(root, { recursive: true, force: true });
 	await mkdir(root, { recursive: true });
+	const authedUrl = buildAuthenticatedGitUrl(gitUrl, token);
 	if (commitSha) {
 		if (!isValidSha(commitSha)) {
 			throw new Error(`Invalid commit SHA: ${commitSha}`);
 		}
 		await run("git", ["init"], root);
-		await run("git", ["remote", "add", "origin", gitUrl], root);
+		await run("git", ["remote", "add", "origin", authedUrl], root);
 		await run("git", ["fetch", "--depth", "1", "origin", commitSha], root);
 		await run("git", ["checkout", "FETCH_HEAD"], root);
 	} else {
 		const args = ["clone", "--depth", "1"];
 		if (branch) args.push("--branch", branch);
-		args.push(gitUrl, root);
+		args.push(authedUrl, root);
 		await run("git", args);
 	}
 	return root;
@@ -75,10 +99,12 @@ export const getHeadSha = async (repoPath: string): Promise<string | null> => {
 	}
 };
 
-export const getRemoteSha = async (gitUrl: string, branch?: string): Promise<string | null> => {
+export const getRemoteSha = async (gitUrl: string, branch?: string, token?: string | null): Promise<string | null> => {
 	try {
 		const ref = branch ? `refs/heads/${branch}` : "HEAD";
-		const res = await safeSpawn("git", ["ls-remote", gitUrl, ref], { timeoutMs: 15_000 });
+		const res = await safeSpawn("git", ["ls-remote", buildAuthenticatedGitUrl(gitUrl, token), ref], {
+			timeoutMs: 15_000,
+		});
 		if (res.code !== 0) return null;
 		const match = res.stdout.trim().split(/\s+/)[0];
 		return match || null;

@@ -112,12 +112,18 @@ class ScalingEngine {
 				state.highCpuSince = now;
 			} else if (now - state.highCpuSince > policy.cooldownSeconds * 1000) {
 				if (now - state.lastScaleUp > policy.cooldownSeconds * 1000) {
-					await this.scaleUp(dep, policy.maxReplicas, slug, target, project?.cpuLimit, project?.memoryLimitMb);
-					state.lastScaleUp = now;
+					const scaled = await this.scaleUp(
+						dep,
+						policy.maxReplicas,
+						slug,
+						target,
+						project?.cpuLimit,
+						project?.memoryLimitMb,
+					);
+					if (scaled) state.lastScaleUp = now;
 					state.highCpuSince = null;
 				}
 			}
-			state.lowCpuSince = null;
 		} else {
 			state.highCpuSince = null;
 		}
@@ -306,9 +312,9 @@ class ScalingEngine {
 		target: Target,
 		cpuLimit?: number | null,
 		memoryLimitMb?: number | null,
-	) {
+	): Promise<boolean> {
 		const currentReplicas = await this.getCurrentReplicas(slug, target, dep);
-		if (currentReplicas >= maxReplicas) return;
+		if (currentReplicas >= maxReplicas) return false;
 
 		const newReplicaNum = currentReplicas + 1;
 		const containerName = `deploy-${dep.id}-replica-${newReplicaNum}`;
@@ -317,7 +323,7 @@ class ScalingEngine {
 
 		if (target.mode === "agent") {
 			await this.enqueueScaleJob(dep, target.server!, "up", newReplicaNum, slug);
-			return;
+			return true;
 		}
 
 		// Get the original container's image
@@ -328,7 +334,7 @@ class ScalingEngine {
 						await execDockerSshCommand(target.server!, ["inspect", "-f", "{{.Config.Image}}", dep.containerName!])
 					).stdout.trim())
 				: await run(dockerBin, ["inspect", "-f", "{{.Config.Image}}", dep.containerName!]).catch(() => "");
-		if (!imageTag) return;
+		if (!imageTag) return false;
 
 		// Get env vars from original
 		const envJson =
@@ -389,12 +395,13 @@ class ScalingEngine {
 			}
 		} catch (err) {
 			console.error(`[Scaling] Failed to create replica ${containerName}:`, err);
-			return;
+			return false;
 		}
 
 		// Update Caddy route to include the new replica
 		await this.updateCaddyRoute(slug, dep, newReplicaNum, target);
 		console.log(`[Scaling] Replica ${containerName} started`);
+		return true;
 	}
 
 	private async scaleDown(
@@ -514,8 +521,10 @@ class ScalingEngine {
 		// Build proxy targets: primary + all replicas
 		const primaryName = dep.containerName || `${slug}-${dep.id.slice(0, 8)}`;
 		const targets = [`${primaryName}:${port}`];
+		const containerNames = [primaryName];
 		for (let i = 2; i <= replicaCount; i++) {
 			targets.push(`deploy-${dep.id}-replica-${i}:${port}`);
+			containerNames.push(`deploy-${dep.id}-replica-${i}`);
 		}
 
 		const baseDomain = config.caddyBaseDomain === "localhost" ? `${config.caddyBaseDomain}:80` : config.caddyBaseDomain;
@@ -523,15 +532,10 @@ class ScalingEngine {
 			await import("../utils/ingress");
 		const ingressServer = await getIngressServer();
 		const viaIngress = shouldRouteViaIngress(target.server ?? null, ingressServer);
-		const { caddyReverseProxy, caddySite } = await import("../utils/caddy-site");
+		const { buildCaddySnippet } = await import("../utils/domain-verifier");
 		const caddySnippet = viaIngress
-			? projectServerSite(
-					`${slug}.${baseDomain}`,
-					port,
-					targets.map((t) => t.split(":")[0]),
-					true,
-				)
-			: caddySite(`${slug}.${baseDomain}`, caddyReverseProxy(targets.join(" ")));
+			? projectServerSite(`${slug}.${baseDomain}`, port, containerNames, true)
+			: await buildCaddySnippet(slug, primaryName, dep.projectId, undefined, port, { containerNames });
 
 		if (target.mode === "ssh") {
 			await syncRemoteCaddyRoute(target.server!, `${slug}.caddy`, caddySnippet);

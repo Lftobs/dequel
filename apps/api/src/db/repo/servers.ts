@@ -61,7 +61,6 @@ export const createServer = async (input: CreateServerInput): Promise<Server> =>
 	const id = randomUUID();
 	const timestamp = now();
 	const db = await getDb();
-	const encrypted = input.sshKey ? encryptValue(input.sshKey, config.envEncryptionKey) : null;
 	await db
 		.insert(servers)
 		.values({
@@ -71,9 +70,6 @@ export const createServer = async (input: CreateServerInput): Promise<Server> =>
 			port: input.port ?? 2375,
 			authToken: input.authToken ?? "",
 			sshUser: input.sshUser ?? null,
-			sshKey: encrypted?.encrypted ?? null,
-			sshKeyIv: encrypted?.iv ?? null,
-			sshKeyTag: encrypted?.tag ?? null,
 			sshKeyId: input.sshKeyId ?? null,
 			sshPassword: input.sshPassword ?? null,
 			mode: input.mode ?? "ssh",

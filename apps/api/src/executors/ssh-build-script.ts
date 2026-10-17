@@ -1,3 +1,5 @@
+import { redactGitUrl } from "../orchestrator/source";
+
 export interface SshBuildScriptInput {
 	deploymentId: string;
 	workspaceRoot: string;
@@ -83,7 +85,7 @@ export const buildRemoteDeployScript = (input: SshBuildScriptInput): string => {
 		"fi",
 		'export BUILDKIT_HOST="docker-container://buildkit"',
 		"",
-		`echo "[build] Cloning repository ${input.gitUrl}"`,
+		`echo "[build] Cloning repository ${redactGitUrl(input.gitUrl)}"`,
 		`git clone --depth 1 ${sh(input.gitUrl)} .`,
 		checkoutSha,
 		"",
