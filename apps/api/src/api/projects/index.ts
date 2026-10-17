@@ -2,6 +2,7 @@ import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { Elysia } from "elysia";
 import {
+	captureProjectGithubToken,
 	createProject,
 	deleteProjectCascade,
 	getProjectById,
@@ -58,7 +59,7 @@ export const projectsRoutes = new Elysia()
 		}
 		return ok(project);
 	})
-	.post("/projects", async ({ body, set }: any) => {
+	.post("/projects", async ({ body, request, set }: any) => {
 		if (!body?.name) {
 			set.status = 400;
 			return fail("name is required");
@@ -117,6 +118,7 @@ export const projectsRoutes = new Elysia()
 			project_type: project.projectType,
 			source_type: project.sourceType,
 		}).catch(() => {});
+		await captureProjectGithubToken(project.id, body.repoUrl, request?.headers?.get("cookie") ?? null);
 		return created(project);
 	})
 	.patch("/projects/:id", async ({ params: { id }, body, set }: any) => {

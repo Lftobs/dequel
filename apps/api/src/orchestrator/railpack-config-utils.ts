@@ -64,6 +64,44 @@ const fixPnpmWorkspaceIfNeeded = async (workspacePath: string, onLog: (line: str
 	}
 };
 
+const SERVER_FRAMEWORK_PREFIXES = [
+	"express",
+	"fastify",
+	"koa",
+	"hono",
+	"@hono/",
+	"elysia",
+	"@elysiajs/",
+	"polka",
+	"socket.io",
+	"@remix-run/",
+	"nitropack",
+	"next",
+	"nuxt",
+];
+
+const packageDependsOnServerFramework = (packageJson: any): boolean => {
+	const sections = [packageJson.dependencies, packageJson.devDependencies];
+	for (const section of sections) {
+		if (!section) continue;
+		for (const name of Object.keys(section)) {
+			if (SERVER_FRAMEWORK_PREFIXES.some((prefix) => name === prefix || name.startsWith(prefix))) return true;
+		}
+	}
+	return false;
+};
+
+const packageHasVite = (packageJson: any): boolean => {
+	const sections = [packageJson.dependencies, packageJson.devDependencies];
+	for (const section of sections) {
+		if (!section) continue;
+		for (const name of Object.keys(section)) {
+			if (name === "vite" || name.startsWith("@vitejs/") || name.startsWith("vite-")) return true;
+		}
+	}
+	return false;
+};
+
 export const generateDynamicRailpackJson = async (
 	workspace: string,
 	sourceDir: string | null,
@@ -89,6 +127,7 @@ export const generateDynamicRailpackJson = async (
 	};
 
 	let configured = false;
+	let forceStaticServe = false;
 
 	if (cleanSourceDir && !(await Bun.file(join(workspace, "package.json")).exists())) {
 		const sourcePkgExists = await Bun.file(join(workspace, cleanSourceDir, "package.json")).exists();
@@ -177,9 +216,14 @@ export const generateDynamicRailpackJson = async (
 			} else if (scripts.server) {
 				config.deploy.startCommand = cleanSourceDir ? `cd ${cleanSourceDir} && ${pm} run server` : `${pm} run server`;
 			} else {
-				config.deploy.startCommand = cleanSourceDir
-					? `cd ${cleanSourceDir} && node dist/index.js`
-					: "node dist/index.js";
+				if (scripts.build && packageHasVite(packageJson) && !packageDependsOnServerFramework(packageJson)) {
+					forceStaticServe = true;
+					await onLog("Detected Vite frontend without a server entry — serving the build output statically");
+				} else {
+					config.deploy.startCommand = cleanSourceDir
+						? `cd ${cleanSourceDir} && node dist/index.js`
+						: "node dist/index.js";
+				}
 			}
 
 			configured = true;
@@ -326,6 +370,7 @@ export const generateDynamicRailpackJson = async (
 
 	if (
 		projectType === "static" ||
+		forceStaticServe ||
 		(!configured &&
 			((await Bun.file(join(buildDir, "index.html")).exists()) ||
 				(await Bun.file(join(workspace, "index.html")).exists())))

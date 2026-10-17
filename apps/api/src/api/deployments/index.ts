@@ -3,6 +3,7 @@ import { basename, join } from "node:path";
 import { Elysia } from "elysia";
 import { validateRemoteDeployment } from "../../agents/deployments";
 import {
+	captureProjectGithubToken,
 	countDeployments,
 	createDeployment,
 	getDeploymentById,
@@ -131,6 +132,9 @@ export const deploymentsRoutes = new Elysia()
 				commitSha,
 				clearCache,
 			});
+			if (projectId) {
+				await captureProjectGithubToken(projectId, gitUrl, request.headers.get("cookie"));
+			}
 			await dispatchDeployment(deployment, project, server);
 			return created(deployment);
 		}

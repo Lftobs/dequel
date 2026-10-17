@@ -1,3 +1,5 @@
+import { redactGitUrl } from "../orchestrator/source";
+
 export interface RemoteComposeScriptInput {
 	deploymentId: string;
 	workspaceRoot: string;
@@ -22,6 +24,7 @@ export const buildRemoteComposeScript = (input: RemoteComposeScriptInput): strin
 	const remoteWorkspace = input.workspaceRoot.startsWith("/app") ? "$HOME/.dequel/workspace" : input.workspaceRoot;
 
 	const envLines = input.environmentVariables.map((v) => `${v.key}=${v.value}`).join("\n");
+	const envRecord = JSON.stringify(Object.fromEntries(input.environmentVariables.map((v) => [v.key, v.value])));
 
 	const sourceDirLine = input.sourceDir ? `cd ${sh(input.sourceDir)}` : "";
 
@@ -44,7 +47,7 @@ export const buildRemoteComposeScript = (input: RemoteComposeScriptInput): strin
 		"  exit 1",
 		"fi",
 		"",
-		`echo "[compose] Cloning repository ${input.gitUrl}"`,
+		`echo "[compose] Cloning repository ${redactGitUrl(input.gitUrl)}"`,
 		`git clone --depth 1 ${sh(input.gitUrl)} .`,
 		checkoutSha,
 		"",
@@ -57,9 +60,39 @@ export const buildRemoteComposeScript = (input: RemoteComposeScriptInput): strin
 		"done",
 		'if [ -z "$COMPOSE_FILE" ]; then echo "[compose] ERROR: no compose file found"; exit 1; fi',
 		"",
-		`echo "[compose] Building and starting stack (project: deploy-${input.deploymentId})"`,
-		`docker compose -f "$COMPOSE_FILE" -p deploy-${input.deploymentId} build`,
-		`docker compose -f "$COMPOSE_FILE" -p deploy-${input.deploymentId} up -d`,
+		...(envLines
+			? [
+					`export DEQUEL_EXTRA_ENV=${sh(envRecord)}`,
+					"",
+					"if command -v python3 >/dev/null 2>&1; then",
+					'  DEQUEL_COMPOSE_FILE="$COMPOSE_FILE" python3 - <<\'DEQUEL_OVERRIDE_EOF\' || echo "[compose] WARNING: could not generate env override file"',
+					"import json, os, subprocess",
+					'envs = json.loads(os.environ["DEQUEL_EXTRA_ENV"])',
+					'services = subprocess.check_output(["docker","compose","-f",os.environ["DEQUEL_COMPOSE_FILE"],"config","--services"]).decode().split()',
+					'lines = ["services:"]',
+					"for svc in services:",
+					'    lines.append("  %s:" % svc)',
+					'    lines.append("    environment:")',
+					"    for k, v in envs.items():",
+					'        lines.append("      %s: %s" % (k, json.dumps(v)))',
+					'open("dequel-env-override.yml", "w").write("\\n".join(lines) + "\\n")',
+					'print("[compose] Injected %d env var(s) into %d service(s)" % (len(envs), len(services)))',
+					"DEQUEL_OVERRIDE_EOF",
+					"else:",
+					'  echo "[compose] WARNING: python3 not found; platform env vars only apply to compose interpolation"',
+					"fi",
+					"",
+					'OVERRIDE_ARGS=""',
+					'if [ -f dequel-env-override.yml ]; then OVERRIDE_ARGS="-f dequel-env-override.yml"; fi',
+					`echo "[compose] Building and starting stack (project: deploy-${input.deploymentId})"`,
+					`docker compose -f "$COMPOSE_FILE" $OVERRIDE_ARGS -p deploy-${input.deploymentId} build`,
+					`docker compose -f "$COMPOSE_FILE" $OVERRIDE_ARGS -p deploy-${input.deploymentId} up -d`,
+				]
+			: [
+					`echo "[compose] Building and starting stack (project: deploy-${input.deploymentId})"`,
+					`docker compose -f "$COMPOSE_FILE" -p deploy-${input.deploymentId} build`,
+					`docker compose -f "$COMPOSE_FILE" -p deploy-${input.deploymentId} up -d`,
+				]),
 		"",
 		`echo "[compose] Connecting containers to network ${input.dockerNetwork}"`,
 		`for cid in $(docker compose -p deploy-${input.deploymentId} ps -q); do`,

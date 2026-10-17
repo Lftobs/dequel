@@ -94,11 +94,12 @@ const deployComposeRemote = async (deployment: Deployment, project: Project, ser
 	await emitLog(deployment.id, "system", `Deploying compose stack on server ${server.name} over SSH`);
 
 	const envVars = await listEnvironmentVariablesForDeploy(project.id, deployment.environment ?? undefined);
+	const { resolveProjectGitUrl } = await import("../orchestrator/source");
 
 	const script = buildRemoteComposeScript({
 		deploymentId: deployment.id,
 		workspaceRoot: config.workspaceRoot,
-		gitUrl: deployment.sourceRef,
+		gitUrl: await resolveProjectGitUrl(project.id, deployment.sourceRef),
 		branch: deployment.branch,
 		commitSha: deployment.commitSha,
 		projectName: project.name,
@@ -320,11 +321,12 @@ export const sshExecutor: DeploymentExecutor = {
 
 		const imageTag = `${slugify(project.name)}-${deployment.id.slice(0, 8)}:latest`;
 		const envVars = await listEnvironmentVariablesForDeploy(project.id, deployment.environment ?? undefined);
+		const { resolveProjectGitUrl } = await import("../orchestrator/source");
 		const pgidEcho = `echo "DEQUEL_PGID:$(ps -o pgid= -p $$ | tr -d ' ')"`;
 		const script = `${pgidEcho}\n${buildRemoteDeployScript({
 			deploymentId: deployment.id,
 			workspaceRoot: config.workspaceRoot,
-			gitUrl: deployment.sourceRef,
+			gitUrl: await resolveProjectGitUrl(project.id, deployment.sourceRef),
 			branch: deployment.branch,
 			commitSha: deployment.commitSha,
 			imageTag,

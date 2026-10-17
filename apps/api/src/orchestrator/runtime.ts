@@ -48,6 +48,30 @@ const getCaddyContainer = async (): Promise<string> => {
 	return name;
 };
 
+export interface ContainerInstanceState {
+	exists: boolean;
+	status: string | null;
+	logs?: string | null;
+}
+
+export type Phase = "initial" | "stability" | "restart";
+
+export type InstanceVerdict =
+	| { action: "return" }
+	| { action: "retry"; note?: string }
+	| { action: "fatal"; error: Error };
+
+export const evaluateInstanceState = (state: ContainerInstanceState, phase: Phase = "initial"): InstanceVerdict => {
+	if (!state.exists) return { action: "retry", note: "not created yet" };
+	const logs = (state.logs ?? "").trim() || "*No logs produced*";
+	if (state.status === "running") return { action: "return" };
+	if (state.status === "exited") {
+		const reason = phase === "stability" ? "crashed shortly after starting" : "exited immediately";
+		return { action: "fatal", error: new Error(`Container ${reason}. Logs:\n${logs}`) };
+	}
+	return { action: "retry", note: state.status === "created" ? "still initializing" : undefined };
+};
+
 const waitForRunningContainer = async (
 	containerName: string,
 	retries: number,
@@ -58,26 +82,30 @@ const waitForRunningContainer = async (
 			const exists = await run(dockerBin, ["inspect", "-f", "{{.Id}}", containerName])
 				.then(() => true)
 				.catch(() => false);
-			if (!exists) {
-				await new Promise((r) => setTimeout(r, 500));
-				continue;
-			}
-			const status = (await run(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName])).trim();
-			if (status === "running") {
+			const status = exists
+				? (await run(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName])).trim()
+				: null;
+			const logs =
+				exists && status === "exited"
+					? await run(dockerBin, ["logs", "--tail", "50", containerName]).catch(() => null)
+					: null;
+			const verdict = evaluateInstanceState({ exists, status, logs });
+			if (verdict.action === "return") {
 				await new Promise((r) => setTimeout(r, 2000));
 				const stabilityStatus = (await run(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName])).trim();
-				if (stabilityStatus !== "running") {
-					const logs = await run(dockerBin, ["logs", "--tail", "50", containerName]).catch(() => "no logs available");
-					throw new Error(`Container crashed shortly after starting. Logs:\n${logs}`);
-				}
+				const stabilityLogs =
+					stabilityStatus !== "running"
+						? await run(dockerBin, ["logs", "--tail", "50", containerName]).catch(() => null)
+						: null;
+				const stabilityVerdict = evaluateInstanceState(
+					{ exists: true, status: stabilityStatus, logs: stabilityLogs },
+					"stability",
+				);
+				if (stabilityVerdict.action === "fatal") throw stabilityVerdict.error;
 				return;
 			}
-			if (status === "exited") {
-				let logs = await run(dockerBin, ["logs", "--tail", "50", containerName]).catch(() => "no logs available");
-				logs = logs.trim() || "*No logs produced*";
-				throw new Error(`Container ${containerName} exited immediately. Logs:\n${logs}`);
-			}
-			if (status === "created") await onLog(`Container ${containerName} still initializing...`);
+			if (verdict.action === "fatal") throw verdict.error;
+			if (verdict.note) await onLog(`Container ${containerName} ${verdict.note}...`);
 		} catch (e: any) {
 			if (e.message?.includes("exited immediately") || e.message?.includes("crashed shortly")) throw e;
 		}
@@ -87,6 +115,37 @@ const waitForRunningContainer = async (
 	await tryRun(dockerBin, ["network", "disconnect", "-f", config.dockerNetwork, containerName]);
 	await tryRun(dockerBin, ["start", containerName]);
 	await tryRun(dockerBin, ["network", "connect", config.dockerNetwork, containerName]);
+	await verifyRunningAfterStart(containerName, onLog);
+};
+
+const verifyRunningAfterStart = async (
+	containerName: string,
+	onLog: (line: string) => Promise<void>,
+): Promise<string> => {
+	let lastStatus: string | null = null;
+	let lastLogs: string | null = null;
+	for (let attempt = 0; attempt < 10; attempt++) {
+		await new Promise((r) => setTimeout(r, 1000));
+		try {
+			const exists = await run(dockerBin, ["inspect", "-f", "{{.Id}}", containerName])
+				.then(() => true)
+				.catch(() => false);
+			lastStatus = exists ? (await run(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName])).trim() : null;
+			if (lastStatus === "running") {
+				await onLog(`Container ${containerName} is running after restart`);
+				return "running";
+			}
+			lastLogs = exists ? await run(dockerBin, ["logs", "--tail", "50", containerName]).catch(() => null) : null;
+			const verdict = evaluateInstanceState({ exists, status: lastStatus, logs: lastLogs }, "restart");
+			if (verdict.action === "fatal") throw verdict.error;
+		} catch (e: any) {
+			if (e.message?.includes("exited immediately") || e.message?.includes("crashed shortly")) throw e;
+		}
+	}
+	const logs = (lastLogs ?? "").trim() || "*No logs produced*";
+	throw new Error(
+		`Container ${containerName} did not reach running state even after docker start (status: ${lastStatus ?? "unknown"}). Logs:\n${logs}`,
+	);
 };
 
 export const ensureContainerRunning = async (containerName: string) => {

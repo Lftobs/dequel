@@ -300,6 +300,18 @@ export interface BackupJob {
 	completedAt: string | null;
 }
 
+export interface RestoreTestRecord {
+	id: string;
+	backupId: string;
+	targetId: string;
+	serverId: string | null;
+	kind: "test" | "restore";
+	status: "running" | "passed" | "failed";
+	error: string | null;
+	startedAt: string;
+	completedAt: string | null;
+}
+
 export interface BackupStorageSettingsData {
 	type: "local" | "s3";
 	path?: string;

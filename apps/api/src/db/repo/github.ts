@@ -1,16 +1,27 @@
 import { randomUUID } from "node:crypto";
 import { desc, eq } from "drizzle-orm";
 import type { GithubIntegration } from "../../types";
+import { config } from "../../utils/config";
+import { decryptValue, encryptValue } from "../../utils/crypto";
 import { getDb } from "../db-provider";
 import { githubIntegrations } from "../schema";
 import { now } from "./helpers";
 
+const decryptOrRaw = (value: string, iv: string | null, tag: string | null): string => {
+	if (!iv || !tag) return value;
+	try {
+		return decryptValue(value, iv, tag, config.envEncryptionKey);
+	} catch {
+		return "";
+	}
+};
+
 const mapGithubIntegration = (row: typeof githubIntegrations.$inferSelect): GithubIntegration => ({
 	id: row.id,
 	clientId: row.clientId,
-	clientSecret: row.clientSecret,
+	clientSecret: decryptOrRaw(row.clientSecret, row.clientSecretIv, row.clientSecretTag),
 	appName: row.appName,
-	webhookSecret: row.webhookSecret ?? null,
+	webhookSecret: row.webhookSecret ? decryptOrRaw(row.webhookSecret, row.webhookSecretIv, row.webhookSecretTag) : null,
 	createdAt: row.createdAt,
 });
 
@@ -32,6 +43,8 @@ export const setGithubIntegration = async (input: {
 	webhookSecret?: string;
 }): Promise<GithubIntegration> => {
 	const db = await getDb();
+	const client = encryptValue(input.clientSecret, config.envEncryptionKey);
+	const webhook = input.webhookSecret ? encryptValue(input.webhookSecret, config.envEncryptionKey) : null;
 
 	return db.transaction(async (tx) => {
 		const [existing] = await tx
@@ -47,9 +60,13 @@ export const setGithubIntegration = async (input: {
 				.update(githubIntegrations)
 				.set({
 					clientId: input.clientId,
-					clientSecret: input.clientSecret,
+					clientSecret: client.encrypted,
+					clientSecretIv: client.iv,
+					clientSecretTag: client.tag,
 					appName: input.appName ?? "Dequel",
-					webhookSecret: input.webhookSecret ?? existing.webhookSecret,
+					...(webhook
+						? { webhookSecret: webhook.encrypted, webhookSecretIv: webhook.iv, webhookSecretTag: webhook.tag }
+						: {}),
 				})
 				.where(eq(githubIntegrations.id, existing.id))
 				.execute();
@@ -67,9 +84,13 @@ export const setGithubIntegration = async (input: {
 			.values({
 				id,
 				clientId: input.clientId,
-				clientSecret: input.clientSecret,
+				clientSecret: client.encrypted,
+				clientSecretIv: client.iv,
+				clientSecretTag: client.tag,
 				appName: input.appName ?? "Dequel",
-				webhookSecret: input.webhookSecret ?? null,
+				webhookSecret: webhook?.encrypted ?? null,
+				webhookSecretIv: webhook?.iv ?? null,
+				webhookSecretTag: webhook?.tag ?? null,
 				createdAt: timestamp,
 			})
 			.execute();
