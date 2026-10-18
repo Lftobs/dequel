@@ -20,4 +20,19 @@ describe("buildComposeEnvOverrideYaml", () => {
 		const yaml = buildComposeEnvOverrideYaml(["web", "  ", ""], { FOO: "bar" });
 		expect((yaml.match(/environment:/g) ?? []).length).toBe(1);
 	});
+
+	test("pushes empty string for blank values", () => {
+		const yaml = buildComposeEnvOverrideYaml(["web"], { EMPTY: "" });
+		expect(yaml).toContain('      EMPTY: ""');
+	});
+
+	test("escapes literal dollar signs for compose interpolation", () => {
+		const yaml = buildComposeEnvOverrideYaml(["web"], { TOKEN: "adm$GITHUB" });
+		expect(yaml).toContain('TOKEN: "adm$$GITHUB"');
+	});
+
+	test("escapes plain dollar signs", () => {
+		const yaml = buildComposeEnvOverrideYaml(["web"], { PASS: "pa$$w0rd" });
+		expect(yaml).toContain('PASS: "pa$$$$w0rd"');
+	});
 });

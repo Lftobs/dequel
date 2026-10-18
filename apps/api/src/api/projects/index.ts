@@ -118,7 +118,11 @@ export const projectsRoutes = new Elysia()
 			project_type: project.projectType,
 			source_type: project.sourceType,
 		}).catch(() => {});
-		await captureProjectGithubToken(project.id, body.repoUrl, request?.headers?.get("cookie") ?? null);
+		await captureProjectGithubToken(project.id, body.repoUrl, request?.headers?.get("cookie") ?? null).then(
+			(captured) => {
+				if (captured) project.hasGithubToken = true;
+			},
+		);
 		return created(project);
 	})
 	.patch("/projects/:id", async ({ params: { id }, body, set }: any) => {

@@ -1,4 +1,4 @@
-import { redactGitUrl } from "../orchestrator/source";
+import { gitAuthScriptLines, redactGitUrl } from "../orchestrator/source";
 
 export interface SshBuildScriptInput {
 	deploymentId: string;
@@ -85,8 +85,9 @@ export const buildRemoteDeployScript = (input: SshBuildScriptInput): string => {
 		"fi",
 		'export BUILDKIT_HOST="docker-container://buildkit"',
 		"",
-		`echo "[build] Cloning repository ${redactGitUrl(input.gitUrl)}"`,
-		`git clone --depth 1 ${sh(input.gitUrl)} .`,
+		`echo "[build] Cloning repository " ${sh(redactGitUrl(input.gitUrl))}`,
+		...gitAuthScriptLines(input.gitUrl),
+		`git clone --depth 1 ${sh(redactGitUrl(input.gitUrl))} .`,
 		checkoutSha,
 		"",
 		'if command -v bun >/dev/null 2>&1 || [ -x "$HOME/.bun/bin/bun" ]; then',

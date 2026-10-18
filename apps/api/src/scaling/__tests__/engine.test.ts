@@ -196,6 +196,25 @@ describe("getCurrentReplicas", () => {
 		const result = await (scalingEngine as any).getCurrentReplicas("proj-1");
 		expect(result).toBe(3);
 	});
+
+	it("counts only the primary site block when custom-domain blocks exist", async () => {
+		mockReadFileContent = [
+			"verify-app.custom-domain.com {",
+			"  reverse_proxy some-other-container:3000",
+			"}",
+			"proj-1.localhost:80 {",
+			"  reverse_proxy deploy-dep-1:3000 deploy-dep-1-replica-2:3000",
+			"}",
+		].join("\n");
+		const result = await (scalingEngine as any).getCurrentReplicas("proj-1");
+		expect(result).toBe(2);
+	});
+
+	it("falls back to whole-file counting when no primary block matches", async () => {
+		mockReadFileContent = "other.localhost:80 {\n  reverse_proxy a:3000\n}\n";
+		const result = await (scalingEngine as any).getCurrentReplicas("proj-1");
+		expect(result).toBe(1);
+	});
 });
 
 describe("evaluate", () => {

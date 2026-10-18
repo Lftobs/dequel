@@ -64,28 +64,32 @@ const fixPnpmWorkspaceIfNeeded = async (workspacePath: string, onLog: (line: str
 	}
 };
 
-const SERVER_FRAMEWORK_PREFIXES = [
+const SERVER_FRAMEWORK_NAMES = new Set([
 	"express",
 	"fastify",
 	"koa",
 	"hono",
-	"@hono/",
 	"elysia",
-	"@elysiajs/",
 	"polka",
 	"socket.io",
-	"@remix-run/",
 	"nitropack",
 	"next",
 	"nuxt",
-];
+]);
+
+const SERVER_FRAMEWORK_SCOPES = ["@hono/", "@elysiajs/", "@remix-run/"];
+
+const isServerFrameworkDep = (name: string): boolean => {
+	if (name.startsWith("@")) return SERVER_FRAMEWORK_SCOPES.some((scope) => name.startsWith(scope));
+	return SERVER_FRAMEWORK_NAMES.has(name);
+};
 
 const packageDependsOnServerFramework = (packageJson: any): boolean => {
 	const sections = [packageJson.dependencies, packageJson.devDependencies];
 	for (const section of sections) {
 		if (!section) continue;
 		for (const name of Object.keys(section)) {
-			if (SERVER_FRAMEWORK_PREFIXES.some((prefix) => name === prefix || name.startsWith(prefix))) return true;
+			if (isServerFrameworkDep(name)) return true;
 		}
 	}
 	return false;
@@ -98,6 +102,19 @@ const packageHasVite = (packageJson: any): boolean => {
 		for (const name of Object.keys(section)) {
 			if (name === "vite" || name.startsWith("@vitejs/") || name.startsWith("vite-")) return true;
 		}
+	}
+	return false;
+};
+
+const VITE_SSR_SCRIPT_PATTERN = /--ssr(?=\s|$)/;
+const VITE_SSR_CONFIG_PATTERN = /(^|[\s.;,(])ssr\s*[:=]/;
+
+const looksLikeViteSsr = async (buildDir: string, buildScript: string): Promise<boolean> => {
+	if (VITE_SSR_SCRIPT_PATTERN.test(buildScript)) return true;
+	for (const name of ["vite.config.ts", "vite.config.js", "vite.config.mts", "vite.config.mjs"]) {
+		const file = Bun.file(join(buildDir, name));
+		if (!(await file.exists())) continue;
+		if (VITE_SSR_CONFIG_PATTERN.test(await file.text())) return true;
 	}
 	return false;
 };
@@ -216,7 +233,13 @@ export const generateDynamicRailpackJson = async (
 			} else if (scripts.server) {
 				config.deploy.startCommand = cleanSourceDir ? `cd ${cleanSourceDir} && ${pm} run server` : `${pm} run server`;
 			} else {
-				if (scripts.build && packageHasVite(packageJson) && !packageDependsOnServerFramework(packageJson)) {
+				const viteBuildScript = scripts.build ? String(scripts.build) : "";
+				if (
+					scripts.build &&
+					packageHasVite(packageJson) &&
+					!packageDependsOnServerFramework(packageJson) &&
+					!(await looksLikeViteSsr(buildDir, viteBuildScript))
+				) {
 					forceStaticServe = true;
 					await onLog("Detected Vite frontend without a server entry — serving the build output statically");
 				} else {

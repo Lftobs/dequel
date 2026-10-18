@@ -7,11 +7,12 @@ import { getDb } from "../db-provider";
 import { githubIntegrations } from "../schema";
 import { now } from "./helpers";
 
-const decryptOrRaw = (value: string, iv: string | null, tag: string | null): string => {
+const decryptOrRaw = (value: string, iv: string | null, tag: string | null, field: string): string => {
 	if (!iv || !tag) return value;
 	try {
 		return decryptValue(value, iv, tag, config.envEncryptionKey);
 	} catch {
+		console.warn(`[GithubIntegration] could not decrypt ${field} (check ENV_ENCRYPTION_KEY)`);
 		return "";
 	}
 };
@@ -19,9 +20,11 @@ const decryptOrRaw = (value: string, iv: string | null, tag: string | null): str
 const mapGithubIntegration = (row: typeof githubIntegrations.$inferSelect): GithubIntegration => ({
 	id: row.id,
 	clientId: row.clientId,
-	clientSecret: decryptOrRaw(row.clientSecret, row.clientSecretIv, row.clientSecretTag),
+	clientSecret: decryptOrRaw(row.clientSecret, row.clientSecretIv, row.clientSecretTag, "clientSecret"),
 	appName: row.appName,
-	webhookSecret: row.webhookSecret ? decryptOrRaw(row.webhookSecret, row.webhookSecretIv, row.webhookSecretTag) : null,
+	webhookSecret: row.webhookSecret
+		? decryptOrRaw(row.webhookSecret, row.webhookSecretIv, row.webhookSecretTag, "webhookSecret")
+		: null,
 	createdAt: row.createdAt,
 });
 

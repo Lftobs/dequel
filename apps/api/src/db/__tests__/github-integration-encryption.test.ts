@@ -39,7 +39,7 @@ describe("github integrations store secrets encrypted", () => {
 			)
 			.then((r: any) => r.rows);
 		expect(rawRow.client_secret).not.toBe("gh-canary-secret");
-		expect(rawRow.client_secret).toContain("");
+		expect(rawRow.client_secret).toMatch(/^[A-Za-z0-9+/]+=*$/);
 		expect(rawRow.client_secret_iv).toBeTruthy();
 		expect(rawRow.client_secret_tag).toBeTruthy();
 		expect(rawRow.webhook_secret).not.toBe("hook-canary-secret");

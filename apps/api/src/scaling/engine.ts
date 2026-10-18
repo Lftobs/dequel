@@ -30,6 +30,26 @@ interface Target {
 
 const AGENT_OFFLINE_MS = 90_000;
 
+const countUpstreamContainers = (text: string): Set<string> => {
+	const containers = new Set<string>();
+	for (const m of text.match(/reverse_proxy\s+([^\n]+)/g) ?? []) {
+		const parts = m.replace("reverse_proxy", "").trim().split(/\s+/);
+		for (const p of parts) {
+			if (!p.includes(":") || p.startsWith("{")) continue;
+			containers.add(p.split(":")[0]);
+		}
+	}
+	return containers;
+};
+
+export const countPrimarySiteReplicas = (content: string, slug: string): number | null => {
+	for (const block of content.matchAll(/^\s*([A-Za-z0-9._:-]+)\s*\{([^}]*)\}/gm)) {
+		if (!block[1].trim().startsWith(`${slug}.`)) continue;
+		return Math.max(1, countUpstreamContainers(block[2]).size);
+	}
+	return null;
+};
+
 class ScalingEngine {
 	private redis: Redis;
 	private interval: ReturnType<typeof setInterval> | null = null;
@@ -273,18 +293,9 @@ class ScalingEngine {
 		const routeFile = join(config.caddyRoutesDir, `${slug}.caddy`);
 		try {
 			const content = await readFile(routeFile, "utf8");
-			const matches = content.match(/reverse_proxy\s+([^\n]+)/g);
-			if (!matches) return 1;
-			// Count unique container names
-			const containers = new Set<string>();
-			for (const m of matches) {
-				const parts = m.replace("reverse_proxy", "").trim().split(/\s+/);
-				for (const p of parts) {
-					if (!p.includes(":") || p.startsWith("{")) continue;
-					containers.add(p.split(":")[0]);
-				}
-			}
-			return Math.max(1, containers.size);
+			const primary = countPrimarySiteReplicas(content, slug);
+			if (primary !== null) return primary;
+			return Math.max(1, countUpstreamContainers(content).size);
 		} catch {
 			return 1;
 		}

@@ -102,6 +102,10 @@ const waitForRunningContainer = async (
 					"stability",
 				);
 				if (stabilityVerdict.action === "fatal") throw stabilityVerdict.error;
+				if (stabilityStatus !== "running") {
+					const logs = (stabilityLogs ?? "").trim() || "*No logs produced*";
+					throw new Error(`Container crashed shortly after starting. Logs:\n${logs}`);
+				}
 				return;
 			}
 			if (verdict.action === "fatal") throw verdict.error;
@@ -131,16 +135,18 @@ const verifyRunningAfterStart = async (
 				.then(() => true)
 				.catch(() => false);
 			lastStatus = exists ? (await run(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName])).trim() : null;
-			if (lastStatus === "running") {
-				await onLog(`Container ${containerName} is running after restart`);
-				return "running";
+			if (exists && lastStatus !== "running") {
+				lastLogs = await run(dockerBin, ["logs", "--tail", "50", containerName]).catch(() => lastLogs);
 			}
-			lastLogs = exists ? await run(dockerBin, ["logs", "--tail", "50", containerName]).catch(() => null) : null;
 			const verdict = evaluateInstanceState({ exists, status: lastStatus, logs: lastLogs }, "restart");
 			if (verdict.action === "fatal") throw verdict.error;
 		} catch (e: any) {
 			if (e.message?.includes("exited immediately") || e.message?.includes("crashed shortly")) throw e;
 		}
+	}
+	if (lastStatus === "running") {
+		await onLog(`Container ${containerName} is running after restart`);
+		return "running";
 	}
 	const logs = (lastLogs ?? "").trim() || "*No logs produced*";
 	throw new Error(

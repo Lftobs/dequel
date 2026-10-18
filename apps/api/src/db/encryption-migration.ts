@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, or } from "drizzle-orm";
 import { config } from "../utils/config";
 import { DEFAULT_ENV_ENCRYPTION_KEY, decryptValue, encryptValue } from "../utils/crypto";
 import { getDb } from "./db-provider";
@@ -275,18 +275,26 @@ const STORES: Store[] = [
 		name: "github_integrations",
 		run: async (activeKey) => {
 			const db = await getDb();
-			const legacy = await db.select().from(githubIntegrations).where(isNull(githubIntegrations.clientSecretIv));
+			const legacy = await db
+				.select()
+				.from(githubIntegrations)
+				.where(
+					or(
+						isNull(githubIntegrations.clientSecretIv),
+						and(isNotNull(githubIntegrations.webhookSecret), isNull(githubIntegrations.webhookSecretIv)),
+					),
+				);
 			let migrated = 0;
 			for (const row of legacy) {
-				if (!row.clientSecret) continue;
-				const client = encryptValue(row.clientSecret, activeKey);
-				const webhook = row.webhookSecret ? encryptValue(row.webhookSecret, activeKey) : null;
+				const client = row.clientSecret && !row.clientSecretIv ? encryptValue(row.clientSecret, activeKey) : null;
+				const webhook = row.webhookSecret && !row.webhookSecretIv ? encryptValue(row.webhookSecret, activeKey) : null;
+				if (!client && !webhook) continue;
 				await db
 					.update(githubIntegrations)
 					.set({
-						clientSecret: client.encrypted,
-						clientSecretIv: client.iv,
-						clientSecretTag: client.tag,
+						...(client
+							? { clientSecret: client.encrypted, clientSecretIv: client.iv, clientSecretTag: client.tag }
+							: {}),
 						...(webhook
 							? { webhookSecret: webhook.encrypted, webhookSecretIv: webhook.iv, webhookSecretTag: webhook.tag }
 							: {}),

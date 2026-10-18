@@ -13,8 +13,8 @@ const ensureSingleRoot = async (root: string): Promise<string> => {
 	return root;
 };
 
-const run = async (cmd: string, args: string[], cwd?: string) => {
-	const res = await safeSpawn(cmd, args, { cwd, timeoutMs: 120_000 });
+const run = async (cmd: string, args: string[], cwd?: string, env?: Record<string, string>) => {
+	const res = await safeSpawn(cmd, args, { cwd, timeoutMs: 120_000, env });
 	if (res.code !== 0) {
 		throw new Error(`${cmd} exited with code ${res.code}: ${res.stderr || res.stdout}`);
 	}
@@ -44,6 +44,32 @@ export const resolveProjectGitUrl = async (projectId: string | null | undefined,
 	}
 };
 
+const shq = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
+
+export const buildGitAuthEnv = (authedUrl: string): { env: Record<string, string>; cleanUrl: string } | null => {
+	const cleanUrl = redactGitUrl(authedUrl);
+	if (cleanUrl === authedUrl) return null;
+	if (!isGithubHttpsUrl(cleanUrl)) return null;
+	return {
+		env: {
+			GIT_CONFIG_COUNT: "1",
+			GIT_CONFIG_KEY_0: `url.${authedUrl}.insteadOf`,
+			GIT_CONFIG_VALUE_0: cleanUrl,
+		},
+		cleanUrl,
+	};
+};
+
+export const gitAuthScriptLines = (authedUrl: string): string[] => {
+	const auth = buildGitAuthEnv(authedUrl);
+	if (!auth) return [];
+	return [
+		'export GIT_CONFIG_COUNT="1"',
+		`export GIT_CONFIG_KEY_0=${shq(`url.${authedUrl}.insteadOf`)}`,
+		`export GIT_CONFIG_VALUE_0=${shq(auth.cleanUrl)}`,
+	];
+};
+
 export const prepareSourceWorkspace = async (
 	deploymentId: string,
 	gitUrl: string,
@@ -55,19 +81,21 @@ export const prepareSourceWorkspace = async (
 	await rm(root, { recursive: true, force: true });
 	await mkdir(root, { recursive: true });
 	const authedUrl = buildAuthenticatedGitUrl(gitUrl, token);
+	const auth = buildGitAuthEnv(authedUrl);
+	const remoteUrl = auth?.cleanUrl ?? authedUrl;
 	if (commitSha) {
 		if (!isValidSha(commitSha)) {
 			throw new Error(`Invalid commit SHA: ${commitSha}`);
 		}
-		await run("git", ["init"], root);
-		await run("git", ["remote", "add", "origin", authedUrl], root);
-		await run("git", ["fetch", "--depth", "1", "origin", commitSha], root);
+		await run("git", ["init"], root, auth?.env);
+		await run("git", ["remote", "add", "origin", remoteUrl], root, auth?.env);
+		await run("git", ["fetch", "--depth", "1", "origin", commitSha], root, auth?.env);
 		await run("git", ["checkout", "FETCH_HEAD"], root);
 	} else {
 		const args = ["clone", "--depth", "1"];
 		if (branch) args.push("--branch", branch);
-		args.push(authedUrl, root);
-		await run("git", args);
+		args.push(remoteUrl, root);
+		await run("git", args, undefined, auth?.env);
 	}
 	return root;
 };

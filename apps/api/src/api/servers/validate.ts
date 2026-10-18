@@ -14,7 +14,10 @@ export const validateServerCreate = (body: any): string | null => {
 		return "SSH keys cannot be attached to a server directly. Add the key to the SSH key pool, then pass its sshKeyId.";
 	}
 	if (body.sshKeyId && typeof body.sshKeyId !== "string") return "sshKeyId must be a string";
-	if (mode === "ssh" && !body.sshKeyId && !body.sshPassword) {
+	if (body.sshPassword && typeof body.sshPassword !== "string") {
+		return "sshPassword must be a non-empty string";
+	}
+	if (mode === "ssh" && !body.sshKeyId && !(typeof body.sshPassword === "string" && body.sshPassword)) {
 		return "SSH servers need a pool key (sshKeyId) or a password (sshPassword)";
 	}
 	return null;

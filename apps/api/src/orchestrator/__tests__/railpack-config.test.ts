@@ -113,5 +113,85 @@ describe("generateDynamicRailpackJson static subdirectory detection", () => {
 				cleanup();
 			}
 		});
+
+		test("still serves statically when only client libraries like socket.io-client are present", async () => {
+			const { dir, cleanup } = setupWorkspace();
+			try {
+				writeFileSync(
+					join(dir, "client", "package.json"),
+					JSON.stringify({
+						name: "spa",
+						scripts: { build: "vite build" },
+						dependencies: { vite: "^5.0.0", "socket.io-client": "^4.0.0" },
+					}),
+				);
+				await generateDynamicRailpackJson(dir, "client", null, null, null, async () => {});
+				const parsedConfig = JSON.parse(readFileSync(join(dir, "railpack.json"), "utf8"));
+				expect(parsedConfig.deploy?.startCommand).toBe("bun dequel-serve.js");
+			} finally {
+				cleanup();
+			}
+		});
+
+		test("still serves statically when only client libraries like next-themes are present", async () => {
+			const { dir, cleanup } = setupWorkspace();
+			try {
+				writeFileSync(
+					join(dir, "client", "package.json"),
+					JSON.stringify({
+						name: "spa",
+						scripts: { build: "vite build" },
+						dependencies: { vite: "^5.0.0", "next-themes": "^0.3.0" },
+					}),
+				);
+				await generateDynamicRailpackJson(dir, "client", null, null, null, async () => {});
+				const parsedConfig = JSON.parse(readFileSync(join(dir, "railpack.json"), "utf8"));
+				expect(parsedConfig.deploy?.startCommand).toBe("bun dequel-serve.js");
+			} finally {
+				cleanup();
+			}
+		});
+
+		test("keeps node dist/index.js for vite SSR builds configured with --ssr", async () => {
+			const { dir, cleanup } = setupWorkspace();
+			try {
+				writeFileSync(
+					join(dir, "client", "package.json"),
+					JSON.stringify({
+						name: "ssr",
+						scripts: { build: "vite build --ssr src/entry-server.ts" },
+						dependencies: { vite: "^5.0.0" },
+					}),
+				);
+				await generateDynamicRailpackJson(dir, "client", null, null, null, async () => {});
+				const parsedConfig = JSON.parse(readFileSync(join(dir, "railpack.json"), "utf8"));
+				expect(parsedConfig.deploy?.startCommand).toBe("cd client && node dist/index.js");
+			} finally {
+				cleanup();
+			}
+		});
+
+		test("keeps node dist/index.js for vite SSR builds configured via config file", async () => {
+			const { dir, cleanup } = setupWorkspace();
+			try {
+				writeFileSync(
+					join(dir, "client", "package.json"),
+					JSON.stringify({
+						name: "ssr",
+						scripts: { build: "vite build" },
+						dependencies: { vite: "^5.0.0" },
+					}),
+				);
+				writeFileSync(
+					join(dir, "client", "vite.config.ts"),
+					"export default { build: { ssr: 'src/entry-server.ts', outDir: 'dist/server' } };",
+				);
+				await generateDynamicRailpackJson(dir, "client", null, null, null, async () => {});
+				const parsedConfig = JSON.parse(readFileSync(join(dir, "railpack.json"), "utf8"));
+				expect(parsedConfig.deploy?.startCommand).toBe("cd client && node dist/index.js");
+			} finally {
+				cleanup();
+			}
+		});
 	});
 });

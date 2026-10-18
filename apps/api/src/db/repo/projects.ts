@@ -138,18 +138,19 @@ export const captureProjectGithubToken = async (
 	projectId: string,
 	gitUrl: string | null | undefined,
 	cookieHeader: string | null,
-): Promise<void> => {
+): Promise<boolean> => {
 	try {
-		if (!gitUrl || !/^https:\/\/github\.com\//i.test(gitUrl.trim()) || !cookieHeader) return;
+		if (!gitUrl || !/^https:\/\/github\.com\//i.test(gitUrl.trim()) || !cookieHeader) return false;
 		const { getGithubSession } = await import("./github-sessions");
 		const match = cookieHeader.match(/(?:^|;\s*)github_session=([^;]+)/);
-		if (!match) return;
+		if (!match) return false;
 		const token = await getGithubSession(match[1]);
-		if (!token) return;
+		if (!token) return false;
 		const enc = encryptValue(token, config.envEncryptionKey);
 		await updateProjectGithubToken(projectId, enc.encrypted, enc.iv, enc.tag);
+		return true;
 	} catch {
-		return;
+		return false;
 	}
 };
 

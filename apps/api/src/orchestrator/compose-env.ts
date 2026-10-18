@@ -1,4 +1,4 @@
-const yamlScalar = (value: string): string => JSON.stringify(value);
+const yamlScalar = (value: string): string => JSON.stringify(value).split("$").join("$$");
 
 export const buildComposeEnvOverrideYaml = (serviceNames: string[], envVars: Record<string, string>): string => {
 	const keys = Object.keys(envVars);

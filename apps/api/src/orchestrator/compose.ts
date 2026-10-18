@@ -206,7 +206,7 @@ const spawnComposeCommand = (
 		const isPosix = process.platform !== "win32";
 		const child = spawn(dockerBin, ["compose", ...args], {
 			cwd,
-			env: { ...(envVars || {}), ...process.env },
+			env: { ...process.env, ...(envVars || {}) },
 			stdio: ["ignore", "pipe", "pipe"],
 			detached: true,
 		});

@@ -1,4 +1,4 @@
-import { redactGitUrl } from "../orchestrator/source";
+import { gitAuthScriptLines, redactGitUrl } from "../orchestrator/source";
 
 export interface RemoteComposeScriptInput {
 	deploymentId: string;
@@ -47,8 +47,9 @@ export const buildRemoteComposeScript = (input: RemoteComposeScriptInput): strin
 		"  exit 1",
 		"fi",
 		"",
-		`echo "[compose] Cloning repository ${redactGitUrl(input.gitUrl)}"`,
-		`git clone --depth 1 ${sh(input.gitUrl)} .`,
+		`echo "[compose] Cloning repository " ${sh(redactGitUrl(input.gitUrl))}`,
+		...gitAuthScriptLines(input.gitUrl),
+		`git clone --depth 1 ${sh(redactGitUrl(input.gitUrl))} .`,
 		checkoutSha,
 		"",
 		sourceDirLine,
@@ -74,7 +75,7 @@ export const buildRemoteComposeScript = (input: RemoteComposeScriptInput): strin
 					'    lines.append("  %s:" % svc)',
 					'    lines.append("    environment:")',
 					"    for k, v in envs.items():",
-					'        lines.append("      %s: %s" % (k, json.dumps(v)))',
+					'        lines.append("      %s: %s" % (k, json.dumps(v.replace("$", "$$"))))',
 					'open("dequel-env-override.yml", "w").write("\\n".join(lines) + "\\n")',
 					'print("[compose] Injected %d env var(s) into %d service(s)" % (len(envs), len(services)))',
 					"DEQUEL_OVERRIDE_EOF",

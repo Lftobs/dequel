@@ -137,21 +137,28 @@ export const backupRoutes = new Elysia({ prefix: "/backups" })
 			serverId,
 			kind: "restore",
 		});
+		let restoreError: unknown = null;
 		try {
 			const storage = await loadStorageConfig();
 			const orchestrator = new BackupOrchestrator(storage);
 			await orchestrator.restore(params.id, resolveTarget);
-			await updateRestoreTestRecord(event.id, { status: "passed", completedAt: new Date() });
-			return ok({ restored: true });
 		} catch (error) {
+			restoreError = error;
+		}
+		try {
 			await updateRestoreTestRecord(event.id, {
-				status: "failed",
-				error: String(error),
+				status: restoreError ? "failed" : "passed",
+				error: restoreError ? String(restoreError) : null,
 				completedAt: new Date(),
 			});
-			set.status = 500;
-			return fail(String(error));
+		} catch (eventError) {
+			console.error(`[backups] failed to record restore event ${event.id}:`, eventError);
 		}
+		if (restoreError) {
+			set.status = 500;
+			return fail(String(restoreError));
+		}
+		return ok({ restored: true });
 	})
 	.post("/:id/restore-test", async ({ params, body, set }: any) => {
 		try {
