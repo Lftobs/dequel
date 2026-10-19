@@ -14,7 +14,7 @@ services:
         volumes:
             - buildkit-data:/var/lib/buildkit
         networks:
-            dequel:
+            control:
                 aliases:
                     - buildkit
         healthcheck:
@@ -81,6 +81,9 @@ services:
             retries: 100
             start_period: 10s
         networks:
+            control:
+                aliases:
+                    - api
             dequel:
                 aliases:
                     - api
@@ -122,7 +125,7 @@ services:
             - /etc/shadow:/host-etc/shadow:ro
             - /etc/group:/host-etc/group:ro
         networks:
-            dequel:
+            control:
                 aliases:
                     - pam-auth
         healthcheck:
@@ -190,6 +193,7 @@ services:
             retries: 5
             start_period: 5s
         networks:
+            control:
             dequel:
 
     caddy:
@@ -229,7 +233,7 @@ services:
         volumes:
             - redis-data:/data
         networks:
-            dequel:
+            control:
                 aliases:
                     - redis
         healthcheck:
@@ -248,7 +252,7 @@ services:
         volumes:
             - postgres-data:/var/lib/postgresql/data
         networks:
-            dequel:
+            control:
                 aliases:
                     - postgres
         healthcheck:
@@ -270,7 +274,7 @@ services:
         devices:
             - /dev/kmsg
         networks:
-            dequel:
+            control:
                 aliases:
                     - cadvisor
         healthcheck:
@@ -303,6 +307,9 @@ services:
             cadvisor:
                 condition: service_started
         networks:
+            control:
+                aliases:
+                    - prometheus
             dequel:
                 aliases:
                     - prometheus
@@ -329,7 +336,7 @@ services:
             - ./infra/monitoring/loki-config.yml:/etc/loki/loki-config.yml:ro
             - loki-data:/loki
         networks:
-            dequel:
+            control:
                 aliases:
                     - loki
         healthcheck:
@@ -360,6 +367,7 @@ services:
             loki:
                 condition: service_started
         networks:
+            control:
             dequel:
 
     grafana:
@@ -381,6 +389,9 @@ services:
             loki:
                 condition: service_started
         networks:
+            control:
+                aliases:
+                    - grafana
             dequel:
                 aliases:
                     - grafana
@@ -401,6 +412,8 @@ services:
 networks:
     dequel:
         name: dequel_net
+    control:
+        name: dequel_control
 
 volumes:
     buildkit-data:

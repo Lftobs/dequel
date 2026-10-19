@@ -142,6 +142,7 @@ export interface Domain {
 	type: DomainType;
 	validationStatus: DomainValidationStatus;
 	sslStatus: SslStatus;
+	cloudflareProxied?: boolean;
 	createdAt: string;
 	updatedAt: string;
 }
