@@ -39,6 +39,7 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 	const [domain, setDomain] = useState("");
 	const [targetService, setTargetService] = useState("");
 	const [targetPort, setTargetPort] = useState("");
+	const [cloudflareProxied, setCloudflareProxied] = useState(false);
 	const [isAdding, setIsAdding] = useState(false);
 
 	const add = async (e: React.FormEvent) => {
@@ -52,11 +53,13 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 				"custom",
 				targetService.trim() || undefined,
 				targetPort.trim() ? Number(targetPort) : undefined,
+				cloudflareProxied,
 			);
 			setLastAdded(domain.trim());
 			setDomain("");
 			setTargetService("");
 			setTargetPort("");
+			setCloudflareProxied(false);
 			setIsAddOpen(false);
 			refetch();
 			refetchStatus();
@@ -141,9 +144,7 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 								return (
 									<div key={d.id} className="p-3.5 space-y-2.5">
 										<div className="flex items-center justify-between gap-2">
-											<span className="font-semibold text-foreground text-sm break-all">
-												{d.domain}
-											</span>
+											<span className="font-semibold text-foreground text-sm break-all">{d.domain}</span>
 											<Button
 												variant="ghost"
 												size="icon"
@@ -162,6 +163,14 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 											</Badge>
 											<StatusBadge status={d.validationStatus} />
 											<StatusBadge status={d.sslStatus} />
+											{d.cloudflareProxied && (
+												<Badge
+													variant="outline"
+													className="text-[10px] uppercase border-amber-500/30 text-amber-400 bg-amber-500/10 px-2 py-0.5"
+												>
+													Cloudflare
+												</Badge>
+											)}
 										</div>
 										{st && (
 											<div className="flex items-center gap-4 text-xs pt-1 border-t border-border/40">
@@ -172,7 +181,9 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 													</span>
 												</span>
 												<span className="inline-flex items-center gap-1.5">
-													<span className={`h-1.5 w-1.5 rounded-full ${st.tlsOk ? "bg-emerald-400" : "bg-amber-400"}`} />
+													<span
+														className={`h-1.5 w-1.5 rounded-full ${st.tlsOk ? "bg-emerald-400" : "bg-amber-400"}`}
+													/>
 													<span className={st.tlsOk ? "text-emerald-400 text-[11px]" : "text-amber-400 text-[11px]"}>
 														TLS {st.tlsOk ? "Secured" : "Pending"}
 													</span>
@@ -213,7 +224,17 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 												<StatusBadge status={d.validationStatus} />
 											</TableCell>
 											<TableCell className="py-3.5">
-												<StatusBadge status={d.sslStatus} />
+												<div className="flex items-center gap-1.5">
+													<StatusBadge status={d.sslStatus} />
+													{d.cloudflareProxied && (
+														<Badge
+															variant="outline"
+															className="text-[10px] uppercase border-amber-500/30 text-amber-400 bg-amber-500/10 px-2 py-0.5"
+														>
+															Cloudflare
+														</Badge>
+													)}
+												</div>
 											</TableCell>
 											{(() => {
 												const st = domainStatuses?.find((s) => s.domain === d.domain);
@@ -222,8 +243,12 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 														<TableCell className="py-3.5">
 															{st ? (
 																<span className="inline-flex items-center gap-1.5 text-xs">
-																	<span className={`h-1.5 w-1.5 rounded-full ${st.dnsOk ? "bg-emerald-400" : "bg-red-400"}`} />
-																	<span className={st.dnsOk ? "text-emerald-400 text-[11px]" : "text-red-400 text-[11px]"}>
+																	<span
+																		className={`h-1.5 w-1.5 rounded-full ${st.dnsOk ? "bg-emerald-400" : "bg-red-400"}`}
+																	/>
+																	<span
+																		className={st.dnsOk ? "text-emerald-400 text-[11px]" : "text-red-400 text-[11px]"}
+																	>
 																		{st.dnsOk ? "Resolved" : "Unresolved"}
 																	</span>
 																</span>
@@ -234,8 +259,12 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 														<TableCell className="py-3.5">
 															{st ? (
 																<span className="inline-flex items-center gap-1.5 text-xs">
-																	<span className={`h-1.5 w-1.5 rounded-full ${st.tlsOk ? "bg-emerald-400" : "bg-amber-400"}`} />
-																	<span className={st.tlsOk ? "text-emerald-400 text-[11px]" : "text-amber-400 text-[11px]"}>
+																	<span
+																		className={`h-1.5 w-1.5 rounded-full ${st.tlsOk ? "bg-emerald-400" : "bg-amber-400"}`}
+																	/>
+																	<span
+																		className={st.tlsOk ? "text-emerald-400 text-[11px]" : "text-amber-400 text-[11px]"}
+																	>
 																		{st.tlsOk ? "Secured" : "Pending"}
 																	</span>
 																</span>
@@ -275,6 +304,8 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 				targetPort={targetPort}
 				setTargetPort={setTargetPort}
 				isCompose={(project as any)?.buildType === "compose"}
+				cloudflareProxied={cloudflareProxied}
+				setCloudflareProxied={setCloudflareProxied}
 				isAdding={isAdding}
 				onAdd={add}
 			/>

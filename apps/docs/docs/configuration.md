@@ -1,46 +1,62 @@
 ---
-title: Configuration
-category: Getting Started
-description: Configure compute bounds, custom ports, and service specs.
+title: Project Configuration
+category: Projects
+description: Build settings, ports, and resource limits for your project.
 slug: configuration
 ---
 
-Dequel provides fine-grained control over container resources and network routing to ensure optimal application performance and stability.
+Each project carries its build and runtime configuration. You set most of
+it in the creation wizard and can change it later on the project's
+**Settings** tab (`PATCH /projects/:id`).
 
-## Resource Limits
+## Build settings
 
-Configure boundary limits under the Settings layout to avoid cluster resource starvation or application OOM (Out Of Memory) crashes:
+**Build strategy** is either `railpack` (automatic single-service build)
+or `compose` (multi-container from your repo-root `docker-compose.yml`).
+Railpack auto-detects the framework and proposes install, build, and
+start commands plus the output directory and port — every field stays
+editable for frameworks it guesses wrong.
 
-- **CPU Limit (cores):** The maximum amount of CPU shares a container replica can consume. Specifying `1.0` permits a full single core.
-- **Memory Limit (MB):** The boundary RAM limit allocated. If a container exceeds this, it is automatically terminated with an OOM error code and restarted. Recommended default: `512MB`.
+Useful fields:
 
-## Port Configurations
+- **Root directory** — build a subdirectory of the repo (monorepos).
+- **Port** — the port your app listens on inside the container. Railpack
+  usually detects this; override it when it does not.
+- **Output directory** — for static sites, the folder served after build.
+- **Project type** — `web` (long-running server) or `static` (built
+  assets served directly).
+- **Compose service mapping** — for Compose builds, one row per
+  internet-facing service: service name, port, and subdomain. The first
+  row is the entry service on the project's main domain; the rest get
+  `<subdomain>.<your-app-domain>`.
 
-Dequel's edge router (Caddy) uses reverse proxy routing to map incoming HTTP request traffic to your container.
+## Ports and routing
 
-<div class="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-xs text-zinc-300 space-y-1">
-  <span class="font-bold text-amber-500 uppercase tracking-wider text-[10px]">⚠️ Crucial Note: Internal Ports</span>
-  <p>Your application inside the container must bind to the environment-injected <code>PORT</code> variable. Hardcoding listen ports to <code>3000</code> or <code>8080</code> without reading the environment variable will result in a <strong>502 Bad Gateway</strong> error, as Caddy's dynamic routing target won't match.</p>
-</div>
+Your app must listen on the configured port on all interfaces
+(`0.0.0.0`). A typical Node entrypoint reads it from the environment:
 
-## Example: Express server
-
-<div class="rounded-xl border border-border bg-[#070709] overflow-hidden">
-  <div class="bg-[#0b0b0f] px-4 py-2 border-b border-border flex items-center justify-between">
-    <span class="text-[10px] font-mono text-zinc-500">server.js</span>
-  </div>
-  <pre class="p-4 font-mono text-[11px] text-zinc-300 overflow-x-auto"><code>const express = require('express');
-const app = express();
-
-// ALWAYS read from process.env.PORT
+```js
 const PORT = process.env.PORT || 3000;
+app.listen(PORT, "0.0.0.0");
+```
 
-app.get('/', (req, res) => {
-  res.send('Hello from Dequel!');
-});
+Caddy reverse-proxies the project domain to that port. If the app binds
+`localhost` only or a different port, the route returns `502 Bad
+Gateway` — check the [route files](/docs/agent-caddy-routes) and the
+container's runtime logs.
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server listening on port ${PORT}`);
-});</code></pre>
-</div>
+## Resource limits
 
+On the **Scaling** tab, the resource card sets per-container bounds:
+
+- **CPU limit (cores)** — for example `1.0` for one full core.
+- **Memory limit (MB)** — for example `512`. A container that exceeds it
+  is killed with an OOM error and restarted.
+
+Autoscaling requires a CPU limit to be set, since the engine scales on
+CPU utilization. See [Scaling](/docs/scaling).
+
+## Next steps
+
+- Read [Deployments](/docs/deployments) for the deploy lifecycle.
+- Read [Environment Variables](/docs/env-vars) for config injection.

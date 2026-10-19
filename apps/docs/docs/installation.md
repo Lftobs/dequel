@@ -5,159 +5,129 @@ description: Install Dequel on your own infrastructure.
 slug: installation
 ---
 
+You install Dequel with one command. The installer sets up the control
+plane (dashboard, API, builders, databases engine, and monitoring) as
+Docker containers on your machine. Your apps can run on that same machine,
+or on additional servers you connect later (see
+[Servers](/docs/servers)).
+
 ## Prerequisites
 
-- **Docker** installed on your system
-- **Docker Compose v2** (`docker compose` command)
+- **Docker** and **Docker Compose v2** (`docker compose`)
+- A Linux server with ports `80` and `443` reachable if you want public
+  HTTPS URLs (not needed for local-only use)
 
-## Install Script
+## Install
 
-The quickest way to get Dequel running:
+Run the install script:
 
 ```bash
 curl -fsSL https://github.com/Lftobs/dequel/releases/latest/download/install.sh | bash
 ```
 
-This will:
+The script checks for Docker and Compose, creates a config directory at
+`~/.dequel`, generates a unique `ENV_ENCRYPTION_KEY`, downloads the
+`docker-compose.yml` and monitoring configs, pulls the pre-built images
+from GitHub Container Registry, installs the `dequel` CLI, and asks for
+an optional admin email (Let's Encrypt notifications) and base domain
+(public app URLs).
 
-1. Check that Docker and Docker Compose are installed
-2. Create a config directory at `~/.dequel`
-3. Download `docker-compose.yml` and monitoring configs
-4. Pull pre-built Docker images from GitHub Container Registry
-5. Install the `dequel` CLI to `/usr/local/bin`
-
-After installation, start the platform:
+Then start the platform:
 
 ```bash
 dequel start
 ```
 
-Open `http://localhost` to access the dashboard (or the configured `CADDY_BASE_DOMAIN` in production).
+Open `https://<the base domain added while installing>` to access the dashboard. If you configured a base
+domain during install, the dashboard is also served on it.
 
-## Post-Installation: User Setup
+![Dequel login page](/screenshots/login.png)
 
-Dequel authenticates against Linux system users in the `dequel` group. After install, create a user:
+## Create your login user
+
+Dequel authenticates against Linux system users in the `dequel` group.
+Create the group and a user after installing:
 
 ```bash
+sudo groupadd -f dequel
 sudo useradd -m -s /bin/bash <username>
 sudo passwd <username>
 sudo usermod -aG dequel <username>
 ```
 
-See [Authentication & Access Control](/docs/auth) for details on session management and API keys.
+Sign in with that username and password. See
+[Authentication](/docs/auth) for sessions, API keys, and programmatic
+access.
 
-## Manual Setup (no install script)
+## Production setup
 
-If the installer fails, set up the platform manually with just Docker Compose and the config files:
+To serve public HTTPS traffic:
 
-```bash
-# Create the installation directory
-mkdir -p ~/.dequel/data ~/.dequel/workspace \
-  ~/.dequel/infra/caddy/routes \
-  ~/.dequel/infra/monitoring/grafana/datasources
-
-# Download config files
-curl -fsSL https://raw.githubusercontent.com/Lftobs/dequel/main/docker-compose.yml \
-  -o ~/.dequel/docker-compose.yml
-curl -fsSL https://raw.githubusercontent.com/Lftobs/dequel/main/infra/caddy/Caddyfile \
-  -o ~/.dequel/infra/caddy/Caddyfile
-curl -fsSL https://raw.githubusercontent.com/Lftobs/dequel/main/infra/monitoring/prometheus.yml \
-  -o ~/.dequel/infra/monitoring/prometheus.yml
-curl -fsSL https://raw.githubusercontent.com/Lftobs/dequel/main/infra/monitoring/loki-config.yml \
-  -o ~/.dequel/infra/monitoring/loki-config.yml
-curl -fsSL https://raw.githubusercontent.com/Lftobs/dequel/main/infra/monitoring/promtail-config.yml \
-  -o ~/.dequel/infra/monitoring/promtail-config.yml
-curl -fsSL https://raw.githubusercontent.com/Lftobs/dequel/main/infra/monitoring/grafana/datasources/loki.yml \
-  -o ~/.dequel/infra/monitoring/grafana/datasources/loki.yml
-curl -fsSL https://raw.githubusercontent.com/Lftobs/dequel/main/infra/monitoring/grafana/datasources/prometheus.yml \
-  -o ~/.dequel/infra/monitoring/grafana/datasources/prometheus.yml
-
-# Start all services
-docker compose -f ~/.dequel/docker-compose.yml up -d
-```
-
-The compose file uses pre-built images from GitHub Container Registry, so no source code checkout is needed. Access the dashboard at `http://localhost` (or your configured `CADDY_BASE_DOMAIN`).
-
-## Manual Setup with Docker Compose (with source)
-
-Clone the repository and build from source:
-
-```bash
-git clone https://github.com/Lftobs/dequel.git
-cd dequel
-docker compose up -d --build
-```
-
-## Production Setup
-
-To make Dequel publicly accessible with auto-SSL:
-
-1. Set `CADDY_BASE_DOMAIN` and `CADDY_EMAIL` in `~/.dequel/.env`:
-   ```
+1. Set the base domain and contact email in `~/.dequel/.env` (the
+   installer already wrote these if you provided them):
+   ```bash
    CADDY_BASE_DOMAIN=example.com
    CADDY_EMAIL=admin@example.com
    ```
-2. Configure a wildcard DNS `*.example.com` pointing to your server's IP.
+2. Point a wildcard DNS record (`*.example.com`) at your server's IP.
 3. Ensure ports `80` and `443` are open in your firewall.
-4. Restart Dequel: `dequel restart`
+4. Restart with `dequel restart`.
 
-Deployed apps will be reachable at `https://<slug>.example.com` with auto-provisioned Let's Encrypt certificates. The dashboard is available at both `http://example.com` and `https://example.com`.
+Deployed apps become reachable at `https://<project-slug>.example.com`
+with automatic Let's Encrypt certificates.
 
-## The `dequel` CLI
+## Configuration directory
 
-The `dequel` command manages the platform lifecycle:
+Dequel stores its state in `~/.dequel` (override with `DEQUEL_HOME`):
 
-| Command | Description |
-|---------|-------------|
-| `dequel start` | Start all Dequel services |
-| `dequel stop` | Stop all services |
-| `dequel status` | Show service status |
-| `dequel logs` | Follow service logs |
-| `dequel update` | Pull latest images and restart |
-| `dequel restart` | Restart all services |
-| `dequel --help` | Show all commands |
-
-## Configuration Directory
-
-Dequel stores its configuration in `~/.dequel` (or `$DEQUEL_HOME` if set):
-
-```
+```text
 ~/.dequel/
 ├── docker-compose.yml
-├── .env                    # Optional environment overrides
-├── data/                   # SQLite database
+├── .env                    # CADDY_BASE_DOMAIN, CADDY_EMAIL, ENV_ENCRYPTION_KEY
+├── data/
+│   ├── dequel.json         # File-based platform config (0600)
+│   └── ...                 # Postgres data, backups, instance id
 ├── workspace/              # Build staging area
+├── scripts/auth/           # PAM auth server files
 └── infra/
     ├── caddy/
     │   ├── Caddyfile
-    │   └── routes/
-    └── monitoring/
-        ├── prometheus.yml
-        ├── loki-config.yml
-        └── grafana/
+    │   └── routes/         # Generated per-project route files
+    └── monitoring/         # Prometheus, Loki, Grafana configs
 ```
 
-## Building from Source
+PostgreSQL holds all platform state (projects, deployments, env vars,
+databases, users). It runs as the `postgres` container with a persisted
+volume — there is no SQLite file to manage.
 
-For local development, run the API and web dashboard directly. The API uses
-fixed paths for build staging and Caddy routes, so create them once:
+## The `dequel` CLI
 
-```bash
-sudo mkdir -p /app/workspace /caddy/routes
-sudo chown -R "$USER" /app/workspace /caddy/routes
-```
+The CLI manages the platform lifecycle. See the full
+[CLI reference](/docs/cli) for update channels and backups.
 
-The API writes build artifacts to `/app/workspace` and Caddy route files to
-`/caddy/routes`, so your user must own both directories when you run the API
-without `sudo`.
+| Command | Description |
+|---------|-------------|
+| `dequel start` | Start all services |
+| `dequel stop` | Stop all services |
+| `dequel restart` | Restart all services |
+| `dequel status` | Show service status |
+| `dequel logs` | Follow service logs |
+| `dequel update` | Update to the latest release |
+| `dequel backup` | Back up the internal database |
+| `dequel uninstall` | Remove everything (prompts first) |
 
-```bash
-# Terminal 1 — API
-bun apps/api/src/index.ts
+## Manual setup
 
-# Terminal 2 — Web
-bun apps/web/src/main.tsx
-```
+If the installer does not fit your environment, replicate what it does:
+create the directory layout above, download `docker-compose.yml` and the
+`infra/` configs from the latest GitHub release, write your `.env` with
+`CADDY_BASE_DOMAIN`, `CADDY_EMAIL`, and a generated
+`ENV_ENCRYPTION_KEY`, then run
+`docker compose -f ~/.dequel/docker-compose.yml up -d`.
+
+To build from source instead, clone the repository and run
+`docker compose up -d --build`. For local development of the API and
+dashboard directly, see the commands in `AGENTS.md`.
 
 ## Updating
 
@@ -165,5 +135,10 @@ bun apps/web/src/main.tsx
 dequel update
 ```
 
-This pulls the latest images from GitHub Container Registry and recreates the services.
+This pulls the latest images and recreates services with a rolling
+restart. Pin a version with `dequel update vX.Y.Z`.
 
+## Next steps
+
+- Follow the [Quickstart](/docs/quickstart) to deploy your first app.
+- Connect more machines under [Servers](/docs/servers).

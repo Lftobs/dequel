@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import type { CreateServerInput, Server, ServerMode, ServerStatus } from "../../types";
 import { config } from "../../utils/config";
-import { decryptValue, encryptValue } from "../../utils/crypto";
+import { decryptValue } from "../../utils/crypto";
 import { getDb } from "../db-provider";
 import { servers } from "../schema";
 import { formatTimestamp, getRowsAffected, now } from "./helpers";

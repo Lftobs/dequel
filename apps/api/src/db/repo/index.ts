@@ -18,6 +18,7 @@ export {
 } from "./agents";
 export { createAlert, deleteAlert, getAlertById, listAlerts, updateAlertEnabled } from "./alerts";
 export { createApiKey, deleteApiKey, listApiKeys, validateApiKey } from "./api-keys";
+export { countAuditLogs, createAuditLog, listAuditLogs } from "./audit-logs";
 
 export {
 	createDatabase,

@@ -67,17 +67,17 @@ code, pre, kbd, samp, .font-mono {
 
 /* Top Header & Reading Progress */
 header[data-blume-header], header {
-  background: rgba(10, 10, 12, 0.9) !important;
+  background: rgba(10, 10, 12, 0.92) !important;
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
   border-bottom: 1px solid #1c1c20 !important;
-  padding-left: max(1.5rem, calc((100vw - 82rem) / 2 + 1.5rem)) !important;
-  padding-right: max(1.5rem, calc((100vw - 82rem) / 2 + 1.5rem)) !important;
+  padding-left: max(1rem, calc((100vw - 82rem) / 2 + 1.5rem)) !important;
+  padding-right: max(1rem, calc((100vw - 82rem) / 2 + 1.5rem)) !important;
   position: sticky !important;
   top: 0 !important;
+  z-index: 50 !important;
 }
-
-header a[href="/docs"], header a[href="/"] {
+header > a[href="/docs"] {
   display: inline-flex !important;
   align-items: center !important;
   gap: 0.5rem !important;
@@ -85,15 +85,24 @@ header a[href="/docs"], header a[href="/"] {
   font-weight: 700 !important;
   color: #ffffff !important;
   letter-spacing: -0.02em !important;
+  flex-shrink: 0 !important;
 }
-header a[href="/docs"]::after, header a[href="/"]::after {
+header > a[href="/docs"] span.truncate {
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+header > a[href="/docs"]::after {
   content: "DOCS";
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   font-weight: 600;
-  color: #71717a;
+  color: #ea580c;
+  background: rgba(234, 88, 12, 0.12);
+  border: 1px solid rgba(234, 88, 12, 0.28);
+  padding: 1px 5px;
+  border-radius: 4px;
   letter-spacing: 0.08em;
-  margin-left: 0.25rem;
+  margin-left: 0.15rem;
 }
 
 [data-blume-search-open] {
@@ -131,6 +140,24 @@ header a.bg-accent {
 }
 header a.bg-accent:hover { background-color: #ea580c !important; color: #ffffff !important; border-color: #ea580c !important; }
 
+@media (max-width: 640px) {
+  header[data-blume-header], header {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    gap: 0.4rem !important;
+  }
+  header a.bg-accent { display: none !important; }
+  header a[href="/"] {
+    display: inline-flex !important;
+    padding: 0.3rem 0.6rem !important;
+    font-size: 10px !important;
+    border: 1px solid #222228 !important;
+    background: #141417 !important;
+    border-radius: 6px !important;
+    color: #d4d4d8 !important;
+  }
+}
+
 /* Centered Docs Grid Container */
 div[data-blume-doc-grid] {
   max-width: 82rem !important;
@@ -146,17 +173,43 @@ div[data-blume-doc-grid] {
 @media (max-width: 1280px) {
   div[data-blume-doc-grid] { grid-template-columns: 16rem minmax(0, 1fr) !important; max-width: 68rem !important; }
 }
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   div[data-blume-doc-grid] { grid-template-columns: 1fr !important; padding-left: 1rem !important; padding-right: 1rem !important; }
 }
 
 /* Left Sidebar & Read State Highlight */
-aside[data-blume-nav-drawer] {
-  width: 16rem !important;
-  max-width: 16rem !important;
-  border-right: 1px solid #1c1c20 !important;
-  padding: 1.25rem 0.75rem 2.5rem 0 !important;
-  background-color: transparent !important;
+@media (min-width: 1024px) {
+  aside[data-blume-nav-drawer] {
+    width: 16rem !important;
+    max-width: 16rem !important;
+    border-right: 1px solid #1c1c20 !important;
+    padding: 1.25rem 0.75rem 2.5rem 0 !important;
+    background-color: transparent !important;
+  }
+}
+@media (max-width: 1023px) {
+  aside[data-blume-nav-drawer] {
+    width: 17.5rem !important;
+    max-width: 82vw !important;
+    background-color: #0a0a0c !important;
+    border-right: 1px solid #222228 !important;
+    padding: 1.25rem 1rem 3rem 1rem !important;
+    box-shadow: 24px 0 60px rgba(0, 0, 0, 0.92) !important;
+    z-index: 45 !important;
+  }
+  html[data-blume-nav-open] body::after {
+    content: "";
+    position: fixed;
+    top: var(--blume-drawer-top, 4rem);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 40;
+    pointer-events: none;
+  }
 }
 .blume-nav-heading, .blume-nav-heading span {
   font-family: 'Space Grotesk', var(--blume-ff-space-grotesk), sans-serif !important;
@@ -216,6 +269,10 @@ main#blume-content {
   padding: 1.25rem 0.5rem 3rem 0.5rem !important;
   margin: 0 !important;
   background-color: transparent !important;
+  min-width: 0 !important;
+}
+@media (max-width: 640px) {
+  main#blume-content { padding: 1rem 0.25rem 2.5rem 0.25rem !important; }
 }
 article.prose { width: 100% !important; max-width: 100% !important; margin: 0 !important; }
 body:has(a.blume-nav-link[aria-current="page"][href="/docs"]) article > h1:first-child,
@@ -223,7 +280,7 @@ body:has(a.blume-nav-link[aria-current="page"][href="/docs"]) article > p.text-l
 
 .prose h1, article h1 {
   font-family: 'Space Grotesk', var(--blume-ff-space-grotesk), sans-serif !important;
-  font-size: 1.85rem !important;
+  font-size: clamp(1.5rem, 4vw, 1.85rem) !important;
   font-weight: 700 !important;
   letter-spacing: -0.03em !important;
   color: #ffffff !important;
@@ -232,7 +289,7 @@ body:has(a.blume-nav-link[aria-current="page"][href="/docs"]) article > p.text-l
 }
 .prose h2, article h2 {
   font-family: 'Space Grotesk', var(--blume-ff-space-grotesk), sans-serif !important;
-  font-size: 1.35rem !important;
+  font-size: clamp(1.2rem, 3vw, 1.35rem) !important;
   font-weight: 700 !important;
   letter-spacing: -0.02em !important;
   color: #ffffff !important;
@@ -270,6 +327,7 @@ body:has(a.blume-nav-link[aria-current="page"][href="/docs"]) article > p.text-l
   color: #ea580c !important;
   padding: 1px 6px !important;
   border-radius: 4px !important;
+  word-break: break-word !important;
 }
 
 /* Code Blocks & Terminal Shell */
@@ -279,16 +337,14 @@ body:has(a.blume-nav-link[aria-current="page"][href="/docs"]) article > p.text-l
   border-radius: 8px !important;
   margin: 1.25rem 0 !important;
   position: relative !important;
-  overflow: hidden !important;
+  overflow-x: auto !important;
+  max-width: 100% !important;
 }
 .prose :where(pre[data-language]), article :where(pre[data-language]) {
-  padding-top: 3.5rem !important;
-  padding-bottom: 1rem !important;
-  padding-left: 1.25rem !important;
-  padding-right: 1.25rem !important;
+  padding: 3.5rem 1rem 1rem 1rem !important;
 }
 .prose :where(pre:not([data-language])), article :where(pre:not([data-language])) {
-  padding: 1rem 1.25rem !important;
+  padding: 1rem !important;
 }
 .prose :where(pre[data-language])::before, article :where(pre[data-language])::before {
   height: 2.5rem !important;
@@ -312,14 +368,8 @@ body:has(a.blume-nav-link[aria-current="page"][href="/docs"]) article > p.text-l
   right: 0 !important;
   z-index: 1 !important;
 }
-.prose :where(pre[data-language][data-icon])::before, article :where(pre[data-language][data-icon])::before {
-  padding-left: 2.5rem !important;
-}
-.prose :where(pre[data-language][data-icon])::after, article :where(pre[data-language][data-icon])::after {
-  z-index: 2 !important;
-  top: 0.8125rem !important;
-  left: 1rem !important;
-}
+.prose :where(pre[data-language][data-icon])::before, article :where(pre[data-language][data-icon])::before { padding-left: 2.5rem !important; }
+.prose :where(pre[data-language][data-icon])::after, article :where(pre[data-language][data-icon])::after { z-index: 2 !important; top: 0.8125rem !important; left: 1rem !important; }
 
 button[data-blume-copy] {
   background-color: #141417 !important;
@@ -341,13 +391,14 @@ button[data-blume-copy]:hover svg { color: #ffffff !important; }
 
 .prose pre code, article pre code {
   font-family: 'JetBrains Mono', var(--blume-ff-jetbrains-mono), monospace !important;
-  font-size: 13px !important;
+  font-size: 12.5px !important;
   line-height: 1.6 !important;
   color: #e2e2e8 !important;
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
   display: block !important;
+  overflow-x: auto !important;
 }
 
 /* Admonitions & Callouts */
@@ -369,12 +420,9 @@ button[data-blume-copy]:hover svg { color: #ffffff !important; }
   display: flex !important;
   align-items: center !important;
   gap: 0.4rem !important;
-  margin-top: 0 !important;
-  margin-bottom: 0.35rem !important;
+  margin: 0 0 0.35rem 0 !important;
 }
-[data-blume-callout] p.font-semibold::before, [data-blume-callout] .font-semibold::before, [data-blume-callout] p.text-foreground::before {
-  content: "💡 ";
-}
+[data-blume-callout] p.font-semibold::before, [data-blume-callout] .font-semibold::before, [data-blume-callout] p.text-foreground::before { content: "💡 "; }
 [data-blume-callout] p:not(.font-semibold):not(.text-foreground) {
   font-family: 'DM Sans', var(--blume-ff-dm-sans), sans-serif !important;
   font-size: 13.5px !important;
@@ -426,47 +474,14 @@ aside[data-blume-toc] button, aside[data-blume-toc] [data-open-in] {
 }
 aside[data-blume-toc] button:hover, aside[data-blume-toc] [data-open-in]:hover { color: #f4f4f5 !important; }
 
-/* Pagination Buttons */
-nav[aria-label="Pagination"] {
-  border-top: 1px solid #1f1f24 !important;
-  margin-top: 2.5rem !important;
-  padding-top: 1.5rem !important;
-}
-nav[aria-label="Pagination"] a {
-  background-color: #0e0e12 !important;
-  border: 1px solid #222228 !important;
-  border-radius: 8px !important;
-  padding: 0.65rem 1rem !important;
-  transition: all 150ms ease !important;
-}
+/* Pagination & Search Dialog */
+nav[aria-label="Pagination"] { border-top: 1px solid #1f1f24 !important; margin-top: 2.5rem !important; padding-top: 1.5rem !important; }
+nav[aria-label="Pagination"] a { background-color: #0e0e12 !important; border: 1px solid #222228 !important; border-radius: 8px !important; padding: 0.65rem 1rem !important; transition: all 150ms ease !important; }
 nav[aria-label="Pagination"] a:hover { border-color: rgba(234, 88, 12, 0.5) !important; background-color: #121217 !important; }
-nav[aria-label="Pagination"] a span.text-muted-foreground {
-  font-family: 'JetBrains Mono', var(--blume-ff-jetbrains-mono), monospace !important;
-  font-size: 10px !important;
-  font-weight: 600 !important;
-  text-transform: uppercase !important;
-  color: #52525b !important;
-  letter-spacing: 0.05em !important;
-}
+nav[aria-label="Pagination"] a span.text-muted-foreground { font-family: 'JetBrains Mono', var(--blume-ff-jetbrains-mono), monospace !important; font-size: 10px !important; font-weight: 600 !important; text-transform: uppercase !important; color: #52525b !important; letter-spacing: 0.05em !important; }
 nav[aria-label="Pagination"] a span.font-medium { color: #ea580c !important; font-size: 13px !important; font-weight: 600 !important; }
 nav[aria-label="Pagination"] a svg { color: #ea580c !important; }
-
-/* Hide rating widget */
 div:has(> [data-blume-feedback]), [data-blume-feedback] { display: none !important; }
-
-/* Search Dialog Enforcements */
-dialog[data-blume-search-dialog][open] {
-  display: flex !important;
-  flex-direction: column !important;
-  background: rgba(14, 14, 18, 0.95) !important;
-  border: 1px solid #222228 !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-}
+dialog[data-blume-search-dialog][open] { display: flex !important; flex-direction: column !important; background: rgba(14, 14, 18, 0.95) !important; border: 1px solid #222228 !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; }
 dialog[data-blume-search-dialog] input { font-family: 'DM Sans', var(--blume-ff-dm-sans), sans-serif !important; color: #ffffff !important; }
-dialog[data-blume-search-dialog] kbd {
-  font-family: 'JetBrains Mono', var(--blume-ff-jetbrains-mono), monospace !important;
-  background-color: #1a1a1f !important;
-  border-color: #2b2b32 !important;
-  color: #a1a1aa !important;
-}
+dialog[data-blume-search-dialog] kbd { font-family: 'JetBrains Mono', var(--blume-ff-jetbrains-mono), monospace !important; background-color: #1a1a1f !important; border-color: #2b2b32 !important; color: #a1a1aa !important; }

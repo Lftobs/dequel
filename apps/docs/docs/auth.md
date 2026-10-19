@@ -1,54 +1,64 @@
 ---
 title: Authentication & Access Control
-category: Networking & Security
-description: Secure your Dequel dashboard with PAM-based authentication, session management, and API keys.
+category: Security
+description: Linux-user login, short-lived sessions, and scoped API keys.
 slug: auth
 ---
 
-Dequel authenticates users against the **Linux system user database** via PAM (Pluggable Authentication Modules). Only users who are members of the `dequel` group can sign in.
+Dequel has two credential types: interactive login for the dashboard
+(Linux users) and API keys for programmatic access (CI, scripts).
 
-## User Setup
+## Dashboard login
 
-Create a Linux user and add them to the `dequel` group:
+Dequel authenticates dashboard users against the host's Linux accounts
+through PAM. Only members of the `dequel` group can sign in. Create a
+user after installing:
 
 ```bash
+sudo groupadd -f dequel
 sudo useradd -m -s /bin/bash <username>
 sudo passwd <username>
 sudo usermod -aG dequel <username>
 ```
 
-The user signs into the Dequel dashboard with their Linux username and password.
+## Sessions
 
-## Session Management
+- **Access token** — a JWT in the `dequel_session` cookie, valid 15
+  minutes (`HttpOnly`, `SameSite=Lax`, `Secure` behind HTTPS).
+- **Refresh token** — a rotating opaque token in the `dequel_refresh`
+  cookie, valid 7 days. Logging out invalidates it immediately.
+- The dashboard silently refreshes the session and redirects to
+  `/login` when both tokens are gone.
 
-- **Access tokens**: Short-lived (15 min) HMAC-SHA256 JWTs stored in an `httpOnly` cookie.
-- **Refresh tokens**: Long-lived (7 days) random tokens stored in the database. Automatically rotated on refresh.
-- **Token blacklisting**: Logging out or refreshing invalidates the old refresh token immediately.
-- **JWT secret**: Auto-generated on first API startup, stored at `data/.jwt_secret` (0600 permissions). Deleting this file invalidates all sessions.
+## API keys
 
-## API Keys
+For CI pipelines, scripts, and external tools, create keys on the
+**Keys → API Tokens** page (see [Keys](/docs/keys)):
 
-For programmatic access (CI/CD, CLI tools), Dequel uses pre-shared API keys:
-
-1. Go to **Settings → API Keys** in the dashboard.
-2. Create a new key — the full token is shown once.
-3. Use it as a Bearer token in the `Authorization` header:
+1. Generate a token with a label and scope (CI/CD, monitoring, or full
+   admin).
+2. Copy the `dql_...` token — it is shown once and stored hashed.
+3. Send it as a Bearer token:
 
 ```bash
-curl -H "Authorization: Bearer dqk_<key>" https://dequel.example.com/api/projects
+curl -H "Authorization: Bearer dql_<key>" https://dequel.example.com/api/projects
 ```
 
-API keys are scoped to the entire platform with the same permissions as the user who created them.
+Keys carry read/write scopes enforced per HTTP method. Revoke a key any
+time from the same page; deleting it breaks its integrations
+immediately.
 
-## Endpoints
+## API endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `POST` | `/api/auth/login` | None | Sign in with username/password |
-| `POST` | `/api/auth/logout` | Session | Sign out, blacklist refresh token |
+| `POST` | `/api/auth/logout` | Session | Sign out, invalidate refresh token |
 | `POST` | `/api/auth/refresh` | Session | Rotate refresh token |
-| `GET` | `/api/auth/me` | None | Check current session status |
+| `GET` | `/api/auth/me` | None | Current session status |
 | `GET` | `/api/health` | None | Health check |
 
-The web dashboard redirects to `/login` when no valid session is detected.
+## Next steps
 
+- Read [Keys](/docs/keys) for API tokens and the SSH key pool.
+- Read [GitHub](/docs/github) for the OAuth repo connection.

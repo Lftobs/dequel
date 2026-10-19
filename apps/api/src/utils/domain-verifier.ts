@@ -6,6 +6,7 @@ import { getProjectById, listDomains, listEnvironmentVariablesForDeploy, updateD
 import { domains } from "../db/schema";
 import { reloadCaddy } from "../orchestrator/runtime";
 import { caddyReverseProxy, caddySite } from "./caddy-site";
+import { isCloudflareProxied, isGlobalCloudflareProxied } from "./cloudflare";
 import { config } from "./config";
 import { resolveServerIp, validateDomain } from "./dns";
 
@@ -190,6 +191,7 @@ export const buildCaddySnippet = async (
 	const listEnvVars = opts?.listEnvVarsFn ?? listEnvironmentVariablesForDeploy;
 	let defaultDomains = [`${slug}.${baseDomain}`];
 	let port = appPort ?? config.appInternalPort;
+	const isBaseProxied = isGlobalCloudflareProxied();
 	const customBlocks: string[] = [];
 
 	if (projectId) {
@@ -197,7 +199,8 @@ export const buildCaddySnippet = async (
 		const verified = projectDomains.filter((d) => d.validationStatus === "verified");
 		for (const d of verified) {
 			const entryDomain = d.domain.includes("localhost") ? `${d.domain}:80` : d.domain;
-			if (d.targetService || d.targetPort) {
+			const isProxied = isCloudflareProxied((d as any).cloudflareProxied);
+			if (d.targetService || d.targetPort || isProxied !== isBaseProxied) {
 				let targetContainer = containerName;
 				if (d.targetService) {
 					const parts = containerName.split("-");
@@ -207,7 +210,9 @@ export const buildCaddySnippet = async (
 					}
 				}
 				const tPort = d.targetPort || port;
-				customBlocks.push(caddySite(entryDomain, caddyReverseProxy(`${targetContainer}:${tPort}`)));
+				customBlocks.push(
+					caddySite(entryDomain, caddyReverseProxy(`${targetContainer}:${tPort}`, { cloudflareProxied: isProxied })),
+				);
 			} else {
 				if (!defaultDomains.includes(entryDomain)) defaultDomains.push(entryDomain);
 			}
@@ -248,7 +253,10 @@ export const buildCaddySnippet = async (
 
 	const upstreamNames = opts?.containerNames?.length ? opts.containerNames : [containerName];
 	const upstreams = upstreamNames.map((n) => `${n}:${port}`).join(" ");
-	const primaryBlock = caddySite(defaultDomains.join(", "), caddyReverseProxy(upstreams));
+	const primaryBlock = caddySite(
+		defaultDomains.join(", "),
+		caddyReverseProxy(upstreams, { cloudflareProxied: isBaseProxied }),
+	);
 
 	return [primaryBlock, ...customBlocks].join("\n");
 };

@@ -137,6 +137,7 @@ bun run sync-versions              # Syncs VERSION → sub-package.json files
 - No emojis in code or UI unless explicitly requested
 - Functional components with hooks (React)
 - Tailwind CSS for styling (both web and docs)
+- All new UI created (both web and docs) must be mobile responsive across all viewport sizes (mobile, tablet, and desktop) with no horizontal overflow or broken navigation
 
 ## Adding a Doc Page
 

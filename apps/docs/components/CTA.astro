@@ -1,11 +1,11 @@
 ---
 ---
 
-<section class="max-w-[1150px] mx-auto px-4 py-20 dq-reveal">
-  <div class="cf-hero-card text-center flex flex-col items-center py-16">
+<section class="max-w-[1150px] mx-auto px-4 py-12 sm:py-20 dq-reveal">
+  <div class="cf-hero-card text-center flex flex-col items-center py-10 sm:py-16">
     <div class="cf-hero-card-glow"></div>
-    <div class="mb-6 z-10">
-      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="48" height="48" class="mx-auto">
+    <div class="mb-5 sm:mb-6 z-10">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="44" height="44" class="mx-auto">
         <defs>
           <linearGradient id="cta-logo-g" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stop-color="#ffffff" />
@@ -18,25 +18,25 @@
       </svg>
     </div>
 
-    <h2 class="text-3xl md:text-5xl font-bold tracking-tight mb-4 z-10 text-white">
+    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold tracking-tight mb-3 sm:mb-4 z-10 text-white">
       Ready to own your deployment platform?
     </h2>
-    <p class="text-sm md:text-base text-orange-100 max-w-xl mx-auto leading-relaxed mb-8 z-10">
+    <p class="text-xs sm:text-sm md:text-base text-orange-100 max-w-xl mx-auto leading-relaxed mb-6 sm:mb-8 z-10">
       Spin up Dequel on your server in seconds with zero third-party dependencies.
     </p>
 
     <!-- One Command Install Code Copy Pill -->
-    <div class="bg-[#000000]/40 border border-white/20 rounded-full px-6 py-3 font-mono text-xs text-white max-w-2xl mx-auto mb-10 z-10 flex items-center justify-between gap-4 backdrop-blur-md">
+    <div class="bg-[#000000]/40 border border-white/20 rounded-full px-4 sm:px-6 py-2.5 sm:py-3 font-mono text-[11px] sm:text-xs text-white w-full max-w-full sm:max-w-2xl mx-auto mb-7 sm:mb-10 z-10 flex items-center justify-between gap-2 sm:gap-4 backdrop-blur-md overflow-hidden">
       <span class="truncate">curl -fsSL https://dequel.intrep.xyz/install.sh | bash</span>
-      <span class="text-xs text-amber-300 font-bold uppercase tracking-wider">1-Line Install</span>
+      <span class="hidden sm:inline-block text-xs text-amber-300 font-bold uppercase tracking-wider shrink-0">1-Line Install</span>
     </div>
 
-    <div class="flex flex-wrap items-center justify-center gap-4 z-10">
-      <a href="/docs/installation" class="cf-pill-btn-white group">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 w-full sm:w-auto z-10">
+      <a href="/docs/installation" class="cf-pill-btn-white group w-full sm:w-auto">
         <span>Install Dequel Now</span>
         <span class="transition-transform group-hover:translate-x-1">→</span>
       </a>
-      <a href="/docs" class="cf-pill-btn-glass">
+      <a href="/docs" class="cf-pill-btn-glass w-full sm:w-auto">
         <span>Read Documentation</span>
       </a>
     </div>

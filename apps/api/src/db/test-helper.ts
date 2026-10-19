@@ -11,6 +11,9 @@ const TABLE_NAMES = [
 	"agent_registration_tokens",
 	"alerts",
 	"api_keys",
+	"audit_logs",
+	"backup_storage_settings",
+	"backups",
 	"deployment_events",
 	"deployment_logs",
 	"deployments",
@@ -23,12 +26,15 @@ const TABLE_NAMES = [
 	"github_integrations",
 	"llm_provider_keys",
 	"platform_settings",
+	"project_shared_env_links",
 	"projects",
 	"refresh_tokens",
 	"routes",
 	"scaling_policies",
 	"servers",
+	"shared_env_vars",
 	"smtp_settings",
+	"ssh_keys",
 	"volumes",
 ];
 
@@ -42,9 +48,8 @@ export const setupTestDb = async () => {
 };
 
 export const truncateAllTables = async (pool: Pool) => {
-	for (const name of TABLE_NAMES) {
-		await pool.query(`TRUNCATE TABLE "${name}" CASCADE`);
-	}
+	const tables = TABLE_NAMES.map((name) => `"${name}"`).join(", ");
+	await pool.query(`TRUNCATE TABLE ${tables} CASCADE`);
 };
 
 export const teardownTestDb = async (pool: Pool) => {
