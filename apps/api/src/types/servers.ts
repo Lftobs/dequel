@@ -36,7 +36,6 @@ export interface CreateServerInput {
 	authToken?: string;
 	mode?: ServerMode;
 	sshUser?: string;
-	sshKey?: string;
 	sshKeyId?: string;
 	sshPassword?: string;
 }

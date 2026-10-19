@@ -3,8 +3,8 @@ import { createServer, deleteServer, getServerById, listServers } from "../../db
 import { serverEventBus } from "../../servers/event-bus";
 import { isServerPreparing, prepareServer } from "../../servers/prepare";
 import { testSshConnection } from "../../utils/ssh";
-import { isPort, SERVER_HOST_RE } from "../../utils/validate";
 import { created, fail, ok } from "../response";
+import { validateServerCreate } from "./validate";
 
 const redactServer = <T extends { sshKey?: string | null; sshPassword?: string | null }>(server: T): T => {
 	if (server.sshKey) server.sshKey = "[redacted]";
@@ -15,21 +15,10 @@ const redactServer = <T extends { sshKey?: string | null; sshPassword?: string |
 export const serversRoutes = new Elysia()
 	.get("/servers", async () => ok((await listServers()).map((server) => redactServer(server))))
 	.post("/servers", async ({ body, set }: any) => {
-		if (!body?.name || !body?.host) {
+		const validationError = validateServerCreate(body);
+		if (validationError) {
 			set.status = 400;
-			return fail("name and host are required");
-		}
-		if (!SERVER_HOST_RE.test(body.host)) {
-			set.status = 400;
-			return fail("host must be a valid hostname or IP address");
-		}
-		if (body.mode && body.mode !== "ssh" && body.mode !== "agent") {
-			set.status = 400;
-			return fail("mode must be 'ssh' or 'agent'");
-		}
-		if (body.port !== undefined && body.port !== null && !isPort(Number(body.port))) {
-			set.status = 400;
-			return fail("port must be between 1 and 65535");
+			return fail(validationError);
 		}
 		return created(
 			redactServer(
@@ -39,7 +28,6 @@ export const serversRoutes = new Elysia()
 					port: body.port ? Number(body.port) : body.mode === "ssh" ? 22 : 2375,
 					mode: body.mode ?? "ssh",
 					sshUser: body.sshUser ?? "root",
-					sshKey: body.sshKey,
 					sshKeyId: body.sshKeyId,
 					sshPassword: body.sshPassword,
 					authToken: body.authToken,

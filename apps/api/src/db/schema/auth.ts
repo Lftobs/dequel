@@ -12,8 +12,12 @@ export const githubIntegrations = pgTable("github_integrations", {
 	id: text().primaryKey(),
 	clientId: text("client_id").notNull(),
 	clientSecret: text("client_secret").notNull(),
+	clientSecretIv: text("client_secret_iv"),
+	clientSecretTag: text("client_secret_tag"),
 	appName: text("app_name").notNull().default("Dequel"),
 	webhookSecret: text("webhook_secret"),
+	webhookSecretIv: text("webhook_secret_iv"),
+	webhookSecretTag: text("webhook_secret_tag"),
 	createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

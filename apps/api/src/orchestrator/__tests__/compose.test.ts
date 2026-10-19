@@ -122,7 +122,7 @@ services:
 	});
 });
 
-describe("spawnComposeCommand env isolation", () => {
+describe("spawnComposeCommand env merge with project env vars", () => {
 	let originalSpawn: any;
 
 	afterEach(() => {
@@ -132,10 +132,9 @@ describe("spawnComposeCommand env isolation", () => {
 		}
 	});
 
-	test("does not pass process.env to docker compose subprocess", async () => {
-		process.env.DATABASE_URL = "postgresql://dequel:secret@localhost:5432/dequel";
-		process.env.PORT = "3001";
-		process.env.WORKSPACE_ROOT = "./workspace";
+	test("passes project env vars alongside process.env to docker compose subprocess", async () => {
+		process.env.IDEK_DATABASE_URL = "postgresql://dequel:secret@localhost:5432/dequel";
+		process.env.IDEK_PORT = "3001";
 
 		let capturedEnv: Record<string, string> | undefined;
 		originalSpawn = (await import("node:child_process")).spawn;
@@ -156,7 +155,7 @@ describe("spawnComposeCommand env isolation", () => {
 			);
 
 			const { buildWithCompose } = await import("../compose");
-			const projectEnv = { MY_APP_VAR: "hello", ANOTHER_VAR: "world" };
+			const projectEnv = { MY_APP_VAR: "hello", ANOTHER_VAR: "world", IDEK_PORT: "4000" };
 
 			try {
 				await buildWithCompose(dir, "test-project", async () => {}, null, projectEnv);
@@ -165,21 +164,19 @@ describe("spawnComposeCommand env isolation", () => {
 			}
 
 			expect(capturedEnv).toBeDefined();
-			expect(capturedEnv).not.toHaveProperty("DATABASE_URL");
-			expect(capturedEnv).not.toHaveProperty("PORT");
-			expect(capturedEnv).not.toHaveProperty("WORKSPACE_ROOT");
 			expect(capturedEnv).toHaveProperty("MY_APP_VAR", "hello");
 			expect(capturedEnv).toHaveProperty("ANOTHER_VAR", "world");
+			expect(capturedEnv).toHaveProperty("IDEK_DATABASE_URL", "postgresql://dequel:secret@localhost:5432/dequel");
+			expect(capturedEnv).toHaveProperty("PATH");
+			expect(capturedEnv).toHaveProperty("IDEK_PORT", "4000");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
-			delete process.env.DATABASE_URL;
-			delete process.env.PORT;
-			delete process.env.WORKSPACE_ROOT;
+			delete process.env.IDEK_DATABASE_URL;
+			delete process.env.IDEK_PORT;
 		}
 	});
-
-	test("passes empty env when no project env vars provided", async () => {
-		process.env.DATABASE_URL = "postgresql://dequel:secret@localhost:5432/dequel";
+	test("passes process.env through when no project env vars provided", async () => {
+		process.env.IDEK_DATABASE_URL = "postgresql://dequel:secret@localhost:5432/dequel";
 
 		let capturedEnv: Record<string, string> | undefined;
 		const originalSpawn = (await import("node:child_process")).spawn;
@@ -208,10 +205,11 @@ describe("spawnComposeCommand env isolation", () => {
 			}
 
 			expect(capturedEnv).toBeDefined();
-			expect(capturedEnv).toEqual({});
+			expect(capturedEnv).toHaveProperty("IDEK_DATABASE_URL", "postgresql://dequel:secret@localhost:5432/dequel");
+			expect(capturedEnv).toHaveProperty("PATH");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
-			delete process.env.DATABASE_URL;
+			delete process.env.IDEK_DATABASE_URL;
 		}
 	});
 });

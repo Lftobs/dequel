@@ -175,6 +175,7 @@ export const removeFromCaddyRoute = async (
 export interface BuildSnippetOpts {
 	baseDomain?: string;
 	listEnvVarsFn?: typeof listEnvironmentVariablesForDeploy;
+	containerNames?: string[];
 }
 
 export const buildCaddySnippet = async (
@@ -250,9 +251,11 @@ export const buildCaddySnippet = async (
 		}
 	}
 
+	const upstreamNames = opts?.containerNames?.length ? opts.containerNames : [containerName];
+	const upstreams = upstreamNames.map((n) => `${n}:${port}`).join(" ");
 	const primaryBlock = caddySite(
 		defaultDomains.join(", "),
-		caddyReverseProxy(`${containerName}:${port}`, { cloudflareProxied: isBaseProxied }),
+		caddyReverseProxy(upstreams, { cloudflareProxied: isBaseProxied }),
 	);
 
 	return [primaryBlock, ...customBlocks].join("\n");

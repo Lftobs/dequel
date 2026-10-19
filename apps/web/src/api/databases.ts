@@ -1,4 +1,11 @@
-import type { BackupJob, BackupStorageSettingsData, Database, QueryExecResult, TableInfo } from "../types";
+import type {
+	BackupJob,
+	BackupStorageSettingsData,
+	Database,
+	QueryExecResult,
+	RestoreTestRecord,
+	TableInfo,
+} from "../types";
 import { apiFetch } from "./http";
 
 export const listAllDatabases = () => apiFetch<Database[]>("/databases");
@@ -72,6 +79,18 @@ export const triggerBackup = (targetId = "internal") =>
 	});
 export const restoreBackup = (id: string) =>
 	apiFetch<{ restored: boolean }>(`/backups/${id}/restore`, { method: "POST" });
+export const triggerRestoreTest = (backupId: string) =>
+	apiFetch<RestoreTestRecord>(`/backups/${backupId}/restore-test`, { method: "POST" });
+export const listRestoreTests = (
+	params: { backupId?: string; targetId?: string; status?: string; kind?: string; limit?: number } = {},
+) => {
+	const qs = new URLSearchParams();
+	for (const [key, value] of Object.entries(params)) {
+		if (value !== undefined) qs.set(key, String(value));
+	}
+	const query = qs.toString();
+	return apiFetch<RestoreTestRecord[]>(`/backups/restore-tests${query ? `?${query}` : ""}`);
+};
 export const deleteBackup = (id: string) => apiFetch<{ deleted: boolean }>(`/backups/${id}`, { method: "DELETE" });
 export const getBackupStorageSettings = () => apiFetch<BackupStorageSettingsData>("/settings/backup");
 export const updateBackupStorageSettings = (data: BackupStorageSettingsData) =>

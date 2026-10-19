@@ -45,6 +45,7 @@ const mockDb = {
 		}
 		return { sequence: 1 };
 	}),
+	getProjectGithubToken: mock(() => Promise.resolve(null)),
 	listEnvironmentVariablesForDeploy: mock(() => Promise.resolve([])),
 	listVolumes: mock(() => Promise.resolve([])),
 	listDeployments: mock(() => Promise.resolve([])),

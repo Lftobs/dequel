@@ -197,6 +197,25 @@ describe("getCurrentReplicas", () => {
 		const result = await (scalingEngine as any).getCurrentReplicas("proj-1");
 		expect(result).toBe(3);
 	});
+
+	it("counts only the primary site block when custom-domain blocks exist", async () => {
+		mockReadFileContent = [
+			"verify-app.custom-domain.com {",
+			"  reverse_proxy some-other-container:3000",
+			"}",
+			"proj-1.localhost:80 {",
+			"  reverse_proxy deploy-dep-1:3000 deploy-dep-1-replica-2:3000",
+			"}",
+		].join("\n");
+		const result = await (scalingEngine as any).getCurrentReplicas("proj-1");
+		expect(result).toBe(2);
+	});
+
+	it("falls back to whole-file counting when no primary block matches", async () => {
+		mockReadFileContent = "other.localhost:80 {\n  reverse_proxy a:3000\n}\n";
+		const result = await (scalingEngine as any).getCurrentReplicas("proj-1");
+		expect(result).toBe(1);
+	});
 });
 
 describe("evaluate", () => {
@@ -271,6 +290,47 @@ describe("evaluate", () => {
 
 		await (scalingEngine as any).evaluate(TEST_DEPLOYMENT);
 		expect(mockWriteFilePath).toBeNull();
+	});
+
+	it("does not advance lastScaleUp when already at max replicas", async () => {
+		mockGetScalingPolicyResult = () => ({ ...TEST_POLICY, maxReplicas: 2, cooldownSeconds: 0 });
+		const lastScaleUpBefore = String(Date.now() - 60_000);
+		mockRedisData = { highCpuSince: String(Date.now() - 10000), lastScaleUp: lastScaleUpBefore };
+		mockReadFileContent = "proj-1.localhost:80 {\n  reverse_proxy deploy-dep-1:3000 deploy-dep-1-replica-2:3000\n}\n";
+		mockRunImpl = async () => '{"CPUPerc":"85%","MemUsage":"128MiB / 512MiB"}';
+
+		await (scalingEngine as any).evaluate(TEST_DEPLOYMENT);
+		expect(mockRedisData.lastScaleUp).toBe(lastScaleUpBefore);
+		expect(mockRedisData.highCpuSince).toBeFalsy();
+	});
+
+	it("keeps accruing the low-CPU timer between threshold and 30%", async () => {
+		mockGetScalingPolicyResult = () => ({ ...TEST_POLICY, cpuThresholdPercent: 1, cooldownSeconds: 0 });
+		const lowCpuSinceBefore = String(Date.now() - 240_000);
+		mockRedisData = { lowCpuSince: lowCpuSinceBefore, highCpuSince: "0", lastScaleUp: "0" };
+		mockRunImpl = async () => '{"CPUPerc":"22%","MemUsage":"64MiB / 512MiB"}';
+
+		await (scalingEngine as any).evaluate(TEST_DEPLOYMENT);
+		expect(mockRedisData.lowCpuSince).toBe(lowCpuSinceBefore);
+	});
+
+	it("scales down in the overlap zone (threshold < cpu < 30) once idle for 5 min", async () => {
+		mockGetScalingPolicyResult = () => ({ ...TEST_POLICY, cpuThresholdPercent: 1, cooldownSeconds: 0, minReplicas: 1 });
+		mockRedisData = { lowCpuSince: String(Date.now() - 310_000), lastScaleDown: "0" };
+		mockReadFileContent = "proj-1.localhost:80 {\n  reverse_proxy deploy-dep-1:3000 deploy-dep-1-replica-2:3000\n}\n";
+		mockTryRunImpl = async () => "";
+		mockRunImpl = async (_cmd: string, args: string[]) => {
+			if (args.includes("stats")) return '{"CPUPerc":"22%","MemUsage":"64MiB / 512MiB"}';
+			if (args[0] === "stop") return "";
+			if (args[0] === "rm") return "";
+			if (args[0] === "ps") return "caddy-abc123\n";
+			if (args.includes("reload")) return "";
+			return "";
+		};
+
+		await (scalingEngine as any).evaluate(TEST_DEPLOYMENT);
+		expect(mockWriteFilePath).toBeTruthy();
+		expect(mockWriteContent).not.toContain("replica-2");
 	});
 
 	it("does not scale down when CPU is moderate", async () => {
