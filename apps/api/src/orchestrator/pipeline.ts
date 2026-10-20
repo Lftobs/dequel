@@ -25,6 +25,7 @@ import { CANCELLED_FAILURE_REASON } from "../utils/failure-outcome";
 import { ensureProjectDashboard } from "../utils/grafana";
 import { buildWithCompose, destroyComposeStack } from "./compose";
 import { deployComposeStack } from "./compose-deploy";
+import { ensureComposeVariables } from "./compose-vars";
 import { summarizeDeploymentError } from "./deployment-errors";
 import { logBus } from "./log-bus";
 import { DeploymentQueue } from "./queue";
@@ -267,12 +268,20 @@ export class PipelineOrchestrator {
 
 				await emitLog(deploymentId, "build", `Source prepared at: ${workspacePath}`);
 				const cacheKey = deployment.projectId || deploymentId;
-				const envVars = deployment.projectId
+				const envVarRows = deployment.projectId
 					? await listEnvironmentVariablesForDeploy(deployment.projectId, deployment.environment ?? "production")
 					: [];
 				if (project?.buildType === "compose") {
-					const envMap: Record<string, string> = {};
-					for (const v of envVars) envMap[v.key] = v.value;
+					const envMap = await ensureComposeVariables({
+						workspacePath,
+						sourceDir: project?.sourceDir,
+						projectId: deployment.projectId ?? "",
+						environment: deployment.environment ?? "production",
+						providedRows: envVarRows,
+						onLog: async (line) => {
+							await emitLog(deploymentId, "build", line);
+						},
+					});
 					await buildWithCompose(
 						workspacePath,
 						`deploy-${deploymentId}`,
@@ -284,6 +293,7 @@ export class PipelineOrchestrator {
 						controller.signal,
 					);
 				} else {
+					const buildRows = envVarRows.filter((v) => v.scope !== "runtime");
 					await buildWithRailpack(
 						workspacePath,
 						imageTag,
@@ -298,7 +308,7 @@ export class PipelineOrchestrator {
 							installCommand: project?.installCommand,
 							outputDir: project?.outputDir,
 							startCommand: project?.startCommand,
-							environmentVariables: envVars,
+							environmentVariables: buildRows,
 							signal: controller.signal,
 							clearCache: deployment.clearCache,
 							server: targetServer,
@@ -323,12 +333,20 @@ export class PipelineOrchestrator {
 			await this.checkCancelled(deploymentId);
 
 			let envVars: Record<string, string> | undefined;
+			let envVarRows: { key: string; value: string; scope: string }[] = [];
 			if (deployment.projectId) {
-				const vars = await listEnvironmentVariablesForDeploy(deployment.projectId, deployment.environment ?? undefined);
-				if (vars.length > 0) {
+				const rows = await listEnvironmentVariablesForDeploy(deployment.projectId, deployment.environment ?? undefined);
+				if (rows.length > 0) {
+					envVarRows = rows;
 					envVars = {};
-					for (const v of vars) envVars[v.key] = v.value;
-					await emitLog(deploymentId, "deploy", `Injecting ${vars.length} environment variables`);
+					for (const v of rows) {
+						if (v.scope !== "build") envVars[v.key] = v.value;
+					}
+					await emitLog(
+						deploymentId,
+						"deploy",
+						`Injecting ${Object.keys(envVars).length} runtime environment variables`,
+					);
 				}
 			}
 
@@ -394,6 +412,7 @@ export class PipelineOrchestrator {
 					composeServicesJson: (project as any).composeServices,
 					oldDeploymentId,
 					envVars,
+					envVarRows,
 					signal: controller.signal,
 					onLog: async (line) => {
 						await emitLog(deploymentId, "deploy", line);
@@ -547,7 +566,9 @@ export class PipelineOrchestrator {
 			}
 
 			let envVars: Record<string, string> | undefined;
-			const vars = await listEnvironmentVariablesForDeploy(target.projectId, target.environment ?? undefined);
+			const vars = (await listEnvironmentVariablesForDeploy(target.projectId, target.environment ?? undefined)).filter(
+				(v) => v.scope !== "build",
+			);
 			if (vars.length > 0) {
 				envVars = {};
 				for (const v of vars) envVars[v.key] = v.value;

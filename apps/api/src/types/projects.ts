@@ -48,12 +48,15 @@ export interface CreateProjectInput {
 	startCommand?: string | null;
 }
 
+export type EnvVarScope = "runtime" | "build" | "both";
+
 export interface EnvironmentVariable {
 	id: string;
 	projectId: string;
 	key: string;
 	value: string;
 	environment: string;
+	scope: EnvVarScope;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -63,6 +66,7 @@ export interface CreateEnvironmentVariableInput {
 	key: string;
 	value: string;
 	environment?: string;
+	scope?: EnvVarScope;
 }
 
 export interface Volume {
@@ -84,6 +88,7 @@ export interface SharedEnvVar {
 	key: string;
 	value: string;
 	environment: string;
+	scope: EnvVarScope;
 	description: string | null;
 	tags: string[];
 	createdAt: string;
@@ -94,6 +99,7 @@ export interface CreateSharedEnvVarInput {
 	key: string;
 	value: string;
 	environment?: string;
+	scope?: EnvVarScope;
 	description?: string;
 	tags?: string[];
 }

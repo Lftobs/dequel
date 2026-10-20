@@ -114,16 +114,17 @@ export const createEnvVar = (
 		key: string;
 		value: string;
 		environment?: string;
+		scope?: string;
 	},
 ) =>
 	apiFetch<EnvironmentVariable>(`/projects/${projectId}/env-vars`, {
 		method: "POST",
 		body: JSON.stringify(data),
 	});
-export const updateEnvVar = (id: string, value: string) =>
+export const updateEnvVar = (id: string, value: string, scope?: string) =>
 	apiFetch<EnvironmentVariable>(`/env-vars/${id}`, {
 		method: "PATCH",
-		body: JSON.stringify({ value }),
+		body: JSON.stringify(scope ? { value, scope } : { value }),
 	});
 export const deleteEnvVar = (id: string) =>
 	apiFetch<void>(`/env-vars/${id}`, {
@@ -403,11 +404,15 @@ export const createSharedEnvVar = (data: {
 	key: string;
 	value: string;
 	environment?: string;
+	scope?: string;
 	description?: string;
 	tags?: string[];
 }) => apiFetch<any>("/shared-env-vars", { method: "POST", body: JSON.stringify(data) });
-export const updateSharedEnvVar = (id: string, value: string) =>
-	apiFetch<any>(`/shared-env-vars/${id}`, { method: "PATCH", body: JSON.stringify({ value }) });
+export const updateSharedEnvVar = (id: string, value: string, scope?: string) =>
+	apiFetch<any>(`/shared-env-vars/${id}`, {
+		method: "PATCH",
+		body: JSON.stringify(scope ? { value, scope } : { value }),
+	});
 export const revealSharedEnvVar = (id: string) => apiFetch<{ value: string }>(`/shared-env-vars/${id}/reveal`);
 export const deleteSharedEnvVar = (id: string) => apiFetch<void>(`/shared-env-vars/${id}`, { method: "DELETE" });
 export const listLinkedSharedEnvVars = (projectId: string) =>

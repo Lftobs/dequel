@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
-import type { CreateSharedEnvVarInput, SharedEnvVar } from "../../types";
+import type { CreateSharedEnvVarInput, EnvVarScope, SharedEnvVar } from "../../types";
 import { config } from "../../utils/config";
 import { decryptValue, encryptValue } from "../../utils/crypto";
 import { getDb } from "../db-provider";
@@ -12,6 +12,7 @@ const mapSharedEnvVar = (row: typeof sharedEnvVars.$inferSelect): SharedEnvVar =
 	key: row.key,
 	value: row.value ?? "",
 	environment: row.environment,
+	scope: (row.scope ?? "both") as EnvVarScope,
 	description: row.description ?? null,
 	tags: Array.isArray(row.tags) ? row.tags : [],
 	createdAt: row.createdAt,
@@ -34,6 +35,7 @@ export const createSharedEnvVar = async (input: CreateSharedEnvVarInput): Promis
 			valueIv: encrypted.iv,
 			valueTag: encrypted.tag,
 			environment: env,
+			scope: input.scope ?? "both",
 			description: input.description ?? null,
 			tags: input.tags ?? [],
 			createdAt: timestamp,
@@ -76,7 +78,11 @@ export const getSharedEnvVarPlaintext = async (id: string): Promise<string | nul
 	return row.value ?? null;
 };
 
-export const updateSharedEnvVar = async (id: string, value: string): Promise<SharedEnvVar | null> => {
+export const updateSharedEnvVar = async (
+	id: string,
+	value: string,
+	scope?: EnvVarScope,
+): Promise<SharedEnvVar | null> => {
 	const existing = await getSharedEnvVarById(id);
 	if (!existing) return null;
 	const encrypted = encryptValue(value, config.envEncryptionKey);
@@ -88,6 +94,7 @@ export const updateSharedEnvVar = async (id: string, value: string): Promise<Sha
 			valueEncrypted: encrypted.encrypted,
 			valueIv: encrypted.iv,
 			valueTag: encrypted.tag,
+			...(scope ? { scope } : {}),
 			updatedAt: now(),
 		})
 		.where(eq(sharedEnvVars.id, id))
@@ -169,16 +176,16 @@ export const listLinkedSharedEnvVars = async (projectId: string): Promise<(Share
 export const listSharedEnvVarsForDeploy = async (
 	projectId: string,
 	environment?: string,
-): Promise<{ key: string; value: string }[]> => {
+): Promise<{ key: string; value: string; scope: EnvVarScope }[]> => {
 	const linked = await listLinkedSharedEnvVars(projectId);
 	const filtered = environment
 		? linked.filter((v) => v.environment === "production" || v.environment === environment)
 		: linked;
-	const result: { key: string; value: string }[] = [];
+	const result: { key: string; value: string; scope: EnvVarScope }[] = [];
 	for (const sv of filtered) {
 		const plaintext = await getSharedEnvVarPlaintext(sv.id);
 		if (plaintext !== null) {
-			result.push({ key: sv.key, value: plaintext });
+			result.push({ key: sv.key, value: plaintext, scope: sv.scope });
 		}
 	}
 	return result;

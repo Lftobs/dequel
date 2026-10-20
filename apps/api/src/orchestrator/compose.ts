@@ -39,10 +39,10 @@ export const resolveComposeDir = (workspacePath: string, sourceDir?: string | nu
 export const findComposeFilePath = (workspacePath: string, sourceDir?: string | null): string | null => {
 	const base = resolveComposeDir(workspacePath, sourceDir);
 	if (!base) return null;
-	const ymlPath = join(base, "docker-compose.yml");
-	if (existsSync(ymlPath)) return ymlPath;
-	const yamlPath = join(base, "docker-compose.yaml");
-	if (existsSync(yamlPath)) return yamlPath;
+	for (const name of ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"]) {
+		const candidate = join(base, name);
+		if (existsSync(candidate)) return candidate;
+	}
 	return null;
 };
 

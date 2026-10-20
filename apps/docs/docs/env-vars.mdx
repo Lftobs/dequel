@@ -26,6 +26,59 @@ deleting one requires a restart. Dequel shows a redeploy banner at the
 top of the tab after any change — click **Redeploy** to roll the new
 config out.
 
+## Injection scope
+
+Every variable has a scope that controls where it is handed over:
+
+| Scope | Runtime containers | Build (Railpack env / Compose `build.args`) |
+|-------|--------------------|---------------------------------------------|
+| `both` (default) | yes | yes |
+| `runtime` | yes | no |
+| `build` | no | yes |
+
+Pick **build** for tokens that only the build needs (npm tokens, image
+pull creds) so they never reach the running container, and **runtime**
+for secrets that must not leak into build args or the build cache.
+`both` keeps the pre-scope behavior: the variable rides along in both
+places.
+
+For Compose stacks, runtime variables are injected into every service
+via the generated override file, while build-scoped variables become
+`build.args` — only on the services that actually declare a `build:`
+section.
+
+## Compose file variables
+
+Compose stacks support the Compose interpolation syntax directly. When
+a deployment starts, Dequel scans the compose file, registers each
+referenced variable in the project's env table (so you can edit it from
+the tab above), and blocks the build while a required variable is
+unset:
+
+| Compose syntax | Behavior |
+|----------------|----------|
+| `${APP_SECRET}` | Creates an editable, empty variable. |
+| `${LOG_LEVEL:-info}` | Creates the variable prefilled with `info`. |
+| `${APP_SECRET:?}` | Required — the deploy fails until you set a value. |
+
+For example, with this compose file the first deploy logs the missing
+keys and stops before cloning or building; set their values in the Env
+Variables tab and redeploy:
+
+```yaml
+services:
+  app:
+    environment:
+      APP_SECRET: ${APP_SECRET:?}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+```
+
+Reusing one value across several components of the same stack needs no
+extra wiring — every service interpolates from the same pool, so
+`${DATABASE_URL:?}` in both an `api` and a `worker` service resolves to
+the single stored `DATABASE_URL`. Coolify-style `{{environment.KEY}}`
+references in compose files are rewritten to `${KEY}` automatically.
+
 ## Shared variables
 
 Variables needed by several projects (a shared API key, a common feature

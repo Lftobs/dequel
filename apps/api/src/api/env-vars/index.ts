@@ -30,6 +30,7 @@ export const envVarsRoutes = new Elysia()
 					key: body.key,
 					value: body.value,
 					environment: body.environment,
+					scope: body.scope,
 				}),
 			);
 		} catch (e) {
@@ -42,7 +43,7 @@ export const envVarsRoutes = new Elysia()
 				set.status = 400;
 				return fail("value is required");
 			}
-			const ev = await updateEnvironmentVariable(id, body.value);
+			const ev = await updateEnvironmentVariable(id, body.value, body.scope);
 			if (!ev) {
 				set.status = 404;
 				return fail("Environment variable not found");

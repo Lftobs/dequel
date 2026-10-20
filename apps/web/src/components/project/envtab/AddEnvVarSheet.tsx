@@ -11,6 +11,7 @@ interface EnvVarEntry {
 	key: string;
 	value: string;
 	env: string;
+	scope: string;
 }
 
 interface AddEnvVarSheetProps {
@@ -22,7 +23,7 @@ interface AddEnvVarSheetProps {
 }
 
 export function AddEnvVarSheet({ open, onOpenChange, onSubmit, projectId, onLinkedChange }: AddEnvVarSheetProps) {
-	const [newVars, setNewVars] = useState<EnvVarEntry[]>([{ key: "", value: "", env: "" }]);
+	const [newVars, setNewVars] = useState<EnvVarEntry[]>([{ key: "", value: "", env: "", scope: "both" }]);
 	const queryClient = useQueryClient();
 
 	const { data: sharedVars = [] } = useQuery({
@@ -52,16 +53,16 @@ export function AddEnvVarSheet({ open, onOpenChange, onSubmit, projectId, onLink
 		const validVars = newVars.filter((v) => v.key.trim() && v.value.trim());
 		if (validVars.length === 0) return;
 		await onSubmit(validVars);
-		setNewVars([{ key: "", value: "", env: "" }]);
+		setNewVars([{ key: "", value: "", env: "", scope: "both" }]);
 	};
 
 	const close = () => {
 		onOpenChange(false);
-		setNewVars([{ key: "", value: "", env: "" }]);
+		setNewVars([{ key: "", value: "", env: "", scope: "both" }]);
 	};
 
 	const addRow = () => {
-		setNewVars((prev) => [...prev, { key: "", value: "", env: "" }]);
+		setNewVars((prev) => [...prev, { key: "", value: "", env: "", scope: "both" }]);
 	};
 
 	const removeRow = (index: number) => {
@@ -107,53 +108,54 @@ export function AddEnvVarSheet({ open, onOpenChange, onSubmit, projectId, onLink
 								<div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider select-none">
 									Variable #{index + 1}
 								</div>
-							<div className="space-y-1">
-								<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-									Variable Key
-								</label>
-								<Input
-									placeholder="e.g. DATABASE_URL"
-									value={v.key}
-									onChange={(e) => updateRow(index, "key", e.target.value)}
-									className="h-9 bg-[#0d0d11] border-input focus:ring-1 focus:ring-primary text-xs font-semibold rounded-lg font-mono"
-									required
-								/>
-								{v.key.trim().length > 0 && (() => {
-									const matches = sharedVars.filter(
-										(s: any) =>
-											s.key.toUpperCase().includes(v.key.trim().toUpperCase()) &&
-											!linkedIds.has(s.id) &&
-											s.key.toUpperCase() !== v.key.trim().toUpperCase(),
-									);
-									if (matches.length === 0) return null;
-									return (
-										<div className="mt-1.5 rounded-lg bg-orange-500/5 border border-orange-500/10 p-2 space-y-1">
-											<div className="text-[9px] font-semibold uppercase tracking-wider text-orange-400 flex items-center gap-1">
-												<Share2 className="h-2.5 w-2.5" /> Shared variable available
-											</div>
-											{matches.slice(0, 3).map((s: any) => (
-												<button
-													key={s.id}
-													type="button"
-													onClick={() => linkSharedVar(s)}
-													className="w-full flex items-center justify-between rounded-md px-2 py-1 hover:bg-orange-500/10 cursor-pointer transition-colors"
-												>
-													<div className="flex items-center gap-1.5">
-														<Link2 className="h-3 w-3 text-orange-400" />
-														<Badge
-															variant="outline"
-															className="font-mono text-[9px] bg-black/40 border-orange-500/20 text-orange-300"
-														>
-															{s.key}
-														</Badge>
+								<div className="space-y-1">
+									<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+										Variable Key
+									</label>
+									<Input
+										placeholder="e.g. DATABASE_URL"
+										value={v.key}
+										onChange={(e) => updateRow(index, "key", e.target.value)}
+										className="h-9 bg-[#0d0d11] border-input focus:ring-1 focus:ring-primary text-xs font-semibold rounded-lg font-mono"
+										required
+									/>
+									{v.key.trim().length > 0 &&
+										(() => {
+											const matches = sharedVars.filter(
+												(s: any) =>
+													s.key.toUpperCase().includes(v.key.trim().toUpperCase()) &&
+													!linkedIds.has(s.id) &&
+													s.key.toUpperCase() !== v.key.trim().toUpperCase(),
+											);
+											if (matches.length === 0) return null;
+											return (
+												<div className="mt-1.5 rounded-lg bg-orange-500/5 border border-orange-500/10 p-2 space-y-1">
+													<div className="text-[9px] font-semibold uppercase tracking-wider text-orange-400 flex items-center gap-1">
+														<Share2 className="h-2.5 w-2.5" /> Shared variable available
 													</div>
-													<span className="text-[9px] text-orange-400 font-medium">Use this</span>
-												</button>
-											))}
-										</div>
-									);
-								})()}
-							</div>
+													{matches.slice(0, 3).map((s: any) => (
+														<button
+															key={s.id}
+															type="button"
+															onClick={() => linkSharedVar(s)}
+															className="w-full flex items-center justify-between rounded-md px-2 py-1 hover:bg-orange-500/10 cursor-pointer transition-colors"
+														>
+															<div className="flex items-center gap-1.5">
+																<Link2 className="h-3 w-3 text-orange-400" />
+																<Badge
+																	variant="outline"
+																	className="font-mono text-[9px] bg-black/40 border-orange-500/20 text-orange-300"
+																>
+																	{s.key}
+																</Badge>
+															</div>
+															<span className="text-[9px] text-orange-400 font-medium">Use this</span>
+														</button>
+													))}
+												</div>
+											);
+										})()}
+								</div>
 
 								<div className="space-y-1">
 									<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -181,6 +183,21 @@ export function AddEnvVarSheet({ open, onOpenChange, onSubmit, projectId, onLink
 										<option value="production">Production</option>
 										<option value="preview">Preview</option>
 										<option value="development">Development</option>
+									</select>
+								</div>
+
+								<div className="space-y-1">
+									<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+										Injection Scope
+									</label>
+									<select
+										value={v.scope}
+										onChange={(e) => updateRow(index, "scope", e.target.value)}
+										className="flex h-9 w-full rounded-lg border border-input bg-[#0d0d11] px-3 py-1.5 text-xs shadow-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent"
+									>
+										<option value="both">Runtime and build</option>
+										<option value="runtime">Runtime only (running containers)</option>
+										<option value="build">Build only (build args / build env)</option>
 									</select>
 								</div>
 							</div>

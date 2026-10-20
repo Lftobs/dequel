@@ -28,6 +28,7 @@ export const sharedEnvVarsRoutes = new Elysia()
 			key: body.key,
 			value: body.value,
 			environment: body.environment,
+			scope: body.scope,
 			description: body.description,
 			tags: body.tags,
 		});
@@ -47,7 +48,7 @@ export const sharedEnvVarsRoutes = new Elysia()
 			set.status = 400;
 			return fail("value is required");
 		}
-		const updated = await updateSharedEnvVar(params.id, body.value);
+		const updated = await updateSharedEnvVar(params.id, body.value, body.scope);
 		if (!updated) {
 			set.status = 404;
 			return fail("Not found");

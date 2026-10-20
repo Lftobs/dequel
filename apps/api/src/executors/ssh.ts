@@ -10,6 +10,7 @@ import { buildRemoteDeployScript, parseRemoteBuildResult } from "./ssh-build-scr
 import {
 	buildRemoteComposeDestroyScript,
 	buildRemoteComposeScript,
+	parseRemoteComposeVarsMarker,
 	parseRemoteComposeResult,
 } from "./ssh-compose-script";
 import type { DeploymentExecutor, ExecutorCancelInput, ExecutorDeployInput, ExecutorRollbackInput } from "./types";
@@ -32,9 +33,10 @@ const slugify = (s: string) =>
 const buildEnvVars = async (deployment: Deployment) => {
 	const { listEnvironmentVariablesForDeploy } = await getRepo();
 	const vars = await listEnvironmentVariablesForDeploy(deployment.projectId ?? "", deployment.environment ?? undefined);
-	if (vars.length === 0) return undefined;
+	const runtime = vars.filter((v) => v.scope !== "build");
+	if (runtime.length === 0) return undefined;
 	const envVars: Record<string, string> = {};
-	for (const v of vars) envVars[v.key] = v.value;
+	for (const v of runtime) envVars[v.key] = v.value;
 	return envVars;
 };
 
@@ -95,6 +97,7 @@ const deployComposeRemote = async (deployment: Deployment, project: Project, ser
 
 	const envVars = await listEnvironmentVariablesForDeploy(project.id, deployment.environment ?? undefined);
 	const { resolveProjectGitUrl } = await import("../orchestrator/source");
+	const { seedComposeEnvVars } = await getRepo();
 
 	const script = buildRemoteComposeScript({
 		deploymentId: deployment.id,
@@ -113,6 +116,17 @@ const deployComposeRemote = async (deployment: Deployment, project: Project, ser
 			await emitLog(deployment.id, "build", line);
 		},
 	});
+	const refs = parseRemoteComposeVarsMarker(result.stdout);
+	if (refs.length > 0) {
+		const seeded = await seedComposeEnvVars(project.id, deployment.environment, refs);
+		if (seeded.size > 0) {
+			await emitLog(
+				deployment.id,
+				"build",
+				`Registered ${seeded.size} compose-defined env var(s) from the compose file: ${[...seeded.keys()].join(", ")}`,
+			);
+		}
+	}
 	if (result.code !== 0) throw new Error(remoteScriptFailure(result, "Remote compose build failed"));
 
 	const composeResult = parseRemoteComposeResult(result.stdout);
@@ -320,7 +334,8 @@ export const sshExecutor: DeploymentExecutor = {
 		);
 
 		const imageTag = `${slugify(project.name)}-${deployment.id.slice(0, 8)}:latest`;
-		const envVars = await listEnvironmentVariablesForDeploy(project.id, deployment.environment ?? undefined);
+		const allRows = await listEnvironmentVariablesForDeploy(project.id, deployment.environment ?? undefined);
+		const envVars = allRows.filter((v) => v.scope !== "runtime");
 		const { resolveProjectGitUrl } = await import("../orchestrator/source");
 		const pgidEcho = `echo "DEQUEL_PGID:$(ps -o pgid= -p $$ | tr -d ' ')"`;
 		const script = `${pgidEcho}\n${buildRemoteDeployScript({

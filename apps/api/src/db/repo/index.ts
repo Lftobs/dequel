@@ -87,6 +87,7 @@ export {
 	getEnvironmentVariablePlaintext,
 	listEnvironmentVariables,
 	listEnvironmentVariablesForDeploy,
+	seedComposeEnvVars,
 	updateEnvironmentVariable,
 } from "./env-vars";
 export { getGithubIntegration, setGithubIntegration } from "./github";

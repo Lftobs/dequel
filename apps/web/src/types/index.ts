@@ -85,12 +85,15 @@ export interface Deployment {
 	updatedAt: string;
 }
 
+export type EnvVarScope = "runtime" | "build" | "both";
+
 export interface EnvironmentVariable {
 	id: string;
 	projectId: string;
 	key: string;
 	value: string | null;
 	environment: string;
+	scope: EnvVarScope;
 	createdAt: string;
 	updatedAt: string;
 }
