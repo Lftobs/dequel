@@ -8,6 +8,7 @@ import {
 	deleteRoutesByDeployment,
 	getDeploymentById,
 	getProjectById,
+	getProjectGithubToken,
 	getServerById,
 	listAllDatabases,
 	listDeployments,
@@ -249,6 +250,7 @@ export class PipelineOrchestrator {
 						deployment.sourceRef,
 						deployment.branch ?? undefined,
 						deployment.commitSha ?? undefined,
+						deployment.projectId ? await getProjectGithubToken(deployment.projectId).catch(() => null) : null,
 					);
 					const sha = await getHeadSha(workspacePath);
 					if (sha) {

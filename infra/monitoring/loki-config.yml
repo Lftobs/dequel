@@ -27,7 +27,10 @@ storage_config:
 
 compactor:
   working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
 
 limits_config:
+  retention_period: 2160h
   reject_old_samples: false
-  reject_old_samples_max_age: 168h
+  reject_old_samples_max_age: 2160h

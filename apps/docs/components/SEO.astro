@@ -1,0 +1,130 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+  canonicalUrl?: string;
+  ogImage?: string;
+  ogType?: string;
+  keywords?: string[];
+  themeColor?: string;
+}
+
+const {
+  title = "Dequel — Self-Hosted PaaS Engine & Container Platform",
+  description = "The open-source, self-hosted PaaS container platform. Deploy apps from Git, ZIP, or Docker Compose with automatic SSL, multi-server scaling, and zero infrastructure lock-in.",
+  canonicalUrl = "https://dequel.intrep.xyz/",
+  ogImage = "https://dequel.intrep.xyz/og/index.png",
+  ogType = "website",
+  keywords = [
+    "Dequel",
+    "self-hosted PaaS",
+    "PaaS platform",
+    "Docker deployment",
+    "container platform",
+    "DevOps",
+    "Caddy reverse proxy",
+    "automatic SSL",
+    "Let's Encrypt",
+    "BuildKit",
+    "Railpack",
+    "zero vendor lock-in",
+    "homelab",
+    "multi-server deployment",
+    "microservices",
+  ],
+  themeColor = "#0a0a0c",
+} = Astro.props;
+
+const siteName = "Dequel";
+const author = "Dequel";
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://dequel.intrep.xyz/#website",
+      "name": "Dequel",
+      "url": "https://dequel.intrep.xyz/",
+      "description": description,
+      "publisher": {
+        "@type": "Organization",
+        "name": "Dequel",
+        "url": "https://dequel.intrep.xyz/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://dequel.intrep.xyz/logo.svg"
+        }
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://dequel.intrep.xyz/#software",
+      "name": "Dequel",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "url": "https://dequel.intrep.xyz/",
+      "description": description,
+      "image": ogImage,
+      "screenshot": "https://dequel.intrep.xyz/screenshots/dashboard.png",
+      "featureList": [
+        "Git push-to-deploy and ZIP uploads",
+        "Docker Compose deployment",
+        "Automatic SSL certificate provisioning via Caddy and Let's Encrypt",
+        "Dynamic multi-server container clustering",
+        "Zero-dependency self-hosted architecture",
+        "Full observability with Prometheus, cAdvisor, and Loki",
+        "Automatic horizontal scaling and auto-healing"
+      ]
+    }
+  ]
+};
+---
+
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{title}</title>
+<meta name="description" content={description} />
+<meta name="keywords" content={keywords.join(", ")} />
+<meta name="author" content={author} />
+<meta name="creator" content={author} />
+<meta name="publisher" content={siteName} />
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+<link rel="canonical" href={canonicalUrl} />
+
+<meta name="theme-color" content={themeColor} />
+<meta name="color-scheme" content="dark" />
+<meta name="application-name" content={siteName} />
+<meta name="apple-mobile-web-app-title" content={siteName} />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<meta property="og:type" content={ogType} />
+<meta property="og:site_name" content={siteName} />
+<meta property="og:url" content={canonicalUrl} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:image" content={ogImage} />
+<meta property="og:image:secure_url" content={ogImage} />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={title} />
+<meta property="og:locale" content="en_US" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:url" content={canonicalUrl} />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImage} />
+<meta name="twitter:image:alt" content={title} />
+
+<link rel="icon" type="image/svg+xml" href="/icon.svg" />
+<link rel="apple-touch-icon" href="/icon.svg" />
+
+<script type="application/ld+json" set:html={JSON.stringify(structuredData)} />

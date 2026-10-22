@@ -92,6 +92,27 @@
       "when": 1790700000000,
       "tag": "0036_fixdiag",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791432207765,
+      "tag": "0037_security_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791861049522,
+      "tag": "0038_restore_tests",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792300000000,
+      "tag": "0039_github_integration_encryption",
+      "breakpoints": true
     }
   ]
 }

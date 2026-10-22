@@ -12,6 +12,7 @@ import type { BackupContext } from "./adapter";
 import { getAdapter } from "./adapters";
 import type { BackupStorage } from "./storage";
 import { createStorage } from "./storage/index";
+import { createBackupDecryptStream, createBackupEncryptStream } from "./crypto";
 import type { BackupJob, BackupTarget, StorageConfig } from "./types";
 
 async function buildContext(target: BackupTarget): Promise<BackupContext> {
@@ -43,17 +44,29 @@ export class BackupOrchestrator {
 			const dump = await adapter.dump(ctx);
 
 			await this.updateJob(job.id, { status: "compressing" });
-			const compressed = dump.pipe(createGzip());
+			const gzip = createGzip();
+			const { input: encInput, output: encOutput } = createBackupEncryptStream();
+
+			dump.on("error", (err) => {
+				gzip.destroy(err);
+				encInput.destroy(err);
+			});
+			gzip.on("error", (err) => {
+				encInput.destroy(err);
+			});
+
+			dump.pipe(gzip).pipe(encInput);
 
 			await this.updateJob(job.id, { status: "uploading" });
-			const filename = `${target.id}-${new Date().toISOString().replace(/[:.]/g, "-")}.sql.gz`;
-			const { path: storagePath, size: sizeBytes } = await this.storage.upload(filename, compressed);
+			const filename = `${target.id}-${new Date().toISOString().replace(/[:.]/g, "-")}.sql.gz.enc`;
+			const { path: storagePath, size: sizeBytes } = await this.storage.upload(filename, encOutput);
 
 			const completed = await this.updateJob(job.id, {
 				status: "completed",
 				filename,
 				storagePath,
 				sizeBytes,
+				isEncrypted: true,
 				completedAt: new Date(),
 			});
 
@@ -72,9 +85,29 @@ export class BackupOrchestrator {
 		const ctx = await buildContext(target);
 		const adapter = getAdapter(target.engine);
 
-		const compressed = await this.storage.download(job.storagePath!);
+		const downloaded = await this.storage.download(job.storagePath!);
 		const { createGunzip } = await import("node:zlib");
-		const dump = compressed.pipe(createGunzip());
+		const gunzip = createGunzip();
+
+		let streamToGunzip: any = downloaded;
+		if (job.isEncrypted) {
+			const { input: decInput, output: decOutput } = createBackupDecryptStream();
+			downloaded.on("error", (err) => {
+				decInput.destroy(err);
+				gunzip.destroy(err);
+			});
+			decOutput.on("error", (err) => {
+				gunzip.destroy(err);
+			});
+			downloaded.pipe(decInput);
+			streamToGunzip = decOutput;
+		} else {
+			downloaded.on("error", (err) => {
+				gunzip.destroy(err);
+			});
+		}
+
+		const dump = streamToGunzip.pipe(gunzip);
 		await adapter.restore(ctx, dump);
 	}
 
@@ -100,6 +133,7 @@ export class BackupOrchestrator {
 			storageType: this.storageType,
 			storagePath: null,
 			sizeBytes: null,
+			isEncrypted: true,
 			status: "pending",
 			error: null,
 		});

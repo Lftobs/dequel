@@ -4,6 +4,7 @@ import { config } from "../utils/config";
 import { dockerBin } from "../utils/docker-bin";
 import { buildCaddySnippet } from "../utils/domain-verifier";
 import { deployWithCompose, destroyComposeStack, getComposeContainerNames, parseAllComposeServices } from "./compose";
+import { buildComposeEnvOverrideYaml } from "./compose-env";
 import { reloadCaddy, tryRun } from "./runtime";
 
 export interface ComposeDeployResult {
@@ -47,9 +48,24 @@ export const deployComposeStack = async (options: ComposeDeployOptions): Promise
 		await destroyComposeStack(`deploy-${oldDeploymentId}`);
 	}
 
-	await deployWithCompose(workspacePath, `deploy-${deploymentId}`, onLog, sourceDir, envVars, signal);
-
 	const allServices = parseAllComposeServices(workspacePath, sourceDir, composeService, composePort);
+
+	let overridePath: string | null = null;
+	if (envVars && Object.keys(envVars).length > 0) {
+		const overrideYaml = buildComposeEnvOverrideYaml(
+			allServices.map((s) => s.serviceName),
+			envVars,
+		);
+		if (overrideYaml) {
+			overridePath = join(workspacePath, "dequel-env-override.yml");
+			await writeFile(overridePath, overrideYaml);
+			await onLog(
+				`Injecting ${Object.keys(envVars).length} env var(s) into ${allServices.length} compose service(s) via override file.`,
+			);
+		}
+	}
+
+	await deployWithCompose(workspacePath, `deploy-${deploymentId}`, onLog, sourceDir, envVars, signal, overridePath);
 
 	const composeContainers = await getComposeContainerNames(`deploy-${deploymentId}`);
 	const containerFor = (serviceName: string) =>

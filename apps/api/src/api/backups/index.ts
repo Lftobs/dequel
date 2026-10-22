@@ -1,9 +1,12 @@
+import { randomUUID } from "node:crypto";
 import { Elysia } from "elysia";
 import { BackupOrchestrator } from "../../backup/orchestrator";
+import { runRestoreTest } from "../../backup/restore-test";
 import type { BackupTarget, StorageConfig } from "../../backup/types";
 import { S3_BACKUP_PREFIX } from "../../backup/types";
 import { deleteBackupRecord, getBackupRecord, listBackupRecords } from "../../db/repo/backups";
 import { getDatabaseById } from "../../db/repo/databases";
+import { createRestoreTestRecord, listRestoreTests, updateRestoreTestRecord } from "../../db/repo/restore-tests";
 import { getBackupStorageSettings } from "../../db/repo/settings";
 import { created, fail, ok } from "../response";
 
@@ -117,13 +120,84 @@ export const backupRoutes = new Elysia({ prefix: "/backups" })
 		return ok({ deleted: true });
 	})
 	.post("/:id/restore", async ({ params, set }) => {
+		const record = await getBackupRecord(params.id);
+		if (!record) {
+			set.status = 404;
+			return fail("Backup not found");
+		}
+		let serverId: string | null = null;
+		if (record.targetId !== "internal") {
+			const db = await getDatabaseById(record.targetId);
+			serverId = db?.serverId ?? null;
+		}
+		const event = await createRestoreTestRecord({
+			id: randomUUID(),
+			backupId: record.id,
+			targetId: record.targetId,
+			serverId,
+			kind: "restore",
+		});
+		let restoreError: unknown = null;
 		try {
 			const storage = await loadStorageConfig();
 			const orchestrator = new BackupOrchestrator(storage);
 			await orchestrator.restore(params.id, resolveTarget);
-			return ok({ restored: true });
+		} catch (error) {
+			restoreError = error;
+		}
+		try {
+			await updateRestoreTestRecord(event.id, {
+				status: restoreError ? "failed" : "passed",
+				error: restoreError ? String(restoreError) : null,
+				completedAt: new Date(),
+			});
+		} catch (eventError) {
+			console.error(`[backups] failed to record restore event ${event.id}:`, eventError);
+		}
+		if (restoreError) {
+			set.status = 500;
+			return fail(String(restoreError));
+		}
+		return ok({ restored: true });
+	})
+	.post("/:id/restore-test", async ({ params, body, set }: any) => {
+		try {
+			const record = await getBackupRecord(params.id);
+			if (!record) {
+				set.status = 404;
+				return fail("Backup not found");
+			}
+			const test = await runRestoreTest({ backupId: params.id, serverId: body?.serverId ?? null });
+			if (test?.status !== "passed") {
+				set.status = 500;
+				return fail(test?.error || "Restore test failed");
+			}
+			return created(test);
 		} catch (error) {
 			set.status = 500;
 			return fail(String(error));
 		}
+	})
+	.get("/restore-tests", async ({ query }: any) => {
+		const limit = query?.limit ? Number(query.limit) : undefined;
+		return ok(
+			await listRestoreTests({
+				backupId: query?.backupId,
+				targetId: query?.targetId,
+				status: query?.status,
+				kind: query?.kind,
+				limit: Number.isInteger(limit) && (limit as number) > 0 ? limit : undefined,
+			}),
+		);
+	})
+	.get("/:id/restore-tests", async ({ params, query }: any) => {
+		const limit = query?.limit ? Number(query.limit) : undefined;
+		return ok(
+			await listRestoreTests({
+				backupId: params.id,
+				status: query?.status,
+				kind: query?.kind,
+				limit: Number.isInteger(limit) && (limit as number) > 0 ? limit : undefined,
+			}),
+		);
 	});

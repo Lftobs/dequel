@@ -142,6 +142,7 @@ export interface Domain {
 	type: DomainType;
 	validationStatus: DomainValidationStatus;
 	sslStatus: SslStatus;
+	cloudflareProxied?: boolean;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -297,6 +298,18 @@ export interface BackupJob {
 	error: string | null;
 	status: "pending" | "dumping" | "compressing" | "uploading" | "completed" | "failed";
 	createdAt: string;
+	completedAt: string | null;
+}
+
+export interface RestoreTestRecord {
+	id: string;
+	backupId: string;
+	targetId: string;
+	serverId: string | null;
+	kind: "test" | "restore";
+	status: "running" | "passed" | "failed";
+	error: string | null;
+	startedAt: string;
 	completedAt: string | null;
 }
 

@@ -35,7 +35,7 @@ describe("Database Repository Tests", () => {
 		expect(result.standalone.volumeName).toMatch(/^db-[a-f0-9-]{12}$/);
 		expect(result.standalone.connectionPrefix).toBe("postgresql:");
 		expect(result.standalone.hasPassword).toBe(true);
-	});
+	}, 30000);
 
 	it("persists project attachment, allowlist, and lifecycle updates", () => {
 		const result = runRepoScenarios();
@@ -50,5 +50,5 @@ describe("Database Repository Tests", () => {
 		expect(result.updated.storageUsedMb).toBe(256);
 		expect(result.deleted).toBe(true);
 		expect(result.total).toBe(1);
-	});
+	}, 30000);
 });

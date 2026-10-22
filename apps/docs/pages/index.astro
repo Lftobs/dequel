@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import SEO from "../components/SEO.astro";
 import Hero from "../components/Hero.astro";
 import Stats from "../components/Stats.astro";
 import Comparison from "../components/Comparison.astro";
@@ -12,15 +13,7 @@ import CTA from "../components/CTA.astro";
 <!doctype html>
 <html lang="en">
 	<head>
-		<meta charset="UTF-8" />
-		<meta
-			name="description"
-			content="Dequel — The self-hosted PaaS container platform. Deploy, route with auto-SSL, scale, and monitor applications on your own servers with zero vendor lock-in."
-		/>
-		<meta
-			name="viewport"
-			content="width=device-width, initial-scale=1.0"
-		/>
+		<SEO />
 		<link
 			rel="preconnect"
 			href="https://fonts.googleapis.com"
@@ -34,14 +27,6 @@ import CTA from "../components/CTA.astro";
 			href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..600;1,9..40,400..600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap"
 			rel="stylesheet"
 		/>
-		<link
-			rel="icon"
-			type="image/svg+xml"
-			href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'%3E%3ClinearGradient id='g' x1='0' y1='0' x2='32' y2='32' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0%25' stop-color='%23f59e0b'/%3E%3Cstop offset='50%25' stop-color='%23ea580c'/%3E%3Cstop offset='100%25' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3Cpath d='M12 8H20C24.4183 8 28 11.5817 28 16C28 20.4183 24.4183 24 20 24H12' stroke='url(%23g)' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M20 24H12C7.58172 24 4 20.4183 4 16C4 11.5817 7.58172 8 12 8H16' stroke='url(%23g)' stroke-width='3' stroke-linecap='round' stroke-dasharray='40 10'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='url(%23g)'/%3E%3C/svg%3E"
-		/>
-		<title>
-			Dequel — Self-Hosted PaaS Engine & Container Platform
-		</title>
 	</head>
 	<body class="dq-noise bg-[#0a0a0c] text-[#e2e2e8] overflow-x-hidden">
 		<!-- Cloudflare-style Header Nav -->

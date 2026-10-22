@@ -32,9 +32,8 @@ const db = drizzle(pool, { schema });
 setDbProvider(async () => db);
 
 const cleanup = async () => {
-	for (const name of TABLE_NAMES) {
-		await pool.query(`TRUNCATE TABLE "${name}" CASCADE`);
-	}
+	const tables = TABLE_NAMES.map((name) => `"${name}"`).join(", ");
+	await pool.query(`TRUNCATE TABLE ${tables} CASCADE`);
 };
 
 try {

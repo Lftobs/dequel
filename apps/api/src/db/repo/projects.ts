@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import type { CreateProjectInput, Project } from "../../types";
+import { config } from "../../utils/config";
+import { decryptValue, encryptValue } from "../../utils/crypto";
 import { getDb } from "../db-provider";
 import {
 	alerts,
@@ -111,6 +113,45 @@ export const updateProjectGithubToken = async (
 		.set({ githubTokenEncrypted: encrypted, githubTokenIv: iv, githubTokenTag: tag })
 		.where(eq(projects.id, id))
 		.execute();
+};
+
+export const getProjectGithubToken = async (id: string): Promise<string | null> => {
+	const db = await getDb();
+	const [row] = await db
+		.select({
+			encrypted: projects.githubTokenEncrypted,
+			iv: projects.githubTokenIv,
+			tag: projects.githubTokenTag,
+		})
+		.from(projects)
+		.where(eq(projects.id, id))
+		.execute();
+	if (!row?.encrypted || !row?.iv || !row?.tag) return null;
+	try {
+		return decryptValue(row.encrypted, row.iv, row.tag, config.envEncryptionKey);
+	} catch {
+		return null;
+	}
+};
+
+export const captureProjectGithubToken = async (
+	projectId: string,
+	gitUrl: string | null | undefined,
+	cookieHeader: string | null,
+): Promise<boolean> => {
+	try {
+		if (!gitUrl || !/^https:\/\/github\.com\//i.test(gitUrl.trim()) || !cookieHeader) return false;
+		const { getGithubSession } = await import("./github-sessions");
+		const match = cookieHeader.match(/(?:^|;\s*)github_session=([^;]+)/);
+		if (!match) return false;
+		const token = await getGithubSession(match[1]);
+		if (!token) return false;
+		const enc = encryptValue(token, config.envEncryptionKey);
+		await updateProjectGithubToken(projectId, enc.encrypted, enc.iv, enc.tag);
+		return true;
+	} catch {
+		return false;
+	}
 };
 
 export const listProjects = async (): Promise<Project[]> => {

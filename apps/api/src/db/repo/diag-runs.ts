@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { CauseKind, DiagRun, DiagStageName, DiagStatus, Proposal } from "../../fixdiag/types";
 import { getDb } from "../db-provider";
 import { deployments, diagRuns, diagStages, projects } from "../schema";
@@ -83,7 +83,12 @@ export const getStagePayload = async (runId: string, stage: DiagStageName): Prom
 
 export const listStageResults = async (runId: string): Promise<{ stage: DiagStageName; payload: unknown }[]> => {
 	const db = await getDb();
-	const rows = await db.select().from(diagStages).where(eq(diagStages.runId, runId)).execute();
+	const rows = await db
+		.select()
+		.from(diagStages)
+		.where(eq(diagStages.runId, runId))
+		.orderBy(asc(diagStages.createdAt))
+		.execute();
 	return rows.map((r) => ({ stage: r.stage as DiagStageName, payload: r.payload ?? null }));
 };
 

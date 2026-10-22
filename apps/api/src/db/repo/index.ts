@@ -18,6 +18,7 @@ export {
 } from "./agents";
 export { createAlert, deleteAlert, getAlertById, listAlerts, updateAlertEnabled } from "./alerts";
 export { createApiKey, deleteApiKey, listApiKeys, validateApiKey } from "./api-keys";
+export { countAuditLogs, createAuditLog, listAuditLogs } from "./audit-logs";
 
 export {
 	createDatabase,
@@ -51,6 +52,14 @@ export {
 	updateDeploymentCommitSha,
 	updateDeploymentStatus,
 } from "./deployments";
+export type { DiagAction, DiagActionKind, DiagActionStatus } from "./diag-actions";
+export {
+	claimDiagAction,
+	completeDiagAction,
+	failDiagAction,
+	findCompletedAction,
+	getDiagAction,
+} from "./diag-actions";
 export {
 	createDiagRun,
 	deleteDiagRun,
@@ -63,14 +72,6 @@ export {
 	markInterruptedDiagRuns,
 	recordStageResult,
 } from "./diag-runs";
-export type { DiagAction, DiagActionKind, DiagActionStatus } from "./diag-actions";
-export {
-	claimDiagAction,
-	completeDiagAction,
-	failDiagAction,
-	findCompletedAction,
-	getDiagAction,
-} from "./diag-actions";
 export {
 	createDomain,
 	deleteDomain,
@@ -95,13 +96,24 @@ export {
 	getGithubSession,
 	getGithubTokenFromCookie,
 } from "./github-sessions";
+export type { LlmKeyInput, LlmKeyStatus, LlmProvider } from "./llm-keys";
+export {
+	deleteLlmKey,
+	getDecryptedLlmKey,
+	getLlmKeyStatus,
+	LLM_PROVIDERS,
+	updateLlmModels,
+	upsertLlmKey,
+} from "./llm-keys";
 export { getPlatformSettings, setIngressServer } from "./platform-settings";
 export type { ProjectCleanupInfo } from "./projects";
 export {
+	captureProjectGithubToken,
 	createProject,
 	deleteProject,
 	deleteProjectCascade,
 	getProjectById,
+	getProjectGithubToken,
 	listProjects,
 	updateProject,
 	updateProjectGithubToken,
@@ -118,9 +130,9 @@ export {
 	upsertRoute,
 } from "./routes";
 export {
-	ScalingRangeError,
 	deleteScalingPolicy,
 	getScalingPolicy,
+	ScalingRangeError,
 	upsertScalingPolicy,
 } from "./scaling";
 export type { ServerConnection } from "./servers";
@@ -135,15 +147,6 @@ export {
 } from "./servers";
 export type { SmtpSettingsData } from "./settings";
 export { getBackupStorageSettings, getSmtpSettings, upsertBackupStorageSettings, upsertSmtpSettings } from "./settings";
-export type { LlmKeyInput, LlmKeyStatus, LlmProvider } from "./llm-keys";
-export {
-	LLM_PROVIDERS,
-	deleteLlmKey,
-	getDecryptedLlmKey,
-	getLlmKeyStatus,
-	updateLlmModels,
-	upsertLlmKey,
-} from "./llm-keys";
 export {
 	createSharedEnvVar,
 	deleteSharedEnvVar,

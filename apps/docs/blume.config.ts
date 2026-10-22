@@ -82,4 +82,30 @@ export default defineConfig({
 	deployment: {
 		site: "https://dequel.intrep.xyz",
 	},
+	seo: {
+		og: {
+			fonts: [],
+			palette: {
+				accent: "#ea580c",
+				background: "#0a0a0c",
+				border: "#222228",
+				foreground: "#f4f4f5",
+				muted: "#a1a1aa",
+			},
+			titles: {
+				"/": "Dequel — Self-Hosted PaaS Engine & Container Platform",
+			},
+		},
+		software: {
+			name: "Dequel",
+			operatingSystem: "Linux",
+			applicationCategory: "DeveloperApplication",
+			description:
+				"Self-hosted PaaS container platform. Deploy apps from Git, ZIP, or Docker Compose with zero infrastructure setup.",
+		},
+		organization: {
+			name: "Dequel",
+			url: "https://dequel.intrep.xyz",
+		},
+	},
 });

@@ -206,7 +206,7 @@ const spawnComposeCommand = (
 		const isPosix = process.platform !== "win32";
 		const child = spawn(dockerBin, ["compose", ...args], {
 			cwd,
-			env: envVars || {},
+			env: { ...process.env, ...(envVars || {}) },
 			stdio: ["ignore", "pipe", "pipe"],
 			detached: true,
 		});
@@ -310,6 +310,7 @@ export const deployWithCompose = async (
 	sourceDir?: string | null,
 	envVars?: Record<string, string>,
 	signal?: AbortSignal,
+	overrideFilePath?: string | null,
 ): Promise<void> => {
 	const composeFile = findComposeFilePath(workspacePath, sourceDir);
 	if (!composeFile) {
@@ -319,13 +320,11 @@ export const deployWithCompose = async (
 	const cwd = dirname(composeFile);
 	await onLog(`Starting Docker Compose services (project: ${projectName})...`);
 
-	const res = await spawnComposeCommand(
-		["-f", composeFile, "-p", projectName, "up", "-d"],
-		cwd,
-		envVars,
-		onLog,
-		signal,
-	);
+	const args = ["-f", composeFile];
+	if (overrideFilePath) args.push("-f", overrideFilePath);
+	args.push("-p", projectName, "up", "-d");
+
+	const res = await spawnComposeCommand(args, cwd, envVars, onLog, signal);
 	if (res.code !== 0) {
 		throw new Error(`docker compose up failed: ${res.stderr || res.stdout}`);
 	}
