@@ -22,6 +22,12 @@ or on additional servers you connect later (see
 Run the install script:
 
 ```bash
+curl -fsSL https://dequel.intrep.xyz/install.sh | bash
+```
+
+Alternatively, download directly from the latest GitHub release:
+
+```bash
 curl -fsSL https://github.com/Lftobs/dequel/releases/latest/download/install.sh | bash
 ```
 
