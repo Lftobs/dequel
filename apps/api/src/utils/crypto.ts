@@ -22,9 +22,15 @@ export const encryptValue = (value: string, secret: string) => {
 };
 
 export const decryptValue = (encrypted: string, iv: string, tag: string, secret: string) => {
-	const key = deriveKey(secret);
-	const decipher = createDecipheriv(ALGO, key, Buffer.from(iv, "base64"));
-	decipher.setAuthTag(Buffer.from(tag, "base64"));
-	const decrypted = Buffer.concat([decipher.update(Buffer.from(encrypted, "base64")), decipher.final()]);
-	return decrypted.toString("utf8");
+	try {
+		const key = deriveKey(secret);
+		const decipher = createDecipheriv(ALGO, key, Buffer.from(iv, "base64"));
+		decipher.setAuthTag(Buffer.from(tag, "base64"));
+		const decrypted = Buffer.concat([decipher.update(Buffer.from(encrypted, "base64")), decipher.final()]);
+		return decrypted.toString("utf8");
+	} catch {
+		throw new Error(
+			"Stored secret could not be decrypted - the encryption key no longer matches. Open the Env tab, re-save the affected values, and deploy again.",
+		);
+	}
 };

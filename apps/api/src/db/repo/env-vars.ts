@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, or } from "drizzle-orm";
 import type { CreateEnvironmentVariableInput, EnvironmentVariable } from "../../types";
 import { config } from "../../utils/config";
 import { decryptValue, encryptValue } from "../../utils/crypto";
@@ -111,7 +111,14 @@ export const listEnvironmentVariablesForDeploy = async (
 ): Promise<{ key: string; value: string }[]> => {
 	const db = await getDb();
 	const cond = environment
-		? and(eq(environmentVariables.projectId, projectId), eq(environmentVariables.environment, environment))
+		? and(
+				eq(environmentVariables.projectId, projectId),
+				or(
+					eq(environmentVariables.environment, environment),
+					eq(environmentVariables.environment, ""),
+					eq(environmentVariables.environment, "all"),
+				),
+			)
 		: eq(environmentVariables.projectId, projectId);
 	const rows = await db
 		.select({

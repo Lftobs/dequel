@@ -70,6 +70,7 @@ const mockDb = {
 	createDeploymentEvent: mock(() => Promise.resolve()),
 	recordDeploymentFailure: mock(() => Promise.resolve({ outcome: "recorded" })),
 	recordDeploymentCancellation: mock(() => Promise.resolve({ outcome: "recorded" })),
+	getLogs: mock(() => Promise.resolve([])),
 };
 
 mock.module(fileUrl("../../db/repo"), () => mockDb);

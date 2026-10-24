@@ -215,7 +215,6 @@ export class PipelineOrchestrator {
 		this.abortControllers.set(deploymentId, controller);
 
 		let workspacePath = "";
-		let uploadedArchivePath: string | null = null;
 		let imageTag: string | undefined;
 		let projectName: string | undefined;
 		let project: import("../../types").Project | null = null;
@@ -259,8 +258,7 @@ export class PipelineOrchestrator {
 					}
 				} else {
 					await emitLog(deploymentId, "build", `Extracting archive: ${deployment.sourceRef}`);
-					uploadedArchivePath = deployment.sourceRef;
-					workspacePath = await prepareUploadWorkspace(deploymentId, deployment.sourceRef);
+					workspacePath = await prepareUploadWorkspace(deploymentId, deployment.sourceRef, deployment.projectId);
 				}
 
 				await this.checkCancelled(deploymentId);
@@ -506,14 +504,6 @@ export class PipelineOrchestrator {
 			this.abortControllers.delete(deploymentId);
 			try {
 				if (workspacePath) await cleanupWorkspace(workspacePath);
-			} catch {
-				// cleanup failures must never mask the deployment result
-			}
-			try {
-				if (uploadedArchivePath)
-					await rm(uploadedArchivePath, {
-						force: true,
-					});
 			} catch {
 				// cleanup failures must never mask the deployment result
 			}

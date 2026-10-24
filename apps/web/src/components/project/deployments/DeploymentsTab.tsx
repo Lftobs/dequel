@@ -16,9 +16,9 @@ import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Input } from "../../ui/input";
 import { ClearCacheToggle } from "./clear-cache-toggle";
-import { SwitchToGitCard } from "./SwitchToGitCard";
 import { DeploymentHistory } from "./deployment-history";
 import { ManualDeployDialog } from "./manual-deploy-dialog";
+import { SwitchToGitCard } from "./SwitchToGitCard";
 
 const PAGE_SIZE = 5;
 
@@ -206,7 +206,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 						</div>
 					)}
 
-					{project?.buildType === "compose" ? (
+					{project?.buildType === "compose" && !project?.repoUrl ? (
 						<div className="space-y-4">
 							<div className="p-4 rounded-lg bg-[#141417]/50 border border-[#222227] space-y-3">
 								<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

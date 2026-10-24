@@ -100,18 +100,39 @@ export const prepareSourceWorkspace = async (
 	return root;
 };
 
-export const prepareUploadWorkspace = async (deploymentId: string, archivePath: string) => {
+export const prepareUploadWorkspace = async (deploymentId: string, archivePath: string, projectId?: string | null) => {
 	const root = join(config.workspaceRoot, deploymentId);
 	await rm(root, { recursive: true, force: true });
 	await mkdir(root, { recursive: true });
 
-	if (archivePath.endsWith(".zip")) {
-		await run("unzip", ["-q", archivePath, "-d", root]);
+	let resolvedArchive = archivePath;
+	const { existsSync } = await import("node:fs");
+	const { basename } = await import("node:path");
+	if (!existsSync(resolvedArchive)) {
+		const inUploads = join(config.workspaceRoot, "uploads", basename(archivePath));
+		if (existsSync(inUploads)) {
+			resolvedArchive = inUploads;
+		} else if (projectId) {
+			try {
+				const { getProjectById } = await import("../db/repo");
+				const proj = await getProjectById(projectId);
+				if (proj) {
+					const { ensureValidComposeArchive } = await import("../api/projects/compose");
+					resolvedArchive = await ensureValidComposeArchive(proj, archivePath);
+				}
+			} catch (error) {
+				console.warn(`[Source] Could not recover compose archive for project ${projectId}:`, error);
+			}
+		}
+	}
+
+	if (resolvedArchive.endsWith(".zip")) {
+		await run("unzip", ["-q", resolvedArchive, "-d", root]);
 		return ensureSingleRoot(root);
 	}
 
-	if (archivePath.endsWith(".tar") || archivePath.endsWith(".tar.gz") || archivePath.endsWith(".tgz")) {
-		await run("tar", ["-xf", archivePath, "-C", root]);
+	if (resolvedArchive.endsWith(".tar") || resolvedArchive.endsWith(".tar.gz") || resolvedArchive.endsWith(".tgz")) {
+		await run("tar", ["-xf", resolvedArchive, "-C", root]);
 		return ensureSingleRoot(root);
 	}
 
