@@ -8,7 +8,10 @@ const run = () =>
 	exec("bun", ["run", "src/orchestrator/__tests__/ingress-sync-runner.ts"], {
 		cwd: `${import.meta.dir}/../../..`,
 		timeout: 30000,
-		env: { ...process.env, TEST_DATABASE_URL: "postgresql://dequel:dequel@localhost:5433/dequel" },
+		env: {
+			...process.env,
+			TEST_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgresql://dequel:dequel@localhost:5433/dequel",
+		},
 	});
 
 const parse = (stdout: string) => {

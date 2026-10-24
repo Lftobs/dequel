@@ -154,7 +154,7 @@ describe("buildCaddySnippet", () => {
 	it("creates snippet with just localhost domain when no verified domains", async () => {
 		const snippet = await buildCaddySnippet("elysia", "deploy-abc", "proj-1", noDomains, APP_PORT, snippetOpts);
 		expect(snippet).toBe(
-			"elysia.localhost:80 {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy deploy-abc:3000 {\n    header_up Host {upstream_hostport}\n  }\n}\n",
+			"elysia.localhost:80 {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy deploy-abc:3000\n}\n",
 		);
 	});
 
@@ -162,7 +162,7 @@ describe("buildCaddySnippet", () => {
 		const listFn = mockDomains(["app.example.com"]);
 		const snippet = await buildCaddySnippet("elysia", "deploy-abc", "proj-1", listFn, APP_PORT, snippetOpts);
 		expect(snippet).toBe(
-			"elysia.localhost:80, app.example.com {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy deploy-abc:3000 {\n    header_up Host {upstream_hostport}\n  }\n}\n",
+			"elysia.localhost:80, app.example.com {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy deploy-abc:3000\n}\n",
 		);
 	});
 

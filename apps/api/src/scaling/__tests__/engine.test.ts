@@ -64,7 +64,9 @@ mock.module(fileUrl("../docker-utils"), () => ({
 mock.module("node:fs/promises", () => {
 	const fs = require("node:fs");
 	const pathMod = require("node:path");
+	const base = { ...fs.promises };
 	return {
+		...base,
 		rm: mock(async (path: string, opts?: any) => {
 			if (fs.existsSync(path)) fs.rmSync(path, opts || {});
 		}),
@@ -131,6 +133,7 @@ mock.module(fileUrl("../../db/repo"), () => ({
 	listEnvironmentVariablesForDeploy: mock(() => Promise.resolve(mockListEnvVarsResult)),
 	listDomains: mock(() => Promise.resolve([])),
 	updateDomainValidation: mock(() => Promise.resolve()),
+	getLogs: mock(() => Promise.resolve([])),
 }));
 
 mock.module(fileUrl("../../utils/config"), () => ({
@@ -141,6 +144,7 @@ mock.module(fileUrl("../../utils/config"), () => ({
 		appInternalPort: 3000,
 		dockerNetwork: "dequel_net",
 		envEncryptionKey: "dev-env-key-change-me",
+		workspaceRoot: "./workspace",
 	},
 }));
 
