@@ -170,7 +170,7 @@ export function Dashboard() {
 												key={dep.id}
 												to="/project/$projectId"
 												params={{ projectId: dep.projectId || "" }}
-												search={{ tab: "deployments" }}
+												search={{ tab: "deployments", section: undefined }}
 												className="block group/preview border-b border-[#18181c] pb-3 last:border-0 last:pb-0"
 											>
 												<div className="space-y-1">

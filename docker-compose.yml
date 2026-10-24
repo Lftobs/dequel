@@ -41,6 +41,7 @@ services:
             WORKSPACE_ROOT: /app/workspace
             CADDY_ROUTES_DIR: /caddy/routes
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
+            CADDY_CONTAINER: ${CADDY_CONTAINER:-dequel-caddy-1}
             CADDY_DATA_DIR: /caddy-data/caddy
             DOCKER_NETWORK: dequel_net
             APP_INTERNAL_PORT: 3000

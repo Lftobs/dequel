@@ -21,10 +21,13 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 		queryFn: () => api.listEnvVars(projectId),
 	});
 
-	const { data: deploymentsData } = useDeployments(projectId, 0, 5);
+	const { data: deploymentsData } = useDeployments(projectId, 0, 50);
 	const redeploy = useRedeployDeployment();
 	const navigate = useNavigate();
-	const runningDeployment = deploymentsData?.items?.find((d) => d.status === "running");
+	const inProgressStatuses = new Set(["pending", "building", "deploying"]);
+	const targetDeployment =
+		deploymentsData?.items?.find((d) => d.status === "running") ||
+		deploymentsData?.items?.find((d) => d.status && !inProgressStatuses.has(d.status));
 
 	const [isAddOpen, setIsAddOpen] = useState(false);
 	const [isImportOpen, setIsImportOpen] = useState(false);
@@ -129,8 +132,9 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 	};
 
 	const handleRedeploy = async () => {
+		if (!targetDeployment) return;
 		try {
-			await redeploy.mutateAsync(runningDeployment!.id);
+			await redeploy.mutateAsync(targetDeployment.id);
 			setShowRedeployPrompt(false);
 			navigate({ search: { tab: "deployments" } as any });
 		} catch (err) {
@@ -144,7 +148,8 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 
 			<RedeployBanner
 				show={showRedeployPrompt}
-				runningDeploymentId={runningDeployment?.id}
+				targetDeploymentId={targetDeployment?.id}
+				runningDeploymentId={targetDeployment?.id}
 				isPending={redeploy.isPending}
 				onDismiss={() => setShowRedeployPrompt(false)}
 				onRedeploy={handleRedeploy}
@@ -177,7 +182,13 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 				/>
 			)}
 
-			<AddEnvVarSheet open={isAddOpen} onOpenChange={setIsAddOpen} onSubmit={handleAddVars} projectId={projectId} onLinkedChange={() => setShowRedeployPrompt(true)} />
+			<AddEnvVarSheet
+				open={isAddOpen}
+				onOpenChange={setIsAddOpen}
+				onSubmit={handleAddVars}
+				projectId={projectId}
+				onLinkedChange={() => setShowRedeployPrompt(true)}
+			/>
 
 			<ImportEnvFileDialog open={isImportOpen} onOpenChange={setIsImportOpen} onImport={handleImportVars} />
 

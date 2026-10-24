@@ -3,14 +3,23 @@ import { Button } from "../../ui/button";
 
 interface RedeployBannerProps {
 	show: boolean;
-	runningDeploymentId: string | undefined;
+	runningDeploymentId?: string | undefined;
+	targetDeploymentId?: string | undefined;
 	isPending: boolean;
 	onDismiss: () => void;
 	onRedeploy: () => Promise<void>;
 }
 
-export function RedeployBanner({ show, runningDeploymentId, isPending, onDismiss, onRedeploy }: RedeployBannerProps) {
-	if (!show || !runningDeploymentId) return null;
+export function RedeployBanner({
+	show,
+	runningDeploymentId,
+	targetDeploymentId,
+	isPending,
+	onDismiss,
+	onRedeploy,
+}: RedeployBannerProps) {
+	const effectiveId = targetDeploymentId || runningDeploymentId;
+	if (!show || !effectiveId) return null;
 
 	return (
 		<div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 gap-3 animate-in fade-in-0 duration-200">

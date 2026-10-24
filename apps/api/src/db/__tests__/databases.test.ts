@@ -8,8 +8,8 @@ const runRepoScenarios = (): any => {
 	const result = spawnSync("bun", [runnerPath], {
 		env: {
 			...process.env,
-			DATABASE_URL: "postgresql://dequel:dequel@localhost:5433/dequel",
-			TEST_DATABASE_URL: "postgresql://dequel:dequel@localhost:5433/dequel",
+			DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgresql://dequel:dequel@localhost:5433/dequel",
+			TEST_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgresql://dequel:dequel@localhost:5433/dequel",
 		},
 		encoding: "utf8",
 	});

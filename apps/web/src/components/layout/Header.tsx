@@ -29,7 +29,7 @@ export function Header({ currentProject, currentProjectId, location, setSidebarO
 						<Link
 							to="/project/$projectId"
 							params={{ projectId: currentProjectId! }}
-							search={{ tab: "deployments" }}
+							search={{ tab: "deployments", section: undefined }}
 							className="hover:text-zinc-200 transition-colors font-medium text-zinc-300 truncate max-w-[110px] sm:max-w-[200px]"
 						>
 							{currentProject.name}

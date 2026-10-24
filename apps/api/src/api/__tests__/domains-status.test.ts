@@ -8,7 +8,10 @@ const run = () =>
 	exec("bun", ["run", "src/api/__tests__/domains-status-runner.ts"], {
 		cwd: `${import.meta.dir}/../../..`,
 		timeout: 30000,
-		env: { ...process.env, TEST_DATABASE_URL: "postgresql://dequel:dequel@localhost:5433/dequel" },
+		env: {
+			...process.env,
+			TEST_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgresql://dequel:dequel@localhost:5433/dequel",
+		},
 	});
 
 const parse = (stdout: string) => {
@@ -18,7 +21,7 @@ const parse = (stdout: string) => {
 
 describe("GET /projects/:id/domains/status", () => {
 	it("returns array and 404 for missing project", async () => {
-		const { stdout, stderr } = await run();
+		const { stdout } = await run();
 		const results = parse(stdout);
 		expect(results.test1.status).toBe(200);
 		expect(results.test1.isArray).toBe(true);

@@ -40,6 +40,7 @@ export default defineConfig({
 					"/docs/configuration",
 					"/docs/env-vars",
 					"/docs/shared-env-vars",
+					"/docs/templates",
 					"/docs/volumes",
 					"/docs/domains",
 					"/docs/scaling",

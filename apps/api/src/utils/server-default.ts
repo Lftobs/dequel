@@ -14,6 +14,17 @@ const isServerHealthy = (s: Awaited<ReturnType<typeof listServers>>[number]): bo
 	return false;
 };
 
+const memoryLoadScore = (s: { memoryTotalMb: number | null; memoryUsedMb: number | null }): number => {
+	if (!s.memoryTotalMb || s.memoryUsedMb === null || s.memoryUsedMb === undefined) return 0;
+	return Math.min(1, Math.max(0, s.memoryUsedMb / s.memoryTotalMb));
+};
+
+const resourceScore = (s: Awaited<ReturnType<typeof listServers>>[number]): number => {
+	const memoryLoad = memoryLoadScore(s);
+	const cpuLoad = Math.min(1, Math.max(0, (s.cpuUsedPercent ?? 0) / 100));
+	return memoryLoad * 0.7 + cpuLoad * 0.3;
+};
+
 export const pickBestServer = async (
 	preferredServerId?: string | null,
 	excludeServerId?: string | null,
@@ -45,6 +56,8 @@ export const pickBestServer = async (
 		.sort((a, b) => {
 			const countDiff = (projectCount.get(a.id) ?? 0) - (projectCount.get(b.id) ?? 0);
 			if (countDiff !== 0) return countDiff;
+			const resourceDiff = resourceScore(a) - resourceScore(b);
+			if (resourceDiff !== 0) return resourceDiff;
 			return (a.cpuUsedPercent ?? 0) - (b.cpuUsedPercent ?? 0);
 		});
 	if (candidates.length > 0) return candidates[0].id;

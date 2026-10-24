@@ -70,6 +70,7 @@ export const buildRemoteDeployScript = (input: SshBuildScriptInput): string => {
 		'echo "[build] Ensuring workspace"',
 		'rm -rf "$PROJECT_DIR"',
 		'mkdir -p "$PROJECT_DIR"',
+		"trap 'rm -rf \"$PROJECT_DIR\"' EXIT",
 		'cd "$PROJECT_DIR"',
 		"",
 		"if command -v railpack >/dev/null 2>&1; then",
@@ -103,9 +104,9 @@ export const buildRemoteDeployScript = (input: SshBuildScriptInput): string => {
 		"  if command -v python3 >/dev/null 2>&1; then",
 		'    mkdir -p "$HOME/.bun/bin"',
 		'    BUN_TMP="$(mktemp -d)"',
-		'    curl -fsSL -o "$BUN_TMP/bun.zip" "https://github.com/oven-sh/bun/releases/latest/download/bun-linux-${BUN_ARCH}.zip"',
+		'    curl -fsSL -o "$BUN_TMP/bun.zip" "https://github.com/oven-sh/bun/releases/latest/download/bun-linux-$BUN_ARCH.zip"',
 		'    python3 -m zipfile -e "$BUN_TMP/bun.zip" "$BUN_TMP"',
-		'    mv "$BUN_TMP/bun-linux-${BUN_ARCH}/bun" "$HOME/.bun/bin/bun"',
+		'    mv "$BUN_TMP/bun-linux-$BUN_ARCH/bun" "$HOME/.bun/bin/bun"',
 		'    chmod +x "$HOME/.bun/bin/bun"',
 		'    rm -rf "$BUN_TMP"',
 		"  elif command -v unzip >/dev/null 2>&1; then",
@@ -163,4 +164,16 @@ export const parseRemoteBuildResult = (stdout: string): RemoteBuildResult | null
 	} catch {
 		return null;
 	}
+};
+
+export const cleanupRemoteWorkspace = async (
+	server: any,
+	deploymentId: string,
+	run?: (server: any, script: string) => Promise<any>,
+): Promise<void> => {
+	const { config } = await import("../utils/config");
+	const { runRemoteScript } = await import("../utils/ssh");
+	const remoteWorkspace = config.workspaceRoot.startsWith("/app") ? "$HOME/.dequel/workspace" : config.workspaceRoot;
+	const runFn = run ?? runRemoteScript;
+	await runFn(server, `rm -rf "${remoteWorkspace}/${deploymentId}"`).catch(() => {});
 };

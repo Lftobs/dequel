@@ -1,8 +1,56 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseAllComposeServices, parseComposeTarget, parseContainerTargetPort } from "../compose";
+import {
+	evaluateComposeContainerState,
+	parseAllComposeServices,
+	parseComposeTarget,
+	parseContainerTargetPort,
+} from "../compose";
+
+describe("evaluateComposeContainerState", () => {
+	test("running after stability window is ok", () => {
+		const v = evaluateComposeContainerState("c", "running", { primary: true, everSawRunning: true });
+		expect(v.kind).toBe("ok");
+	});
+
+	test("first running observation still requires a stability re-check", () => {
+		const v = evaluateComposeContainerState("c", "running", { primary: true, everSawRunning: false });
+		expect(v.kind).toBe("retry");
+	});
+
+	test("created containers retry", () => {
+		const v = evaluateComposeContainerState("c", "created", { primary: true });
+		expect(v.kind).toBe("retry");
+	});
+
+	test("missing containers retry", () => {
+		const v = evaluateComposeContainerState("c", null, { primary: true });
+		expect(v.kind).toBe("retry");
+	});
+
+	test("primary crash loops are fatal", () => {
+		const v = evaluateComposeContainerState("c", "restarting", { primary: true });
+		expect(v.kind).toBe("fatal");
+	});
+
+	test("primary exits are fatal", () => {
+		const v = evaluateComposeContainerState("c", "exited", { primary: true });
+		expect(v.kind).toBe("fatal");
+	});
+
+	test("secondary exits retry instead of failing the deployment", () => {
+		const v = evaluateComposeContainerState("c", "exited", { primary: false });
+		expect(v.kind).toBe("retry");
+	});
+
+	test("unknown states retry with the state surfaced", () => {
+		const v = evaluateComposeContainerState("c", "paused", { primary: false });
+		expect(v.kind).toBe("retry");
+		expect(v.reason).toContain("paused");
+	});
+});
 
 describe("parseContainerTargetPort", () => {
 	test("parses number ports", () => {
@@ -211,5 +259,44 @@ describe("spawnComposeCommand env merge with project env vars", () => {
 			rmSync(dir, { recursive: true, force: true });
 			delete process.env.IDEK_DATABASE_URL;
 		}
+	});
+});
+
+describe("writeComposeEnvFile", () => {
+	const runFailingBuild = async (dir: string, envVars: Record<string, string>) => {
+		const { buildWithCompose } = await import("../compose");
+		try {
+			await buildWithCompose(dir, "envfile-proj", async () => {}, null, envVars);
+		} catch {
+			// compose build fails fast on the bad build context; the .env write happens before spawn
+		}
+	};
+
+	const withComposeDir = async (fn: (dir: string) => Promise<void>) => {
+		const dir = mkdtempSync(join(tmpdir(), "dequel-compose-envfile-"));
+		writeFileSync(join(dir, "docker-compose.yml"), `services:\n  app:\n    build: {NEVER_EXISTS}\n`);
+		try {
+			await fn(dir);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	};
+
+	test("writes project env vars as an escaped .env beside the compose file", async () => {
+		await withComposeDir(async (dir) => {
+			await runFailingBuild(dir, { SECRET_ONE: "pa55$$word", MULTI: 'a\nb"c', "1BAD-KEY": "skip" });
+			const content = readFileSync(join(dir, ".env"), "utf8");
+			expect(content).toContain('SECRET_ONE="pa55$$$$word"');
+			expect(content).toContain('MULTI="a\\nb\\"c"');
+			expect(content).not.toContain("1BAD-KEY");
+		});
+	});
+
+	test("does not overwrite an existing .env from the archive", async () => {
+		await withComposeDir(async (dir) => {
+			writeFileSync(join(dir, ".env"), "FROM_ARCHIVE=1\n");
+			await runFailingBuild(dir, { SECRET_ONE: "fresh" });
+			expect(readFileSync(join(dir, ".env"), "utf8")).toBe("FROM_ARCHIVE=1\n");
+		});
 	});
 });

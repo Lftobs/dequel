@@ -284,19 +284,22 @@ export const projectsRoutes = new Elysia()
 			const data = (await response.json()) as any;
 			if (data.status === "success" && data.data?.result?.[0]?.values) {
 				return ok({
-					resultType: "matrix",
-					result: [
-						{
-							metric: {},
-							values: data.data.result[0].values,
-						},
-					],
+					status: "success",
+					data: {
+						resultType: "matrix",
+						result: [
+							{
+								metric: {},
+								values: data.data.result[0].values,
+							},
+						],
+					},
 				});
 			}
-			return ok({ resultType: "matrix", result: [] });
+			return ok({ status: "success", data: { resultType: "matrix", result: [] } });
 		} catch (e) {
 			console.error("Loki query failed", e);
-			return ok({ resultType: "matrix", result: [] });
+			return ok({ status: "success", data: { resultType: "matrix", result: [] } });
 		}
 	})
 	.get("/projects/:id/request-logs/stream", async ({ params: { id }, request, set }) => {
