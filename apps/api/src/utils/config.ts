@@ -52,6 +52,7 @@ export const config = {
 	...SYSTEM,
 	databaseUrl,
 	caddyBaseDomain: withFile<string>("CADDY_BASE_DOMAIN", "localhost"),
+	caddyContainer: withFile<string>("CADDY_CONTAINER", "dequel-caddy-1"),
 	controlPlaneUrl: withFile<string>("CONTROL_PLANE_URL", ""),
 	agentTunnelUrl: withFile<string>("AGENT_TUNNEL_URL", ""),
 	envEncryptionKey,
