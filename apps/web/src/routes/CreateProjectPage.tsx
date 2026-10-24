@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, ArrowLeft, Rocket, Server } from "lucide-react";
+import { AlertCircle, ArrowLeft, GitBranch, LayoutTemplate, Rocket, Server } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as api from "../api/client";
 import { getGithubIntegration } from "../api/client";
@@ -11,6 +11,7 @@ import { DeploymentTargetSection, getDeploymentTargets } from "../components/pro
 import { EnvVarsSection, type StagedEnv } from "../components/project/create/EnvVarsSection";
 import { ProjectNameSection } from "../components/project/create/ProjectNameSection";
 import { SourceSelectionSection } from "../components/project/create/SourceSelectionSection";
+import { TemplateFlow } from "../components/templates/TemplateFlow";
 import { Button } from "../components/ui/button";
 import { useCreateProject } from "../hooks/useProjects";
 import type { CreateProjectInput, Server as DequelServer, GithubRepo } from "../types";
@@ -41,7 +42,7 @@ export function CreateProjectPage() {
 	// Form State
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
-	const [serverId, setServerId] = useState("local");
+	const [serverId, setServerId] = useState("auto");
 
 	// Build & Runtime Strategy State
 	const [buildType, setBuildType] = useState<"railpack" | "compose">("railpack");
@@ -75,6 +76,7 @@ export function CreateProjectPage() {
 	// Environment Variables State
 	const [stagedEnvs, setStagedEnvs] = useState<StagedEnv[]>([]);
 	const [stagedSharedVarIds, setStagedSharedVarIds] = useState<string[]>([]);
+	const [mode, setMode] = useState<"template" | "custom">("template");
 
 	// Status State
 	const [submittingStatus, setSubmittingStatus] = useState<
@@ -144,6 +146,9 @@ export function CreateProjectPage() {
 		clearError();
 	};
 
+	const navigateToDeployments = (projectId: string) =>
+		navigate({ to: "/project/$projectId", params: { projectId }, search: { tab: "deployments", section: undefined } });
+
 	const handleSubmit = async () => {
 		clearError();
 
@@ -177,7 +182,8 @@ export function CreateProjectPage() {
 			const projectPayload: CreateProjectInput = {
 				name: name.trim(),
 				description: description.trim() || undefined,
-				serverId: getDeploymentTargets(servers).some((s) => s.id === serverId) ? serverId : "local",
+				serverId:
+					serverId !== "auto" && getDeploymentTargets(servers).some((s) => s.id === serverId) ? serverId : undefined,
 				sourceType,
 				repoUrl: sourceType === "upload" ? undefined : repoUrl,
 				repoBranch: sourceType === "upload" ? undefined : repoBranch.trim() || undefined,
@@ -229,7 +235,11 @@ export function CreateProjectPage() {
 
 			setSubmittingStatus("done");
 			setTimeout(() => {
-				navigate({ to: "/project/$projectId", params: { projectId: project.id }, search: { tab: "deployments" } });
+				navigate({
+					to: "/project/$projectId",
+					params: { projectId: project.id },
+					search: { tab: "deployments", section: undefined },
+				});
 			}, 1000);
 		} catch (err: unknown) {
 			if (createdProjectId) {
@@ -261,162 +271,193 @@ export function CreateProjectPage() {
 					</Link>
 					<h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">New Project</h1>
 					<p className="text-xs sm:text-sm text-zinc-400 mt-1">
-						Deploy an application from Git or ZIP upload with automated routing, SSL, and scaling.
+						Deploy from a one-click template, Git, or ZIP upload with automated routing, SSL, and scaling.
 					</p>
 				</div>
 			</div>
 
-			<div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-				{/* Left Column: Form Configuration */}
-				<div className="lg:col-span-8 space-y-6">
-					{/* Source Selection (Git Provider vs ZIP Upload) */}
-					<SourceSelectionSection
-						sourceType={sourceType}
-						setSourceType={setSourceType}
-						selectedRepo={selectedRepo}
-						onSelectRepo={handleSelectRepo}
-						repoUrl={repoUrl}
-						setRepoUrl={updateRepoUrl}
-						repoBranch={repoBranch}
-						setRepoBranch={setRepoBranch}
-						showManualGit={showManualGit}
-						setShowManualGit={setShowManualGit}
-						githubConnected={githubConnected}
-						githubConfigured={githubConfigured}
-						zipFile={zipFile}
-						setZipFile={setZipFile}
-						onConnectGithub={async () => {
-							const res = await api.getGithubAuthUrl();
-							window.location.href = res.url;
-						}}
-						onDisconnectGithub={() => {
-							setGithubConnected(false);
-							setSelectedRepo(null);
-						}}
-					/>
+			<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:max-w-sm">
+				<button
+					type="button"
+					onClick={() => setMode("template")}
+					className={`flex items-center justify-center gap-2 h-11 rounded-xl border text-xs font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500/40 ${
+						mode === "template"
+							? "border-orange-500/60 bg-orange-500/10 text-white"
+							: "border-[#1c1c21] bg-[#121215] text-zinc-400 hover:border-[#26262e] hover:text-zinc-100"
+					}`}
+				>
+					<LayoutTemplate className="h-4 w-4" />
+					From a template
+				</button>
+				<button
+					type="button"
+					onClick={() => setMode("custom")}
+					className={`flex items-center justify-center gap-2 h-11 rounded-xl border text-xs font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500/40 ${
+						mode === "custom"
+							? "border-orange-500/60 bg-orange-500/10 text-white"
+							: "border-[#1c1c21] bg-[#121215] text-zinc-400 hover:border-[#26262e] hover:text-zinc-100"
+					}`}
+				>
+					<GitBranch className="h-4 w-4" />
+					Git or ZIP upload
+				</button>
+			</div>
 
-					{/* Project Details */}
-					<ProjectNameSection
-						name={name}
-						setName={updateName}
-						description={description}
-						setDescription={setDescription}
-					/>
+			{mode === "template" && <TemplateFlow onDeployed={navigateToDeployments} />}
 
-					{/* Deployment Target */}
-					<DeploymentTargetSection serverId={serverId} setServerId={setServerId} servers={servers} />
+			{mode === "custom" && (
+				<div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+					{/* Left Column: Form Configuration */}
+					<div className="lg:col-span-8 space-y-6">
+						{/* Source Selection (Git Provider vs ZIP Upload) */}
+						<SourceSelectionSection
+							sourceType={sourceType}
+							setSourceType={setSourceType}
+							selectedRepo={selectedRepo}
+							onSelectRepo={handleSelectRepo}
+							repoUrl={repoUrl}
+							setRepoUrl={updateRepoUrl}
+							repoBranch={repoBranch}
+							setRepoBranch={setRepoBranch}
+							showManualGit={showManualGit}
+							setShowManualGit={setShowManualGit}
+							githubConnected={githubConnected}
+							githubConfigured={githubConfigured}
+							zipFile={zipFile}
+							setZipFile={setZipFile}
+							onConnectGithub={async () => {
+								const res = await api.getGithubAuthUrl();
+								window.location.href = res.url;
+							}}
+							onDisconnectGithub={() => {
+								setGithubConnected(false);
+								setSelectedRepo(null);
+							}}
+						/>
 
-					{/* Build Strategy & Application Preset (with SVG logos) */}
-					<BuildStrategySection
-						buildType={buildType}
-						setBuildType={setBuildType}
-						projectType={projectType}
-						setProjectType={setProjectType}
-						selectedPresetId={selectedPresetId}
-						onSelectPreset={handleSelectPreset}
-						buildCommand={buildCommand}
-						setBuildCommand={setBuildCommand}
-						installCommand={installCommand}
-						setInstallCommand={setInstallCommand}
-						startCommand={startCommand}
-						setStartCommand={setStartCommand}
-						outputDir={outputDir}
-						setOutputDir={setOutputDir}
-						port={port}
-						setPort={setPort}
-						sourceDir={sourceDir}
-						setSourceDir={setSourceDir}
-						composeServicesList={composeServicesList}
-						addComposeServiceRow={addComposeServiceRow}
-						removeComposeServiceRow={removeComposeServiceRow}
-						updateComposeServiceRow={updateComposeServiceRow}
-					/>
+						{/* Project Details */}
+						<ProjectNameSection
+							name={name}
+							setName={updateName}
+							description={description}
+							setDescription={setDescription}
+						/>
 
-					{/* Environment Variables (with File Upload, Key-Value builder, and Bulk paste) */}
-					<EnvVarsSection
-						stagedEnvs={stagedEnvs}
-						setStagedEnvs={setStagedEnvs}
-						stagedSharedVarIds={stagedSharedVarIds}
-						setStagedSharedVarIds={setStagedSharedVarIds}
-					/>
+						{/* Deployment Target */}
+						<DeploymentTargetSection serverId={serverId} setServerId={setServerId} servers={servers} />
 
-					{/* Error Message Display */}
-					{errorMessage && (
-						<div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
-							<AlertCircle className="h-4 w-4 shrink-0" />
-							{errorStatus !== null && (
-								<span className="shrink-0 rounded-md bg-red-500/15 border border-red-500/40 px-1.5 py-0.5 font-mono font-bold text-[11px]">
-									HTTP {errorStatus}
-								</span>
-							)}
-							<span>{errorMessage}</span>
-						</div>
-					)}
-				</div>
+						{/* Build Strategy & Application Preset (with SVG logos) */}
+						<BuildStrategySection
+							buildType={buildType}
+							setBuildType={setBuildType}
+							projectType={projectType}
+							setProjectType={setProjectType}
+							selectedPresetId={selectedPresetId}
+							onSelectPreset={handleSelectPreset}
+							buildCommand={buildCommand}
+							setBuildCommand={setBuildCommand}
+							installCommand={installCommand}
+							setInstallCommand={setInstallCommand}
+							startCommand={startCommand}
+							setStartCommand={setStartCommand}
+							outputDir={outputDir}
+							setOutputDir={setOutputDir}
+							port={port}
+							setPort={setPort}
+							sourceDir={sourceDir}
+							setSourceDir={setSourceDir}
+							composeServicesList={composeServicesList}
+							addComposeServiceRow={addComposeServiceRow}
+							removeComposeServiceRow={removeComposeServiceRow}
+							updateComposeServiceRow={updateComposeServiceRow}
+						/>
 
-				{/* Right Column: Live Summary Sidebar */}
-				<div className="lg:col-span-4 space-y-4">
-					<div className="bg-[#0c0c0e] border border-[#1c1c21] p-5 rounded-2xl space-y-4 sticky top-6 shadow-xl">
-						<h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-							<Server className="h-4 w-4 text-orange-500" />
-							Deployment Summary
-						</h3>
+						{/* Environment Variables (with File Upload, Key-Value builder, and Bulk paste) */}
+						<EnvVarsSection
+							stagedEnvs={stagedEnvs}
+							setStagedEnvs={setStagedEnvs}
+							stagedSharedVarIds={stagedSharedVarIds}
+							setStagedSharedVarIds={setStagedSharedVarIds}
+						/>
 
-						<div className="space-y-3 text-xs">
-							<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-								<div className="text-[10px] text-zinc-400 font-bold uppercase">Project Name</div>
-								<div className="font-bold text-zinc-100 font-mono">{name || "—"}</div>
+						{/* Error Message Display */}
+						{errorMessage && (
+							<div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
+								<AlertCircle className="h-4 w-4 shrink-0" />
+								{errorStatus !== null && (
+									<span className="shrink-0 rounded-md bg-red-500/15 border border-red-500/40 px-1.5 py-0.5 font-mono font-bold text-[11px]">
+										HTTP {errorStatus}
+									</span>
+								)}
+								<span>{errorMessage}</span>
 							</div>
+						)}
+					</div>
 
-							<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-								<div className="text-[10px] text-zinc-400 font-bold uppercase">Code Provider</div>
-								<div className="font-bold text-emerald-400 uppercase">{sourceType}</div>
-							</div>
+					{/* Right Column: Live Summary Sidebar */}
+					<div className="lg:col-span-4 space-y-4">
+						<div className="bg-[#0c0c0e] border border-[#1c1c21] p-5 rounded-2xl space-y-4 sticky top-6 shadow-xl">
+							<h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+								<Server className="h-4 w-4 text-orange-500" />
+								Deployment Summary
+							</h3>
 
-							<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-								<div className="text-[10px] text-zinc-400 font-bold uppercase">Build Strategy</div>
-								<div className="font-bold text-amber-400 uppercase">{buildType}</div>
-							</div>
-
-							{buildType === "compose" ? (
+							<div className="space-y-3 text-xs">
 								<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-									<div className="text-[10px] text-zinc-400 font-bold uppercase">Compose Ingress</div>
-									<div className="text-zinc-300 font-mono text-[11px]">
-										{composeServicesList[0]?.serviceName.trim() || "Auto-detect"}{" "}
-										{composeServicesList[0]?.port.trim() ? `:${composeServicesList[0].port.trim()}` : ""}
-									</div>
+									<div className="text-[10px] text-zinc-400 font-bold uppercase">Project Name</div>
+									<div className="font-bold text-zinc-100 font-mono">{name || "—"}</div>
 								</div>
-							) : (
+
 								<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-									<div className="text-[10px] text-zinc-400 font-bold uppercase">Type & Port</div>
-									<div className="text-zinc-300 font-mono text-[11px]">
-										{projectType === "web" ? "Web Service" : "Static Site"} ({port || "3000"})
-									</div>
+									<div className="text-[10px] text-zinc-400 font-bold uppercase">Code Provider</div>
+									<div className="font-bold text-emerald-400 uppercase">{sourceType}</div>
 								</div>
-							)}
 
-							<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-								<div className="text-[10px] text-zinc-400 font-bold uppercase">Environment Vars</div>
-								<div className="text-zinc-300 font-mono text-[11px]">{stagedEnvs.length} variables</div>
+								<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
+									<div className="text-[10px] text-zinc-400 font-bold uppercase">Build Strategy</div>
+									<div className="font-bold text-amber-400 uppercase">{buildType}</div>
+								</div>
+
+								{buildType === "compose" ? (
+									<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
+										<div className="text-[10px] text-zinc-400 font-bold uppercase">Compose Ingress</div>
+										<div className="text-zinc-300 font-mono text-[11px]">
+											{composeServicesList[0]?.serviceName.trim() || "Auto-detect"}{" "}
+											{composeServicesList[0]?.port.trim() ? `:${composeServicesList[0].port.trim()}` : ""}
+										</div>
+									</div>
+								) : (
+									<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
+										<div className="text-[10px] text-zinc-400 font-bold uppercase">Type & Port</div>
+										<div className="text-zinc-300 font-mono text-[11px]">
+											{projectType === "web" ? "Web Service" : "Static Site"} ({port || "3000"})
+										</div>
+									</div>
+								)}
+
+								<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
+									<div className="text-[10px] text-zinc-400 font-bold uppercase">Environment Vars</div>
+									<div className="text-zinc-300 font-mono text-[11px]">{stagedEnvs.length} variables</div>
+								</div>
 							</div>
-						</div>
 
-						<Button
-							type="button"
-							onClick={handleSubmit}
-							disabled={!name.trim() || (submittingStatus !== "idle" && submittingStatus !== "error")}
-							className="w-full bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-bold h-11 text-xs rounded-xl shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 mt-4"
-						>
-							<Rocket className="h-4 w-4" />
-							{submittingStatus === "error"
-								? "Retry Deployment"
-								: submittingStatus === "idle"
-									? "Launch Deployment"
-									: "Deploying..."}
-						</Button>
+							<Button
+								type="button"
+								onClick={handleSubmit}
+								disabled={!name.trim() || (submittingStatus !== "idle" && submittingStatus !== "error")}
+								className="w-full bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-bold h-11 text-xs rounded-xl shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 mt-4"
+							>
+								<Rocket className="h-4 w-4" />
+								{submittingStatus === "error"
+									? "Retry Deployment"
+									: submittingStatus === "idle"
+										? "Launch Deployment"
+										: "Deploying..."}
+							</Button>
+						</div>
 					</div>
 				</div>
-			</div>
+			)}
 
 			<CreationStatusOverlay
 				submittingStatus={submittingStatus}

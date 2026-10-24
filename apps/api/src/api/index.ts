@@ -1,6 +1,5 @@
 import { Elysia } from "elysia";
 import { fixdiagRoutes } from "../fixdiag/routes";
-import { rateLimitMiddleware } from "./rate-limit";
 import { agentRoutes } from "./agents";
 import { alertsRoutes } from "./alerts";
 import { apiKeysRoutes } from "./api-keys";
@@ -15,8 +14,10 @@ import { envVarsRoutes } from "./env-vars";
 import { githubRoutes } from "./github";
 import { healthRoutes } from "./health";
 import { projectsRoutes } from "./projects";
+import { projectComposeRoutes } from "./projects/compose";
 import { projectStatusRoutes } from "./projects/status";
 import { prometheusRoutes } from "./prometheus";
+import { rateLimitMiddleware } from "./rate-limit";
 import { fail } from "./response";
 import { routesRoutes } from "./routes";
 import { scalingRoutes } from "./scaling";
@@ -26,6 +27,7 @@ import { settingsRoutes } from "./settings";
 import { llmSettingsRoutes } from "./settings/llm";
 import { sharedEnvLinksRoutes, sharedEnvVarsRoutes } from "./shared-env-vars";
 import { sshKeysRoutes } from "./ssh-keys";
+import { templateRoutes } from "./templates";
 import { volumesRoutes } from "./volumes";
 
 const INTERNAL_ERROR =
@@ -62,7 +64,9 @@ export const apiRoutes = new Elysia({
 	.use(agentRoutes)
 	.use(healthRoutes)
 	.use(projectsRoutes)
+	.use(projectComposeRoutes)
 	.use(projectStatusRoutes)
+	.use(templateRoutes)
 	.use(deploymentsRoutes)
 	.use(envVarsRoutes)
 	.use(sharedEnvVarsRoutes)

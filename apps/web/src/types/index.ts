@@ -102,6 +102,7 @@ export interface Volume {
 	sizeMb: number | null;
 	dockerVolumeName: string | null;
 	createdAt: string;
+	managed?: boolean;
 }
 
 export interface Database {
@@ -337,4 +338,29 @@ export interface TableInfo {
 	name: string;
 	rowCount?: number;
 	type?: string;
+}
+
+export interface TemplateVarMeta {
+	key: string;
+	label: string;
+	description?: string;
+	default?: string;
+	secret: boolean;
+	required: boolean;
+}
+
+export interface DeployTemplateMeta {
+	key: string;
+	name: string;
+	description: string;
+	category: string;
+	docsUrl?: string;
+	service: string;
+	port: number;
+	vars: TemplateVarMeta[];
+}
+
+export interface TemplateDeployResult {
+	project: { id: string };
+	deployment: { id: string };
 }
