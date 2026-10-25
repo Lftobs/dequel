@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import type { CreateEnvironmentVariableInput, EnvVarScope, EnvironmentVariable } from "../../types";
+import type { CreateEnvironmentVariableInput, EnvironmentVariable, EnvVarScope } from "../../types";
 import { config } from "../../utils/config";
 import { decryptValue, encryptValue } from "../../utils/crypto";
 import { getDb } from "../db-provider";
