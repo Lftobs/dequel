@@ -1,4 +1,5 @@
-import { Play, Rocket, Webhook } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Layers, Play, Rocket, Webhook } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { getRepoHooks, registerRepoHook, removeRepoHook } from "../../../api/client";
@@ -15,9 +16,9 @@ import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Input } from "../../ui/input";
 import { ClearCacheToggle } from "./clear-cache-toggle";
-import { SwitchToGitCard } from "./SwitchToGitCard";
 import { DeploymentHistory } from "./deployment-history";
 import { ManualDeployDialog } from "./manual-deploy-dialog";
+import { SwitchToGitCard } from "./SwitchToGitCard";
 
 const PAGE_SIZE = 5;
 
@@ -26,6 +27,7 @@ interface DeploymentsTabProps {
 }
 
 export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
+	const navigate = useNavigate();
 	const { data: project } = useProject(projectId);
 	const [page, setPage] = useState(0);
 	const { data, isLoading } = useDeployments(projectId, page, PAGE_SIZE);
@@ -204,7 +206,40 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 						</div>
 					)}
 
-					{sourceType === "git" ? (
+					{project?.buildType === "compose" && !project?.repoUrl ? (
+						<div className="space-y-4">
+							<div className="p-4 rounded-lg bg-[#141417]/50 border border-[#222227] space-y-3">
+								<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+									<div className="space-y-1 min-w-0">
+										<div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+											Docker Compose Stack
+										</div>
+										<div className="text-sm text-zinc-200">
+											Primary Service:{" "}
+											<span className="font-mono text-primary font-semibold">
+												{(project as any).composeService || "auto-detect"}
+											</span>
+											{(project as any).composePort && (
+												<span className="text-xs text-muted-foreground ml-2 font-mono">
+													(:{(project as any).composePort})
+												</span>
+											)}
+										</div>
+										<div className="text-xs text-muted-foreground">
+											Update and manage services, ports, and docker-compose.yml configuration in Project Settings.
+										</div>
+									</div>
+									<Button
+										type="button"
+										onClick={() => navigate({ search: { tab: "settings", section: "compose" } as any })}
+										className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-8 px-4 rounded-lg shadow-md flex items-center justify-center gap-1.5 shrink-0"
+									>
+										<Layers className="h-3.5 w-3.5" /> Manage Compose
+									</Button>
+								</div>
+							</div>
+						</div>
+					) : sourceType === "git" ? (
 						<div className="space-y-4">
 							<div className="p-4 rounded-lg bg-[#141417]/50 border border-[#222227] space-y-3">
 								<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

@@ -132,7 +132,12 @@ export function VolumesTab({ projectId }: VolumesTabProps) {
 					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 						<div>
 							<h2 className="text-lg font-semibold text-foreground">Persistent Volumes</h2>
-							<p className="text-sm text-muted-foreground">Disk volumes mounted to container runtimes.</p>
+							<p className="text-sm text-muted-foreground">
+								Disk volumes mounted to container runtimes.
+								{volumes.some((v) => v.managed)
+									? " Volumes marked Compose belong to the project's Docker Compose stack."
+									: ""}
+							</p>
 						</div>
 						<Button
 							onClick={() => setIsAddOpen(true)}
@@ -147,17 +152,24 @@ export function VolumesTab({ projectId }: VolumesTabProps) {
 							{volumes.map((v) => (
 								<div key={v.id} className="p-3.5 space-y-2">
 									<div className="flex items-center justify-between gap-2">
-										<span className="font-mono text-sm font-semibold text-foreground break-all">
-											{v.mountPath}
-										</span>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-											onClick={() => setDeletingVolId(v.id)}
-										>
-											<Trash2 className="h-3.5 w-3.5" />
-										</Button>
+										<div className="flex items-center gap-2 min-w-0">
+											<span className="font-mono text-sm font-semibold text-foreground break-all">{v.mountPath}</span>
+											{v.managed ? (
+												<span className="inline-flex shrink-0 items-center rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+													Compose
+												</span>
+											) : null}
+										</div>
+										{!v.managed ? (
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+												onClick={() => setDeletingVolId(v.id)}
+											>
+												<Trash2 className="h-3.5 w-3.5" />
+											</Button>
+										) : null}
 									</div>
 									<div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
 										<span className="truncate max-w-[180px]">{v.dockerVolumeName ?? "—"}</span>
@@ -181,7 +193,14 @@ export function VolumesTab({ projectId }: VolumesTabProps) {
 									{volumes.map((v) => (
 										<TableRow key={v.id} className="border-border hover:bg-[#121217]/30 group transition-all">
 											<TableCell className="font-mono text-sm py-3.5 font-semibold text-foreground">
-												{v.mountPath}
+												<div className="flex items-center gap-2">
+													{v.mountPath}
+													{v.managed ? (
+														<span className="inline-flex shrink-0 items-center rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+															Compose
+														</span>
+													) : null}
+												</div>
 											</TableCell>
 											<TableCell className="font-mono text-xs py-3.5 text-muted-foreground/75">
 												{v.dockerVolumeName ?? "—"}
@@ -194,14 +213,16 @@ export function VolumesTab({ projectId }: VolumesTabProps) {
 												})}
 											</TableCell>
 											<TableCell className="py-3.5 pr-6 text-right">
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all opacity-80 group-hover:opacity-100"
-													onClick={() => setDeletingVolId(v.id)}
-												>
-													<Trash2 className="h-3.5 w-3.5" />
-												</Button>
+												{!v.managed ? (
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all opacity-80 group-hover:opacity-100"
+														onClick={() => setDeletingVolId(v.id)}
+													>
+														<Trash2 className="h-3.5 w-3.5" />
+													</Button>
+												) : null}
 											</TableCell>
 										</TableRow>
 									))}
@@ -222,10 +243,14 @@ export function VolumesTab({ projectId }: VolumesTabProps) {
 					</DialogHeader>
 					<form onSubmit={add} className="space-y-4 pt-2">
 						<div className="grid gap-2">
-							<label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+							<label
+								htmlFor="new-volume-mount-path"
+								className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+							>
 								Mount Path (inside container)
 							</label>
 							<Input
+								id="new-volume-mount-path"
 								placeholder="e.g. /app/data"
 								value={mountPath}
 								onChange={(e) => setMountPath(e.target.value)}

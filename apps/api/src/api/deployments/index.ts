@@ -23,7 +23,7 @@ import { terminateWithEscalation } from "../../utils/process-exec";
 import { isPrivateGitUrl } from "../../utils/validate";
 import { created, fail, ok } from "../response";
 
-const dispatchDeployment = async (
+export const dispatchDeployment = async (
 	deployment: Awaited<ReturnType<typeof createDeployment>>,
 	project: Awaited<ReturnType<typeof getProjectById>>,
 	server: Awaited<ReturnType<typeof getServerById>>,
@@ -217,9 +217,9 @@ export const deploymentsRoutes = new Elysia()
 			set.status = 404;
 			return fail("Deployment not found");
 		}
-		if (original.status !== "running") {
+		if (original.status === "pending" || original.status === "building" || original.status === "deploying") {
 			set.status = 400;
-			return fail("Can only redeploy the currently running deployment");
+			return fail("Cannot redeploy an in-progress deployment");
 		}
 		if (original.sourceType === "image") {
 			set.status = 400;
@@ -233,11 +233,16 @@ export const deploymentsRoutes = new Elysia()
 			set.status = 400;
 			return fail("Selected deployment server does not exist");
 		}
+		let sourceRef = original.sourceRef;
+		if (original.sourceType === "upload" && project?.buildType === "compose") {
+			const { ensureValidComposeArchive } = await import("../projects/compose");
+			sourceRef = await ensureValidComposeArchive(project, original.sourceRef);
+		}
 		const deployment = await createDeployment({
 			projectId: original.projectId || undefined,
 			serverId: original.serverId,
 			sourceType: original.sourceType,
-			sourceRef: original.sourceRef,
+			sourceRef,
 			branch: original.branch || project?.repoBranch || undefined,
 			environment: original.environment || undefined,
 		});

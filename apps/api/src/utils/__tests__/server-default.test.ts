@@ -81,6 +81,22 @@ describe("pickBestServer", () => {
 		expect(await pickBestServer(null, "a")).toBe("b");
 	});
 
+	it("weights free memory over cpu at equal project counts", async () => {
+		servers = [
+			{ id: "a", mode: "ssh", status: "connected", cpuUsedPercent: 5, memoryTotalMb: 8192, memoryUsedMb: 7500 },
+			{ id: "b", mode: "ssh", status: "connected", cpuUsedPercent: 95, memoryTotalMb: 8192, memoryUsedMb: 500 },
+		];
+		expect(await pickBestServer()).toBe("b");
+	});
+
+	it("avoids memory-saturated servers even at low cpu", async () => {
+		servers = [
+			{ id: "a", mode: "ssh", status: "connected", cpuUsedPercent: 5, memoryTotalMb: 8192, memoryUsedMb: 7500 },
+			{ id: "b", mode: "ssh", status: "connected", cpuUsedPercent: 80 },
+		];
+		expect(await pickBestServer()).toBe("b");
+	});
+
 	it("filters candidates by mode", async () => {
 		servers = [
 			{ id: "a", mode: "ssh", status: "connected", cpuUsedPercent: 10 },

@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, History, RefreshCw } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { ChevronLeft, ChevronRight, ExternalLink, History, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../../lib/utils";
 import { StatusBadge } from "../../StatusBadge";
@@ -37,6 +38,7 @@ export function DeploymentHistory({
 	onCancel,
 	onDelete,
 }: DeploymentHistoryProps) {
+	const navigate = useNavigate();
 	const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 	const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
 
@@ -47,6 +49,8 @@ export function DeploymentHistory({
 			<div className="rounded-xl border border-border bg-card overflow-hidden">
 				<div className="md:hidden divide-y divide-border">
 					{deployments.map((dep) => (
+						// biome-ignore lint/a11y/noStaticElementInteractions: selection card with nested interactive buttons
+						// biome-ignore lint/a11y/useKeyWithClickEvents: selection card with nested interactive buttons
 						<div
 							key={dep.id}
 							onClick={() => onSelect(selectedId === dep.id ? null : dep.id)}
@@ -64,13 +68,16 @@ export function DeploymentHistory({
 										</span>
 									)}
 								</div>
-								<div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+								<div className="flex items-center gap-1 shrink-0">
 									{dep.status === "running" && dep.imageTag && dep.sourceType !== "image" && (
 										<Button
 											variant="ghost"
 											size="icon"
 											className="h-8 w-8 text-muted-foreground"
-											onClick={() => onRedeploy(dep.id)}
+											onClick={(e) => {
+												e.stopPropagation();
+												onRedeploy(dep.id);
+											}}
 											title="Redeploy"
 										>
 											<RefreshCw className="h-3.5 w-3.5" />
@@ -81,23 +88,42 @@ export function DeploymentHistory({
 											variant="ghost"
 											size="icon"
 											className="h-8 w-8 text-red-500 hover:text-red-400"
-											onClick={() => setCancelConfirmId(dep.id)}
+											onClick={(e) => {
+												e.stopPropagation();
+												setCancelConfirmId(dep.id);
+											}}
 											title="Cancel deployment"
 										>
-											<svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+											<svg
+												className="h-3.5 w-3.5"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												strokeWidth="2"
+												strokeLinecap="round"
+												strokeLinejoin="round"
+											>
+												<title>Cancel deployment</title>
+												<circle cx="12" cy="12" r="10" />
+												<line x1="8" y1="12" x2="16" y2="12" />
+											</svg>
 										</Button>
 									)}
-									{dep.imageTag && dep.status !== "running" && dep.status !== "pending" && dep.status !== "building" && dep.status !== "deploying" && (
-										<Button
-											variant="ghost"
-											size="icon"
-											className="h-8 w-8 text-muted-foreground"
-											onClick={() => onRollback(dep.id)}
-											title="Rollback"
-										>
-											<History className="h-3.5 w-3.5" />
-										</Button>
-									)}
+									{dep.imageTag &&
+										dep.status !== "running" &&
+										dep.status !== "pending" &&
+										dep.status !== "building" &&
+										dep.status !== "deploying" && (
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8 text-muted-foreground"
+												onClick={() => onRollback(dep.id)}
+												title="Rollback"
+											>
+												<History className="h-3.5 w-3.5" />
+											</Button>
+										)}
 									{dep.status !== "running" && (
 										<Button
 											variant="ghost"
@@ -106,9 +132,37 @@ export function DeploymentHistory({
 											onClick={() => setDeleteConfirmId(dep.id)}
 											title="Delete deployment"
 										>
-											<svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+											<svg
+												className="h-3.5 w-3.5"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												strokeWidth="2"
+												strokeLinecap="round"
+												strokeLinejoin="round"
+											>
+												<title>Delete deployment</title>
+												<polyline points="3 6 5 6 21 6" />
+												<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+											</svg>
 										</Button>
 									)}
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-8 w-8 text-muted-foreground hover:text-foreground"
+										onClick={() => {
+											if (dep.projectId) {
+												navigate({
+													to: "/project/$projectId/deployments/$deploymentId",
+													params: { projectId: dep.projectId, deploymentId: dep.id },
+												});
+											}
+										}}
+										title="View deployment details"
+									>
+										<ExternalLink className="h-3.5 w-3.5" />
+									</Button>
 								</div>
 							</div>
 
@@ -116,15 +170,15 @@ export function DeploymentHistory({
 								<span className="font-mono text-zinc-300 truncate max-w-[180px]">
 									{depDisplayName(projectName, dep.id)}
 								</span>
-								<span className="text-[11px] text-zinc-500 font-mono">
-									{formatTimeAgo(dep.createdAt)}
-								</span>
+								<span className="text-[11px] text-zinc-500 font-mono">{formatTimeAgo(dep.createdAt)}</span>
 							</div>
 
 							<div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">
 								<div className="flex items-center gap-2">
 									{dep.branch ? (
-										<Badge variant="outline" className="text-[10px] px-1.5 py-0">{dep.branch}</Badge>
+										<Badge variant="outline" className="text-[10px] px-1.5 py-0">
+											{dep.branch}
+										</Badge>
 									) : null}
 									<span className="text-[11px] capitalize">{dep.sourceType}</span>
 								</div>
@@ -217,6 +271,7 @@ export function DeploymentHistory({
 														strokeLinecap="round"
 														strokeLinejoin="round"
 													>
+														<title>Cancel deployment</title>
 														<circle cx="12" cy="12" r="10" />
 														<line x1="8" y1="12" x2="16" y2="12" />
 													</svg>
@@ -260,11 +315,29 @@ export function DeploymentHistory({
 														strokeLinecap="round"
 														strokeLinejoin="round"
 													>
+														<title>Delete deployment</title>
 														<polyline points="3 6 5 6 21 6" />
 														<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
 													</svg>
 												</Button>
 											)}
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-7 w-7 text-muted-foreground hover:text-foreground"
+												onClick={(e) => {
+													e.stopPropagation();
+													if (dep.projectId) {
+														navigate({
+															to: "/project/$projectId/deployments/$deploymentId",
+															params: { projectId: dep.projectId, deploymentId: dep.id },
+														});
+													}
+												}}
+												title="View deployment details"
+											>
+												<ExternalLink className="h-3.5 w-3.5" />
+											</Button>
 										</div>
 									</TableCell>
 								</TableRow>

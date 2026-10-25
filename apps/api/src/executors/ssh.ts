@@ -6,7 +6,7 @@ import { config } from "../utils/config";
 import { CANCELLED_FAILURE_REASON } from "../utils/failure-outcome";
 import { RemoteScriptAbortedError, removeRemoteCaddyRoute, runRemoteScript, syncRemoteCaddyRoute } from "../utils/ssh";
 import { emitLog } from "./logging";
-import { buildRemoteDeployScript, parseRemoteBuildResult } from "./ssh-build-script";
+import { buildRemoteDeployScript, cleanupRemoteWorkspace, parseRemoteBuildResult } from "./ssh-build-script";
 import {
 	buildRemoteComposeDestroyScript,
 	buildRemoteComposeScript,
@@ -171,7 +171,7 @@ const deployComposeRemote = async (deployment: Deployment, project: Project, ser
 	}
 
 	const { buildCaddySnippet } = await import("../utils/domain-verifier");
-	const { shouldRouteViaIngress, syncIngressRoute, upsertIngressRoute } = await import("../utils/ingress");
+	const { shouldRouteViaIngress } = await import("../utils/ingress");
 	const { baseDomainFor } = await import("../utils/routes");
 	const { getIngressServer } = await import("../utils/ingress");
 	const { upsertRoute } = await import("../db/repo");
@@ -188,7 +188,7 @@ const deployComposeRemote = async (deployment: Deployment, project: Project, ser
 	if (!snippet.trim() || snippet.trim().startsWith(":")) {
 		const fallbackDomain = `${slug}.${rawBaseDomain === "localhost" ? "localhost" : rawBaseDomain}`;
 		const domain = rawBaseDomain === "localhost" ? `${fallbackDomain}:80` : fallbackDomain;
-		snippet = `${domain} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${primary.container}:${primary.port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+		snippet = `${domain} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${primary.container}:${primary.port}\n}\n`;
 	}
 	const { isDbServiceName } = await import("../utils/compose-ingress");
 	for (const svc of webServices) {
@@ -204,7 +204,7 @@ const deployComposeRemote = async (deployment: Deployment, project: Project, ser
 				domains.push(`api.${slug}.${baseDomainForCaddy}`);
 			}
 		}
-		snippet += `\n${domains.join(", ")} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${svc.container}:${svc.port} {\n    header_up Host {upstream_hostport}\n  }\n}\n`;
+		snippet += `\n${domains.join(", ")} {\n  log {\n    output stdout\n    format json\n  }\n  reverse_proxy ${svc.container}:${svc.port}\n}\n`;
 	}
 
 	const hostname = `${slug}.${baseDomainFor()}`;
@@ -395,6 +395,7 @@ export const sshExecutor: DeploymentExecutor = {
 			}
 		} finally {
 			remoteBuilds.delete(deployment.id);
+			await cleanupRemoteWorkspace(server, deployment.id);
 		}
 	},
 

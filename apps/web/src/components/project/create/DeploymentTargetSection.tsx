@@ -1,4 +1,4 @@
-import { Laptop, Server } from "lucide-react";
+import { Laptop, Layers, Server } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import type { Server as DequelServer } from "../../../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
@@ -32,6 +32,13 @@ export function DeploymentTargetSelect({ serverId, setServerId, servers }: Deplo
 						<SelectValue placeholder="Select a deployment server" />
 					</SelectTrigger>
 					<SelectContent className="bg-[#141418] border-[#222227] text-zinc-200">
+						<SelectItem value="auto">
+							<span className="flex items-center gap-2">
+								<Layers className="h-3.5 w-3.5 text-amber-500" />
+								<span className="font-medium">Auto</span>
+								<span className="text-zinc-500 text-xs">- picks the server with the most free resources</span>
+							</span>
+						</SelectItem>
 						{targets.map((s) => (
 							<SelectItem key={s.id} value={s.id}>
 								<span className="flex items-center gap-2">

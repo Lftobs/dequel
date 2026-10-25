@@ -4,6 +4,7 @@ import type {
 	ApiKey,
 	CreateProjectInput,
 	Deployment,
+	DeployTemplateMeta,
 	DiagRun,
 	DiagStage,
 	Domain,
@@ -16,6 +17,7 @@ import type {
 	ScalingPolicy,
 	Server,
 	SmtpSettingsStatus,
+	TemplateDeployResult,
 	Volume,
 } from "../types";
 import { apiFetch, BASE } from "./http";
@@ -54,6 +56,28 @@ export const deleteProject = (id: string) =>
 		method: "DELETE",
 	});
 
+export const getProjectCompose = (id: string) =>
+	apiFetch<{
+		compose: string;
+		composeService?: string | null;
+		composePort?: number | null;
+		composeServices?: any;
+	}>(`/projects/${id}/compose`);
+
+export const updateProjectCompose = (
+	id: string,
+	data: {
+		compose: string;
+		composeService?: string;
+		composePort?: number;
+		composeServices?: string;
+	},
+) =>
+	apiFetch<{ project: Project; deployment: Deployment }>(`/projects/${id}/compose`, {
+		method: "PUT",
+		body: JSON.stringify(data),
+	});
+
 // Deployments
 export const listDeployments = (projectId?: string, offset = 0, limit = 50) => {
 	const params = new URLSearchParams();
@@ -72,6 +96,18 @@ export const createDeployment = (form: FormData) =>
 	apiFetch<Deployment>("/deployments", {
 		method: "POST",
 		body: form,
+	});
+
+// Templates
+export const listTemplates = () => apiFetch<DeployTemplateMeta[]>("/templates");
+export const getTemplate = (key: string) => apiFetch<DeployTemplateMeta>(`/templates/${key}`);
+export const deployTemplate = (
+	key: string,
+	data: { name?: string; values?: Record<string, string>; serverId?: string },
+) =>
+	apiFetch<TemplateDeployResult>(`/templates/${key}/deployments`, {
+		method: "POST",
+		body: JSON.stringify(data),
 	});
 export const rollbackDeployment = (id: string) =>
 	apiFetch<Deployment>(`/deployments/${id}/rollback`, { method: "POST" });

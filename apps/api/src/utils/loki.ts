@@ -3,7 +3,7 @@ import { config } from "./config";
 import { slugify } from "./routes";
 
 const LOKI_URL = "http://loki:3100";
-const CADDY_LOG_STREAM = '{container="dequel-caddy-1"}';
+const caddyLogStream = (): string => `{container="${config.caddyContainer}"}`;
 
 export const buildProjectRequestHostRegex = async (projectId: string): Promise<string> => {
 	const project = await getProjectById(projectId);
@@ -22,7 +22,7 @@ export const buildProjectRequestHostRegex = async (projectId: string): Promise<s
 };
 
 export const caddyRequestLogSelector = (hostRegex: string): string =>
-	`${CADDY_LOG_STREAM} | json | request_host =~ "^(${hostRegex})$"`;
+	`${caddyLogStream()} | json | request_host =~ "^(${hostRegex})$"`;
 
 export const lokiInstantQuery = async (query: string, timeoutMs = 5000): Promise<unknown | null> => {
 	const url = `${LOKI_URL}/loki/api/v1/query?query=${encodeURIComponent(query)}`;

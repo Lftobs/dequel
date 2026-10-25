@@ -1,5 +1,5 @@
 import { config } from "./config";
-import { buildProjectRequestHostRegex } from "./loki";
+import { buildProjectRequestHostRegex, caddyRequestLogSelector } from "./loki";
 import { slugify } from "./routes";
 
 interface GrafanaDashboard {
@@ -16,41 +16,15 @@ interface GrafanaDashboard {
 	overwrite: boolean;
 }
 
-let sessionCookie: string | null = null;
-let sessionExpires = 0;
-
-async function grafanaLogin(): Promise<string | null> {
-	if (sessionCookie && Date.now() < sessionExpires) {
-		return sessionCookie;
-	}
-	try {
-		const res = await fetch(`${config.grafanaUrl}/login`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				user: config.grafanaUser,
-				password: config.grafanaPass,
-			}),
-		});
-		const setCookie = res.headers.get("set-cookie");
-		if (!setCookie) return null;
-		sessionCookie = setCookie.split(";")[0];
-		sessionExpires = Date.now() + 60 * 60 * 1000;
-		return sessionCookie;
-	} catch {
-		return null;
-	}
-}
+const grafanaAuth = (): string => `Basic ${btoa(`${config.grafanaUser}:${config.grafanaPass}`)}`;
 
 async function grafanaPost(path: string, body: unknown): Promise<unknown | null> {
-	const cookie = await grafanaLogin();
-	if (!cookie) return null;
 	try {
 		const res = await fetch(`${config.grafanaUrl}/api${path}`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				Cookie: cookie,
+				Authorization: grafanaAuth(),
 			},
 			body: JSON.stringify(body),
 		});
@@ -104,7 +78,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [$__range]))`,
+							expr: `sum(count_over_time(${caddyRequestLogSelector(regexEscaped)} [$__range]))`,
 							refId: "A",
 						},
 					],
@@ -136,7 +110,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `(sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 100 and status < 400 [$__range])) / sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [$__range])) * 100) or 0`,
+							expr: `(sum(count_over_time(${caddyRequestLogSelector(regexEscaped)} | status >= 100 and status < 400 [$__range])) / sum(count_over_time(${caddyRequestLogSelector(regexEscaped)} [$__range])) * 100) or 0`,
 							refId: "A",
 						},
 					],
@@ -168,7 +142,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `avg_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | unwrap duration [$__range])`,
+							expr: `avg_over_time(${caddyRequestLogSelector(regexEscaped)} | unwrap duration [$__range])`,
 							refId: "A",
 						},
 					],
@@ -193,7 +167,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [2m]))`,
+							expr: `sum(count_over_time(${caddyRequestLogSelector(regexEscaped)} [2m]))`,
 							refId: "A",
 						},
 					],
@@ -225,7 +199,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `(sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 100 and status < 400 [2m])) / sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [2m])) * 100) or 0`,
+							expr: `(sum(count_over_time(${caddyRequestLogSelector(regexEscaped)} | status >= 100 and status < 400 [2m])) / sum(count_over_time(${caddyRequestLogSelector(regexEscaped)} [2m])) * 100) or 0`,
 							refId: "A",
 						},
 					],
@@ -250,7 +224,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 100 and status < 300 [2m]))`,
+							expr: `sum(count_over_time(${caddyRequestLogSelector(regexEscaped)} | status >= 100 and status < 300 [2m]))`,
 							refId: "A",
 						},
 					],
@@ -275,7 +249,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 300 and status < 400 [2m]))`,
+							expr: `sum(count_over_time(${caddyRequestLogSelector(regexEscaped)} | status >= 300 and status < 400 [2m]))`,
 							refId: "A",
 						},
 					],
@@ -300,7 +274,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 400 and status < 500 [2m]))`,
+							expr: `sum(count_over_time(${caddyRequestLogSelector(regexEscaped)} | status >= 400 and status < 500 [2m]))`,
 							refId: "A",
 						},
 					],
@@ -325,7 +299,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 500 [2m]))`,
+							expr: `sum(count_over_time(${caddyRequestLogSelector(regexEscaped)} | status >= 500 [2m]))`,
 							refId: "A",
 						},
 					],
@@ -351,7 +325,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `sum(rate({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [$__interval])) by (request_host)`,
+							expr: `sum(rate(${caddyRequestLogSelector(regexEscaped)} [$__interval])) by (request_host)`,
 							legendFormat: "{{request_host}}",
 							refId: "A",
 						},
@@ -372,7 +346,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `sum(rate({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [$__interval])) by (status)`,
+							expr: `sum(rate(${caddyRequestLogSelector(regexEscaped)} [$__interval])) by (status)`,
 							legendFormat: "HTTP {{status}}",
 							refId: "A",
 						},
@@ -393,7 +367,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `sum(count_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" [$__interval]))`,
+							expr: `sum(count_over_time(${caddyRequestLogSelector(regexEscaped)} [$__interval]))`,
 							legendFormat: "Requests",
 							refId: "A",
 						},
@@ -420,25 +394,25 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `quantile_over_time(0.99, {container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | unwrap duration [$__interval])`,
+							expr: `quantile_over_time(0.99, ${caddyRequestLogSelector(regexEscaped)} | unwrap duration [$__interval])`,
 							legendFormat: "p99",
 							refId: "A",
 						},
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `quantile_over_time(0.95, {container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | unwrap duration [$__interval])`,
+							expr: `quantile_over_time(0.95, ${caddyRequestLogSelector(regexEscaped)} | unwrap duration [$__interval])`,
 							legendFormat: "p95",
 							refId: "B",
 						},
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `quantile_over_time(0.50, {container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | unwrap duration [$__interval])`,
+							expr: `quantile_over_time(0.50, ${caddyRequestLogSelector(regexEscaped)} | unwrap duration [$__interval])`,
 							legendFormat: "p50 (median)",
 							refId: "C",
 						},
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `avg_over_time({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | unwrap duration [$__interval])`,
+							expr: `avg_over_time(${caddyRequestLogSelector(regexEscaped)} | unwrap duration [$__interval])`,
 							legendFormat: "Average",
 							refId: "D",
 						},
@@ -453,7 +427,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `log_histogram({container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | unwrap duration [$__interval])`,
+							expr: `log_histogram(${caddyRequestLogSelector(regexEscaped)} | unwrap duration [$__interval])`,
 							refId: "A",
 						},
 					],
@@ -554,7 +528,7 @@ export async function ensureProjectDashboard(
 					targets: [
 						{
 							datasource: { type: "loki", uid: "loki" },
-							expr: `{container="dequel-caddy-1"} | json | request_host =~ "^(${regexEscaped})$" | status >= 400`,
+							expr: `${caddyRequestLogSelector(regexEscaped)} | status >= 400`,
 							refId: "A",
 						},
 					],

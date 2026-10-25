@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import type { Server } from "../types";
 import { dockerBin } from "../utils/docker-bin";
@@ -203,7 +204,6 @@ const spawnComposeCommand = (
 	signal?: AbortSignal,
 ): Promise<{ code: number; stdout: string; stderr: string }> => {
 	return new Promise((resolve, reject) => {
-		const isPosix = process.platform !== "win32";
 		const child = spawn(dockerBin, ["compose", ...args], {
 			cwd,
 			env: { ...process.env, ...(envVars || {}) },
@@ -279,6 +279,21 @@ const spawnComposeCommand = (
 	});
 };
 
+const dotenvValue = (value: string): string =>
+	`"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\$/g, "$$$$").replace(/\r?\n/g, "\\n")}"`;
+
+const writeComposeEnvFile = async (
+	cwd: string,
+	envVars: Record<string, string> | undefined,
+	onLog: (line: string) => Promise<void>,
+): Promise<void> => {
+	const entries = Object.entries(envVars ?? {}).filter(([key]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key));
+	if (entries.length === 0 || existsSync(join(cwd, ".env"))) return;
+	const content = entries.map(([key, value]) => `${key}=${dotenvValue(value)}`).join("\n");
+	await writeFile(join(cwd, ".env"), `${content}\n`);
+	await onLog(`Wrote ${entries.length} environment variables to .env`);
+};
+
 export const buildWithCompose = async (
 	workspacePath: string,
 	projectName: string,
@@ -293,6 +308,7 @@ export const buildWithCompose = async (
 	}
 
 	const cwd = dirname(composeFile);
+	await writeComposeEnvFile(cwd, envVars, onLog);
 	await onLog(`Starting Docker Compose build (project: ${projectName})...`);
 
 	const res = await spawnComposeCommand(["-f", composeFile, "-p", projectName, "build"], cwd, envVars, onLog, signal);
@@ -318,6 +334,7 @@ export const deployWithCompose = async (
 	}
 
 	const cwd = dirname(composeFile);
+	await writeComposeEnvFile(cwd, envVars, onLog);
 	await onLog(`Starting Docker Compose services (project: ${projectName})...`);
 
 	const args = ["-f", composeFile];
@@ -361,4 +378,65 @@ export const getComposeContainerNames = async (projectName: string): Promise<Map
 
 const runDocker = (args: string[]): Promise<{ code: number; stdout: string; stderr: string }> => {
 	return safeSpawn(dockerBin, args, { timeoutMs: 60_000 });
+};
+
+export interface ComposeContainerState {
+	container: string;
+	status: string | null;
+}
+
+export type ComposeContainerVerdict =
+	| { kind: "ok" }
+	| { kind: "retry"; reason: string }
+	| { kind: "fatal"; reason: string };
+
+export const evaluateComposeContainerState = (
+	container: string,
+	status: string | null,
+	{ primary, everSawRunning = false }: { primary: boolean; everSawRunning?: boolean } = { primary: false },
+): ComposeContainerVerdict => {
+	if (!status) return { kind: "retry", reason: `${container} has not been created yet` };
+	if (status === "running" && everSawRunning) return { kind: "ok" };
+	if (status === "running") return { kind: "retry", reason: "reinforcing stability window" };
+	if (status === "created") return { kind: "retry", reason: `${container} is still initializing` };
+	if (status === "restarting") {
+		const reason = `${container} is restarting continuously`;
+		return primary ? { kind: "fatal", reason } : { kind: "retry", reason };
+	}
+	return {
+		kind: primary ? "fatal" : "retry",
+		reason: `${container} ${status === "exited" ? "exited immediately" : `is in unknown state "${status}"`}`,
+	};
+};
+
+export const inspectComposeContainerStates = async (containerNames: string[]): Promise<Map<string, string | null>> => {
+	const states = new Map<string, string | null>();
+	if (containerNames.length === 0) return states;
+	const res = await runDocker(["inspect", "--format", "{{.Name}}|{{.State.Status}}", ...containerNames]).catch(() => ({
+		code: 1,
+		stdout: "",
+		stderr: "",
+	}));
+	for (const line of res.stdout.split("\n")) {
+		const [rawName, status] = line.split("|");
+		if (!rawName) continue;
+		states.set(rawName.replace(/^\//, ""), status?.trim() || null);
+	}
+	for (const name of containerNames) {
+		if (!states.has(name)) states.set(name, null);
+	}
+	return states;
+};
+
+export const fetchContainerExitLogs = async (container: string): Promise<string> => {
+	const res = await runDocker(["logs", "--tail", "30", container]).catch(() => ({
+		code: 1,
+		stdout: "",
+		stderr: "",
+	}));
+	const logs = [res.stdout, res.stderr]
+		.filter((s) => s?.trim())
+		.join("\n")
+		.trim();
+	return logs || "No logs produced";
 };

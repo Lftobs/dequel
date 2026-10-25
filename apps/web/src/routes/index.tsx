@@ -5,11 +5,13 @@ import { CreateProjectPage } from "./CreateProjectPage";
 import { Dashboard } from "./Dashboard";
 import { DatabaseDetail } from "./DatabaseDetail";
 import { Databases } from "./Databases";
+import { DeploymentDetailPage } from "./DeploymentDetailPage";
 import { Keys } from "./Keys";
 import { Login } from "./Login";
 import { ProjectDetail } from "./ProjectDetail";
 import { Settings } from "./Settings";
 import { SharedEnv } from "./SharedEnv";
+import { TemplatesPage } from "./TemplatesPage";
 
 const rootRoute = createRootRoute({
 	component: () => (
@@ -41,6 +43,12 @@ const createProjectRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/projects/new",
 	component: CreateProjectPage,
+});
+
+const templatesRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/templates",
+	component: TemplatesPage,
 });
 
 const databasesRoute = createRoute({
@@ -89,7 +97,19 @@ const projectRoute = createRoute({
 	component: ProjectPage,
 	validateSearch: (search: Record<string, unknown>) => ({
 		tab: (search.tab as string) || "deployments",
+		section: typeof search.section === "string" ? search.section : undefined,
 	}),
+});
+
+const ProjectDeploymentDetailPage = () => {
+	const { projectId, deploymentId } = projectDeploymentDetailRoute.useParams();
+	return <DeploymentDetailPage projectId={projectId} deploymentId={deploymentId} />;
+};
+
+const projectDeploymentDetailRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/project/$projectId/deployments/$deploymentId",
+	component: ProjectDeploymentDetailPage,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -102,7 +122,9 @@ const routeTree = rootRoute.addChildren([
 	keysRoute,
 	sharedEnvRoute,
 	projectRoute,
+	projectDeploymentDetailRoute,
 	createProjectRoute,
+	templatesRoute,
 ]);
 
 export const router = createRouter({ routeTree });

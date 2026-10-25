@@ -20,6 +20,7 @@ describe("remote SSH build script", () => {
 	it("embeds inputs with single-quote escaping", () => {
 		const script = buildRemoteDeployScript(input);
 		expect(script).toContain("set -euo pipefail");
+		expect(script).toContain("trap 'rm -rf \"$PROJECT_DIR\"' EXIT");
 		expect(script).toContain("git clone --depth 1 'https://github.com/example/api.git' .");
 		expect(script).toContain("--env 'NODE_ENV=production'");
 		expect(script).toContain("--name 'example-api-deploym:latest'");
@@ -63,11 +64,11 @@ describe("remote SSH build script", () => {
 
 	it("installs bun before generating the config", () => {
 		const script = buildRemoteDeployScript(input);
-		expect(script).toContain("bun-linux-${BUN_ARCH}.zip");
+		expect(script).toContain("bun-linux-$BUN_ARCH.zip");
 		expect(script).toContain("python3 -m zipfile -e");
 		expect(script).toContain("bun.sh/install");
 		expect(script).toContain('export PATH="$HOME/.bun/bin:$PATH"');
-		expect(script.indexOf("bun-linux-${BUN_ARCH}.zip")).toBeLessThan(script.indexOf(".dequel-railpack-gen.ts"));
+		expect(script.indexOf("bun-linux-$BUN_ARCH.zip")).toBeLessThan(script.indexOf(".dequel-railpack-gen.ts"));
 	});
 
 	it("passes source dir and project type to the generator", () => {

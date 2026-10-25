@@ -1,0 +1,50 @@
+---
+title: One-Click Templates
+category: Projects
+description: The registry of one-click app templates Dequel can deploy with routing, SSL and secrets wired automatically.
+slug: templates
+---
+
+One-click templates deploy popular self-hosted apps as complete Docker
+Compose stacks - app plus its database, secrets, reverse-proxy route and
+(via your `CADDY_BASE_DOMAIN`) HTTPS - in a single click. Open the
+dashboard's **Create project** page and switch to **From a template**, or
+go straight to `/templates` in the web app.
+
+Every template declares which settings it needs. Secrets you leave blank
+are generated for you at deploy time; all values land in the project's
+**Environment Variables** tab (encrypted at rest) and are injected into
+the stack on deploy through compose interpolation.
+
+## Registry
+
+| Template | Category | What it deploys |
+| --- | --- | --- |
+| Gitea | developer | Lightweight self-hosted Git service with issues, pulls and CI |
+| IT Tools | developer | Collection of handy developer tools, all in one place |
+| Memos | productivity | Lightweight note-taking, like a private stream of your thoughts |
+| n8n | automation | Workflow automation platform, self-hosted Zapier alternative |
+| Nextcloud | storage | Files, calendar, contacts and collaboration |
+| Paperless-ngx | productivity | Document management with OCR, full-text search and tagging |
+| Plausible | analytics | Privacy-friendly, cookieless web analytics |
+| Umami | analytics | Simple, privacy-focused analytics with a clean dashboard |
+| Uptime Kuma | monitoring | Monitoring with status pages and alerts |
+| Vaultwarden | security | Lightweight password manager compatible with Bitwarden clients |
+| WordPress | cms | Content management system with PHP and a MariaDB backend |
+
+Each deployment gets a subdomain named after the project
+(`<project>.<your-domain>`), a status page under the project's
+deployments tab, and its services joined to the private `dequel` network.
+
+## Managing template settings
+
+Template variables become regular environment variables of the project:
+
+1. Secrets left empty are generated once at deploy and stored encrypted.
+2. Open the project's **Env** tab to view (masked) or edit values; use
+   the reveal action for secrets.
+3. Compose files reference values as `${VAR}` placeholders, so a changed
+   value is applied on the next deploy/redeploy of the project.
+
+The stack's own compose file is rendered from the template at deploy
+time - no secrets are baked into stored archives.

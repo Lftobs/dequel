@@ -20,7 +20,9 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 	const { data: deploymentsData } = useDeployments(projectId, 0, 10);
 	const navigate = useNavigate();
 	const location = useLocation();
-	const activeTab = new URLSearchParams(location.search).get("tab") || "deployments";
+	const searchParams = new URLSearchParams(location.search);
+	const rawTab = searchParams.get("tab") || "deployments";
+	const activeTab = rawTab === "compose" ? "settings" : rawTab;
 	const tabsListRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
