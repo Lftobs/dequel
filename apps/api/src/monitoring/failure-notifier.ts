@@ -3,8 +3,10 @@ import {
 	listPendingFailureNotificationIds,
 	markFailureNotificationSent,
 } from "../db/repo/deployment-events";
+import { listNotificationChannels } from "../db/repo/notifications";
 import { onDeploymentFailed } from "../events";
 import { config } from "../utils/config";
+import { sendEventNotification } from "./notifications";
 import { isSmtpConfigured, sendDeploymentFailureEmail } from "./notifier";
 
 let queue: string[] = [];
@@ -29,9 +31,14 @@ const drain = async () => {
 			const eventId = queue.shift()!;
 			pending.delete(eventId);
 			try {
-				if (!(await isSmtpConfigured())) {
+				const smtpConfigured = await isSmtpConfigured();
+				const eventChannels = await listNotificationChannels().catch(() => []);
+				const hasEventChannel = eventChannels.some(
+					(channel) => channel.enabled && channel.events.includes("deployment_failed"),
+				);
+				if (!smtpConfigured && !hasEventChannel) {
 					if (!configuredWarned) {
-						console.warn("[FailureNotifier] SMTP not configured — leaving failure events pending");
+						console.warn("[FailureNotifier] no email or notification channel configured — leaving events pending");
 						configuredWarned = true;
 					}
 					continue;
@@ -39,15 +46,23 @@ const drain = async () => {
 				configuredWarned = false;
 				const ctx = await claimFailureNotification(eventId);
 				if (!ctx) continue;
-				const delivery = await sendDeploymentFailureEmail(ctx);
-				if (delivery.status === "sent") {
+				const delivery = smtpConfigured
+					? await sendDeploymentFailureEmail(ctx)
+					: ({ status: "skipped", reason: "no_smtp" } as const);
+				const channelResults = await sendEventNotification("deployment_failed", {
+					title: `Deployment failed: ${ctx.projectName}`,
+					message: ctx.failureReason ?? "The deployment failed.",
+					projectName: ctx.projectName,
+					url: ctx.projectId
+						? `${config.caddyBaseDomain === "localhost" ? "http://localhost" : `https://${config.caddyBaseDomain}`}/project/${ctx.projectId}`
+						: undefined,
+				});
+				const channelSent = channelResults.some((result) => result.status === "sent");
+				if (delivery.status === "sent" || channelSent) {
 					await markFailureNotificationSent(eventId);
-					console.log(`[FailureNotifier] failure email sent for ${ctx.deploymentId} (attempt ${ctx.attempt})`);
+					console.log(`[FailureNotifier] failure notification sent for ${ctx.deploymentId} (attempt ${ctx.attempt})`);
 				} else {
-					console.warn(
-						`[FailureNotifier] ${ctx.deploymentId}: ${delivery.status}`,
-						"reason" in delivery ? delivery.reason : delivery.error,
-					);
+					console.warn(`[FailureNotifier] ${ctx.deploymentId}: no notification channel delivered`);
 				}
 			} catch (err) {
 				console.error(`[FailureNotifier] ${eventId}:`, err);

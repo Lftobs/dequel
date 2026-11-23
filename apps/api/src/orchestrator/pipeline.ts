@@ -8,7 +8,7 @@ import {
 	deleteRoutesByDeployment,
 	getDeploymentById,
 	getProjectById,
-	getProjectGithubToken,
+	getProjectGitToken,
 	getServerById,
 	listAllDatabases,
 	listDeployments,
@@ -27,9 +27,11 @@ import { buildWithCompose, destroyComposeStack } from "./compose";
 import { deployComposeStack } from "./compose-deploy";
 import { ensureComposeVariables } from "./compose-vars";
 import { summarizeDeploymentError } from "./deployment-errors";
+import { buildWithDockerfile } from "./dockerfile";
 import { logBus } from "./log-bus";
 import { DeploymentQueue } from "./queue";
 import { buildWithRailpack, CancelledError } from "./railpack";
+import { ensureRegistryLogin, pullImage } from "./registry";
 import { cleanupFailedDeployment, deployContainer, ensureContainerRunning, reloadCaddy, tryRun } from "./runtime";
 import { cleanupWorkspace, getHeadSha, prepareSourceWorkspace, prepareUploadWorkspace } from "./source";
 
@@ -230,6 +232,27 @@ export class PipelineOrchestrator {
 
 			const targetServer = project?.serverId ? await getServerById(project.serverId) : null;
 
+			if (project?.cancelOlderDeployments && deployment.projectId) {
+				const siblings = await listDeployments(deployment.projectId);
+				for (const sibling of siblings) {
+					if (sibling.id === deploymentId) continue;
+					if (sibling.status !== "pending" && sibling.status !== "building" && sibling.status !== "deploying") continue;
+					await recordDeploymentCancellation({
+						deploymentId: sibling.id,
+						reason: "Cancelled because a newer deployment was queued",
+						source: "pipeline",
+					}).catch(() => {});
+					await emitLog(sibling.id, "system", `Deployment cancelled by newer deployment ${deploymentId.slice(0, 8)}`);
+				}
+			}
+
+			const registryId =
+				project?.registryId ??
+				(deployment.sourceType === "image"
+					? await (await import("../db/repo/registries")).findRegistryForImage(deployment.sourceRef)
+					: null);
+			await ensureRegistryLogin(registryId, targetServer, async (line) => emitLog(deploymentId, "build", line));
+
 			if (deployment.sourceType !== "image") {
 				await updateDeploymentStatus(deploymentId, "building", { failureReason: null });
 				await createDeploymentEvent({
@@ -250,7 +273,8 @@ export class PipelineOrchestrator {
 						deployment.sourceRef,
 						deployment.branch ?? undefined,
 						deployment.commitSha ?? undefined,
-						deployment.projectId ? await getProjectGithubToken(deployment.projectId).catch(() => null) : null,
+						deployment.projectId ? await getProjectGitToken(deployment.projectId).catch(() => null) : null,
+						project?.gitProvider,
 					);
 					const sha = await getHeadSha(workspacePath);
 					if (sha) {
@@ -290,6 +314,24 @@ export class PipelineOrchestrator {
 						envMap,
 						controller.signal,
 					);
+				} else if (project?.buildType === "dockerfile") {
+					const buildRows = envVarRows.filter((v) => v.scope !== "runtime");
+					await buildWithDockerfile(
+						workspacePath,
+						imageTag,
+						async (line) => {
+							await emitLog(deploymentId, "build", line);
+						},
+						{
+							dockerfilePath: project.dockerfilePath,
+							target: project.dockerTarget,
+							buildArgs: buildRows.map((v) => ({ key: v.key, value: v.value })),
+							sourceDir: project.sourceDir,
+							server: targetServer,
+							signal: controller.signal,
+							clearCache: deployment.clearCache,
+						},
+					);
 				} else {
 					const buildRows = envVarRows.filter((v) => v.scope !== "runtime");
 					await buildWithRailpack(
@@ -314,7 +356,10 @@ export class PipelineOrchestrator {
 					);
 				}
 			} else {
-				await emitLog(deploymentId, "build", `Rolling back to existing image: ${imageTag}`);
+				await emitLog(deploymentId, "build", `Using image ${imageTag}`);
+				await pullImage(imageTag, project?.imagePullPolicy ?? "always", targetServer, async (line) =>
+					emitLog(deploymentId, "build", line),
+				);
 			}
 
 			await createDeploymentEvent({
@@ -398,6 +443,15 @@ export class PipelineOrchestrator {
 			let runtimeContainerName = "";
 			let runtimeLiveUrl = "";
 
+			const { runPostDeployCommand, runPreDeployCommand } = await import("./runtime");
+			if (project?.preDeployCommand && project.buildType !== "compose") {
+				await runPreDeployCommand(imageTag, project.preDeployCommand, {
+					envVars,
+					server: targetServer,
+					onLog: async (line) => emitLog(deploymentId, "deploy", line),
+				});
+			}
+
 			if (project?.buildType === "compose") {
 				const composeRuntime = await deployComposeStack({
 					workspacePath,
@@ -436,11 +490,24 @@ export class PipelineOrchestrator {
 						cpuLimit,
 						memoryLimitMb,
 						appPort: appPort ?? undefined,
+						healthCheck: project?.healthCheck,
+						restartPolicy: project?.restartPolicy,
+						restartMaxRetries: project?.restartMaxRetries,
+						stopGracePeriodSeconds: project?.stopGracePeriodSeconds,
+						maintenanceEnabled: project?.maintenanceEnabled,
+						maintenanceMessage: project?.maintenanceMessage,
 						targetServer,
 					},
 				);
 				runtimeContainerName = runtime.containerName;
 				runtimeLiveUrl = runtime.liveUrl;
+			}
+
+			if (project?.postDeployCommand && runtimeContainerName) {
+				await runPostDeployCommand(runtimeContainerName, project.postDeployCommand, {
+					server: targetServer,
+					onLog: async (line) => emitLog(deploymentId, "deploy", line),
+				});
 			}
 
 			deployed = true;
@@ -451,6 +518,17 @@ export class PipelineOrchestrator {
 				liveUrl: runtimeLiveUrl,
 				failureReason: null,
 			});
+
+			if (projectName) {
+				(await import("../monitoring/notifications"))
+					.sendEventNotification("deployment_succeeded", {
+						title: `Deployment succeeded: ${projectName}`,
+						message: `Deployment ${deploymentId.slice(0, 8)} is running.`,
+						projectName,
+						url: runtimeLiveUrl,
+					})
+					.catch(() => {});
+			}
 
 			if (projectName) {
 				const dashSlug = projectName
@@ -593,6 +671,10 @@ export class PipelineOrchestrator {
 					volumes,
 					cpuLimit: proj?.cpuLimit,
 					memoryLimitMb: proj?.memoryLimitMb,
+					healthCheck: proj?.healthCheck,
+					restartPolicy: proj?.restartPolicy,
+					restartMaxRetries: proj?.restartMaxRetries,
+					stopGracePeriodSeconds: proj?.stopGracePeriodSeconds,
 					targetServer: projectServer,
 				},
 			);

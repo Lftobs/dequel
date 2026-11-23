@@ -13,11 +13,15 @@ import { domainsRoutes } from "./domains";
 import { envVarsRoutes } from "./env-vars";
 import { githubRoutes } from "./github";
 import { healthRoutes } from "./health";
+import { notificationsRoutes } from "./notifications";
+import { openApiRoutes } from "./openapi";
 import { projectsRoutes } from "./projects";
+import { projectAutomationRoutes } from "./projects/automation";
 import { projectComposeRoutes } from "./projects/compose";
 import { projectStatusRoutes } from "./projects/status";
 import { prometheusRoutes } from "./prometheus";
 import { rateLimitMiddleware } from "./rate-limit";
+import { registriesRoutes } from "./registries";
 import { fail } from "./response";
 import { routesRoutes } from "./routes";
 import { scalingRoutes } from "./scaling";
@@ -59,13 +63,17 @@ export const apiRoutes = new Elysia({
 	})
 	.use(rateLimitMiddleware)
 	.use(authRoutes)
+	.use(openApiRoutes)
 	.use(authMiddleware)
 	.use(auditLogsRoutes)
 	.use(agentRoutes)
 	.use(healthRoutes)
 	.use(projectsRoutes)
+	.use(projectAutomationRoutes)
 	.use(projectComposeRoutes)
 	.use(projectStatusRoutes)
+	.use(registriesRoutes)
+	.use(notificationsRoutes)
 	.use(templateRoutes)
 	.use(deploymentsRoutes)
 	.use(envVarsRoutes)

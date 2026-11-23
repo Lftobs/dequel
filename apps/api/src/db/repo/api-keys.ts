@@ -10,8 +10,10 @@ const mapApiKey = (row: typeof apiKeys.$inferSelect): ApiKey => ({
 	name: row.name,
 	keyHash: row.keyHash,
 	permissions: row.permissions,
-	createdAt: row.createdAt,
-	lastUsedAt: row.lastUsedAt,
+	projectId: row.projectId ?? null,
+	pausedAt: row.pausedAt ? row.pausedAt.toISOString() : null,
+	createdAt: row.createdAt.toISOString(),
+	lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null,
 });
 
 export const createApiKey = async (input: CreateApiKeyInput): Promise<{ key: ApiKey; rawKey: string }> => {
@@ -30,6 +32,7 @@ export const createApiKey = async (input: CreateApiKeyInput): Promise<{ key: Api
 			name: input.name,
 			keyHash,
 			permissions: input.permissions ?? "deploy:read",
+			projectId: input.projectId ?? null,
 			createdAt: timestamp,
 		})
 		.execute();
@@ -58,7 +61,33 @@ export const validateApiKey = async (rawKey: string): Promise<ApiKey | null> => 
 	const keyHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 	const db = await getDb();
 	const [row] = await db.select().from(apiKeys).where(eq(apiKeys.keyHash, keyHash)).execute();
-	if (!row) return null;
+	if (!row || row.pausedAt) return null;
 	await db.update(apiKeys).set({ lastUsedAt: now() }).where(eq(apiKeys.id, row.id)).execute();
 	return mapApiKey(row);
+};
+
+export const pauseApiKey = async (id: string, paused: boolean): Promise<ApiKey | null> => {
+	const db = await getDb();
+	const result = await db
+		.update(apiKeys)
+		.set({ pausedAt: paused ? now() : null })
+		.where(eq(apiKeys.id, id))
+		.execute();
+	if (getRowsAffected(result) === 0) return null;
+	const [row] = await db.select().from(apiKeys).where(eq(apiKeys.id, id)).execute();
+	return row ? mapApiKey(row) : null;
+};
+
+export const rollApiKey = async (id: string): Promise<{ key: ApiKey; rawKey: string } | null> => {
+	const db = await getDb();
+	const [existing] = await db.select().from(apiKeys).where(eq(apiKeys.id, id)).execute();
+	if (!existing) return null;
+	const rawKey = `dql_${randomUUID().replace(/-/g, "")}${randomUUID().replace(/-/g, "")}`;
+	const encoder = new TextEncoder();
+	const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(rawKey));
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	const keyHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+	await db.update(apiKeys).set({ keyHash }).where(eq(apiKeys.id, id)).execute();
+	const [row] = await db.select().from(apiKeys).where(eq(apiKeys.id, id)).execute();
+	return { key: mapApiKey(row), rawKey };
 };

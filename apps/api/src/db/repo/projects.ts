@@ -38,36 +38,64 @@ export interface ProjectCleanupInfo {
 	projectName: string;
 }
 
-const mapProject = (row: typeof projects.$inferSelect): Project => ({
-	id: row.id,
-	serverId: row.serverId ?? null,
-	name: row.name,
-	description: row.description,
-	repoUrl: row.repoUrl,
-	repoBranch: row.repoBranch,
-	baseDomain: row.baseDomain,
-	cpuLimit: row.cpuLimit,
-	memoryLimitMb: row.memoryLimitMb,
-	port: row.port ?? null,
-	sourceDir: row.sourceDir ?? null,
-	sourceType: row.sourceType,
-	projectType: row.projectType,
-	buildType: row.buildType,
-	composeService: row.composeService ?? null,
-	composePort: row.composePort ?? null,
-	composeServices: row.composeServices ?? null,
-	buildCommand: row.buildCommand ?? null,
-	installCommand: row.installCommand ?? null,
-	outputDir: row.outputDir ?? null,
-	startCommand: row.startCommand ?? null,
-	hasGithubToken: !!(row.githubTokenEncrypted && row.githubTokenIv && row.githubTokenTag),
-	createdAt: formatTimestamp(row.createdAt),
-	updatedAt: formatTimestamp(row.updatedAt),
-});
+const mapProject = (row: typeof projects.$inferSelect): Project => {
+	const hasGitToken = !!(row.gitTokenEncrypted && row.gitTokenIv && row.gitTokenTag);
+	return {
+		id: row.id,
+		serverId: row.serverId ?? null,
+		name: row.name,
+		description: row.description,
+		repoUrl: row.repoUrl,
+		repoBranch: row.repoBranch,
+		baseDomain: row.baseDomain,
+		cpuLimit: row.cpuLimit,
+		memoryLimitMb: row.memoryLimitMb,
+		port: row.port ?? null,
+		sourceDir: row.sourceDir ?? null,
+		sourceType: row.sourceType,
+		projectType: row.projectType,
+		buildType: row.buildType,
+		composeService: row.composeService ?? null,
+		composePort: row.composePort ?? null,
+		composeServices: row.composeServices ?? null,
+		buildCommand: row.buildCommand ?? null,
+		installCommand: row.installCommand ?? null,
+		outputDir: row.outputDir ?? null,
+		startCommand: row.startCommand ?? null,
+		gitProvider: (row.gitProvider ?? "github") as Project["gitProvider"],
+		hasGitToken,
+		dockerfilePath: row.dockerfilePath ?? null,
+		dockerTarget: row.dockerTarget ?? null,
+		imageRef: row.imageRef ?? null,
+		imagePullPolicy: (row.imagePullPolicy ?? "always") as Project["imagePullPolicy"],
+		registryId: row.registryId ?? null,
+		healthCheck: (row.healthCheck as Project["healthCheck"]) ?? null,
+		restartPolicy: (row.restartPolicy ?? "unless-stopped") as Project["restartPolicy"],
+		restartMaxRetries: row.restartMaxRetries ?? null,
+		stopGracePeriodSeconds: row.stopGracePeriodSeconds ?? null,
+		preDeployCommand: row.preDeployCommand ?? null,
+		postDeployCommand: row.postDeployCommand ?? null,
+		cancelOlderDeployments: Boolean(row.cancelOlderDeployments),
+		tags: Array.isArray(row.tags) ? (row.tags as string[]) : [],
+		deployWebhookToken: row.deployWebhookToken ?? null,
+		maintenanceEnabled: Boolean(row.maintenanceEnabled),
+		maintenanceMessage: row.maintenanceMessage ?? null,
+		hasGithubToken: hasGitToken || !!(row.githubTokenEncrypted && row.githubTokenIv && row.githubTokenTag),
+		createdAt: formatTimestamp(row.createdAt),
+		updatedAt: formatTimestamp(row.updatedAt),
+	};
+};
+
+const encryptGitToken = (token: string | null | undefined) => {
+	if (!token) return { encrypted: null, iv: null, tag: null };
+	const enc = encryptValue(token, config.envEncryptionKey);
+	return { encrypted: enc.encrypted, iv: enc.iv, tag: enc.tag };
+};
 
 export const createProject = async (input: CreateProjectInput): Promise<Project> => {
 	const id = randomUUID();
 	const timestamp = now();
+	const token = encryptGitToken(input.gitToken);
 	const db = await getDb();
 	await db
 		.insert(projects)
@@ -93,6 +121,26 @@ export const createProject = async (input: CreateProjectInput): Promise<Project>
 			installCommand: input.installCommand ?? null,
 			outputDir: input.outputDir ?? null,
 			startCommand: input.startCommand ?? null,
+			gitProvider: input.gitProvider ?? "github",
+			gitTokenEncrypted: token.encrypted,
+			gitTokenIv: token.iv,
+			gitTokenTag: token.tag,
+			dockerfilePath: input.dockerfilePath ?? "Dockerfile",
+			dockerTarget: input.dockerTarget ?? null,
+			imageRef: input.imageRef ?? null,
+			imagePullPolicy: input.imagePullPolicy ?? "always",
+			registryId: input.registryId ?? null,
+			healthCheck: input.healthCheck ?? null,
+			restartPolicy: input.restartPolicy ?? "unless-stopped",
+			restartMaxRetries: input.restartMaxRetries ?? null,
+			stopGracePeriodSeconds: input.stopGracePeriodSeconds ?? 10,
+			preDeployCommand: input.preDeployCommand ?? null,
+			postDeployCommand: input.postDeployCommand ?? null,
+			cancelOlderDeployments: input.cancelOlderDeployments ?? false,
+			tags: input.tags ?? [],
+			deployWebhookToken: input.deployWebhookToken ?? randomUUID().replace(/-/g, ""),
+			maintenanceEnabled: input.maintenanceEnabled ?? false,
+			maintenanceMessage: input.maintenanceMessage ?? null,
 			createdAt: timestamp,
 			updatedAt: timestamp,
 		})
@@ -115,6 +163,25 @@ export const updateProjectGithubToken = async (
 		.execute();
 };
 
+export const getProjectGitToken = async (id: string): Promise<string | null> => {
+	const db = await getDb();
+	const [row] = await db
+		.select({
+			encrypted: projects.gitTokenEncrypted,
+			iv: projects.gitTokenIv,
+			tag: projects.gitTokenTag,
+		})
+		.from(projects)
+		.where(eq(projects.id, id))
+		.execute();
+	if (!row?.encrypted || !row?.iv || !row?.tag) return null;
+	try {
+		return decryptValue(row.encrypted, row.iv, row.tag, config.envEncryptionKey);
+	} catch {
+		return null;
+	}
+};
+
 export const getProjectGithubToken = async (id: string): Promise<string | null> => {
 	const db = await getDb();
 	const [row] = await db
@@ -126,12 +193,24 @@ export const getProjectGithubToken = async (id: string): Promise<string | null> 
 		.from(projects)
 		.where(eq(projects.id, id))
 		.execute();
-	if (!row?.encrypted || !row?.iv || !row?.tag) return null;
-	try {
-		return decryptValue(row.encrypted, row.iv, row.tag, config.envEncryptionKey);
-	} catch {
-		return null;
+	if (row?.encrypted && row?.iv && row?.tag) {
+		try {
+			return decryptValue(row.encrypted, row.iv, row.tag, config.envEncryptionKey);
+		} catch {}
 	}
+	return getProjectGitToken(id);
+};
+
+export const regenerateDeployWebhookToken = async (id: string): Promise<string | null> => {
+	const token = randomUUID().replace(/-/g, "");
+	const db = await getDb();
+	const result = await db
+		.update(projects)
+		.set({ deployWebhookToken: token, updatedAt: now() })
+		.where(eq(projects.id, id))
+		.execute();
+	if (getRowsAffected(result) === 0) return null;
+	return token;
 };
 
 export const captureProjectGithubToken = async (
@@ -166,6 +245,18 @@ export const getProjectById = async (id: string): Promise<Project | null> => {
 	return row ? mapProject(row) : null;
 };
 
+export const getProjectByDeployWebhookToken = async (token: string): Promise<Project | null> => {
+	const db = await getDb();
+	const [row] = await db.select().from(projects).where(eq(projects.deployWebhookToken, token)).execute();
+	return row ? mapProject(row) : null;
+};
+
+export const listProjectsByTag = async (tag: string): Promise<Project[]> => {
+	const db = await getDb();
+	const rows = await db.select().from(projects).orderBy(projects.name).execute();
+	return rows.map(mapProject).filter((p) => p.tags.includes(tag));
+};
+
 export const updateProject = async (id: string, patch: Partial<CreateProjectInput>): Promise<Project | null> => {
 	const existing = await getProjectById(id);
 	if (!existing) return null;
@@ -190,6 +281,29 @@ export const updateProject = async (id: string, patch: Partial<CreateProjectInpu
 	if (patch.installCommand !== undefined) updates.installCommand = patch.installCommand;
 	if (patch.outputDir !== undefined) updates.outputDir = patch.outputDir;
 	if (patch.startCommand !== undefined) updates.startCommand = patch.startCommand;
+	if (patch.gitProvider !== undefined) updates.gitProvider = patch.gitProvider;
+	if (patch.gitToken !== undefined) {
+		const token = encryptGitToken(patch.gitToken);
+		updates.gitTokenEncrypted = token.encrypted;
+		updates.gitTokenIv = token.iv;
+		updates.gitTokenTag = token.tag;
+	}
+	if (patch.dockerfilePath !== undefined) updates.dockerfilePath = patch.dockerfilePath || "Dockerfile";
+	if (patch.dockerTarget !== undefined) updates.dockerTarget = patch.dockerTarget;
+	if (patch.imageRef !== undefined) updates.imageRef = patch.imageRef;
+	if (patch.imagePullPolicy !== undefined) updates.imagePullPolicy = patch.imagePullPolicy;
+	if (patch.registryId !== undefined) updates.registryId = patch.registryId;
+	if (patch.healthCheck !== undefined) updates.healthCheck = patch.healthCheck;
+	if (patch.restartPolicy !== undefined) updates.restartPolicy = patch.restartPolicy;
+	if (patch.restartMaxRetries !== undefined) updates.restartMaxRetries = patch.restartMaxRetries;
+	if (patch.stopGracePeriodSeconds !== undefined) updates.stopGracePeriodSeconds = patch.stopGracePeriodSeconds;
+	if (patch.preDeployCommand !== undefined) updates.preDeployCommand = patch.preDeployCommand;
+	if (patch.postDeployCommand !== undefined) updates.postDeployCommand = patch.postDeployCommand;
+	if (patch.cancelOlderDeployments !== undefined) updates.cancelOlderDeployments = patch.cancelOlderDeployments;
+	if (patch.tags !== undefined) updates.tags = patch.tags;
+	if (patch.deployWebhookToken !== undefined) updates.deployWebhookToken = patch.deployWebhookToken;
+	if (patch.maintenanceEnabled !== undefined) updates.maintenanceEnabled = patch.maintenanceEnabled;
+	if (patch.maintenanceMessage !== undefined) updates.maintenanceMessage = patch.maintenanceMessage;
 	await db.update(projects).set(updates).where(eq(projects.id, id)).execute();
 	return getProjectById(id);
 };

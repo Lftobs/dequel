@@ -50,10 +50,13 @@ export const dispatchDeployment = async (
 };
 
 export const deploymentsRoutes = new Elysia()
-	.get("/deployments", async ({ query }: any) => {
+	.get("/deployments", async ({ query, request }: any) => {
 		const offset = Number(query.offset) || 0;
 		const limit = Math.min(Number(query.limit) || 50, 100);
-		const projectId = query.projectId;
+		const projectId = (request as any).dequelProjectScopeOnly ? (request as any).dequelProjectScope : query.projectId;
+		if ((request as any).dequelProjectScopeOnly && query.projectId && query.projectId !== projectId) {
+			return ok({ items: [], total: 0, offset, limit });
+		}
 		const [items, total] = await Promise.all([listDeployments(projectId, offset, limit), countDeployments(projectId)]);
 		return ok({ items, total, offset, limit });
 	})
@@ -74,6 +77,11 @@ export const deploymentsRoutes = new Elysia()
 		const form = await request.formData();
 		const sourceType = String(form.get("sourceType") ?? "");
 		const projectId = String(form.get("projectId") ?? "").trim() || undefined;
+		const scopedProjectId = (request as any).dequelDeploymentScope as string | undefined;
+		if (scopedProjectId && projectId !== scopedProjectId) {
+			set.status = 403;
+			return fail("API key is scoped to a different project");
+		}
 		const project = projectId ? await getProjectById(projectId) : null;
 		const { resolveDefaultServerId } = await import("../../utils/server-default");
 		const serverId = await resolveDefaultServerId(project?.serverId);
@@ -88,9 +96,29 @@ export const deploymentsRoutes = new Elysia()
 		const clearCache = form.get("clearCache") === "true";
 		const resolvedBranch =
 			branch || (projectId ? (await getProjectById(projectId))?.repoBranch || undefined : undefined);
-		if (sourceType !== "git" && sourceType !== "upload" && sourceType !== "compose") {
+		if (sourceType !== "git" && sourceType !== "upload" && sourceType !== "compose" && sourceType !== "image") {
 			set.status = 400;
-			return fail("sourceType must be git, upload, or compose");
+			return fail("sourceType must be git, upload, compose, or image");
+		}
+		if (sourceType === "image") {
+			const imageRef = String(form.get("imageRef") ?? "").trim() || project?.imageRef || "";
+			if (!imageRef) {
+				set.status = 400;
+				return fail("imageRef is required for image source");
+			}
+			if (server.mode !== "local") {
+				set.status = 400;
+				return fail("Image deployments currently require a local deployment server");
+			}
+			const deployment = await createDeployment({
+				projectId,
+				serverId,
+				sourceType: "image",
+				sourceRef: imageRef,
+				environment,
+			});
+			await dispatchDeployment(deployment, project, server);
+			return created(deployment);
 		}
 		if (sourceType === "git") {
 			const gitUrl = String(form.get("gitUrl") ?? "").trim();

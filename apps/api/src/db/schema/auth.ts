@@ -35,6 +35,8 @@ export const apiKeys = pgTable("api_keys", {
 	name: text().notNull(),
 	keyHash: text("key_hash").notNull(),
 	permissions: text().notNull().default("deploy:read"),
+	projectId: text("project_id"),
+	pausedAt: timestamp("paused_at", { withTimezone: true }),
 	createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 	lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
 });

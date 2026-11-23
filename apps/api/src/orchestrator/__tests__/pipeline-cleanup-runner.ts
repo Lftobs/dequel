@@ -46,6 +46,8 @@ const mockDb = {
 		return { sequence: 1 };
 	}),
 	getProjectGithubToken: mock(() => Promise.resolve(null)),
+	getProjectGitToken: mock(() => Promise.resolve(null)),
+	getDomainSecrets: mock(() => Promise.resolve({ certificate: null, certificateKey: null, basicAuthPassword: null })),
 	listEnvironmentVariablesForDeploy: mock(() => Promise.resolve([])),
 	listVolumes: mock(() => Promise.resolve([])),
 	listDeployments: mock(() => Promise.resolve([])),
@@ -92,6 +94,8 @@ mock.module(fileUrl("../runtime"), () => ({
 }));
 
 mock.module(fileUrl("../railpack"), () => ({
+	spawnAsync: mock(() => Promise.resolve({ code: 0, stdout: "", stderr: "" })),
+	cleanBuildkitLine: mock((line: string) => line),
 	buildWithRailpack: mock(
 		async (_workspace: string, _imageTag: string, _onLog: (line: string) => Promise<void>, _opts?: unknown) => {
 			if (buildShouldFail) throw new Error("Build failed");

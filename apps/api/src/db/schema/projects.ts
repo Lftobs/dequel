@@ -1,4 +1,4 @@
-import { foreignKey, integer, jsonb, pgTable, real, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, foreignKey, integer, jsonb, pgTable, real, text, timestamp } from "drizzle-orm/pg-core";
 
 export const projects = pgTable("projects", {
 	id: text().primaryKey(),
@@ -22,6 +22,26 @@ export const projects = pgTable("projects", {
 	installCommand: text("install_command"),
 	outputDir: text("output_dir"),
 	startCommand: text("start_command"),
+	gitProvider: text("git_provider").default("github").notNull(),
+	gitTokenEncrypted: text("git_token_encrypted"),
+	gitTokenIv: text("git_token_iv"),
+	gitTokenTag: text("git_token_tag"),
+	dockerfilePath: text("dockerfile_path").default("Dockerfile"),
+	dockerTarget: text("docker_target"),
+	imageRef: text("image_ref"),
+	imagePullPolicy: text("image_pull_policy").default("always").notNull(),
+	registryId: text("registry_id"),
+	healthCheck: jsonb("health_check"),
+	restartPolicy: text("restart_policy").default("unless-stopped").notNull(),
+	restartMaxRetries: integer("restart_max_retries"),
+	stopGracePeriodSeconds: integer("stop_grace_period_seconds").default(10),
+	preDeployCommand: text("pre_deploy_command"),
+	postDeployCommand: text("post_deploy_command"),
+	cancelOlderDeployments: boolean("cancel_older_deployments").notNull().default(false),
+	tags: jsonb("tags").notNull().default([]),
+	deployWebhookToken: text("deploy_webhook_token"),
+	maintenanceEnabled: boolean("maintenance_enabled").notNull().default(false),
+	maintenanceMessage: text("maintenance_message"),
 	githubTokenEncrypted: text("github_token_encrypted"),
 	githubTokenIv: text("github_token_iv"),
 	githubTokenTag: text("github_token_tag"),

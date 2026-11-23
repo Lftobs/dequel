@@ -18,6 +18,7 @@ import { config } from "../../utils/config";
 import { dockerRunTry, ensureContainerRemoved, ensureVolumeRemoved } from "../../utils/docker-run";
 import { removeFromCaddyRoute } from "../../utils/domain-verifier";
 import { buildProjectRequestHostRegex, caddyRequestLogSelector } from "../../utils/loki";
+import { validateProjectConfig } from "../../utils/project-config";
 import { captureTelemetry } from "../../utils/telemetry";
 import { isPort, isPrivateGitUrl, SERVICE_NAME_RE, validateComposeServices } from "../../utils/validate";
 import { created, fail, ok } from "../response";
@@ -69,6 +70,11 @@ export const projectsRoutes = new Elysia()
 			set.status = 400;
 			return fail(validationError);
 		}
+		const projectConfig = validateProjectConfig(body);
+		if (projectConfig.error) {
+			set.status = 400;
+			return fail(projectConfig.error);
+		}
 		const { resolveDefaultServerId } = await import("../../utils/server-default");
 		const serverId = await resolveDefaultServerId(body.serverId);
 		if (body.serverId && serverId !== body.serverId) {
@@ -111,6 +117,23 @@ export const projectsRoutes = new Elysia()
 			installCommand: body.installCommand || undefined,
 			outputDir: body.outputDir || undefined,
 			startCommand: body.startCommand || undefined,
+			gitProvider: body.gitProvider || undefined,
+			gitToken: body.gitToken || undefined,
+			dockerfilePath: body.dockerfilePath || undefined,
+			dockerTarget: body.dockerTarget || undefined,
+			imageRef: body.imageRef || undefined,
+			imagePullPolicy: body.imagePullPolicy || undefined,
+			registryId: body.registryId || undefined,
+			healthCheck: projectConfig.healthCheck ?? undefined,
+			restartPolicy: body.restartPolicy || undefined,
+			restartMaxRetries: body.restartMaxRetries ?? undefined,
+			stopGracePeriodSeconds: body.stopGracePeriodSeconds ?? undefined,
+			preDeployCommand: body.preDeployCommand || undefined,
+			postDeployCommand: body.postDeployCommand || undefined,
+			cancelOlderDeployments: body.cancelOlderDeployments ?? undefined,
+			tags: projectConfig.tags ?? undefined,
+			maintenanceEnabled: body.maintenanceEnabled ?? undefined,
+			maintenanceMessage: body.maintenanceMessage || undefined,
 		});
 
 		captureTelemetry("project_created", {
@@ -130,6 +153,11 @@ export const projectsRoutes = new Elysia()
 		if (validationError) {
 			set.status = 400;
 			return fail(validationError);
+		}
+		const projectConfig = validateProjectConfig(body, { partial: true });
+		if (projectConfig.error) {
+			set.status = 400;
+			return fail(projectConfig.error);
 		}
 		if (body?.serverId !== undefined && !(await getServerById(body.serverId))) {
 			set.status = 400;
@@ -162,6 +190,34 @@ export const projectsRoutes = new Elysia()
 			installCommand: "installCommand" in (body ?? {}) ? (body.installCommand ?? "") || null : undefined,
 			outputDir: "outputDir" in (body ?? {}) ? (body.outputDir ?? "") || null : undefined,
 			startCommand: "startCommand" in (body ?? {}) ? (body.startCommand ?? "") || null : undefined,
+			sourceType: body?.sourceType ?? undefined,
+			gitProvider: body?.gitProvider ?? undefined,
+			gitToken: "gitToken" in (body ?? {}) ? body.gitToken || null : undefined,
+			dockerfilePath: "dockerfilePath" in (body ?? {}) ? (body.dockerfilePath ?? "") || null : undefined,
+			dockerTarget: "dockerTarget" in (body ?? {}) ? (body.dockerTarget ?? "") || null : undefined,
+			imageRef: "imageRef" in (body ?? {}) ? (body.imageRef ?? "") || null : undefined,
+			imagePullPolicy: body?.imagePullPolicy ?? undefined,
+			registryId: "registryId" in (body ?? {}) ? body.registryId || null : undefined,
+			healthCheck: "healthCheck" in (body ?? {}) ? projectConfig.healthCheck : undefined,
+			restartPolicy: body?.restartPolicy ?? undefined,
+			restartMaxRetries:
+				"restartMaxRetries" in (body ?? {})
+					? body.restartMaxRetries === null
+						? null
+						: Number(body.restartMaxRetries)
+					: undefined,
+			stopGracePeriodSeconds:
+				"stopGracePeriodSeconds" in (body ?? {})
+					? body.stopGracePeriodSeconds === null
+						? null
+						: Number(body.stopGracePeriodSeconds)
+					: undefined,
+			preDeployCommand: "preDeployCommand" in (body ?? {}) ? (body.preDeployCommand ?? "") || null : undefined,
+			postDeployCommand: "postDeployCommand" in (body ?? {}) ? (body.postDeployCommand ?? "") || null : undefined,
+			cancelOlderDeployments: body?.cancelOlderDeployments ?? undefined,
+			tags: projectConfig.tags ?? undefined,
+			maintenanceEnabled: body?.maintenanceEnabled ?? undefined,
+			maintenanceMessage: "maintenanceMessage" in (body ?? {}) ? (body.maintenanceMessage ?? "") || null : undefined,
 		});
 		if (!project) {
 			set.status = 404;

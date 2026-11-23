@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Server } from "../types";
+import type { HealthCheckConfig, Server } from "../types";
 import { config } from "../utils/config";
 import { DEQUEL_MANAGED_LABEL } from "../utils/dequel-labels";
 import { dockerBin } from "../utils/docker-bin";
@@ -26,6 +26,12 @@ export interface RuntimeOpts {
 	cpuLimit?: number | null;
 	memoryLimitMb?: number | null;
 	appPort?: number;
+	healthCheck?: HealthCheckConfig | null;
+	restartPolicy?: string | null;
+	restartMaxRetries?: number | null;
+	stopGracePeriodSeconds?: number | null;
+	maintenanceEnabled?: boolean;
+	maintenanceMessage?: string | null;
 	targetServer?: Server | null;
 }
 
@@ -200,6 +206,36 @@ export const cleanupFailedDeployment = async (
 	}
 };
 
+export const runPreDeployCommand = async (
+	imageTag: string,
+	command: string,
+	opts: {
+		envVars?: Record<string, string>;
+		server?: Server | null;
+		network?: string;
+		onLog: (line: string) => Promise<void>;
+	},
+) => {
+	await opts.onLog(`Running pre-deploy command: ${command}`);
+	const args = ["run", "--rm", "--network", opts.network ?? config.dockerNetwork];
+	for (const [key, value] of Object.entries(opts.envVars ?? {})) {
+		args.push("-e", `${key}=${value}`);
+	}
+	args.push(imageTag, "sh", "-c", command);
+	await run(dockerBin, args, opts.server);
+	await opts.onLog("Pre-deploy command completed");
+};
+
+export const runPostDeployCommand = async (
+	containerName: string,
+	command: string,
+	opts: { server?: Server | null; onLog: (line: string) => Promise<void> },
+) => {
+	await opts.onLog(`Running post-deploy command: ${command}`);
+	await run(dockerBin, ["exec", containerName, "sh", "-c", command], opts.server);
+	await opts.onLog("Post-deploy command completed");
+};
+
 export const deployContainer = async (
 	deploymentId: string,
 	imageTag: string,
@@ -215,6 +251,8 @@ export const deployContainer = async (
 
 	await onLog(`Starting container ${containerName} from image ${imageTag}`);
 
+	const appPort = opts.appPort ?? config.appInternalPort;
+	const { buildHealthCheckArgs, buildRestartArgs, waitForHealthyContainer } = await import("./health");
 	const dockerArgs = [
 		"run",
 		"-d",
@@ -225,7 +263,9 @@ export const deployContainer = async (
 		"-l",
 		DEQUEL_MANAGED_LABEL,
 		"-e",
-		`PORT=${opts.appPort ?? config.appInternalPort}`,
+		`PORT=${appPort}`,
+		...buildRestartArgs(opts.restartPolicy, opts.restartMaxRetries, opts.stopGracePeriodSeconds),
+		...buildHealthCheckArgs(opts.healthCheck, appPort),
 	];
 
 	if (opts.cpuLimit && opts.cpuLimit > 0) {
@@ -267,6 +307,9 @@ export const deployContainer = async (
 	await onLog(`Waiting for container ${containerName} to report running`);
 	await waitForRunningContainer(containerName, 40, onLog);
 	await tryRun(dockerBin, ["network", "connect", config.dockerNetwork, containerName], opts.targetServer);
+	if (opts.healthCheck && opts.healthCheck.type !== "none") {
+		await waitForHealthyContainer(containerName, opts.healthCheck, onLog, opts.targetServer);
+	}
 
 	const { buildCaddySnippet } = await import("../utils/domain-verifier");
 	const caddySnippet = await buildCaddySnippet(slug, containerName, opts.projectId, undefined, opts.appPort);

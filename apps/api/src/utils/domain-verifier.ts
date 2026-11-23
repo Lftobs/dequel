@@ -2,7 +2,13 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "../db/db-provider";
-import { getProjectById, listDomains, listEnvironmentVariablesForDeploy, updateDomainValidation } from "../db/repo";
+import {
+	getDomainSecrets,
+	getProjectById,
+	listDomains,
+	listEnvironmentVariablesForDeploy,
+	updateDomainValidation,
+} from "../db/repo";
 import { domains } from "../db/schema";
 import { reloadCaddy } from "../orchestrator/runtime";
 import { caddyReverseProxy, caddySite } from "./caddy-site";
@@ -186,6 +192,7 @@ export const buildCaddySnippet = async (
 	appPort?: number,
 	opts?: BuildSnippetOpts,
 ): Promise<string> => {
+	const routesDir = config.caddyRoutesDir;
 	const baseDomainRaw = opts?.baseDomain ?? config.caddyBaseDomain;
 	const baseDomain = baseDomainRaw === "localhost" ? `${baseDomainRaw}:80` : baseDomainRaw;
 	const listEnvVars = opts?.listEnvVarsFn ?? listEnvironmentVariablesForDeploy;
@@ -193,6 +200,7 @@ export const buildCaddySnippet = async (
 	let port = appPort ?? config.appInternalPort;
 	const isBaseProxied = isGlobalCloudflareProxied();
 	const customBlocks: string[] = [];
+	const project = projectId ? await getProjectById(projectId).catch(() => null) : null;
 
 	if (projectId) {
 		const projectDomains = await listDomainsFn(projectId);
@@ -200,21 +208,87 @@ export const buildCaddySnippet = async (
 		for (const d of verified) {
 			const entryDomain = d.domain.includes("localhost") ? `${d.domain}:80` : d.domain;
 			const isProxied = isCloudflareProxied((d as any).cloudflareProxied);
-			if (d.targetService || d.targetPort || isProxied !== isBaseProxied) {
-				let targetContainer = containerName;
-				if (d.targetService) {
-					const parts = containerName.split("-");
-					if (parts.length >= 3) {
-						parts[parts.length - 2] = d.targetService;
-						targetContainer = parts.join("-");
-					}
-				}
-				const tPort = d.targetPort || port;
-				customBlocks.push(
-					caddySite(entryDomain, caddyReverseProxy(`${targetContainer}:${tPort}`, { cloudflareProxied: isProxied })),
-				);
-			} else {
+			const hasAdvanced =
+				Boolean(d.targetService || d.targetPort || isProxied !== isBaseProxied) ||
+				d.tlsMode === "custom" ||
+				d.tlsMode === "dns" ||
+				Boolean(d.basicAuthUser) ||
+				d.httpsRedirect === false ||
+				d.gzip === false ||
+				Boolean(d.noindex) ||
+				Boolean(d.wwwRedirect) ||
+				Boolean(d.pathPrefix) ||
+				Boolean(d.rawSnippet);
+			if (!hasAdvanced) {
 				if (!defaultDomains.includes(entryDomain)) defaultDomains.push(entryDomain);
+				continue;
+			}
+			let targetContainer = containerName;
+			if (d.targetService) {
+				const parts = containerName.split("-");
+				if (parts.length >= 3) {
+					parts[parts.length - 2] = d.targetService;
+					targetContainer = parts.join("-");
+				}
+			}
+			const tPort = d.targetPort || port;
+			const needsSecrets = d.tlsMode === "custom" || Boolean(d.basicAuthUser);
+			const secrets = needsSecrets
+				? await getDomainSecrets(d.id).catch(() => ({
+						certificate: null,
+						certificateKey: null,
+						basicAuthPassword: null,
+					}))
+				: { certificate: null, certificateKey: null, basicAuthPassword: null };
+			let certificatePath: string | null = null;
+			let certificateKeyPath: string | null = null;
+			if (d.tlsMode === "custom" && secrets.certificate && secrets.certificateKey) {
+				const safeName = d.domain.replace(/[^a-z0-9.-]/gi, "_");
+				certificatePath = `/etc/caddy/routes/${safeName}.crt`;
+				certificateKeyPath = `/etc/caddy/routes/${safeName}.key`;
+				try {
+					writeFileSync(join(routesDir, `${safeName}.crt`), secrets.certificate, { mode: 0o600 });
+					writeFileSync(join(routesDir, `${safeName}.key`), secrets.certificateKey, { mode: 0o600 });
+				} catch (error) {
+					console.warn(`Could not write certificate files for ${d.domain}:`, error);
+				}
+			}
+			const basicAuth =
+				d.basicAuthUser && secrets.basicAuthPassword
+					? {
+							username: d.basicAuthUser,
+							passwordHash: await Bun.password.hash(secrets.basicAuthPassword, { algorithm: "bcrypt" }),
+						}
+					: null;
+			const maintenance = project?.maintenanceEnabled
+				? `  respond "${(project.maintenanceMessage || "Service temporarily unavailable").replace(/"/g, '\\"')}" 503`
+				: caddyReverseProxy(`${targetContainer}:${tPort}`, { cloudflareProxied: isProxied });
+			const reverseProxy = d.pathPrefix
+				? `  handle_path ${d.stripPrefix ? `${d.pathPrefix}/*` : `${d.pathPrefix}*`} {\n${maintenance
+						.split("\n")
+						.map((line) => `    ${line.trimStart()}`)
+						.join("\n")}\n  }`
+				: maintenance;
+			customBlocks.push(
+				caddySite(entryDomain, reverseProxy, {
+					tlsMode: d.tlsMode as any,
+					certificatePath,
+					certificateKeyPath,
+					basicAuth,
+					httpsRedirect: d.httpsRedirect,
+					gzip: d.gzip,
+					noindex: d.noindex,
+					rawSnippet: d.rawSnippet,
+				}),
+			);
+			if (d.wwwRedirect) {
+				customBlocks.push(
+					caddySite(`www.${entryDomain}`, `  redir https://${entryDomain}{uri} permanent`, {
+						tlsMode: d.tlsMode as any,
+						certificatePath,
+						certificateKeyPath,
+					}),
+				);
 			}
 		}
 
@@ -253,10 +327,10 @@ export const buildCaddySnippet = async (
 
 	const upstreamNames = opts?.containerNames?.length ? opts.containerNames : [containerName];
 	const upstreams = upstreamNames.map((n) => `${n}:${port}`).join(" ");
-	const primaryBlock = caddySite(
-		defaultDomains.join(", "),
-		caddyReverseProxy(upstreams, { cloudflareProxied: isBaseProxied }),
-	);
+	const primaryReverseProxy = project?.maintenanceEnabled
+		? `  respond "${(project.maintenanceMessage || "Service temporarily unavailable").replace(/"/g, '\\"')}" 503`
+		: caddyReverseProxy(upstreams, { cloudflareProxied: isBaseProxied });
+	const primaryBlock = caddySite(defaultDomains.join(", "), primaryReverseProxy);
 
 	return [primaryBlock, ...customBlocks].join("\n");
 };

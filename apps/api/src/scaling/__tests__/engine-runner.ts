@@ -133,6 +133,7 @@ mock.module(fileUrl("../../db/repo"), () => ({
 	listEnvironmentVariablesForDeploy: mock(() => Promise.resolve(mockListEnvVarsResult)),
 	listDomains: mock(() => Promise.resolve([])),
 	updateDomainValidation: mock(() => Promise.resolve()),
+	getDomainSecrets: mock(() => Promise.resolve({ certificate: null, certificateKey: null, basicAuthPassword: null })),
 	getLogs: mock(() => Promise.resolve([])),
 }));
 
