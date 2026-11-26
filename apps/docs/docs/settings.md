@@ -1,7 +1,7 @@
 ---
 title: Platform Settings
 category: Integrations
-description: SMTP, ingress, backup storage, GitHub, servers, and AI keys.
+description: SMTP, ingress, backup storage, GitHub, servers, event channels, and AI keys.
 slug: settings
 ---
 
@@ -32,8 +32,22 @@ password (encrypted at rest), and sender address, with presets for
 Resend, SendGrid, Postmark, Mailgun, and AWS SES. **Send Test Email**
 verifies the setup before you depend on it.
 
-Without SMTP, email-channel [alert rules](/docs/alerts) cannot deliver
-— Slack and webhook channels work independently.
+Without SMTP, email-channel [alert rules](/docs/alerts) and
+[notification channels](/docs/notifications) cannot deliver — Slack and
+webhook channels work independently.
+
+## Event channels
+
+Slack, Discord, Telegram, Mattermost, Pushover, ntfy, Gotify, email,
+and generic webhook destinations with a per-event subscription matrix
+(deploys, backups, server offline, alerts) and a test-send action. See
+[Notification Channels](/docs/notifications).
+
+## Registries
+
+Credentials for private container registries (`docker login` on the
+deployment node before pulls and Dockerfile builds). See
+[Registries](/docs/registries).
 
 ## AI
 
@@ -56,3 +70,4 @@ failover state. App hostnames stay identical across servers regardless
 
 - Read [System Configuration](/docs/system-config) for env/file settings.
 - Read [Alerts](/docs/alerts) to wire SMTP into notifications.
+- Read [Audit Logs](/docs/audit-logs) for the action trail.

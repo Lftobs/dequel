@@ -25,6 +25,10 @@ migrated to Git later from the same tab without losing history.
 together; only the mapped ingress services get public URLs (see
 [Project Configuration](/docs/configuration)).
 
+**Docker Image.** Deploy a prebuilt image reference with a pull policy
+and optional registry credentials — no build step. See
+[Build Methods](/docs/build-methods).
+
 ## Lifecycle
 
 Deployments move through `pending` → `building` → `deploying` →

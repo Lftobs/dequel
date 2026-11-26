@@ -11,11 +11,15 @@ it in the creation wizard and can change it later on the project's
 
 ## Build settings
 
-**Build strategy** is either `railpack` (automatic single-service build)
-or `compose` (multi-container from your repo-root `docker-compose.yml`).
-Railpack auto-detects the framework and proposes install, build, and
-start commands plus the output directory and port — every field stays
-editable for frameworks it guesses wrong.
+**Build strategy** is `railpack` (automatic single-service build),
+`dockerfile` (your repository's Dockerfile), or `compose`
+(multi-container from your repo-root `docker-compose.yml`). Railpack
+auto-detects the framework and proposes install, build, and start
+commands plus the output directory and port — every field stays
+editable for frameworks it guesses wrong. See
+[Build Methods](/docs/build-methods) for the Dockerfile and prebuilt
+image paths, and [Health Checks](/docs/health-checks) for the runtime
+settings on the Deploy & Runtime section.
 
 Useful fields:
 

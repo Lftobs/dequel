@@ -27,7 +27,7 @@ project's **Domains** tab to serve the app on addresses you own, like
 
 The Domains tab shows live status per domain: validation state, SSL
 state, whether DNS resolves, and whether TLS handshakes succeed (polled
-continuously).
+continuously). **Edit** any domain to change its controls below.
 
 :::note[DNS propagation]
 New records can take minutes to hours to propagate. Dequel keeps
@@ -42,8 +42,44 @@ waiting.
 - **Failed** — records point somewhere else. Fix the DNS values and
   Dequel re-checks.
 
+## TLS mode
+
+- **Automatic** (default) — Let's Encrypt issuance via Caddy.
+- **Custom certificate** — paste a PEM certificate and private key.
+  Dequel stores the key encrypted and mounts both into Caddy for that
+  domain, so corporate or internal CAs work without touching the
+  Caddyfile. Upload a wildcard certificate to cover
+  `*.mycompany.com` here.
+- **DNS challenge** — for wildcard issuance; requires a Caddy build
+  with a DNS provider module and matching global configuration.
+
+## Traffic controls
+
+- **Cloudflare Proxy** — trusts Cloudflare's edge ranges so the app sees
+  real client IPs behind the proxy.
+- **HTTPS Redirect** — off by default when you need plain-HTTP
+  endpoints; otherwise HTTP redirects to HTTPS.
+- **Gzip** — compress text responses at the proxy.
+- **No Index** — sends `X-Robots-Tag: noindex` to keep private or
+  staging domains out of search engines.
+- **WWW Redirect** — serves `www.<domain>` and redirects it to the apex
+  (or vice versa).
+- **Path prefix** — mount the app under a path like `/app`, with
+  **Strip Prefix** optionally removing it before proxying upstream.
+- **Basic auth** — a single username/password pair (bcrypt-hashed)
+  in front of the whole domain.
+- **Raw Caddy snippet** — escape hatch: extra directives injected
+  directly into this domain's site block, for redirects, headers, or
+  middleware Dequel does not model.
+
 Remove a domain any time with the delete action; its route is removed
 on the next Caddy reload.
+
+## Maintenance page
+
+When [maintenance mode](/docs/automation) is enabled for the project,
+every domain — including custom ones — serves the maintenance message
+with a `503` instead of proxying traffic.
 
 ## Next steps
 
