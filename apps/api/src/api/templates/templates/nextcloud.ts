@@ -48,7 +48,7 @@ volumes:
 			label: "Trusted domains",
 			default: "localhost",
 			description:
-				"Space-separated list of domains allowed to use this Nextcloud, e.g. mycloud.example.com. Include your Dequel domain here.",
+				"Space-separated list of domains allowed to use this Nextcloud, e.g. mycloud.example.com. Include your Dequl domain here.",
 		},
 	],
 };

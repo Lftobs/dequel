@@ -21,14 +21,14 @@ let ctx: ToolContext;
 beforeAll(async () => {
 	root = await mkdtemp(join(tmpdir(), "diag-tools-"));
 	ctx = {
-		roots: { dequel: join(root, "dequel"), project: join(root, "project") },
+		roots: { dequl: join(root, "dequl"), project: join(root, "project") },
 		progressPath: join(root, "progress.jsonl"),
 	};
-	await mkdir(join(root, "dequel", "apps/api/src"), { recursive: true });
-	await writeFile(join(root, "dequel", "apps/api/src/pipeline.ts"), "export const run = () => { buildImage(); };\n");
-	await writeFile(join(root, "dequel", "README.md"), "Dequel\n");
-	await mkdir(join(root, "dequel", "node_modules"), { recursive: true });
-	await writeFile(join(root, "dequel", "node_modules/blob.js"), "x".repeat(100));
+	await mkdir(join(root, "dequl", "apps/api/src"), { recursive: true });
+	await writeFile(join(root, "dequl", "apps/api/src/pipeline.ts"), "export const run = () => { buildImage(); };\n");
+	await writeFile(join(root, "dequl", "README.md"), "Dequl\n");
+	await mkdir(join(root, "dequl", "node_modules"), { recursive: true });
+	await writeFile(join(root, "dequl", "node_modules/blob.js"), "x".repeat(100));
 	await mkdir(join(root, "project"), { recursive: true });
 	await writeFile(join(root, "project", "Dockerfile"), "FROM node:20\nRUN npm ci\n");
 });
@@ -39,11 +39,11 @@ afterAll(async () => {
 
 describe("sandbox file tools", () => {
 	it("lists files while skipping dependency dirs", async () => {
-		const paths = await listFilesIn(ctx, "dequel");
+		const paths = await listFilesIn(ctx, "dequl");
 		expect(paths).toContain("apps/api/src/pipeline.ts");
 		expect(paths).toContain("README.md");
 		expect(paths.some((p) => p.includes("node_modules"))).toBe(false);
-		expect(await listFilesIn(ctx, "dequel", "apps/api/src")).toEqual(["apps/api/src/pipeline.ts"]);
+		expect(await listFilesIn(ctx, "dequl", "apps/api/src")).toEqual(["apps/api/src/pipeline.ts"]);
 	});
 
 	it("reads capped file content", async () => {
@@ -53,14 +53,14 @@ describe("sandbox file tools", () => {
 	});
 
 	it("rejects paths escaping the roots", async () => {
-		await expect(readFileAt(ctx, "dequel", "../../etc/passwd")).rejects.toThrow(/sandbox roots/);
-		await expect(readFileAt(ctx, "dequel", "/srv/jobs/x/input.json")).rejects.toThrow(/sandbox roots/);
+		await expect(readFileAt(ctx, "dequl", "../../etc/passwd")).rejects.toThrow(/sandbox roots/);
+		await expect(readFileAt(ctx, "dequl", "/srv/jobs/x/input.json")).rejects.toThrow(/sandbox roots/);
 		await expect(readFileAt(ctx, "nope", "x")).rejects.toThrow();
-		await expect(searchInScope(ctx, "dequel", "  ")).rejects.toThrow();
+		await expect(searchInScope(ctx, "dequl", "  ")).rejects.toThrow();
 	});
 
 	it("searches contents across the tree", async () => {
-		const hits = await searchInScope(ctx, "dequel", "buildImage");
+		const hits = await searchInScope(ctx, "dequl", "buildImage");
 		expect(hits).toHaveLength(1);
 		expect(hits[0]).toContain("apps/api/src/pipeline.ts:1:");
 		expect(await searchInScope(ctx, "project", "zzz-no-match")).toEqual([]);
@@ -89,13 +89,13 @@ describe("sandbox file tools", () => {
 			const tool = tools.find((t) => t.name === name) as unknown as { func: (a: unknown) => Promise<unknown> };
 			return tool.func(args);
 		};
-		await expect(call("readFile", { scope: "dequel", path: "/srv/jobs/x/input.json" })).resolves.toMatch(
+		await expect(call("readFile", { scope: "dequl", path: "/srv/jobs/x/input.json" })).resolves.toMatch(
 			/sandbox roots/,
 		);
-		await expect(call("listFiles", { scope: "dequel", prefix: "../../etc" })).resolves.toEqual([
+		await expect(call("listFiles", { scope: "dequl", prefix: "../../etc" })).resolves.toEqual([
 			expect.stringMatching(/sandbox roots/),
 		]);
-		await expect(call("searchText", { scope: "dequel", query: "  " })).resolves.toEqual([
+		await expect(call("searchText", { scope: "dequl", query: "  " })).resolves.toEqual([
 			expect.stringMatching(/Error:/),
 		]);
 		await expect(call("readFile", { scope: "nope", path: "x" })).resolves.toMatch(/Error:/);

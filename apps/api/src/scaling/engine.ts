@@ -4,7 +4,7 @@ import Redis from "ioredis";
 import { getProjectById, getScalingPolicy, listDeployments, listEnvironmentVariablesForDeploy } from "../db/repo";
 import type { Server } from "../types";
 import { config } from "../utils/config";
-import { DEQUEL_MANAGED_LABEL } from "../utils/dequel-labels";
+import { DEQUL_MANAGED_LABEL } from "../utils/dequl-labels";
 import { dockerBin } from "../utils/docker-bin";
 import { slugify } from "../utils/routes";
 import { execDockerSshCommand, syncRemoteCaddyRoute } from "../utils/ssh";
@@ -223,7 +223,7 @@ class ScalingEngine {
 	}
 
 	private cooldownKey(deploymentId: string) {
-		return `dequel:scaling:cooldown:${deploymentId}`;
+		return `dequl:scaling:cooldown:${deploymentId}`;
 	}
 
 	private async getCooldownState(deploymentId: string): Promise<CooldownState> {
@@ -272,7 +272,7 @@ class ScalingEngine {
 				"ps",
 				"-q",
 				"--filter",
-				`label=${DEQUEL_MANAGED_LABEL}`,
+				`label=${DEQUL_MANAGED_LABEL}`,
 				"--filter",
 				`name=deploy-${dep.id}-replica-`,
 			]);
@@ -283,7 +283,7 @@ class ScalingEngine {
 			return Math.max(1, count + 1);
 		}
 		if (target.mode === "ssh") {
-			const result = await execDockerSshCommand(target.server!, ["ps", "-q", "--filter", "label=com.dequel.replica=1"]);
+			const result = await execDockerSshCommand(target.server!, ["ps", "-q", "--filter", "label=com.dequl.replica=1"]);
 			const count = result.stdout
 				.split("\n")
 				.map((l) => l.trim())
@@ -388,9 +388,9 @@ class ScalingEngine {
 			"--network",
 			config.dockerNetwork,
 			"-l",
-			DEQUEL_MANAGED_LABEL,
+			DEQUL_MANAGED_LABEL,
 			"-l",
-			"com.dequel.replica=1",
+			"com.dequl.replica=1",
 			...resources,
 			...volumes,
 			...envVars,

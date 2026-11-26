@@ -11,7 +11,7 @@ export interface SshExecutionOptions {
 	signal?: AbortSignal;
 }
 
-const SSH_KEYS_DIR = join(tmpdir(), "dequel_ssh_keys");
+const SSH_KEYS_DIR = join(tmpdir(), "dequl_ssh_keys");
 
 export class RemoteScriptAbortedError extends Error {
 	constructor() {
@@ -116,12 +116,12 @@ export const testSshConnection = async (server: {
 	sshKey?: string | null;
 	id?: string;
 }): Promise<SshConnectionResult> => {
-	const probe = await execRemoteCommand(server, "echo dequel-ok").catch((err: unknown) => ({
+	const probe = await execRemoteCommand(server, "echo dequl-ok").catch((err: unknown) => ({
 		code: 1,
 		stdout: "",
 		stderr: err instanceof Error ? err.message : String(err),
 	}));
-	if (probe.code !== 0 || probe.stdout.trim() !== "dequel-ok") {
+	if (probe.code !== 0 || probe.stdout.trim() !== "dequl-ok") {
 		return {
 			ok: false,
 			ssh: false,
@@ -195,7 +195,7 @@ export const syncRemoteCaddyRoute = (
 				"ConnectTimeout=10",
 				...keyArgs,
 				`${user}@${server.host}`,
-				`sudo mkdir -p /etc/caddy/routes && sudo tee /etc/caddy/routes/${filename} > /dev/null && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequel-caddy caddy reload --config /etc/caddy/Caddyfile || true)`,
+				`sudo mkdir -p /etc/caddy/routes && sudo tee /etc/caddy/routes/${filename} > /dev/null && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequl-caddy caddy reload --config /etc/caddy/Caddyfile || true)`,
 			],
 			{ stdio: ["pipe", "pipe", "pipe"] },
 		);
@@ -242,7 +242,7 @@ export const removeRemoteCaddyRoute = (
 				"ConnectTimeout=10",
 				...keyArgs,
 				`${user}@${server.host}`,
-				`sudo rm -f /etc/caddy/routes/${filename} && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequel-caddy caddy reload --config /etc/caddy/Caddyfile || true)`,
+				`sudo rm -f /etc/caddy/routes/${filename} && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequl-caddy caddy reload --config /etc/caddy/Caddyfile || true)`,
 			],
 			{ stdio: ["ignore", "pipe", "pipe"] },
 		);

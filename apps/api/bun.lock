@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "dequel-api",
+      "name": "dequl-api",
       "dependencies": {
         "@elysiajs/cors": "^1.1.1",
         "drizzle-orm": "^0.45.2",

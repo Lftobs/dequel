@@ -24,7 +24,7 @@ const SKIP_DIRS = new Set([
 ]);
 
 export interface SandboxRoots {
-	dequel: string;
+	dequl: string;
 	project: string | null;
 }
 
@@ -83,12 +83,12 @@ const asListResult =
 	};
 
 const baseFor = (roots: SandboxRoots, scope: string): string => {
-	if (scope === "dequel") return roots.dequel;
+	if (scope === "dequl") return roots.dequl;
 	if (scope === "project") {
 		if (!roots.project) throw new Error("project source is not available for this diagnosis (logs only)");
 		return roots.project;
 	}
-	throw new Error(`unknown scope "${scope}" (use "dequel" or "project")`);
+	throw new Error(`unknown scope "${scope}" (use "dequl" or "project")`);
 };
 
 const confinePath = async (roots: SandboxRoots, scope: string, rel: string): Promise<string> => {
@@ -188,9 +188,9 @@ export const buildFileTools = (roots: SandboxRoots, progressPath: string, readBy
 	const ctx: ToolContext = { roots, progressPath, readBytes };
 	const listFiles = fn("listFiles")
 		.description(
-			"List files under a source scope. Scope dequel is Dequel's own platform source; scope project is the deployed project's source. Call with a narrow prefix to discover layout before reading.",
+			"List files under a source scope. Scope dequl is Dequl's own platform source; scope project is the deployed project's source. Call with a narrow prefix to discover layout before reading.",
 		)
-		.arg("scope", f.string('Source scope: "dequel" or "project"'))
+		.arg("scope", f.string('Source scope: "dequl" or "project"'))
 		.arg("prefix", f.string("Optional subdirectory to list, e.g. apps/api/src/orchestrator").optional())
 		.returns(f.string("Repo-relative paths, directories end with /").array())
 		.handler(
@@ -202,7 +202,7 @@ export const buildFileTools = (roots: SandboxRoots, progressPath: string, readBy
 		.description(
 			`Read one source file from the start, capped at ${((readBytes ?? MAX_READ_BYTES) / 1000).toFixed(1)}KB with a truncation flag. Prefer searchText to locate the exact region before reading.`,
 		)
-		.arg("scope", f.string('Source scope: "dequel" or "project"'))
+		.arg("scope", f.string('Source scope: "dequl" or "project"'))
 		.arg("path", f.string("Repo-relative file path, e.g. apps/api/src/orchestrator/pipeline.ts"))
 		.returns(f.string("File content prefixed with a header line"))
 		.handler(asTextResult(async ({ scope, path }: { scope: string; path: string }) => readFileAt(ctx, scope, path)))
@@ -212,7 +212,7 @@ export const buildFileTools = (roots: SandboxRoots, progressPath: string, readBy
 		.description(
 			"Search file contents for a fixed string (case-insensitive) under a scope. Use this to find error strings, function definitions, or config keys across the tree.",
 		)
-		.arg("scope", f.string('Source scope: "dequel" or "project"'))
+		.arg("scope", f.string('Source scope: "dequl" or "project"'))
 		.arg("query", f.string("Fixed string to search for"))
 		.arg("prefix", f.string("Optional subdirectory to search under").optional())
 		.returns(f.string('Matching lines as "path:line: text"').array())

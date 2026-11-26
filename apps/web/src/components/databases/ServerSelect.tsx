@@ -1,8 +1,8 @@
 import { Laptop, Server, ServerIcon } from "lucide-react";
-import type { Server as DequelServer } from "../../types";
+import type { Server as DequlServer } from "../../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
-function getDeploymentTargets(servers: DequelServer[]): DequelServer[] {
+function getDeploymentTargets(servers: DequlServer[]): DequlServer[] {
 	return servers.filter(
 		(s) => s.status === "connected" && (s.mode === "local" || s.mode === "ssh" || s.mode === "agent"),
 	);
@@ -11,7 +11,7 @@ function getDeploymentTargets(servers: DequelServer[]): DequelServer[] {
 interface ServerSelectProps {
 	value: string;
 	onChange: (value: string) => void;
-	servers: DequelServer[];
+	servers: DequlServer[];
 	id?: string;
 }
 

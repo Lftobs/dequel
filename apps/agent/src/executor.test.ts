@@ -21,7 +21,7 @@ const rollbackPayload = {
 	deploymentId: "deployment-1",
 	projectId: "project-1",
 	projectName: "Example API",
-	imageTag: "dequel-example-api:deployment-1234",
+	imageTag: "dequl-example-api:deployment-1234",
 	appPort: 3000,
 	environmentVariables: [{ key: "NODE_ENV", value: "production" }],
 	volumes: [{ volumeName: "vol-project-1", mountPath: "/app/data" }],
@@ -66,7 +66,7 @@ describe("remote rollback payload", () => {
 				deploymentId: "deployment-1",
 				projectId: null,
 				projectName: null,
-				imageTag: "dequel-app:deployment-1234",
+				imageTag: "dequl-app:deployment-1234",
 				appPort: 3000,
 				environmentVariables: [],
 				volumes: undefined,
@@ -75,7 +75,7 @@ describe("remote rollback payload", () => {
 	});
 
 	it("rejects image tags without a tag suffix", () => {
-		expect(() => validateRollbackPayload({ ...rollbackPayload, imageTag: "dequel-app" })).toThrow("Invalid image tag");
+		expect(() => validateRollbackPayload({ ...rollbackPayload, imageTag: "dequl-app" })).toThrow("Invalid image tag");
 	});
 
 	it("rejects volumes with unsafe paths", () => {
@@ -94,12 +94,12 @@ describe("remote destroy payload", () => {
 			validateDestroyPayload({
 				deploymentId: "deployment-1",
 				containerName: "example-api-deploym",
-				imageTag: "dequel-example-api:deployment-1234",
+				imageTag: "dequl-example-api:deployment-1234",
 			}),
 		).toEqual({
 			deploymentId: "deployment-1",
 			containerName: "example-api-deploym",
-			imageTag: "dequel-example-api:deployment-1234",
+			imageTag: "dequl-example-api:deployment-1234",
 		});
 	});
 
@@ -120,7 +120,7 @@ describe("remote scale payload", () => {
 		projectId: "project-1",
 		action: "up" as const,
 		replicas: 2,
-		imageTag: "dequel-example-api:deployment-1234",
+		imageTag: "dequl-example-api:deployment-1234",
 		appPort: 3000,
 		cpuLimit: 0.5,
 		memoryLimitMb: 512,

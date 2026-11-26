@@ -1,1 +1,1 @@
-declare const __DEQUEL_VERSION__: string;
+declare const __DEQUL_VERSION__: string;

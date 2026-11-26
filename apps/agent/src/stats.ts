@@ -42,7 +42,7 @@ export const collectContainerStats = async (): Promise<AgentContainerStat[]> => 
 	if (cached && Date.now() - cached.at < 30_000) return cached.stats;
 	const stats: AgentContainerStat[] = [];
 	try {
-		const ids = (await run("docker", ["ps", "-q", "--filter", "label=com.dequel.managed=true"]))
+		const ids = (await run("docker", ["ps", "-q", "--filter", "label=com.dequl.managed=true"]))
 			.split("\n")
 			.map((id) => id.trim())
 			.filter(Boolean);
@@ -58,13 +58,13 @@ export const collectContainerStats = async (): Promise<AgentContainerStat[]> => 
 			const projectId = await run("docker", [
 				"inspect",
 				"--format",
-				'{{index .Config.Labels "com.dequel.project"}}',
+				'{{index .Config.Labels "com.dequl.project"}}',
 				id,
 			]).catch(() => "");
 			const replica = await run("docker", [
 				"inspect",
 				"--format",
-				'{{index .Config.Labels "com.dequel.replica"}}',
+				'{{index .Config.Labels "com.dequl.replica"}}',
 				id,
 			]).catch(() => "");
 			stats.push({

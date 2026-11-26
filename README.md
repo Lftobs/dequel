@@ -1,6 +1,6 @@
-# Dequel
+# Dequl
 
-Dequel is a self-hosted deployment platform. It lets you deploy applications
+Dequl is a self-hosted deployment platform. It lets you deploy applications
 from Git repositories, file uploads, or Docker Compose files with zero
 infrastructure setup. Built with [Railpack](https://railway.app/railpack) for
 automatic build detection and container orchestration on your own servers.
@@ -55,23 +55,23 @@ Services run in Docker Compose:
 
 ## Documentation
 
-Documentation is available at the [docs site](https://dequel-docs.vercel.app)
+Documentation is available at the [docs site](https://dequl-docs.vercel.app)
 and in the `apps/docs/` directory of this repository.
 
 ## Quick Start
 
 ```bash
-curl -fsSL https://github.com/Lftobs/dequel/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/Lftobs/dequl/releases/latest/download/install.sh | bash
 ```
 
-Once installed, manage Dequel with the `dequel` CLI:
+Once installed, manage Dequl with the `dequl` CLI:
 
 ```bash
-dequel start     # Start all services
-dequel status    # Show service status
-dequel logs      # Follow logs
-dequel stop      # Stop all services
-dequel update    # Pull latest images and restart
+dequl start     # Start all services
+dequl status    # Show service status
+dequl logs      # Follow logs
+dequl stop      # Stop all services
+dequl update    # Pull latest images and restart
 ```
 
 Open `http://localhost` to see the dashboard.
@@ -83,7 +83,7 @@ Open `http://localhost` to see the dashboard.
 
 ## Installing from a Release
 
-1. Download the latest release from the [Releases page](https://github.com/Lftobs/dequel/releases).
+1. Download the latest release from the [Releases page](https://github.com/Lftobs/dequl/releases).
 2. Run the install script above, or download and run `scripts/install.sh` directly.
 3. The script will download `docker-compose.yml`, monitoring configs, and start all services.
 
@@ -95,10 +95,10 @@ Run services locally (without Docker) for faster iteration:
 
 ```bash
 # Terminal 1 - API
-export DATABASE_PATH=./data/dequel.db \
+export DATABASE_PATH=./data/dequl.db \
        WORKSPACE_ROOT=./workspace \
        CADDY_ROUTES_DIR=./infra/caddy/routes \
-       DOCKER_NETWORK=dequel_net \
+       DOCKER_NETWORK=dequl_net \
        APP_INTERNAL_PORT=3000
 bun apps/api/src/index.ts
 
@@ -114,7 +114,7 @@ bun apps/web/src/main.tsx
 - `apps/docs/` -- Documentation site (Astro), deployed to Vercel.
 - `scripts/` -- Utility scripts:
   - `install.sh` -- One-command install script.
-  - `dequel` -- CLI script for managing the Dequel stack (start/stop/status/logs/update).
+  - `dequl` -- CLI script for managing the Dequl stack (start/stop/status/logs/update).
 - `VERSION` -- Single source of truth for the project version.
 - `CHANGELOG.md` -- Release history.
 - `.github/workflows/release.yml` -- Automated release pipeline.
@@ -128,9 +128,9 @@ bun apps/web/src/main.tsx
 1. **Source preparation**: API fetches code (Git clone, ZIP extract, or Compose
    reference) into `./workspace/<deploymentId>`.
 2. **Build**: Railpack CLI auto-detects the stack and builds a Docker image
-   (`dequel-<deploymentId>:latest`) via Buildkit.
+   (`dequl-<deploymentId>:latest`) via Buildkit.
 3. **Runtime**: A container (`deploy-<deploymentId>`) starts on the
-   `dequel_net` network. Environment variables and volumes are injected.
+   `dequl_net` network. Environment variables and volumes are injected.
 4. **Ingress**: Caddy gets a route file mapping
    `<deploymentId>.localhost` to the container's internal port. Caddy is
    reloaded dynamically.
@@ -145,12 +145,12 @@ Key environment variables for the API service:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3001` | API listen port |
-| `DATABASE_PATH` | `./data/dequel.db` | SQLite database location |
+| `DATABASE_PATH` | `./data/dequl.db` | SQLite database location |
 | `WORKSPACE_ROOT` | `./workspace` | Build staging directory |
 | `CADDY_ROUTES_DIR` | `./infra/caddy/routes` | Caddy route output |
 | `CADDY_BASE_DOMAIN` | `localhost` | Base domain for deployment subdomains. Set to a real domain (e.g. `example.com`) for Let's Encrypt auto-SSL. |
 | `CADDY_EMAIL` | _(empty)_ | Email for Let's Encrypt SSL certificate notifications |
-| `DOCKER_NETWORK` | `dequel_net` | Docker network for deployments |
+| `DOCKER_NETWORK` | `dequl_net` | Docker network for deployments |
 | `BUILDKIT_HOST` | `tcp://buildkit:1234` | Buildkit daemon address |
 | `RAILPACK_BUILD_TIMEOUT_MS` | `1200000` | Build timeout |
 

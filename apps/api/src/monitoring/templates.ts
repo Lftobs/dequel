@@ -15,7 +15,7 @@ export const EMAIL_ATTACHMENTS = [
 	{
 		filename: "logo.webp",
 		path: join(import.meta.dir, "templates", "logo.webp"),
-		cid: "dequel-logo",
+		cid: "dequl-logo",
 	},
 ];
 
@@ -78,7 +78,7 @@ const renderScalingSuggestion = (s: AlertDetails["scaling"]): string => {
 	const enable = s.kind === "enable_autoscaling";
 	const title = enable ? "Autoscaling is off" : "Replica limit reached";
 	const text = enable
-		? "Enable autoscaling for this project and Dequel will add capacity automatically while load stays high."
+		? "Enable autoscaling for this project and Dequl will add capacity automatically while load stays high."
 		: `This project is at its replica limit (${s.current}/${s.maxReplicas}). Raise max replicas so autoscaling can add capacity.`;
 	const cta = enable ? "Set up autoscaling" : "Adjust scaling";
 	return `<div style="background:${THEME.amberBg};border:1px solid ${THEME.amber}44;border-radius:8px;padding:20px;margin:24px 0;text-align:center;">
@@ -169,7 +169,7 @@ export const buildEmail = (
 			const body = alertDefaultTpl.replace(/{{PROJECT_NAME}}/g, project).replace("{{DETAILS_ROWS}}", detailsRows);
 
 			return {
-				subject: `[Dequel] ${alertType} alert — ${projectName}`,
+				subject: `[Dequl] ${alertType} alert — ${projectName}`,
 				html: renderShell("ALERT", THEME.amberBg, THEME.amber, body),
 			};
 		}
@@ -216,7 +216,7 @@ export const buildDeploymentFailureEmail = (ctx: {
 
 export const buildSmtpTestEmail = (): { subject: string; html: string } => {
 	return {
-		subject: "[Dequel] SMTP Test Email",
+		subject: "[Dequl] SMTP Test Email",
 		html: renderShell("SMTP TEST", THEME.greenBg, THEME.green, smtpTestTpl),
 	};
 };

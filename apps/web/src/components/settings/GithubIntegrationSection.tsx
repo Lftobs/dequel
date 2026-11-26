@@ -126,7 +126,7 @@ export function GithubIntegrationSection() {
 								and click <strong>New OAuth App</strong>.
 							</li>
 							<li>
-								Set Application Name to <strong>Dequel Platform</strong>.
+								Set Application Name to <strong>Dequl Platform</strong>.
 							</li>
 							<li>
 								Set <strong>Authorization Callback URL</strong> to:
@@ -190,7 +190,7 @@ export function GithubIntegrationSection() {
 						<div className="space-y-1.5">
 							<label className="text-xs font-medium text-foreground">OAuth App Name (Optional)</label>
 							<Input
-								placeholder="Dequel Production"
+								placeholder="Dequl Production"
 								value={appName}
 								onChange={(e) => setAppName(e.target.value)}
 								className="bg-card border-border/80 text-xs focus:ring-orange-500/50"

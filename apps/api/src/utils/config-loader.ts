@@ -26,9 +26,9 @@ export interface FileConfig {
 }
 
 const searchPaths = (): string[] => {
-	const explicit = process.env.DEQUEL_CONFIG;
+	const explicit = process.env.DEQUL_CONFIG;
 	if (explicit) return [resolve(explicit)];
-	return [resolve(`${XDG_CONFIG_HOME}/dequel/dequel.json`), resolve("./dequel.json"), resolve("./data/dequel.json")];
+	return [resolve(`${XDG_CONFIG_HOME}/dequl/dequl.json`), resolve("./dequl.json"), resolve("./data/dequl.json")];
 };
 
 export const loadFileConfig = (): FileConfig => {

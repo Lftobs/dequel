@@ -1,5 +1,5 @@
 import { Box } from "lucide-react";
-import type { Server as DequelServer, GithubRepo } from "../../../types";
+import type { Server as DequlServer, GithubRepo } from "../../../types";
 import type { FrameworkPreset } from "../../../utils/presets";
 import { Input } from "../../ui/input";
 import { StepBasicsGeneralSettings } from "./StepBasicsGeneralSettings";
@@ -34,7 +34,7 @@ interface StepBasicsProps {
 	onSelectPreset: (preset: FrameworkPreset) => void;
 	serverId: string;
 	setServerId: (v: string) => void;
-	servers: DequelServer[];
+	servers: DequlServer[];
 }
 
 export function StepBasics({

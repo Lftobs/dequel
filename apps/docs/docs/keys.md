@@ -19,7 +19,7 @@ monitoring and logs, or full admin). The `dql_...` token is shown
 listed. Send it as a Bearer token:
 
 ```bash
-curl -H "Authorization: Bearer dql_<key>" https://dequel.example.com/api/projects
+curl -H "Authorization: Bearer dql_<key>" https://dequl.example.com/api/projects
 ```
 
 Scopes are enforced per HTTP method (read vs write). Revoke a token
@@ -30,7 +30,7 @@ tab shows copy-paste `curl` snippets and secret-handling practices.
 
 Servers connected over SSH authenticate with a key from this pool, not
 with per-server pastes. Add a PEM/OpenSSH private key (paste or upload
-`.pem` / `.key`); Dequel detects Ed25519/RSA formats, fingerprints the
+`.pem` / `.key`); Dequl detects Ed25519/RSA formats, fingerprints the
 key, and rejects duplicates. Private material is never displayed again
 — only name, fingerprint, tags, and date.
 

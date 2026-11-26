@@ -5,7 +5,7 @@ description: Scheduled and on-demand backups with one-click restore.
 slug: backups
 ---
 
-Dequel backs up managed databases on a schedule you set per database,
+Dequl backs up managed databases on a schedule you set per database,
 plus the platform's own internal database. Every snapshot can be
 restored to its container from the dashboard, the API, or the CLI.
 
@@ -39,10 +39,10 @@ section. **Backup System Database Now** takes an immediate snapshot.
 From a shell, the CLI covers the same flows (see [CLI](/docs/cli)):
 
 ```bash
-dequel backup              # back up the internal database now
-dequel backup <db-id>      # back up a managed database now
-dequel backup list         # list snapshots
-dequel backup restore <id> # restore a snapshot
+dequl backup              # back up the internal database now
+dequl backup <db-id>      # back up a managed database now
+dequl backup list         # list snapshots
+dequl backup restore <id> # restore a snapshot
 ```
 
 ## Next steps

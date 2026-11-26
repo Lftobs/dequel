@@ -17,7 +17,7 @@ const run = (command: string, args: string[]) =>
 	});
 
 export const bringUpTunnel = async (config: WireGuardPeerConfig): Promise<boolean> => {
-	const confPath = "/etc/wireguard/dequel0.conf";
+	const confPath = "/etc/wireguard/dequl0.conf";
 	const contents = [
 		"[Interface]",
 		`PrivateKey = ${config.privateKey}`,
@@ -33,14 +33,14 @@ export const bringUpTunnel = async (config: WireGuardPeerConfig): Promise<boolea
 	try {
 		await mkdir("/etc/wireguard", { recursive: true });
 		await writeFile(confPath, contents, { mode: 0o600 });
-		const up = await run("wg-quick", ["up", "dequel0"]);
+		const up = await run("wg-quick", ["up", "dequl0"]);
 		if (up.code !== 0) {
-			const down = await run("wg-quick", ["down", "dequel0"]);
+			const down = await run("wg-quick", ["down", "dequl0"]);
 			if (down.code !== 0) {
 				console.warn(`[WireGuard] Could not bring up tunnel: ${up.output}`);
 				return false;
 			}
-			const retry = await run("wg-quick", ["up", "dequel0"]);
+			const retry = await run("wg-quick", ["up", "dequl0"]);
 			if (retry.code !== 0) {
 				console.warn(`[WireGuard] Could not bring up tunnel: ${retry.output}`);
 				return false;

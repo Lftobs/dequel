@@ -1,43 +1,43 @@
 ---
 title: CLI Reference
 category: Platform
-description: Manage Dequel from the shell with the dequel command.
+description: Manage Dequl from the shell with the dequl command.
 slug: cli
 ---
 
-The installer places the `dequel` command on your `PATH`. It manages
+The installer places the `dequl` command on your `PATH`. It manages
 the compose stack, updates, and backups. Configuration lives in
-`~/.dequel` (override with `DEQUEL_HOME`).
+`~/.dequl` (override with `DEQUL_HOME`).
 
 ## Lifecycle
 
 | Command | Description |
 |---------|-------------|
-| `dequel start` | Start all services |
-| `dequel stop` | Stop all services |
-| `dequel restart` | Restart all services |
-| `dequel status` | Show service status |
-| `dequel logs [service]` | Follow service logs |
-| `dequel uninstall` | Remove everything (prompts first) |
-| `dequel --version` | Show version |
-| `dequel --help` | Show help |
+| `dequl start` | Start all services |
+| `dequl stop` | Stop all services |
+| `dequl restart` | Restart all services |
+| `dequl status` | Show service status |
+| `dequl logs [service]` | Follow service logs |
+| `dequl uninstall` | Remove everything (prompts first) |
+| `dequl --version` | Show version |
+| `dequl --help` | Show help |
 
 ## Updates
 
 ```bash
-dequel update              # latest stable (rolling restart)
-dequel update --pre        # latest pre-release
-dequel update --rc         # latest release candidate
-dequel update vX.Y.Z       # a specific version
+dequl update              # latest stable (rolling restart)
+dequl update --pre        # latest pre-release
+dequl update --rc         # latest release candidate
+dequl update vX.Y.Z       # a specific version
 ```
 
 ## Backups
 
 ```bash
-dequel backup              # back up the internal database now
-dequel backup <db-id>      # back up a managed database now
-dequel backup list         # list snapshots
-dequel backup restore <id> # restore a snapshot
+dequl backup              # back up the internal database now
+dequl backup <db-id>      # back up a managed database now
+dequl backup list         # list snapshots
+dequl backup restore <id> # restore a snapshot
 ```
 
 Snapshots land in the storage configured under **Settings → Backups**
@@ -49,7 +49,7 @@ The CLI manages the platform, not your apps. For automation against
 your projects, use [API keys](/docs/keys) with `curl`:
 
 ```bash
-curl -H "Authorization: Bearer dql_<key>" https://dequel.example.com/api/projects
+curl -H "Authorization: Bearer dql_<key>" https://dequl.example.com/api/projects
 ```
 
 ## Next steps

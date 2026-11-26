@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest an idea for Dequel
+about: Suggest an idea for Dequl
 title: "[Feature]: "
 labels: enhancement
 assignees: ""

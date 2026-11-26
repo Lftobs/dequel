@@ -28,22 +28,22 @@ describe("program fallbacks", () => {
 		const progs = createPrograms(throwingLlm());
 		const out = await progs.explainFix({
 			verdict: { failingStage: "x", signalLines: [], confidence: "low" },
-			localization: { cause: "dequel-source", culpritPaths: [], rationale: "dns broke" },
+			localization: { cause: "dequl-source", culpritPaths: [], rationale: "dns broke" },
 		});
 		expect(out.summary).toBe("dns broke");
 		expect(out.fixSteps).toEqual([]);
 		expect(out.patchHint).toBeNull();
 	});
 
-	it("propose falls back to a minimal dequel report", async () => {
+	it("propose falls back to a minimal dequl report", async () => {
 		const progs = createPrograms(throwingLlm());
 		const out = await progs.draftProposal({
-			localization: { cause: "dequel-source", culpritPaths: [], rationale: "dns broke" },
+			localization: { cause: "dequl-source", culpritPaths: [], rationale: "dns broke" },
 			explanation: { summary: "s", fixSteps: [], patchHint: null },
 			repo: null,
 		});
-		expect(out.cause).toBe("dequel-source");
-		expect(out.dequelReport?.problem).toBe("dns broke");
+		expect(out.cause).toBe("dequl-source");
+		expect(out.dequlReport?.problem).toBe("dns broke");
 	});
 
 	it("propose skips the model for unknown cause", async () => {

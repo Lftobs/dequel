@@ -34,25 +34,25 @@ if (isProductionEnv && !databaseUrl) {
 }
 
 const SYSTEM = {
-	dockerNetwork: "dequel_net",
+	dockerNetwork: "dequl_net",
 	buildkitHost: "tcp://buildkit:1234",
 	redisUrl: "redis://redis:6379",
-	dequelSourceRepoUrl: "https://github.com/Lftobs/dequel.git",
+	dequlSourceRepoUrl: "https://github.com/Lftobs/dequl.git",
 	workspaceRoot: "/app/workspace",
 	caddyRoutesDir: "/caddy/routes",
 	caddyDataDir: "/caddy-data/caddy",
 	port: 3001,
 	appInternalPort: 3000,
 	gatewayCertDir: "/app/data",
-	dequelSlackWebhookUrl: "",
-	dequelSlackChannel: "",
+	dequlSlackWebhookUrl: "",
+	dequlSlackChannel: "",
 } as const;
 
 export const config = {
 	...SYSTEM,
 	databaseUrl,
 	caddyBaseDomain: withFile<string>("CADDY_BASE_DOMAIN", "localhost"),
-	caddyContainer: withFile<string>("CADDY_CONTAINER", "dequel-caddy-1"),
+	caddyContainer: withFile<string>("CADDY_CONTAINER", "dequl-caddy-1"),
 	controlPlaneUrl: withFile<string>("CONTROL_PLANE_URL", ""),
 	agentTunnelUrl: withFile<string>("AGENT_TUNNEL_URL", ""),
 	envEncryptionKey,

@@ -57,7 +57,7 @@ export function BuildSettingsSection({ project }: BuildSettingsSectionProps) {
 					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-[#222227]">
 						<div>
 							<h3 className="text-zinc-200 font-bold text-base">Build & Execution Strategy</h3>
-							<p className="text-zinc-500 text-xs mt-1">Choose how Dequel compiles and launches your application.</p>
+							<p className="text-zinc-500 text-xs mt-1">Choose how Dequl compiles and launches your application.</p>
 						</div>
 						<div className="flex items-center gap-3">
 							{saveSuccess && (

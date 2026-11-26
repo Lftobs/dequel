@@ -38,53 +38,32 @@ export function DnsInstructionsCard({
 					<Globe className="h-5 w-5 text-primary mt-0.5 shrink-0" />
 					<div className="space-y-2.5 text-sm w-full min-w-0">
 						<p className="font-semibold text-foreground break-all">
-							DNS Configuration Required for{" "}
-							<code className="text-primary font-mono">
-								{lastAdded}
-							</code>
+							DNS Configuration Required for <code className="text-primary font-mono">{lastAdded}</code>
 						</p>
 						{hasBaseDomain ? (
 							<>
-								<p className="text-xs text-muted-foreground">
-									Add a CNAME record at your DNS domain registrar:
-								</p>
+								<p className="text-xs text-muted-foreground">Add a CNAME record at your DNS domain registrar:</p>
 								<div className="rounded-lg border border-border bg-[#070709] overflow-x-auto text-[10px] font-mono w-full">
 									<table className="w-full min-w-[300px]">
 										<thead>
 											<tr className="bg-[#0b0b0f] text-left">
-												<th className="px-3 py-1.5 text-muted-foreground font-semibold">
-													Type
-												</th>
-												<th className="px-3 py-1.5 text-muted-foreground font-semibold">
-													Host/Name
-												</th>
-												<th className="px-3 py-1.5 text-muted-foreground font-semibold">
-													Target/Value
-												</th>
+												<th className="px-3 py-1.5 text-muted-foreground font-semibold">Type</th>
+												<th className="px-3 py-1.5 text-muted-foreground font-semibold">Host/Name</th>
+												<th className="px-3 py-1.5 text-muted-foreground font-semibold">Target/Value</th>
 											</tr>
 										</thead>
 										<tbody>
 											<tr className="border-t border-border/40">
-												<td className="px-3 py-2 text-foreground font-bold">
-													CNAME
-												</td>
-												<td className="px-3 py-2 text-foreground">
-													{dnsName}
-												</td>
+												<td className="px-3 py-2 text-foreground font-bold">CNAME</td>
+												<td className="px-3 py-2 text-foreground">{dnsName}</td>
 												<td className="px-3 py-2 text-foreground flex items-center justify-between gap-2">
-													<span className="truncate max-w-[140px] sm:max-w-[200px]">
-														{baseDomain}
-													</span>
+													<span className="truncate max-w-[140px] sm:max-w-[200px]">{baseDomain}</span>
 													<button
 														type="button"
 														onClick={() => onCopy(baseDomain)}
 														className={`p-1 transition-colors ${copiedTarget ? "text-emerald-400" : "text-muted-foreground hover:text-foreground"}`}
 													>
-														{copiedTarget ? (
-															<Check className="h-3 w-3" />
-														) : (
-															<Copy className="h-3 w-3" />
-														)}
+														{copiedTarget ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
 													</button>
 												</td>
 											</tr>
@@ -100,47 +79,29 @@ export function DnsInstructionsCard({
 							</>
 						) : (
 							<>
-								<p className="text-xs text-muted-foreground">
-									Add an A record at your DNS domain registrar:
-								</p>
+								<p className="text-xs text-muted-foreground">Add an A record at your DNS domain registrar:</p>
 								<div className="rounded-lg border border-border bg-[#070709] overflow-x-auto text-[10px] font-mono w-full">
 									<table className="w-full min-w-[300px]">
 										<thead>
 											<tr className="bg-[#0b0b0f] text-left">
-												<th className="px-3 py-1.5 text-muted-foreground font-semibold">
-													Type
-												</th>
-												<th className="px-3 py-1.5 text-muted-foreground font-semibold">
-													Host/Name
-												</th>
-												<th className="px-3 py-1.5 text-muted-foreground font-semibold">
-													Value
-												</th>
+												<th className="px-3 py-1.5 text-muted-foreground font-semibold">Type</th>
+												<th className="px-3 py-1.5 text-muted-foreground font-semibold">Host/Name</th>
+												<th className="px-3 py-1.5 text-muted-foreground font-semibold">Value</th>
 											</tr>
 										</thead>
 										<tbody>
 											<tr className="border-t border-border/40">
-												<td className="px-3 py-2 text-foreground font-bold">
-													A
-												</td>
-												<td className="px-3 py-2 text-foreground">
-													{dnsName}
-												</td>
+												<td className="px-3 py-2 text-foreground font-bold">A</td>
+												<td className="px-3 py-2 text-foreground">{dnsName}</td>
 												<td className="px-3 py-2 text-foreground flex items-center justify-between gap-2">
-													<span>
-														{serverIp?.ip ?? "../.."}
-													</span>
+													<span>{serverIp?.ip ?? "../.."}</span>
 													{serverIp?.ip && (
 														<button
 															type="button"
 															onClick={() => onCopy(serverIp.ip)}
 															className={`p-1 transition-colors ${copiedTarget ? "text-emerald-400" : "text-muted-foreground hover:text-foreground"}`}
 														>
-															{copiedTarget ? (
-																<Check className="h-3 w-3" />
-															) : (
-																<Copy className="h-3 w-3" />
-															)}
+															{copiedTarget ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
 														</button>
 													)}
 												</td>
@@ -151,7 +112,8 @@ export function DnsInstructionsCard({
 							</>
 						)}
 						<p className="text-[10px] text-muted-foreground/80 leading-relaxed">
-							DNS changes can take up to 48 hours to propagate globally. Dequel will validate SSL cert status automatically.
+							DNS changes can take up to 48 hours to propagate globally. Dequl will validate SSL cert status
+							automatically.
 						</p>
 					</div>
 				</div>

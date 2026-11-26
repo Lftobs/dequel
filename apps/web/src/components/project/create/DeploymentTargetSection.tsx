@@ -1,9 +1,9 @@
 import { Laptop, Layers, Server } from "lucide-react";
 import { cn } from "../../../lib/utils";
-import type { Server as DequelServer } from "../../../types";
+import type { Server as DequlServer } from "../../../types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 
-export function getDeploymentTargets(servers: DequelServer[]): DequelServer[] {
+export function getDeploymentTargets(servers: DequlServer[]): DequlServer[] {
 	return servers.filter(
 		(s) => s.status === "connected" && (s.mode === "local" || s.mode === "ssh" || s.mode === "agent"),
 	);
@@ -12,7 +12,7 @@ export function getDeploymentTargets(servers: DequelServer[]): DequelServer[] {
 interface DeploymentTargetSelectProps {
 	serverId: string;
 	setServerId: (v: string) => void;
-	servers: DequelServer[];
+	servers: DequlServer[];
 }
 
 export function DeploymentTargetSelect({ serverId, setServerId, servers }: DeploymentTargetSelectProps) {

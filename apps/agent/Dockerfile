@@ -17,7 +17,7 @@ WORKDIR /app
 COPY package.json ./
 COPY src ./src
 
-RUN mkdir -p /var/lib/dequel/workspace
+RUN mkdir -p /var/lib/dequl/workspace
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["bun", "src/index.ts"]

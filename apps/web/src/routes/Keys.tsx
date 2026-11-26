@@ -22,7 +22,7 @@ export function Keys() {
 
 	const [copiedCurl, setCopiedCurl] = useState(false);
 
-	const curlSnippet = `curl -H "Authorization: Bearer <YOUR_DEQUEL_API_KEY>" \\
+	const curlSnippet = `curl -H "Authorization: Bearer <YOUR_DEQUL_API_KEY>" \\
   ${typeof window !== "undefined" ? window.location.origin : "http://localhost:3001"}/api/v1/projects`;
 
 	const handleCopyCurl = () => {
@@ -156,7 +156,7 @@ export function Keys() {
 										Token Security Best Practices
 									</h4>
 									<p className="text-[11px] text-muted-foreground leading-relaxed">
-										Store tokens in secret managers or GitHub Repository Secrets (`DEQUEL_API_KEY`). Never commit raw
+										Store tokens in secret managers or GitHub Repository Secrets (`DEQUL_API_KEY`). Never commit raw
 										keys to source control.
 									</p>
 								</div>

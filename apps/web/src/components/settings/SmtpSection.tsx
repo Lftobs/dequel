@@ -198,7 +198,7 @@ export function SmtpSection() {
 						<div className="space-y-1.5">
 							<label className="text-xs font-medium text-foreground">From Email Address</label>
 							<Input
-								placeholder="dequel@example.com"
+								placeholder="dequl@example.com"
 								value={fromAddress}
 								onChange={(e) => setFromAddress(e.target.value)}
 								className="bg-card border-border/80 text-xs focus:ring-orange-500/50"

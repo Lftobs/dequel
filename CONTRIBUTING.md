@@ -1,4 +1,4 @@
-# Contributing to Dequel
+# Contributing to Dequl
 
 Thank you for your interest in contributing! Here's how to get started.
 
@@ -10,16 +10,16 @@ Thank you for your interest in contributing! Here's how to get started.
 
 ## Reporting Bugs
 
-Open a [Bug Report](https://github.com/Lftobs/dequel/issues/new?template=bug_report.md). Include:
+Open a [Bug Report](https://github.com/Lftobs/dequl/issues/new?template=bug_report.md). Include:
 
 - Steps to reproduce
 - Expected vs actual behavior
-- Dequel version (`VERSION` file or `scripts/dequel status`)
+- Dequl version (`VERSION` file or `scripts/dequl status`)
 - Environment details (OS, Docker version, browser if relevant)
 
 ## Suggesting Features
 
-Open a [Feature Request](https://github.com/Lftobs/dequel/issues/new?template=feature_request.md). Describe:
+Open a [Feature Request](https://github.com/Lftobs/dequl/issues/new?template=feature_request.md). Describe:
 
 - The problem you're solving
 - Your proposed solution
@@ -100,8 +100,8 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-CI builds Docker images to `ghcr.io/lftobs/dequel/{api,web}:X.Y.Z`, deploys docs to Vercel, and creates a GitHub Release.
+CI builds Docker images to `ghcr.io/lftobs/dequl/{api,web}:X.Y.Z`, deploys docs to Vercel, and creates a GitHub Release.
 
 ## Questions?
 
-Open a [Discussion](https://github.com/Lftobs/dequel/discussions) for questions and community support.
+Open a [Discussion](https://github.com/Lftobs/dequl/discussions) for questions and community support.

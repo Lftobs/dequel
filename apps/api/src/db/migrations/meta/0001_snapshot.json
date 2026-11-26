@@ -1152,7 +1152,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'Dequel'"
+          "default": "'Dequl'"
         },
         "webhook_secret": {
           "name": "webhook_secret",
@@ -1885,7 +1885,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'dequel@localhost'"
+          "default": "'dequl@localhost'"
         },
         "created_at": {
           "name": "created_at",

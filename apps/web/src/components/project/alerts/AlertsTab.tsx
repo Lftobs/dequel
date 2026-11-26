@@ -287,7 +287,7 @@ export function AlertsTab({ projectId }: AlertsTabProps) {
 									</p>
 								) : (
 									<p className="text-[11px] text-muted-foreground leading-relaxed">
-										Dequel POSTs a JSON payload to this URL when the alert triggers.
+										Dequl POSTs a JSON payload to this URL when the alert triggers.
 									</p>
 								)}
 							</div>

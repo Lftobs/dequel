@@ -4,7 +4,7 @@ import * as api from "../api/client";
 import type { DiagRun } from "../types";
 
 const causeLabel = (cause: DiagRun["cause"]): string =>
-	cause === "user-source" ? "your code" : cause === "dequel-source" ? "Dequel" : "inconclusive";
+	cause === "user-source" ? "your code" : cause === "dequl-source" ? "Dequl" : "inconclusive";
 
 const runLabel = (run: { projectName: string | null; deploymentId: string }): string =>
 	`${run.projectName ?? "deployment"} ${run.deploymentId.slice(0, 8)}`;

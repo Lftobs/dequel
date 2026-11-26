@@ -9,7 +9,7 @@ import type { DeploymentFacts, Investigation, TriageVerdict } from "./types";
 
 const execFileAsync = promisify(execFile);
 
-export const SANDBOX_CONTAINER = "dequel-diag-sandbox";
+export const SANDBOX_CONTAINER = "dequl-diag-sandbox";
 const RUNNER = "/runner/fixdiag/sandbox-runner/runner.js";
 
 const short = (s: string, n = 500): string => (s.length > n ? `${s.slice(0, n)}…` : s);
@@ -45,7 +45,7 @@ const docker = async (args: string[], timeoutMs = 60_000): Promise<string> => {
 	}
 };
 
-const OWN_DIRS = "/srv/jobs /srv/dequel-src /srv/project-src";
+const OWN_DIRS = "/srv/jobs /srv/dequl-src /srv/project-src";
 
 const normalizeOwnership = async (): Promise<void> => {
 	await docker(
@@ -76,14 +76,14 @@ export const ensureSandbox = async (): Promise<void> => {
 	await normalizeOwnership();
 };
 
-export const syncDequelSource = async (version: string): Promise<{ rev: string; stale: boolean }> => {
+export const syncDequlSource = async (version: string): Promise<{ rev: string; stale: boolean }> => {
 	const tag = version.startsWith("v") ? version : `v${version}`;
 	const hasRepo = await docker([
 		"exec",
 		SANDBOX_CONTAINER,
 		"sh",
 		"-c",
-		"test -d /srv/dequel-src/.git && echo yes || echo no",
+		"test -d /srv/dequl-src/.git && echo yes || echo no",
 	]).then((out) => out.trim() === "yes");
 	if (!hasRepo) {
 		await docker(
@@ -96,13 +96,13 @@ export const syncDequelSource = async (version: string): Promise<{ rev: string; 
 				"1",
 				"--branch",
 				tag,
-				config.dequelSourceRepoUrl,
-				"/srv/dequel-src",
+				config.dequlSourceRepoUrl,
+				"/srv/dequl-src",
 			],
 			180_000,
 		).catch(() =>
 			docker(
-				["exec", SANDBOX_CONTAINER, "git", "clone", "--depth", "1", config.dequelSourceRepoUrl, "/srv/dequel-src"],
+				["exec", SANDBOX_CONTAINER, "git", "clone", "--depth", "1", config.dequlSourceRepoUrl, "/srv/dequl-src"],
 				180_000,
 			),
 		);
@@ -112,12 +112,12 @@ export const syncDequelSource = async (version: string): Promise<{ rev: string; 
 		SANDBOX_CONTAINER,
 		"sh",
 		"-c",
-		`git -C /srv/dequel-src fetch --depth 1 origin ${tag} && git -C /srv/dequel-src checkout -q ${tag}`,
+		`git -C /srv/dequl-src fetch --depth 1 origin ${tag} && git -C /srv/dequl-src checkout -q ${tag}`,
 	])
 		.then(() => true)
 		.catch(() => false);
 	const sha = await docker(
-		["exec", SANDBOX_CONTAINER, "git", "-C", "/srv/dequel-src", "rev-parse", "--short", "HEAD"],
+		["exec", SANDBOX_CONTAINER, "git", "-C", "/srv/dequl-src", "rev-parse", "--short", "HEAD"],
 		15_000,
 	)
 		.then((out) => out.trim())
@@ -194,8 +194,8 @@ export const investigateInSandbox = async (input: {
 	failureReason: string;
 	logText: string;
 	verdict: TriageVerdict;
-	dequelRev: string;
-	dequelStale: boolean;
+	dequlRev: string;
+	dequlStale: boolean;
 	projectAvailable: boolean;
 	onProgress: (line: string) => void;
 }): Promise<Investigation> => {
@@ -203,10 +203,10 @@ export const investigateInSandbox = async (input: {
 	if (!key) throw new Error(`LLM provider "${input.provider}" is not configured`);
 	await ensureSandbox();
 	const taskBrief = [
-		`Dequel platform source is mounted at scope "dequel" (${input.dequelRev}${input.dequelStale ? ", possibly stale" : ""}).`,
+		`Dequl platform source is mounted at scope "dequl" (${input.dequlRev}${input.dequlStale ? ", possibly stale" : ""}).`,
 		input.projectAvailable
 			? 'The deployed project\'s source is mounted at scope "project".'
-			: "No project source is available; diagnose from the logs and the Dequel source only.",
+			: "No project source is available; diagnose from the logs and the Dequl source only.",
 		`Triage already read the logs (confidence ${input.verdict.confidence}, failing stage "${input.verdict.failingStage}") and flagged these signal lines: ${input.verdict.signalLines.slice(0, 6).join(" | ")}. Start from them instead of re-discovering the failure.`,
 		"Use listFiles to discover layout, readFile for targeted reads, searchText to trace error strings.",
 	].join(" ");
@@ -223,8 +223,8 @@ export const investigateInSandbox = async (input: {
 			baseUrl: key.baseUrl,
 			hasProjectSource: input.projectAvailable,
 			projectSrcDir: input.projectAvailable ? projectSrcDir(input.runId) : null,
-			dequelRev: input.dequelRev,
-			dequelStale: input.dequelStale,
+			dequlRev: input.dequlRev,
+			dequlStale: input.dequlStale,
 			deadlineMs: 9 * 60_000,
 		},
 		execTimeoutMs: 10 * 60_000,
@@ -244,8 +244,8 @@ export const runFixAgent = async (input: {
 	provider: string;
 	model: string;
 	fixBrief: string;
-	dequelRev: string;
-	dequelStale: boolean;
+	dequlRev: string;
+	dequlStale: boolean;
 	onProgress: (line: string) => void;
 }): Promise<FixAgentResult> => {
 	const key = await getDecryptedLlmKey(input.provider);
@@ -263,8 +263,8 @@ export const runFixAgent = async (input: {
 			baseUrl: key.baseUrl,
 			hasProjectSource: true,
 			projectSrcDir: srcDir,
-			dequelRev: input.dequelRev,
-			dequelStale: input.dequelStale,
+			dequlRev: input.dequlRev,
+			dequlStale: input.dequlStale,
 			deadlineMs: 5.5 * 60_000,
 		},
 		execTimeoutMs: 6 * 60_000,
@@ -292,7 +292,7 @@ const runAgentJob = async (opts: {
 	execTimeoutMs: number;
 	onProgress: (line: string) => void;
 }): Promise<unknown> => {
-	const hostTmp = await mkdtemp(join(tmpdir(), "dequel-diag-job-"));
+	const hostTmp = await mkdtemp(join(tmpdir(), "dequl-diag-job-"));
 	try {
 		await writeFile(join(hostTmp, "input.json"), JSON.stringify(opts.input));
 		await docker(["exec", "-u", "0", SANDBOX_CONTAINER, "mkdir", "-p", opts.jobDir], 15_000);
@@ -338,7 +338,7 @@ const runAgentJob = async (opts: {
 
 export const validateInvestigation = (raw: unknown): Investigation => {
 	const record = (raw ?? {}) as Record<string, unknown>;
-	const cause = record.cause === "user-source" || record.cause === "dequel-source" ? record.cause : "unknown";
+	const cause = record.cause === "user-source" || record.cause === "dequl-source" ? record.cause : "unknown";
 	const strings = (value: unknown, max = 8): string[] =>
 		Array.isArray(value) ? value.filter((v): v is string => typeof v === "string").slice(0, max) : [];
 	return {
@@ -346,7 +346,7 @@ export const validateInvestigation = (raw: unknown): Investigation => {
 		culpritPaths: strings(record.culpritPaths),
 		rationale: typeof record.rationale === "string" ? record.rationale : "",
 		keyEvidence: strings(record.keyEvidence),
-		dequelRev: typeof record.dequelRev === "string" ? record.dequelRev : "unknown",
-		dequelStale: record.dequelStale === true,
+		dequlRev: typeof record.dequlRev === "string" ? record.dequlRev : "unknown",
+		dequlStale: record.dequlStale === true,
 	};
 };

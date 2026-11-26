@@ -2,7 +2,7 @@ import { defineConfig } from "blume";
 import { z } from "zod";
 
 export default defineConfig({
-	title: "Dequel",
+	title: "Dequl",
 	description:
 		"Self-hosted PaaS container platform. Deploy apps from Git, ZIP, or Docker Compose with zero infrastructure setup.",
 	basePath: "/docs",
@@ -81,7 +81,7 @@ export default defineConfig({
 		],
 	},
 	deployment: {
-		site: "https://dequel.intrep.xyz",
+		site: "https://dequl.intrep.xyz",
 	},
 	seo: {
 		og: {
@@ -94,19 +94,19 @@ export default defineConfig({
 				muted: "#a1a1aa",
 			},
 			titles: {
-				"/": "Dequel — Self-Hosted PaaS Engine & Container Platform",
+				"/": "Dequl — Self-Hosted PaaS Engine & Container Platform",
 			},
 		},
 		software: {
-			name: "Dequel",
+			name: "Dequl",
 			operatingSystem: "Linux",
 			applicationCategory: "DeveloperApplication",
 			description:
 				"Self-hosted PaaS container platform. Deploy apps from Git, ZIP, or Docker Compose with zero infrastructure setup.",
 		},
 		organization: {
-			name: "Dequel",
-			url: "https://dequel.intrep.xyz",
+			name: "Dequl",
+			url: "https://dequl.intrep.xyz",
 		},
 	},
 });

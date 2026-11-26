@@ -6,7 +6,7 @@ slug: alerts
 ---
 
 The project's **Alerts** tab defines rules evaluated continuously in
-the background. When a rule fires, Dequel notifies the channel you
+the background. When a rule fires, Dequl notifies the channel you
 chose — and failure emails link straight back to the logs.
 
 ## Rule types
