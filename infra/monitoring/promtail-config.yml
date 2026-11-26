@@ -15,7 +15,7 @@ scrape_configs:
         refresh_interval: 15s
         filters:
           - name: network
-            values: ["dequel_net"]
+            values: ["dequl_net"]
     relabel_configs:
       - source_labels: ['__meta_docker_container_name']
         regex: '/(.*)'

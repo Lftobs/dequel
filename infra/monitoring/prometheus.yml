@@ -8,7 +8,7 @@ scrape_configs:
       - targets: ['cadvisor:8080']
     metrics_path: /metrics
 
-  - job_name: 'dequel-api'
+  - job_name: 'dequl-api'
     static_configs:
       - targets: ['api:3001']
     metrics_path: /metrics

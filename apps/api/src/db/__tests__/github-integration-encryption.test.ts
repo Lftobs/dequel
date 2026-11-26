@@ -76,7 +76,7 @@ describe("github integrations store secrets encrypted", () => {
 			id: "legacy-row",
 			clientId: "Iv1.legacy",
 			clientSecret: "gh-plan-secret",
-			appName: "Dequel",
+			appName: "Dequl",
 			createdAt: new Date(),
 		});
 

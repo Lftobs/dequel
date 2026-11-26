@@ -12,11 +12,11 @@ export function parseMetrics(text: string): ParsedMetrics {
 	};
 
 	for (const line of text.split("\n")) {
-		if (line.startsWith("dequel_requests_total")) {
+		if (line.startsWith("dequl_requests_total")) {
 			metrics.requestsTotal = Number(line.split(" ").pop());
-		} else if (line.startsWith("dequel_active_deployments")) {
+		} else if (line.startsWith("dequl_active_deployments")) {
 			metrics.activeDeployments = Number(line.split(" ").pop());
-		} else if (line.startsWith("dequel_uptime_seconds")) {
+		} else if (line.startsWith("dequl_uptime_seconds")) {
 			metrics.uptimeSeconds = Number(line.split(" ").pop());
 		}
 	}

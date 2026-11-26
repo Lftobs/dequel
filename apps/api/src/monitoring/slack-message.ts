@@ -29,7 +29,7 @@ export const buildSlackMessage = (
 	details?: AlertDetails,
 ): { text: string; blocks: SlackBlock[] } => {
 	const blocks: SlackBlock[] = [
-		{ type: "header", text: { type: "plain_text", text: `Dequel alert: ${projectName}` } },
+		{ type: "header", text: { type: "plain_text", text: `Dequl alert: ${projectName}` } },
 		{
 			type: "section",
 			fields: [
@@ -54,7 +54,7 @@ export const buildSlackMessage = (
 		const title = s.kind === "enable_autoscaling" ? "Autoscaling is off" : "Replica limit reached";
 		const body =
 			s.kind === "enable_autoscaling"
-				? "Enable autoscaling so Dequel adds capacity automatically while load stays high."
+				? "Enable autoscaling so Dequl adds capacity automatically while load stays high."
 				: `At the replica limit (${s.current}/${s.maxReplicas}) — raise max replicas so autoscaling can add capacity.`;
 		const cta = s.kind === "enable_autoscaling" ? "Set up autoscaling" : "Adjust scaling";
 		blocks.push({ type: "section", text: { type: "mrkdwn", text: `*${title}*\n${body}` } });

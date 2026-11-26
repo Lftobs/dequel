@@ -74,7 +74,7 @@ export const runRestoreTest = async (options: RestoreTestOptions) => {
 	const adapter = getAdapter(engine);
 
 	let version: string | null = null;
-	let databaseName = "dequel";
+	let databaseName = "dequl";
 	if (job.targetId !== "internal") {
 		const db = await getDatabaseById(job.targetId);
 		if (!db) throw new Error(`Database ${job.targetId} not found`);
@@ -97,8 +97,8 @@ export const runRestoreTest = async (options: RestoreTestOptions) => {
 		serverId,
 	});
 
-	const scratchName = `dequel-restore-test-${test.id.slice(0, 8)}`;
-	const username = "dequel";
+	const scratchName = `dequl-restore-test-${test.id.slice(0, 8)}`;
+	const username = "dequl";
 	const password = randomUUID().replace(/-/g, "");
 	const target: BackupTarget = {
 		id: `restore-test-${test.id}`,

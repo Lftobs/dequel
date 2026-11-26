@@ -1,9 +1,9 @@
 import Redis from "ioredis";
 import { config } from "../utils/config";
 
-const QUEUE_KEY = "dequel:deploy:queue";
-const RETRY_KEY = "dequel:deploy:retry";
-const DLQ_KEY = "dequel:deploy:dlq";
+const QUEUE_KEY = "dequl:deploy:queue";
+const RETRY_KEY = "dequl:deploy:retry";
+const DLQ_KEY = "dequl:deploy:dlq";
 const BLOCK_TIMEOUT_SEC = 5;
 
 type JobPayload = {

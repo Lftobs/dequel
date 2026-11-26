@@ -15,7 +15,7 @@ import {
 	ensureSandbox,
 	readLocalVersion,
 	runFixAgent,
-	syncDequelSource,
+	syncDequlSource,
 	syncProjectSource,
 } from "./sandbox-host";
 
@@ -55,7 +55,7 @@ const githubFetch = async (token: string, path: string, init?: RequestInit) => {
 		headers: {
 			Authorization: `Bearer ${token}`,
 			Accept: "application/vnd.github.v3+json",
-			"User-Agent": "dequel",
+			"User-Agent": "dequl",
 			"Content-Type": "application/json",
 			...init?.headers,
 		},
@@ -125,7 +125,7 @@ export const approveFixPr = async (
 	try {
 		await ensureSandbox();
 		const version = await readLocalVersion();
-		const { rev, stale } = await syncDequelSource(version);
+		const { rev, stale } = await syncDequlSource(version);
 		const project = await syncProjectSource(
 			{
 				deploymentId: dep.id,
@@ -167,8 +167,8 @@ export const approveFixPr = async (
 				provider: run.provider,
 				model: run.model,
 				fixBrief: lines.join("\n"),
-				dequelRev: rev,
-				dequelStale: stale,
+				dequlRev: rev,
+				dequlStale: stale,
 				onProgress: () => {},
 			});
 			patch = result.patch;
@@ -179,8 +179,8 @@ export const approveFixPr = async (
 		return fail(502, `Agent fix failed: ${short(err instanceof Error ? err.message : String(err))}`);
 	}
 
-	const branch = `dequel-fix/${run.id.slice(0, 8)}`;
-	const tmp = await mkdtemp(join(tmpdir(), "dequel-fix-"));
+	const branch = `dequl-fix/${run.id.slice(0, 8)}`;
+	const tmp = await mkdtemp(join(tmpdir(), "dequl-fix-"));
 	const repoDir = join(tmp, "repo");
 	try {
 		const remote = `https://github.com/${repo.owner}/${repo.repo}.git`;
@@ -208,7 +208,7 @@ export const approveFixPr = async (
 		await git(["add", "-A"], repoDir, token);
 		await execFileAsync(
 			"git",
-			["-c", "user.name=Dequel", "-c", "user.email=dequel@localhost", "commit", "-m", fix.title, "-m", fix.body],
+			["-c", "user.name=Dequl", "-c", "user.email=dequl@localhost", "commit", "-m", fix.title, "-m", fix.body],
 			{
 				timeout: 30_000,
 				cwd: repoDir,
@@ -276,28 +276,28 @@ export const approveSlackPost = async (runId: string, key: string): Promise<Acti
 	};
 
 	if (run.status !== "done") return fail(409, "Diagnosis is not complete yet");
-	if (run.cause !== "dequel-source" || !run.report?.dequelReport) {
-		return fail(409, "This diagnosis has no Dequel report to post");
+	if (run.cause !== "dequl-source" || !run.report?.dequlReport) {
+		return fail(409, "This diagnosis has no Dequl report to post");
 	}
-	if (!config.dequelSlackWebhookUrl) return fail(409, "Dequel Slack is not configured");
+	if (!config.dequlSlackWebhookUrl) return fail(409, "Dequl Slack is not configured");
 
-	const report = run.report.dequelReport;
+	const report = run.report.dequlReport;
 	const dep = await getDeploymentById(run.deploymentId);
 	const project = dep?.projectId ? await getProjectById(dep.projectId).catch(() => null) : null;
 	const investigation = (await getStagePayload(runId, "investigate")) as {
-		dequelRev?: unknown;
-		dequelStale?: unknown;
+		dequlRev?: unknown;
+		dequlStale?: unknown;
 	} | null;
 	const version =
-		typeof investigation?.dequelRev === "string" && investigation.dequelRev
-			? investigation.dequelRev + (investigation.dequelStale === true ? " (possibly stale)" : "")
+		typeof investigation?.dequlRev === "string" && investigation.dequlRev
+			? investigation.dequlRev + (investigation.dequlStale === true ? " (possibly stale)" : "")
 			: "unknown";
 	const payload = {
-		text: `Dequel diagnosis: ${project?.name ?? run.deploymentId}`,
+		text: `Dequl diagnosis: ${project?.name ?? run.deploymentId}`,
 		blocks: [
-			{ type: "header", text: { type: "plain_text", text: `Dequel diagnosis: ${project?.name ?? "unknown project"}` } },
+			{ type: "header", text: { type: "plain_text", text: `Dequl diagnosis: ${project?.name ?? "unknown project"}` } },
 			{ type: "section", text: { type: "mrkdwn", text: `*Problem*\n${report.problem}` } },
-			{ type: "section", text: { type: "mrkdwn", text: `*Dequel version*\n${version}` } },
+			{ type: "section", text: { type: "mrkdwn", text: `*Dequl version*\n${version}` } },
 			{ type: "section", text: { type: "mrkdwn", text: `*Root cause*\n${report.cause}` } },
 			{ type: "section", text: { type: "mrkdwn", text: `*Proposed fix*\n${report.proposedFix}` } },
 			{
@@ -312,7 +312,7 @@ export const approveSlackPost = async (runId: string, key: string): Promise<Acti
 		],
 	};
 	try {
-		const res = await fetch(config.dequelSlackWebhookUrl, {
+		const res = await fetch(config.dequlSlackWebhookUrl, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(payload),
@@ -323,7 +323,7 @@ export const approveSlackPost = async (runId: string, key: string): Promise<Acti
 	} catch (err) {
 		return fail(502, short(err instanceof Error ? err.message : String(err)));
 	}
-	const result = { posted: true, channel: config.dequelSlackChannel || undefined };
+	const result = { posted: true, channel: config.dequlSlackChannel || undefined };
 	await completeDiagAction(trimmedKey, result);
 	return { ok: true, data: result };
 };

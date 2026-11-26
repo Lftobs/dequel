@@ -14,7 +14,7 @@ import { SourceSelectionSection } from "../components/project/create/SourceSelec
 import { TemplateFlow } from "../components/templates/TemplateFlow";
 import { Button } from "../components/ui/button";
 import { useCreateProject } from "../hooks/useProjects";
-import type { CreateProjectInput, Server as DequelServer, GithubRepo } from "../types";
+import type { CreateProjectInput, Server as DequlServer, GithubRepo } from "../types";
 import type { FrameworkPreset } from "../utils/presets";
 import { slugifyProjectName } from "../utils/slugify";
 
@@ -25,7 +25,7 @@ export function CreateProjectPage() {
 	// Deployment servers
 	const { data: servers = [] } = useQuery({
 		queryKey: ["servers"],
-		queryFn: () => api.listServers().catch(() => [] as DequelServer[]),
+		queryFn: () => api.listServers().catch(() => [] as DequlServer[]),
 		staleTime: 30_000,
 	});
 

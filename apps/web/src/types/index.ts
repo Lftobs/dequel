@@ -252,7 +252,7 @@ export interface LlmKeyStatus {
 	models: string[];
 }
 
-export type DiagCause = "user-source" | "dequel-source" | "unknown";
+export type DiagCause = "user-source" | "dequl-source" | "unknown";
 
 export interface DiagRun {
 	id: string;
@@ -265,7 +265,7 @@ export interface DiagRun {
 	report: {
 		cause: DiagCause;
 		userFix?: { title: string; body: string; suggestedDiff: string | null };
-		dequelReport?: { problem: string; cause: string; proposedFix: string };
+		dequlReport?: { problem: string; cause: string; proposedFix: string };
 	} | null;
 	error: string | null;
 	createdAt: string;

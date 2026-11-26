@@ -24,8 +24,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 		const handleUnauthorized = () => {
 			navigate({ to: "/login" });
 		};
-		window.addEventListener("dequel:unauthorized", handleUnauthorized);
-		return () => window.removeEventListener("dequel:unauthorized", handleUnauthorized);
+		window.addEventListener("dequl:unauthorized", handleUnauthorized);
+		return () => window.removeEventListener("dequl:unauthorized", handleUnauthorized);
 	}, [navigate]);
 
 	useEffect(() => {

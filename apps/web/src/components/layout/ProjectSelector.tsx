@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronDown } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { DequelLogo } from "../DequelLogo";
+import { DequlLogo } from "../DequlLogo";
 
 interface Project {
 	id: string;
@@ -35,7 +35,7 @@ export function ProjectSelector({
 							{currentProject.name.slice(0, 2).toUpperCase()}
 						</div>
 					) : (
-						<DequelLogo className="w-6 h-6 shrink-0" />
+						<DequlLogo className="w-6 h-6 shrink-0" />
 					)}
 					<span className="font-display font-semibold text-xs truncate text-zinc-200">
 						{currentProject ? currentProject.name : "All Projects"}
@@ -58,7 +58,7 @@ export function ProjectSelector({
 							onClick={() => setIsOpen(false)}
 							className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-[#1a1a1e] transition-colors"
 						>
-							<DequelLogo className="h-3.5 w-3.5" />
+							<DequlLogo className="h-3.5 w-3.5" />
 							<span>All Projects</span>
 						</Link>
 						<div className="h-[1px] bg-[#1d1d21] my-1" />

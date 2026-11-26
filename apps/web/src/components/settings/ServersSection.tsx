@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus, RefreshCw, Server, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as api from "../../api/client";
-import type { Server as DequelServer } from "../../types";
+import type { Server as DequlServer } from "../../types";
 import { StatusBadge } from "../StatusBadge";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { AddServerForm } from "./servers/AddServerForm";
 import { ServerPreparationOutput } from "./servers/ServerPreparationOutput";
 
-function connectionLabel(s: DequelServer): string {
+function connectionLabel(s: DequlServer): string {
 	if (s.mode === "local") return "This Machine";
 	if (s.mode === "agent") return `WireGuard P2P ${s.agentVersion || ""}`;
 	return `SSH (${s.sshUser || "root"}@${s.host}:${s.port})`;

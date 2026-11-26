@@ -2,7 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Server } from "../types";
 import { config } from "../utils/config";
-import { DEQUEL_MANAGED_LABEL } from "../utils/dequel-labels";
+import { DEQUL_MANAGED_LABEL } from "../utils/dequl-labels";
 import { dockerBin } from "../utils/docker-bin";
 import { dockerRun, dockerRunTry } from "../utils/docker-run";
 import { syncRemoteCaddyRoute } from "../utils/ssh";
@@ -223,7 +223,7 @@ export const deployContainer = async (
 		"--network",
 		config.dockerNetwork,
 		"-l",
-		DEQUEL_MANAGED_LABEL,
+		DEQUL_MANAGED_LABEL,
 		"-e",
 		`PORT=${opts.appPort ?? config.appInternalPort}`,
 	];

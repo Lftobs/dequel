@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { setDbProvider } from "../../db/db-provider";
 import * as schema from "../../db/schema";
 
-const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgresql://dequel:dequel@localhost:5433/dequel";
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgresql://dequl:dequl@localhost:5433/dequl";
 const _TABLE_NAMES = [
 	"agent_credentials",
 	"agent_jobs",

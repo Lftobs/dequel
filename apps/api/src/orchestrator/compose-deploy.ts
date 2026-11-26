@@ -223,7 +223,7 @@ export const deployComposeStack = async (options: ComposeDeployOptions): Promise
 			envVars,
 		);
 		if (overrideYaml) {
-			overridePath = join(workspacePath, "dequel-env-override.yml");
+			overridePath = join(workspacePath, "dequl-env-override.yml");
 			await writeFile(overridePath, overrideYaml);
 			await onLog(
 				`Injecting ${Object.keys(envVars).length} env var(s) into ${allServices.length} compose service(s) via override file.`,

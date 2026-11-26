@@ -1,5 +1,5 @@
 {
-  "name": "dequel",
+  "name": "dequl",
   "private": true,
   "workspaces": [
     "apps/*"

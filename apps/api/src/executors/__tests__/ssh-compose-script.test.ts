@@ -3,11 +3,11 @@ import { buildRemoteComposeScript } from "../ssh-compose-script";
 
 const input = {
 	deploymentId: "abc123",
-	workspaceRoot: "/home/admin/.dequel/workspace",
+	workspaceRoot: "/home/admin/.dequl/workspace",
 	gitUrl: "https://github.com/owner/repo",
 	commitSha: null,
 	projectName: "test",
-	dockerNetwork: "dequel_net",
+	dockerNetwork: "dequl_net",
 	environmentVariables: [{ key: "PASS", value: "pa$w0rd" }],
 };
 

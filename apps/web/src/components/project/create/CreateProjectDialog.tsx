@@ -5,7 +5,7 @@ import * as api from "../../../api/client";
 import { getGithubIntegration } from "../../../api/client";
 import { useCreateProject } from "../../../hooks/useProjects";
 import { cn } from "../../../lib/utils";
-import type { DatabaseType, Server as DequelServer, GithubRepo } from "../../../types";
+import type { DatabaseType, Server as DequlServer, GithubRepo } from "../../../types";
 import type { FrameworkPreset } from "../../../utils/presets";
 import { Button } from "../../ui/button";
 import {
@@ -34,7 +34,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 
 	const { data: servers = [] } = useQuery({
 		queryKey: ["servers"],
-		queryFn: () => api.listServers().catch(() => [] as DequelServer[]),
+		queryFn: () => api.listServers().catch(() => [] as DequlServer[]),
 		staleTime: 30_000,
 	});
 
@@ -326,7 +326,13 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 						)}
 
 						{step === 2 && (
-							<StepEnvironment key="step-environment" stagedEnvs={stagedEnvs} setStagedEnvs={setStagedEnvs} stagedSharedVarIds={stagedSharedVarIds} setStagedSharedVarIds={setStagedSharedVarIds} />
+							<StepEnvironment
+								key="step-environment"
+								stagedEnvs={stagedEnvs}
+								setStagedEnvs={setStagedEnvs}
+								stagedSharedVarIds={stagedSharedVarIds}
+								setStagedSharedVarIds={setStagedSharedVarIds}
+							/>
 						)}
 
 						{step === 3 && (

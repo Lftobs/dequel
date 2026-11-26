@@ -139,10 +139,10 @@ mock.module(fileUrl("../../db/repo"), () => ({
 mock.module(fileUrl("../../utils/config"), () => ({
 	config: {
 		redisUrl: "redis://localhost:6379",
-		caddyRoutesDir: "/tmp/dequel-test-routes",
+		caddyRoutesDir: "/tmp/dequl-test-routes",
 		caddyBaseDomain: "localhost",
 		appInternalPort: 3000,
-		dockerNetwork: "dequel_net",
+		dockerNetwork: "dequl_net",
 		envEncryptionKey: "dev-env-key-change-me",
 		workspaceRoot: "./workspace",
 	},
@@ -435,7 +435,7 @@ describe("evaluate", () => {
 		mockRedisData = {
 			highCpuSince: String(Date.now() - 10_000),
 			lastScaleUp: "0",
-			"dequel:agent-stats:server-1": JSON.stringify({
+			"dequl:agent-stats:server-1": JSON.stringify({
 				updatedAt: new Date().toISOString(),
 				containers: [{ containerName: "deploy-dep-1", cpuPercent: 90, memoryMb: 200 }],
 			}),
@@ -453,7 +453,7 @@ describe("evaluate", () => {
 
 	it("counts agent replicas from cached stats", async () => {
 		mockRedisData = {
-			"dequel:agent-stats:server-1": JSON.stringify({
+			"dequl:agent-stats:server-1": JSON.stringify({
 				updatedAt: new Date().toISOString(),
 				containers: [
 					{ containerName: "deploy-dep-1", cpuPercent: 40, memoryMb: 100, deploymentId: "dep-1", replica: false },

@@ -14,7 +14,7 @@ class AgentStatsCache {
 	}
 
 	private key(serverId: string) {
-		return `dequel:agent-stats:${serverId}`;
+		return `dequl:agent-stats:${serverId}`;
 	}
 
 	async set(serverId: string, containers: AgentContainerStat[]) {
@@ -38,11 +38,11 @@ class AgentStatsCache {
 	}
 
 	async getAll(): Promise<Map<string, Map<string, CachedContainerStat>>> {
-		const keys = await this.redis.keys("dequel:agent-stats:*").catch(() => [] as string[]);
+		const keys = await this.redis.keys("dequl:agent-stats:*").catch(() => [] as string[]);
 		const result = new Map<string, Map<string, CachedContainerStat>>();
 		await Promise.all(
 			keys.map(async (key) => {
-				const serverId = key.slice("dequel:agent-stats:".length);
+				const serverId = key.slice("dequl:agent-stats:".length);
 				result.set(serverId, await this.get(serverId));
 			}),
 		);

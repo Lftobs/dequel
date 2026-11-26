@@ -4,8 +4,8 @@ import { dirname, join } from "node:path";
 import packageJson from "../../package.json";
 import { config } from "./config";
 
-const getPosthogKey = () => config.posthogKey || process.env.DEQUEL_POSTHOG_KEY || "phc_dequel_telemetry_public_key";
-const getPosthogHost = () => config.telemetryHost || process.env.DEQUEL_TELEMETRY_HOST || "https://us.i.posthog.com";
+const getPosthogKey = () => config.posthogKey || process.env.DEQUL_POSTHOG_KEY || "phc_dequl_telemetry_public_key";
+const getPosthogHost = () => config.telemetryHost || process.env.DEQUL_TELEMETRY_HOST || "https://us.i.posthog.com";
 
 const getTelemetryFilePath = () => {
 	const dataDir = join(config.workspaceRoot, "..", "data");
@@ -29,7 +29,7 @@ export const getInstanceId = (): string => {
 };
 
 export const captureTelemetry = async (event: string, properties: Record<string, unknown> = {}): Promise<void> => {
-	if (process.env.DEQUEL_TELEMETRY_DISABLED === "1" || process.env.DO_NOT_TRACK === "1") {
+	if (process.env.DEQUL_TELEMETRY_DISABLED === "1" || process.env.DO_NOT_TRACK === "1") {
 		return;
 	}
 

@@ -6,7 +6,7 @@ const generator = "export const generateDynamicRailpackJson = async () => {};\n"
 
 const input = {
 	deploymentId: "deployment-1",
-	workspaceRoot: "/var/lib/dequel/workspace",
+	workspaceRoot: "/var/lib/dequl/workspace",
 	gitUrl: "https://github.com/example/api.git",
 	branch: "main",
 	commitSha: null,
@@ -54,12 +54,12 @@ describe("remote SSH build script", () => {
 
 	it("ships the railpack generator into the workspace after the clone", () => {
 		const script = buildRemoteDeployScript(input);
-		expect(script).toContain("cat > \"$PROJECT_DIR/.dequel-railpack-gen.ts\" <<'DEQUEL_RAILPACK_GEN_EOF'");
+		expect(script).toContain("cat > \"$PROJECT_DIR/.dequl-railpack-gen.ts\" <<'DEQUL_RAILPACK_GEN_EOF'");
 		expect(script).toContain(generator);
 		expect(script).toContain("await generateDynamicRailpackJson(");
-		expect(script.indexOf("git clone")).toBeLessThan(script.indexOf("DEQUEL_RAILPACK_GEN_EOF"));
-		expect(script).toContain('bun "$PROJECT_DIR/.dequel-railpack-gen.ts" "$PROJECT_DIR"');
-		expect(script).toContain("DEQUEL_RAILPACK_GEN_EOF\nbun ");
+		expect(script.indexOf("git clone")).toBeLessThan(script.indexOf("DEQUL_RAILPACK_GEN_EOF"));
+		expect(script).toContain('bun "$PROJECT_DIR/.dequl-railpack-gen.ts" "$PROJECT_DIR"');
+		expect(script).toContain("DEQUL_RAILPACK_GEN_EOF\nbun ");
 	});
 
 	it("installs bun before generating the config", () => {
@@ -68,7 +68,7 @@ describe("remote SSH build script", () => {
 		expect(script).toContain("python3 -m zipfile -e");
 		expect(script).toContain("bun.sh/install");
 		expect(script).toContain('export PATH="$HOME/.bun/bin:$PATH"');
-		expect(script.indexOf("bun-linux-$BUN_ARCH.zip")).toBeLessThan(script.indexOf(".dequel-railpack-gen.ts"));
+		expect(script.indexOf("bun-linux-$BUN_ARCH.zip")).toBeLessThan(script.indexOf(".dequl-railpack-gen.ts"));
 	});
 
 	it("passes source dir and project type to the generator", () => {
@@ -82,7 +82,7 @@ describe("remote SSH build script", () => {
 			outputDir: null,
 		});
 		expect(script).toContain(
-			`bun "$PROJECT_DIR/.dequel-railpack-gen.ts" "$PROJECT_DIR" 'client' 'static' 'npm run build' 'npm start' '' ''`,
+			`bun "$PROJECT_DIR/.dequl-railpack-gen.ts" "$PROJECT_DIR" 'client' 'static' 'npm run build' 'npm start' '' ''`,
 		);
 	});
 

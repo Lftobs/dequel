@@ -1,11 +1,11 @@
 ---
 title: Installation
 category: Getting Started
-description: Install Dequel on your own infrastructure.
+description: Install Dequl on your own infrastructure.
 slug: installation
 ---
 
-You install Dequel with one command. The installer sets up the control
+You install Dequl with one command. The installer sets up the control
 plane (dashboard, API, builders, databases engine, and monitoring) as
 Docker containers on your machine. Your apps can run on that same machine,
 or on additional servers you connect later (see
@@ -22,43 +22,43 @@ or on additional servers you connect later (see
 Run the install script:
 
 ```bash
-curl -fsSL https://dequel.intrep.xyz/install.sh | bash
+curl -fsSL https://dequl.intrep.xyz/install.sh | bash
 ```
 
 Alternatively, download directly from the latest GitHub release:
 
 ```bash
-curl -fsSL https://github.com/Lftobs/dequel/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/Lftobs/dequl/releases/latest/download/install.sh | bash
 ```
 
 The script checks for Docker and Compose, creates a config directory at
-`~/.dequel`, generates a unique `ENV_ENCRYPTION_KEY`, downloads the
+`~/.dequl`, generates a unique `ENV_ENCRYPTION_KEY`, downloads the
 `docker-compose.yml` and monitoring configs, pulls the pre-built images
-from GitHub Container Registry, installs the `dequel` CLI, and asks for
+from GitHub Container Registry, installs the `dequl` CLI, and asks for
 an optional admin email (Let's Encrypt notifications) and base domain
 (public app URLs).
 
 Then start the platform:
 
 ```bash
-dequel start
+dequl start
 ```
 
 Open `https://<the base domain added while installing>` to access the dashboard. If you configured a base
 domain during install, the dashboard is also served on it.
 
-![Dequel login page](/screenshots/login.png)
+![Dequl login page](/screenshots/login.png)
 
 ## Create your login user
 
-Dequel authenticates against Linux system users in the `dequel` group.
+Dequl authenticates against Linux system users in the `dequl` group.
 Create the group and a user after installing:
 
 ```bash
-sudo groupadd -f dequel
+sudo groupadd -f dequl
 sudo useradd -m -s /bin/bash <username>
 sudo passwd <username>
-sudo usermod -aG dequel <username>
+sudo usermod -aG dequl <username>
 ```
 
 Sign in with that username and password. See
@@ -69,7 +69,7 @@ access.
 
 To serve public HTTPS traffic:
 
-1. Set the base domain and contact email in `~/.dequel/.env` (the
+1. Set the base domain and contact email in `~/.dequl/.env` (the
    installer already wrote these if you provided them):
    ```bash
    CADDY_BASE_DOMAIN=example.com
@@ -77,21 +77,21 @@ To serve public HTTPS traffic:
    ```
 2. Point a wildcard DNS record (`*.example.com`) at your server's IP.
 3. Ensure ports `80` and `443` are open in your firewall.
-4. Restart with `dequel restart`.
+4. Restart with `dequl restart`.
 
 Deployed apps become reachable at `https://<project-slug>.example.com`
 with automatic Let's Encrypt certificates.
 
 ## Configuration directory
 
-Dequel stores its state in `~/.dequel` (override with `DEQUEL_HOME`):
+Dequl stores its state in `~/.dequl` (override with `DEQUL_HOME`):
 
 ```text
-~/.dequel/
+~/.dequl/
 ├── docker-compose.yml
 ├── .env                    # CADDY_BASE_DOMAIN, CADDY_EMAIL, ENV_ENCRYPTION_KEY
 ├── data/
-│   ├── dequel.json         # File-based platform config (0600)
+│   ├── dequl.json         # File-based platform config (0600)
 │   └── ...                 # Postgres data, backups, instance id
 ├── workspace/              # Build staging area
 ├── scripts/auth/           # PAM auth server files
@@ -106,21 +106,21 @@ PostgreSQL holds all platform state (projects, deployments, env vars,
 databases, users). It runs as the `postgres` container with a persisted
 volume — there is no SQLite file to manage.
 
-## The `dequel` CLI
+## The `dequl` CLI
 
 The CLI manages the platform lifecycle. See the full
 [CLI reference](/docs/cli) for update channels and backups.
 
 | Command | Description |
 |---------|-------------|
-| `dequel start` | Start all services |
-| `dequel stop` | Stop all services |
-| `dequel restart` | Restart all services |
-| `dequel status` | Show service status |
-| `dequel logs` | Follow service logs |
-| `dequel update` | Update to the latest release |
-| `dequel backup` | Back up the internal database |
-| `dequel uninstall` | Remove everything (prompts first) |
+| `dequl start` | Start all services |
+| `dequl stop` | Stop all services |
+| `dequl restart` | Restart all services |
+| `dequl status` | Show service status |
+| `dequl logs` | Follow service logs |
+| `dequl update` | Update to the latest release |
+| `dequl backup` | Back up the internal database |
+| `dequl uninstall` | Remove everything (prompts first) |
 
 ## Manual setup
 
@@ -129,7 +129,7 @@ create the directory layout above, download `docker-compose.yml` and the
 `infra/` configs from the latest GitHub release, write your `.env` with
 `CADDY_BASE_DOMAIN`, `CADDY_EMAIL`, and a generated
 `ENV_ENCRYPTION_KEY`, then run
-`docker compose -f ~/.dequel/docker-compose.yml up -d`.
+`docker compose -f ~/.dequl/docker-compose.yml up -d`.
 
 To build from source instead, clone the repository and run
 `docker compose up -d --build`. For local development of the API and
@@ -138,11 +138,11 @@ dashboard directly, see the commands in `AGENTS.md`.
 ## Updating
 
 ```bash
-dequel update
+dequl update
 ```
 
 This pulls the latest images and recreates services with a rolling
-restart. Pin a version with `dequel update vX.Y.Z`.
+restart. Pin a version with `dequl update vX.Y.Z`.
 
 ## Next steps
 

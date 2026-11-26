@@ -1,6 +1,6 @@
 import { Box, Globe } from "lucide-react";
 import { cn } from "../../../lib/utils";
-import type { Server as DequelServer } from "../../../types";
+import type { Server as DequlServer } from "../../../types";
 import type { FrameworkPreset } from "../../../utils/presets";
 import { FRAMEWORK_PRESETS } from "../../../utils/presets";
 import { FrameworkSelect } from "../../ui/FrameworkSelect";
@@ -20,7 +20,7 @@ interface StepBasicsGeneralSettingsProps {
 	onSelectPreset: (preset: FrameworkPreset) => void;
 	serverId: string;
 	setServerId: (v: string) => void;
-	servers: DequelServer[];
+	servers: DequlServer[];
 }
 
 export function StepBasicsGeneralSettings({

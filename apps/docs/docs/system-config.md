@@ -1,24 +1,24 @@
 ---
 title: System Configuration
 category: Platform
-description: Environment variables and the dequel.json file for platform settings.
+description: Environment variables and the dequl.json file for platform settings.
 slug: system-config
 ---
 
 The API reads platform settings from environment variables first, then
-from a `dequel.json` file. Environment variables always win.
+from a `dequl.json` file. Environment variables always win.
 
 ## Config file location
 
-The API loads the first `dequel.json` it finds:
+The API loads the first `dequl.json` it finds:
 
-1. The path in `DEQUEL_CONFIG`
-2. `$XDG_CONFIG_HOME/dequel/dequel.json` (usually
-   `~/.config/dequel/dequel.json`)
-3. `./dequel.json` (next to the process working directory)
-4. `./data/dequel.json` (what the installer writes, mode `0600`)
+1. The path in `DEQUL_CONFIG`
+2. `$XDG_CONFIG_HOME/dequl/dequl.json` (usually
+   `~/.config/dequl/dequl.json`)
+3. `./dequl.json` (next to the process working directory)
+4. `./data/dequl.json` (what the installer writes, mode `0600`)
 
-The installer generates `data/dequel.json` with your base domain and a
+The installer generates `data/dequl.json` with your base domain and a
 random `ENV_ENCRYPTION_KEY`.
 
 ## Reference
@@ -70,11 +70,11 @@ random `ENV_ENCRYPTION_KEY`.
 
 ### Telemetry
 
-Dequel collects anonymous usage telemetry (PostHog) to guide
+Dequl collects anonymous usage telemetry (PostHog) to guide
 development. Disable it with either variable:
 
 ```bash
-DEQUEL_TELEMETRY_DISABLED=1
+DEQUL_TELEMETRY_DISABLED=1
 DO_NOT_TRACK=1
 ```
 
@@ -94,7 +94,7 @@ These have no environment equivalent — set them under
 ```json
 {
   "CADDY_BASE_DOMAIN": "example.com",
-  "CONTROL_PLANE_URL": "https://dequel.example.com",
+  "CONTROL_PLANE_URL": "https://dequl.example.com",
   "QUEUE_CONCURRENCY": 3,
   "FAILOVER_MIN_INTERVAL_MS": 600000
 }

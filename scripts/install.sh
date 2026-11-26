@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="Lftobs/dequel"
+REPO="Lftobs/dequl"
 VERSION="${VERSION:-latest}"
-INSTALL_DIR="${INSTALL_DIR:-$HOME/.dequel}"
+INSTALL_DIR="${INSTALL_DIR:-$HOME/.dequl}"
 
 BOLD='\033[1m'
 DIM='\033[2m'
@@ -103,7 +103,7 @@ download_configs() {
 
 	if [ -n "$TAG" ]; then
 		local version="${TAG#v}"
-		local tarball_url="https://github.com/$REPO/releases/download/$TAG/dequel-config-$version.tar.gz"
+		local tarball_url="https://github.com/$REPO/releases/download/$TAG/dequl-config-$version.tar.gz"
 		local tarball_path=$(mktemp)
 		info "Downloading config bundle..."
 		set +e
@@ -113,7 +113,7 @@ download_configs() {
 		if [ "$curl_ok" -eq 0 ] && [ "$http_code" = "200" ]; then
 			tar -xzf "$tarball_path" -C "$INSTALL_DIR"
 			rm -f "$tarball_path"
-			chmod +x "$INSTALL_DIR/dequel" 2>/dev/null || true
+			chmod +x "$INSTALL_DIR/dequl" 2>/dev/null || true
 			success "Downloaded and extracted config bundle"
 			return
 		fi
@@ -123,7 +123,7 @@ download_configs() {
 
 	download_if_missing "$BASE_URL/docker-compose.yml" "$INSTALL_DIR/docker-compose.yml"
 	download_if_missing "$BASE_URL/infra/caddy/Caddyfile" "$INSTALL_DIR/infra/caddy/Caddyfile"
-	download_if_missing "$BASE_URL/scripts/dequel" "$INSTALL_DIR/dequel"
+	download_if_missing "$BASE_URL/scripts/dequl" "$INSTALL_DIR/dequl"
 	download_if_missing "$BASE_URL/scripts/auth/pam-server.py" "$INSTALL_DIR/scripts/auth/pam-server.py"
 	download_if_missing "$BASE_URL/scripts/firewall-setup.sh" "$INSTALL_DIR/scripts/firewall-setup.sh"
 	chmod +x "$INSTALL_DIR/scripts/firewall-setup.sh" 2>/dev/null || true
@@ -149,10 +149,10 @@ prompt_config() {
 
 	if [ -t 0 ]; then
 		read -r -p "  Admin email (for SSL notifications, optional): " ADMIN_EMAIL
-		read -r -p "  Base domain (e.g. dequel.example.com, optional): " HOSTNAME
+		read -r -p "  Base domain (e.g. dequl.example.com, optional): " HOSTNAME
 	elif (: </dev/tty) 2>/dev/null; then
 		read -r -p "  Admin email (for SSL notifications, optional): " ADMIN_EMAIL < /dev/tty
-		read -r -p "  Base domain (e.g. dequel.example.com, optional): " HOSTNAME < /dev/tty
+		read -r -p "  Base domain (e.g. dequl.example.com, optional): " HOSTNAME < /dev/tty
 	else
 		warn "No terminal — skipping configuration prompt"
 		warn "Set CADDY_EMAIL and CADDY_BASE_DOMAIN in $INSTALL_DIR/.env after install"
@@ -165,20 +165,20 @@ prompt_config() {
 	local PG_PASS
 	PG_PASS=$(openssl rand -hex 16 2>/dev/null || dd if=/dev/urandom bs=16 count=1 status=none 2>/dev/null | od -A n -t x1 | tr -d ' \n' || fail "Cannot generate database password")
 
-	cat > "$INSTALL_DIR/data/dequel.json" <<EOF
+	cat > "$INSTALL_DIR/data/dequl.json" <<EOF
 {
   "CADDY_BASE_DOMAIN": "$HOSTNAME",
   "ENV_ENCRYPTION_KEY": "$ENC_KEY"
 }
 EOF
-	chmod 600 "$INSTALL_DIR/data/dequel.json"
-	success "Created $INSTALL_DIR/data/dequel.json"
+	chmod 600 "$INSTALL_DIR/data/dequl.json"
+	success "Created $INSTALL_DIR/data/dequl.json"
 
 	{
-		echo "# Dequel environment configuration"
-		echo "POSTGRES_USER=dequel"
+		echo "# Dequl environment configuration"
+		echo "POSTGRES_USER=dequl"
 		echo "POSTGRES_PASSWORD=$PG_PASS"
-		echo "POSTGRES_DB=dequel"
+		echo "POSTGRES_DB=dequl"
 		echo "ENV_ENCRYPTION_KEY=$ENC_KEY"
 		[ -n "$ADMIN_EMAIL" ] && echo "CADDY_EMAIL=$ADMIN_EMAIL"
 		[ -n "$HOSTNAME" ] && echo "CADDY_BASE_DOMAIN=$HOSTNAME"
@@ -193,28 +193,28 @@ pull_images() {
 }
 
 install_cli() {
-	header "Installing dequel CLI"
-	local cli_src="$INSTALL_DIR/dequel"
+	header "Installing dequl CLI"
+	local cli_src="$INSTALL_DIR/dequl"
 	if [ ! -f "$cli_src" ]; then
-		download_if_missing "$BASE_URL/scripts/dequel" "$cli_src"
+		download_if_missing "$BASE_URL/scripts/dequl" "$cli_src"
 	fi
 	chmod +x "$cli_src"
 
 	if [ -w /usr/local/bin ]; then
-		ln -sf "$cli_src" /usr/local/bin/dequel
-		success "Installed: /usr/local/bin/dequel"
+		ln -sf "$cli_src" /usr/local/bin/dequl
+		success "Installed: /usr/local/bin/dequl"
 	else
 		info "Installed at: $cli_src"
-		warn "Add to PATH manually: sudo ln -s $cli_src /usr/local/bin/dequel"
+		warn "Add to PATH manually: sudo ln -s $cli_src /usr/local/bin/dequl"
 	fi
 }
 
 send_install_telemetry() {
-	[ "${DEQUEL_TELEMETRY_DISABLED:-0}" = "1" ] && return 0
+	[ "${DEQUL_TELEMETRY_DISABLED:-0}" = "1" ] && return 0
 	local os arch posthog_key
 	os=$(uname -s 2>/dev/null || echo "unknown")
 	arch=$(uname -m 2>/dev/null || echo "unknown")
-	posthog_key="${DEQUEL_POSTHOG_KEY:-phc_dequel_telemetry_public_key}"
+	posthog_key="${DEQUL_POSTHOG_KEY:-phc_dequl_telemetry_public_key}"
 
 	curl -fsSL -X POST "https://us.i.posthog.com/capture/" \
 		-H "Content-Type: application/json" \
@@ -233,25 +233,25 @@ send_install_telemetry() {
 print_summary() {
 	echo ""
 	echo ""
-	success "${BOLD}Dequel installed${NC}"
+	success "${BOLD}Dequl installed${NC}"
 	echo ""
 	echo "  ${BOLD}Config dir:${NC}    $INSTALL_DIR"
 	echo ""
 	echo "  ${BOLD}Usage:${NC}"
-	echo "    dequel start     Start the Dequel platform"
-	echo "    dequel stop      Stop all services"
-	echo "    dequel status    Show service status"
-	echo "    dequel logs      Follow logs"
-	echo "    dequel update    Pull latest images and restart"
-	echo "    dequel --help    Show all commands"
+	echo "    dequl start     Start the Dequl platform"
+	echo "    dequl stop      Stop all services"
+	echo "    dequl status    Show service status"
+	echo "    dequl logs      Follow logs"
+	echo "    dequl update    Pull latest images and restart"
+	echo "    dequl --help    Show all commands"
 	echo ""
-	echo "  Run ${BOLD}dequel start${NC} to get going."
+	echo "  Run ${BOLD}dequl start${NC} to get going."
 	echo ""
 }
 
 main() {
 	echo ""
-	echo "${BOLD}  Dequel Installer${NC}"
+	echo "${BOLD}  Dequl Installer${NC}"
 	echo ""
 
 	check_prerequisites

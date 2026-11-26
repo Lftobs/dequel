@@ -42,8 +42,8 @@ const fakeInvestigation: Investigation = {
 	culpritPaths: ["Dockerfile"],
 	rationale: "r",
 	keyEvidence: ["boom"],
-	dequelRev: "v0.3.0 @ abc1234",
-	dequelStale: false,
+	dequlRev: "v0.3.0 @ abc1234",
+	dequlStale: false,
 };
 
 const fakeInvestigator: InvestigateFn = async () => fakeInvestigation;
@@ -173,20 +173,20 @@ describe("DiagRunMachine.drive", () => {
 		expect(events.some((e) => e.type === "error")).toBe(true);
 	});
 
-	it("auto-posts dequel-source reports to Slack without failing the run", async () => {
+	it("auto-posts dequl-source reports to Slack without failing the run", async () => {
 		const started = await DiagRunMachine.start({ deploymentId: "dep-failed-1", provider: "groq", model: "m" });
 		if (!started.ok) throw new Error("start failed");
-		const dequelPrograms: FixdiagPrograms = {
+		const dequlPrograms: FixdiagPrograms = {
 			...fakePrograms,
 			draftProposal: async () => ({
-				cause: "dequel-source",
-				dequelReport: { problem: "p", cause: "c", proposedFix: "f" },
+				cause: "dequl-source",
+				dequlReport: { problem: "p", cause: "c", proposedFix: "f" },
 			}),
 		};
-		await DiagRunMachine.drive(started.run.id, dequelPrograms, fakeInvestigator);
+		await DiagRunMachine.drive(started.run.id, dequlPrograms, fakeInvestigator);
 		const run = await getDiagRun(started.run.id);
 		expect(run?.status).toBe("done");
-		expect(run?.cause).toBe("dequel-source");
+		expect(run?.cause).toBe("dequl-source");
 		const { rows } = await pool.query("SELECT status FROM diag_actions WHERE run_id = $1 AND kind = 'slack'", [
 			started.run.id,
 		]);

@@ -108,10 +108,10 @@ export function SupportSection() {
 		<div className="rounded-lg bg-gradient-to-r from-[#FFDD00]/5 to-amber-500/5 border border-[#FFDD00]/10 p-3 space-y-2 text-zinc-300 shadow-sm relative overflow-hidden group">
 			<div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
 				<Coffee className="h-3.5 w-3.5" />
-				Support Dequel
+				Support Dequl
 			</div>
 			<p className="text-[10px] text-zinc-400 leading-normal">
-				Help keep Dequel open source and support its development!
+				Help keep Dequl open source and support its development!
 			</p>
 
 			<div id="kofi-widget-container" className="w-full relative z-10">

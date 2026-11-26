@@ -87,9 +87,9 @@ for p in projects:
 
     dashboard = {
         "dashboard": {
-            "title": f"Dequel \u2014 {p['name']}",
-            "uid": f"dequel-project-{slug}",
-            "tags": ["dequel", "project", slug],
+            "title": f"Dequl \u2014 {p['name']}",
+            "uid": f"dequl-project-{slug}",
+            "tags": ["dequl", "project", slug],
             "schemaVersion": 39,
             "version": 1,
             "timezone": "browser",

@@ -77,7 +77,7 @@ equivalent_caddy() {
       continue
     fi
     case "$name" in
-      *dequel-caddy*)
+      *dequl-caddy*)
         echo "$name"
         return 0
         ;;
@@ -149,7 +149,7 @@ ensure_container() {
     remove_stopped "$label" "$name"
     log "$label" "Existing container $existing did not start"
   fi
-  log "$label" "Starting Dequel $label container..."
+  log "$label" "Starting Dequl $label container..."
   err=""
   if err="$($SUDO docker run "$@" 2>&1 >/dev/null)"; then
     log "$label" "Started $label container"
@@ -174,12 +174,12 @@ install_caddy() {
   if [ ! -f /etc/caddy/Caddyfile ]; then
     printf 'import /etc/caddy/routes/*.caddy\n' | $SUDO tee /etc/caddy/Caddyfile > /dev/null
   elif ! grep -q "routes/\*.caddy" /etc/caddy/Caddyfile 2>/dev/null; then
-    printf 'import /etc/caddy/routes/*.caddy\n' | cat - /etc/caddy/Caddyfile > /tmp/dequel-caddyfile
-    $SUDO mv /tmp/dequel-caddyfile /etc/caddy/Caddyfile
+    printf 'import /etc/caddy/routes/*.caddy\n' | cat - /etc/caddy/Caddyfile > /tmp/dequl-caddyfile
+    $SUDO mv /tmp/dequl-caddyfile /etc/caddy/Caddyfile
   fi
 
-  $SUDO docker network create dequel_net 2>/dev/null || true
-  ensure_container caddy dequel-caddy -d --restart unless-stopped --name dequel-caddy --network dequel_net -p 80:80 -p 443:443 -v /etc/caddy/Caddyfile:/etc/caddy/Caddyfile -v /etc/caddy/routes:/etc/caddy/routes -v caddy_data:/data caddy:alpine
+  $SUDO docker network create dequl_net 2>/dev/null || true
+  ensure_container caddy dequl-caddy -d --restart unless-stopped --name dequl-caddy --network dequl_net -p 80:80 -p 443:443 -v /etc/caddy/Caddyfile:/etc/caddy/Caddyfile -v /etc/caddy/routes:/etc/caddy/routes -v caddy_data:/data caddy:alpine
 }
 
 install_caddy
@@ -232,19 +232,17 @@ export const prepareSshServer = async (server: Server, emit: PrepareEmit): Promi
 };
 
 const AGENT_RUN_COMMAND = (token: string) => {
-	const parts = [
-		"docker run -d --name dequel-agent --cap-add=NET_ADMIN --device /dev/net/tun --restart unless-stopped",
-	];
+	const parts = ["docker run -d --name dequl-agent --cap-add=NET_ADMIN --device /dev/net/tun --restart unless-stopped"];
 	if (config.controlPlaneUrl) {
-		parts.push(`-e DEQUEL_CONTROL_PLANE="${config.controlPlaneUrl}"`);
+		parts.push(`-e DEQUL_CONTROL_PLANE="${config.controlPlaneUrl}"`);
 	}
 	if (config.agentTunnelUrl) {
-		parts.push(`-e DEQUEL_AGENT_TUNNEL_URL="${config.agentTunnelUrl}"`);
+		parts.push(`-e DEQUL_AGENT_TUNNEL_URL="${config.agentTunnelUrl}"`);
 	}
 	parts.push(
-		`-e DEQUEL_REGISTRATION_TOKEN="${token}"`,
-		`-v dequel-agent-data:/root/.dequel -v /var/run/docker.sock:/var/run/docker.sock`,
-		`ghcr.io/lftobs/dequel/agent:latest`,
+		`-e DEQUL_REGISTRATION_TOKEN="${token}"`,
+		`-v dequl-agent-data:/root/.dequl -v /var/run/docker.sock:/var/run/docker.sock`,
+		`ghcr.io/lftobs/dequl/agent:latest`,
 	);
 	return parts.join(" ");
 };

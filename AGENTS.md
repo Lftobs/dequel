@@ -1,4 +1,4 @@
-# Dequel
+# Dequl
 
 Self-hosted deployment platform. Deploy apps from Git, ZIP, or Docker Compose with zero infrastructure setup.
 
@@ -62,7 +62,7 @@ Services run in Docker Compose: Gateway, Caddy, API, Web, Buildkit, PostgreSQL, 
 │   └── monitoring/   # Prometheus, Loki, Grafana configs
 ├── scripts/
 │   ├── install.sh    # One-command install script
-│   └── dequel        # CLI for managing the platform
+│   └── dequl        # CLI for managing the platform
 ├── workspace/        # Build staging area
 ├── docker-compose.yml
 ├── VERSION           # Single source of truth for version
@@ -88,7 +88,7 @@ Services run in Docker Compose: Gateway, Caddy, API, Web, Buildkit, PostgreSQL, 
 | `apps/docs/docs/` | Documentation markdown files |
 | `apps/docs/pages/index.astro` | Marketing landing page |
 | `scripts/install.sh` | Install script — downloads configs, pulls images, installs CLI |
-| `scripts/dequel` | CLI tool — `start`, `stop`, `status`, `logs`, `update`, `uninstall` |
+| `scripts/dequl` | CLI tool — `start`, `stop`, `status`, `logs`, `update`, `uninstall` |
 | `.github/workflows/release.yml` | On `v*` tag: build Docker images → ghcr.io, create GitHub Release |
 | `.github/workflows/deploy-docs.yml` | On push to `main`/`dev` (docs changes): deploy to Vercel |
 
@@ -117,9 +117,9 @@ docker compose up -d               # Start full stack
 docker compose up -d --build       # Rebuild and start
 
 # Install / Manage
-curl -fsSL https://github.com/Lftobs/dequel/releases/latest/download/install.sh | bash
-scripts/dequel start               # Start platform
-scripts/dequel uninstall           # Remove everything (prompts)
+curl -fsSL https://github.com/Lftobs/dequl/releases/latest/download/install.sh | bash
+scripts/dequl start               # Start platform
+scripts/dequl uninstall           # Remove everything (prompts)
 
 # Drizzle migrations (run from apps/api/)
 bunx drizzle-kit generate          # Generate migration from schema changes
@@ -159,7 +159,7 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-CI builds Docker images → `ghcr.io/lftobs/dequel/{api,web}:X.Y.Z` and creates a GitHub Release with `docker-compose.yml`, `scripts/install.sh`, `scripts/dequel` as assets.
+CI builds Docker images → `ghcr.io/lftobs/dequl/{api,web}:X.Y.Z` and creates a GitHub Release with `docker-compose.yml`, `scripts/install.sh`, `scripts/dequl` as assets.
 
 ## Vercel Deploy (Docs)
 
@@ -167,8 +167,8 @@ CI builds Docker images → `ghcr.io/lftobs/dequel/{api,web}:X.Y.Z` and creates 
 
 | Branch | Domain |
 |--------|--------|
-| `main` | `dequel.intrep.xyz` |
-| `dev` | `dev.dequel.intrep.xyz` |
+| `main` | `dequl.intrep.xyz` |
+| `dev` | `dev.dequl.intrep.xyz` |
 
 Requires secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
 
@@ -177,13 +177,13 @@ Requires secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3001` | API listen port |
-| `DATABASE_URL` | `postgresql://dequel:dequel@localhost:5432/dequel` | PostgreSQL connection string |
+| `DATABASE_URL` | `postgresql://dequl:dequl@localhost:5432/dequl` | PostgreSQL connection string |
 | `WORKSPACE_ROOT` | `./workspace` | Build staging |
 | `CADDY_ROUTES_DIR` | `./infra/caddy/routes` | Caddy route output |
 | `CADDY_BASE_DOMAIN` | `localhost` | Base domain for deployment subdomains. Set to a real domain (e.g. `example.com`) for Let's Encrypt auto-SSL. Public links (e.g. failure email logs) derive their base URL from this. |
 | `CADDY_EMAIL` | _(empty)_ | Email for Let's Encrypt SSL certificate notifications |
 | `GATEWAY_CERT_DIR` | `/app/data` | Directory where the gateway stores its self-signed TLS certificate |
-| `DOCKER_NETWORK` | `dequel_net` | Docker network for deployments |
+| `DOCKER_NETWORK` | `dequl_net` | Docker network for deployments |
 | `BUILDKIT_HOST` | `tcp://buildkit:1234` | Buildkit daemon |
 | `RAILPACK_BUILD_TIMEOUT_MS` | `1200000` | Build timeout |
 

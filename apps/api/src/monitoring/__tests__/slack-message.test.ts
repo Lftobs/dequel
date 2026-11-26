@@ -51,7 +51,7 @@ describe("buildSlackMessage", () => {
 
 	test("scaling suggestion enable_autoscaling renders title and button", () => {
 		const { blocks } = buildSlackMessage("cpu", "tabi", 80, 51.6, {
-			scaling: { kind: "enable_autoscaling", url: "https://dequel.example/project/1?tab=scaling" },
+			scaling: { kind: "enable_autoscaling", url: "https://dequl.example/project/1?tab=scaling" },
 		});
 		const section = blocks.find((b: any) => b.type === "section" && b.text?.text?.includes("Autoscaling is off"));
 		expect(section).toBeDefined();
@@ -59,7 +59,7 @@ describe("buildSlackMessage", () => {
 		const actions = blocks.filter((b: any) => b.type === "actions");
 		const cta = actions.flatMap((a: any) => a.elements).find((e: any) => e.text.text === "Set up autoscaling");
 		expect(cta).toBeDefined();
-		expect(cta.url).toBe("https://dequel.example/project/1?tab=scaling");
+		expect(cta.url).toBe("https://dequl.example/project/1?tab=scaling");
 	});
 
 	test("scaling suggestion increase_max_replicas shows replica limit and counts", () => {
@@ -77,14 +77,14 @@ describe("buildSlackMessage", () => {
 
 	test("projectUrl renders Open project button", () => {
 		const { blocks } = buildSlackMessage("cpu", "tabi", 80, 51.6, {
-			projectUrl: "https://dequel.example/project/42",
+			projectUrl: "https://dequl.example/project/42",
 		});
 		const btn = blocks
 			.filter((b: any) => b.type === "actions")
 			.flatMap((a: any) => a.elements)
 			.find((e: any) => e.text.text === "Open project");
 		expect(btn).toBeDefined();
-		expect(btn.url).toBe("https://dequel.example/project/42");
+		expect(btn.url).toBe("https://dequl.example/project/42");
 	});
 
 	test("no scaling block and no project button without details", () => {

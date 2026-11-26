@@ -66,7 +66,7 @@ export const setGithubIntegration = async (input: {
 					clientSecret: client.encrypted,
 					clientSecretIv: client.iv,
 					clientSecretTag: client.tag,
-					appName: input.appName ?? "Dequel",
+					appName: input.appName ?? "Dequl",
 					...(webhook
 						? { webhookSecret: webhook.encrypted, webhookSecretIv: webhook.iv, webhookSecretTag: webhook.tag }
 						: {}),
@@ -90,7 +90,7 @@ export const setGithubIntegration = async (input: {
 				clientSecret: client.encrypted,
 				clientSecretIv: client.iv,
 				clientSecretTag: client.tag,
-				appName: input.appName ?? "Dequel",
+				appName: input.appName ?? "Dequl",
 				webhookSecret: webhook?.encrypted ?? null,
 				webhookSecretIv: webhook?.iv ?? null,
 				webhookSecretTag: webhook?.tag ?? null,

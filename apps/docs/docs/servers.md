@@ -5,7 +5,7 @@ description: Run apps on multiple machines over SSH or WireGuard agents.
 slug: servers
 ---
 
-Dequel is not limited to the machine it is installed on. Connect extra
+Dequl is not limited to the machine it is installed on. Connect extra
 servers and pick a target per project or database: builds run there,
 containers live there, and Caddy routes point at them. The control plane
 itself is just the default `local` target.
@@ -20,7 +20,7 @@ and SSH reachable from the control plane — Docker, Caddy, BuildKit, and
 Railpack are installed for you by the Prepare step.
 
 **WireGuard agent (firewalled nodes).** For servers with no open SSH
-port, Dequel shows a `docker run` command for the Dequel agent. Run it
+port, Dequl shows a `docker run` command for the Dequl agent. Run it
 on the target: the agent registers back with a one-time token and opens
 a WireGuard tunnel to the control plane. All orchestration then flows
 through the mesh.
@@ -30,9 +30,9 @@ through the mesh.
 Open **Settings → Servers** and click **Connect Server**:
 
 1. Choose **Direct SSH** (host, port, user, and an SSH key from your
-   [key pool](/docs/keys)) or **WireGuard P2P Agent** (a name — Dequel
+   [key pool](/docs/keys)) or **WireGuard P2P Agent** (a name — Dequl
    mints the registration token).
-2. Click **Prepare Node**. Dequel streams live progress: OS detection,
+2. Click **Prepare Node**. Dequl streams live progress: OS detection,
    Docker install, Caddy + `/etc/caddy/routes/` setup, BuildKit, and
    Railpack CLI. Prepare is idempotent — re-run it any time to heal a
    node.
@@ -46,7 +46,7 @@ server with the delete action when it is decommissioned.
 
 All servers share one base domain (`CADDY_BASE_DOMAIN`). A project gets
 the same hostname (`<slug>.<domain>`) no matter which server runs it —
-Dequel renders that hostname into the route file on the owning server.
+Dequl renders that hostname into the route file on the owning server.
 Point the wildcard DNS at your servers (see [Installation](/docs/installation)),
 or add per-deployment A records for finer control. Custom domains bypass
 the base domain entirely. The **Settings → Servers** view (or

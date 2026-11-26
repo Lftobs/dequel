@@ -5,27 +5,27 @@ description: Linux-user login, short-lived sessions, and scoped API keys.
 slug: auth
 ---
 
-Dequel has two credential types: interactive login for the dashboard
+Dequl has two credential types: interactive login for the dashboard
 (Linux users) and API keys for programmatic access (CI, scripts).
 
 ## Dashboard login
 
-Dequel authenticates dashboard users against the host's Linux accounts
-through PAM. Only members of the `dequel` group can sign in. Create a
+Dequl authenticates dashboard users against the host's Linux accounts
+through PAM. Only members of the `dequl` group can sign in. Create a
 user after installing:
 
 ```bash
-sudo groupadd -f dequel
+sudo groupadd -f dequl
 sudo useradd -m -s /bin/bash <username>
 sudo passwd <username>
-sudo usermod -aG dequel <username>
+sudo usermod -aG dequl <username>
 ```
 
 ## Sessions
 
-- **Access token** — a JWT in the `dequel_session` cookie, valid 15
+- **Access token** — a JWT in the `dequl_session` cookie, valid 15
   minutes (`HttpOnly`, `SameSite=Lax`, `Secure` behind HTTPS).
-- **Refresh token** — a rotating opaque token in the `dequel_refresh`
+- **Refresh token** — a rotating opaque token in the `dequl_refresh`
   cookie, valid 7 days. Logging out invalidates it immediately.
 - The dashboard silently refreshes the session and redirects to
   `/login` when both tokens are gone.
@@ -41,7 +41,7 @@ For CI pipelines, scripts, and external tools, create keys on the
 3. Send it as a Bearer token:
 
 ```bash
-curl -H "Authorization: Bearer dql_<key>" https://dequel.example.com/api/projects
+curl -H "Authorization: Bearer dql_<key>" https://dequl.example.com/api/projects
 ```
 
 Keys carry read/write scopes enforced per HTTP method. Revoke a key any

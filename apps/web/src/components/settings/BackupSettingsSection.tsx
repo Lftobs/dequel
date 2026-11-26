@@ -208,7 +208,7 @@ export function BackupSettingsSection() {
 									id="s3-bucket"
 									value={s3Bucket}
 									onChange={(e) => setS3Bucket(e.target.value)}
-									placeholder="my-dequel-backups"
+									placeholder="my-dequl-backups"
 									className="bg-background/50 border-border/80 text-xs font-mono rounded-xl h-10"
 								/>
 							</div>
@@ -277,7 +277,7 @@ export function BackupSettingsSection() {
 							System Database Backup Schedule
 						</h4>
 						<p className="text-[11px] text-muted-foreground">
-							Configure the automatic backup schedule for Dequel&apos;s internal database. Per-database schedules are
+							Configure the automatic backup schedule for Dequl&apos;s internal database. Per-database schedules are
 							configured individually.
 						</p>
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -366,7 +366,7 @@ export function BackupSettingsSection() {
 							<div>
 								<CardTitle className="text-base font-bold text-foreground">System Database & Backups</CardTitle>
 								<CardDescription className="text-xs text-muted-foreground">
-									Manage backups for Dequel&apos;s internal orchestrator database and target managed services.
+									Manage backups for Dequl&apos;s internal orchestrator database and target managed services.
 								</CardDescription>
 							</div>
 						</div>

@@ -5,24 +5,24 @@ import { join } from "node:path";
 import { generateDynamicRailpackJson } from "../railpack-config-utils";
 
 const setupWorkspace = () => {
-	const dir = mkdtempSync(join(tmpdir(), "dequel-railpack-config-"));
+	const dir = mkdtempSync(join(tmpdir(), "dequl-railpack-config-"));
 	mkdirSync(join(dir, "client"), { recursive: true });
 	return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 };
 
 describe("generateDynamicRailpackJson static subdirectory detection", () => {
-	test("configures dequel-serve.js when index.html exists without package.json", async () => {
+	test("configures dequl-serve.js when index.html exists without package.json", async () => {
 		const { dir, cleanup } = setupWorkspace();
 		try {
 			writeFileSync(join(dir, "client", "index.html"), "<html></html>");
 			const logs: string[] = [];
 			await generateDynamicRailpackJson(dir, "client", "static", null, null, async (line) => logs.push(line));
-			const serveScript = join(dir, "dequel-serve.js");
+			const serveScript = join(dir, "dequl-serve.js");
 			const railpackJson = join(dir, "railpack.json");
 			expect(existsSync(serveScript)).toBe(true);
 			expect(existsSync(railpackJson)).toBe(true);
 			const parsedConfig = JSON.parse(readFileSync(railpackJson, "utf8"));
-			expect(parsedConfig.deploy?.startCommand).toBe("bun dequel-serve.js");
+			expect(parsedConfig.deploy?.startCommand).toBe("bun dequl-serve.js");
 		} finally {
 			cleanup();
 		}
@@ -72,8 +72,8 @@ describe("generateDynamicRailpackJson static subdirectory detection", () => {
 				const logs: string[] = [];
 				await generateDynamicRailpackJson(dir, "client", null, null, null, async (line) => logs.push(line));
 				const parsedConfig = JSON.parse(readFileSync(join(dir, "railpack.json"), "utf8"));
-				expect(parsedConfig.deploy?.startCommand).toBe("bun dequel-serve.js");
-				expect(existsSync(join(dir, "dequel-serve.js"))).toBe(true);
+				expect(parsedConfig.deploy?.startCommand).toBe("bun dequl-serve.js");
+				expect(existsSync(join(dir, "dequl-serve.js"))).toBe(true);
 				expect(parsedConfig.steps?.build?.commands?.join(" ")).toContain("run build");
 			} finally {
 				cleanup();
@@ -127,7 +127,7 @@ describe("generateDynamicRailpackJson static subdirectory detection", () => {
 				);
 				await generateDynamicRailpackJson(dir, "client", null, null, null, async () => {});
 				const parsedConfig = JSON.parse(readFileSync(join(dir, "railpack.json"), "utf8"));
-				expect(parsedConfig.deploy?.startCommand).toBe("bun dequel-serve.js");
+				expect(parsedConfig.deploy?.startCommand).toBe("bun dequl-serve.js");
 			} finally {
 				cleanup();
 			}
@@ -146,7 +146,7 @@ describe("generateDynamicRailpackJson static subdirectory detection", () => {
 				);
 				await generateDynamicRailpackJson(dir, "client", null, null, null, async () => {});
 				const parsedConfig = JSON.parse(readFileSync(join(dir, "railpack.json"), "utf8"));
-				expect(parsedConfig.deploy?.startCommand).toBe("bun dequel-serve.js");
+				expect(parsedConfig.deploy?.startCommand).toBe("bun dequl-serve.js");
 			} finally {
 				cleanup();
 			}

@@ -23,7 +23,7 @@ let refreshPromise: Promise<boolean> | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 let tokenExpiresAt = 0;
 
-const authChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("dequel_auth") : null;
+const authChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("dequl_auth") : null;
 
 export const cancelTokenRefresh = () => {
 	if (refreshTimer) {

@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "dequel-docs",
+      "name": "dequl-docs",
       "dependencies": {
         "@astrojs/markdown-satteri": "^0.2.2",
         "@astrojs/tailwind": "^5.1.0",

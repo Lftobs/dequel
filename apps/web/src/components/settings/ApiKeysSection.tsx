@@ -209,7 +209,7 @@ export function ApiKeysSection() {
 						</div>
 						<h3 className="text-sm font-semibold text-foreground">No API Tokens Found</h3>
 						<p className="text-xs text-muted-foreground max-w-sm mt-1 mb-4">
-							Generate access tokens to allow external deployment tools and CI scripts to authenticate with Dequel.
+							Generate access tokens to allow external deployment tools and CI scripts to authenticate with Dequl.
 						</p>
 						<Button
 							size="sm"
@@ -230,7 +230,7 @@ export function ApiKeysSection() {
 											<div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
 											<p className="font-medium text-sm text-foreground truncate">{k.name}</p>
 										</div>
-										<p className="font-mono text-xs text-muted-foreground">dequel_sec_{k.keyHash?.slice(0, 8)}...</p>
+										<p className="font-mono text-xs text-muted-foreground">dequl_sec_{k.keyHash?.slice(0, 8)}...</p>
 										<p className="text-[11px] text-muted-foreground/70">{new Date(k.createdAt).toLocaleDateString()}</p>
 									</div>
 									<Button
@@ -269,7 +269,7 @@ export function ApiKeysSection() {
 													variant="outline"
 													className="font-mono text-[11px] bg-black/40 text-zinc-400 border-border/60"
 												>
-													dequel_sec_{k.keyHash?.slice(0, 8)}...
+													dequl_sec_{k.keyHash?.slice(0, 8)}...
 												</Badge>
 											</TableCell>
 											<TableCell className="text-muted-foreground text-xs py-3.5">

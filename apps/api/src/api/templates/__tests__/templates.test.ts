@@ -86,7 +86,7 @@ describe("deploy template registry", () => {
 
 describe("zip store writer", () => {
 	it("produces an archive the platform extractor can read", () => {
-		const dir = mkdtempSync(join(tmpdir(), "dequel-zip-"));
+		const dir = mkdtempSync(join(tmpdir(), "dequl-zip-"));
 		try {
 			const compose = "services:\n  svc:\n    image: alpine\n";
 			const zip = createZipStore([

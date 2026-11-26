@@ -9,7 +9,7 @@ import {
 } from "../db/repo";
 import type { Database, DatabaseType, Server } from "../types";
 import { config } from "../utils/config";
-import { DEQUEL_DATABASE_LABEL } from "../utils/dequel-labels";
+import { DEQUL_DATABASE_LABEL } from "../utils/dequl-labels";
 import { dockerBin } from "../utils/docker-bin";
 import { dockerRun, ensureContainerRemoved, ensureVolumeRemoved } from "../utils/docker-run";
 
@@ -141,7 +141,7 @@ const runProvision = async (dbRecord: Database): Promise<void> => {
 			"--restart",
 			"unless-stopped",
 			"-l",
-			DEQUEL_DATABASE_LABEL,
+			DEQUL_DATABASE_LABEL,
 			...(dbRecord.cpuLimit ? ["--cpus", String(dbRecord.cpuLimit)] : []),
 			...(dbRecord.memoryLimitMb ? ["--memory", `${Math.round(dbRecord.memoryLimitMb)}m`] : []),
 			"-v",
@@ -245,13 +245,13 @@ const provisionPublicProxy = async (
 					"--restart",
 					"unless-stopped",
 					"-l",
-					DEQUEL_DATABASE_LABEL,
+					DEQUL_DATABASE_LABEL,
 					"-e",
-					`DEQUEL_HAPROXY_CONFIG=${configText}`,
+					`DEQUL_HAPROXY_CONFIG=${configText}`,
 					"haproxy:3.0-alpine",
 					"sh",
 					"-c",
-					'printf "%s" "$DEQUEL_HAPROXY_CONFIG" > /tmp/haproxy.cfg && exec haproxy -f /tmp/haproxy.cfg',
+					'printf "%s" "$DEQUL_HAPROXY_CONFIG" > /tmp/haproxy.cfg && exec haproxy -f /tmp/haproxy.cfg',
 				],
 				server,
 			);

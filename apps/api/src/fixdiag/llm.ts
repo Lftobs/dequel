@@ -34,4 +34,4 @@ export const asConfidence = (value: unknown): TriageConfidence =>
 	value === "low" || value === "medium" || value === "high" ? value : "low";
 
 export const asCause = (value: unknown): CauseKind =>
-	value === "user-source" || value === "dequel-source" || value === "unknown" ? value : "unknown";
+	value === "user-source" || value === "dequl-source" || value === "unknown" ? value : "unknown";

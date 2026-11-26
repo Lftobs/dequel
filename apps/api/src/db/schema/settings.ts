@@ -25,7 +25,7 @@ export const smtpSettings = pgTable("smtp_settings", {
 	passEncrypted: text("pass_encrypted"),
 	passIv: text("pass_iv"),
 	passTag: text("pass_tag"),
-	fromAddress: text("from_address").notNull().default("dequel@localhost"),
+	fromAddress: text("from_address").notNull().default("dequl@localhost"),
 	createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

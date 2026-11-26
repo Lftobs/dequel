@@ -153,7 +153,7 @@ export const generateDynamicRailpackJson = async (
 				join(workspace, "package.json"),
 				JSON.stringify(
 					{
-						name: "dequel-monorepo-root",
+						name: "dequl-monorepo-root",
 						private: true,
 						workspaces: [cleanSourceDir],
 					},
@@ -465,17 +465,17 @@ Bun.serve({
   }
 });
 `;
-		await Bun.write(join(workspace, "dequel-serve.js"), serveScript);
+		await Bun.write(join(workspace, "dequl-serve.js"), serveScript);
 		const rootPkgPath = join(workspace, "package.json");
 		if (!(await Bun.file(rootPkgPath).exists())) {
 			await Bun.write(
 				rootPkgPath,
 				JSON.stringify(
 					{
-						name: "dequel-static-app",
+						name: "dequl-static-app",
 						private: true,
 						scripts: {
-							start: "bun dequel-serve.js",
+							start: "bun dequl-serve.js",
 						},
 					},
 					null,
@@ -484,7 +484,7 @@ Bun.serve({
 			);
 		}
 		config.steps.build = config.steps.build || { commands: [] };
-		config.deploy.startCommand = "bun dequel-serve.js";
+		config.deploy.startCommand = "bun dequl-serve.js";
 		configured = true;
 	}
 

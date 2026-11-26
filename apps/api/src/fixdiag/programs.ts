@@ -1,7 +1,7 @@
 import { ax } from "@ax-llm/ax";
 import { asCause, asConfidence, asString, asStringArray, type DiagLlm } from "./llm";
 import type {
-	DequelReport,
+	DequlReport,
 	ExplainInput,
 	Explanation,
 	FixdiagPrograms,
@@ -40,7 +40,7 @@ export const createPrograms = (llm: DiagLlm): FixdiagPrograms => {
 		'failureReason:string, logText:string -> failingStage:string, signalLines:string[], confidence:class "low,medium,high"',
 		{
 			description:
-				'You triage a failed Dequel deployment. Identify which build stage failed and quote the 1-5 most telling log lines. Reply with one line per field and no bullet dashes, for example:\nFailing Stage: Docker Build\nSignal Lines: ["[build] ERROR: ..."]\nConfidence: high',
+				'You triage a failed Dequl deployment. Identify which build stage failed and quote the 1-5 most telling log lines. Reply with one line per field and no bullet dashes, for example:\nFailing Stage: Docker Build\nSignal Lines: ["[build] ERROR: ..."]\nConfidence: high',
 		},
 	);
 
@@ -57,11 +57,11 @@ export const createPrograms = (llm: DiagLlm): FixdiagPrograms => {
 		},
 	);
 
-	const proposeDequelReport = ax(
-		'localization:string, explanation:string, repo:string -> cause:class "dequel-source,unknown", problem:string, fixCause:string, proposedFix:string',
+	const proposeDequlReport = ax(
+		'localization:string, explanation:string, repo:string -> cause:class "dequl-source,unknown", problem:string, fixCause:string, proposedFix:string',
 		{
 			description:
-				"You write a bug report for the Dequel platform team about a failure in Dequel's own tooling. Always fill problem, fixCause, and proposedFix with concrete content. Answer unknown for cause when the evidence does not support a Dequel-source report. Reply with one line per field and no bullet dashes.",
+				"You write a bug report for the Dequl platform team about a failure in Dequl's own tooling. Always fill problem, fixCause, and proposedFix with concrete content. Answer unknown for cause when the evidence does not support a Dequl-source report. Reply with one line per field and no bullet dashes.",
 		},
 	);
 
@@ -123,19 +123,19 @@ export const createPrograms = (llm: DiagLlm): FixdiagPrograms => {
 					};
 				}
 			}
-			if (input.localization.cause === "dequel-source") {
+			if (input.localization.cause === "dequl-source") {
 				try {
-					const out = await proposeDequelReport.forward(llm, base, opts);
-					const dequelReport: DequelReport = {
+					const out = await proposeDequlReport.forward(llm, base, opts);
+					const dequlReport: DequlReport = {
 						problem: asString(out.problem),
 						cause: asString(out.fixCause),
 						proposedFix: asString(out.proposedFix),
 					};
-					return { cause: asCause(out.cause) === "unknown" ? "unknown" : "dequel-source", dequelReport };
+					return { cause: asCause(out.cause) === "unknown" ? "unknown" : "dequl-source", dequlReport };
 				} catch {
 					return {
-						cause: "dequel-source",
-						dequelReport: { problem: input.localization.rationale, cause: "", proposedFix: "" },
+						cause: "dequl-source",
+						dequlReport: { problem: input.localization.rationale, cause: "", proposedFix: "" },
 					};
 				}
 			}

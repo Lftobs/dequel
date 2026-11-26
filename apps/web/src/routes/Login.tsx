@@ -1,7 +1,7 @@
 import { Activity, ArrowRight, Lock, RefreshCw, Shield, Terminal, User } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import * as api from "../api/client";
-import { DequelLogo } from "../components/DequelLogo";
+import { DequlLogo } from "../components/DequlLogo";
 
 export function Login() {
 	const [username, setUsername] = useState("");
@@ -27,7 +27,7 @@ export function Login() {
 
 	return (
 		<div className="min-h-screen w-full bg-[#070708] text-zinc-100 flex items-center justify-center p-6 sm:p-10 lg:p-16 relative overflow-hidden select-none">
-			{/* Background glow using Dequel orange */}
+			{/* Background glow using Dequl orange */}
 			<div className="absolute top-0 left-0 w-[400px] h-[400px] bg-orange-500/[0.02] blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
 
 			{/* Center content container for closer alignment */}
@@ -36,17 +36,17 @@ export function Login() {
 				<div className="w-full max-w-sm flex flex-col justify-between min-h-[480px] space-y-6">
 					{/* Logo Branding */}
 					<div className="flex items-center gap-2">
-						<DequelLogo className="h-6 w-6" />
-						<span className="font-display font-bold text-base tracking-wider text-zinc-200">dequel</span>
+						<DequlLogo className="h-6 w-6" />
+						<span className="font-display font-bold text-base tracking-wider text-zinc-200">dequl</span>
 						<span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-500 border border-orange-500/20 font-mono font-bold">
-							v{__DEQUEL_VERSION__}
+							v{__DEQUL_VERSION__}
 						</span>
 					</div>
 
 					{/* Form */}
 					<div className="space-y-5">
 						<div className="space-y-1">
-							<h1 className="text-2xl font-bold tracking-tight text-zinc-100">Sign in to Dequel</h1>
+							<h1 className="text-2xl font-bold tracking-tight text-zinc-100">Sign in to Dequl</h1>
 							<p className="text-zinc-500 text-xs leading-normal">
 								Enter your credentials to access your self-hosted deployment engine.
 							</p>
@@ -123,10 +123,10 @@ export function Login() {
 					</div>
 
 					{/* Footer Info */}
-					<div className="text-[10px] text-zinc-600 font-mono pt-4">&copy; {new Date().getFullYear()} Dequel.</div>
+					<div className="text-[10px] text-zinc-600 font-mono pt-4">&copy; {new Date().getFullYear()} Dequl.</div>
 				</div>
 
-				{/* Right Column: Clean, Low-contrast CSS Mockup of Dequel Dashboard */}
+				{/* Right Column: Clean, Low-contrast CSS Mockup of Dequl Dashboard */}
 				<div className="hidden lg:flex w-full max-w-[480px] aspect-[16/10] rounded-xl border border-[#1a1a1f] bg-[#0c0c0e] shadow-xl flex flex-col overflow-hidden shrink-0">
 					{/* Header Mockup */}
 					<div className="h-8 bg-[#101012] border-b border-[#1a1a1f] flex items-center px-3 justify-between">
@@ -147,8 +147,8 @@ export function Login() {
 						<div className="w-32 border-r border-[#1a1a1f] bg-[#09090b] p-2.5 flex flex-col justify-between text-[8px]">
 							<div className="space-y-3">
 								<div className="flex items-center gap-1 px-1 pb-1.5 border-b border-[#1a1a1f]/60">
-									<DequelLogo className="h-3 w-3" />
-									<span className="font-bold text-zinc-400">dequel</span>
+									<DequlLogo className="h-3 w-3" />
+									<span className="font-bold text-zinc-400">dequl</span>
 								</div>
 
 								<div className="space-y-1">

@@ -9,14 +9,14 @@ describe("Telemetry Utility", () => {
 		expect(getInstanceId()).toBe(instanceId);
 	});
 
-	it("respects DEQUEL_TELEMETRY_DISABLED=1", async () => {
-		process.env.DEQUEL_TELEMETRY_DISABLED = "1";
+	it("respects DEQUL_TELEMETRY_DISABLED=1", async () => {
+		process.env.DEQUL_TELEMETRY_DISABLED = "1";
 		const fetchSpy = spyOn(globalThis, "fetch");
 
 		await captureTelemetry("test_event", { foo: "bar" });
 		expect(fetchSpy).not.toHaveBeenCalled();
 
-		delete process.env.DEQUEL_TELEMETRY_DISABLED;
+		delete process.env.DEQUL_TELEMETRY_DISABLED;
 		fetchSpy.mockRestore();
 	});
 });

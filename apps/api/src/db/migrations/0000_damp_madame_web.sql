@@ -147,7 +147,7 @@ CREATE TABLE "github_integrations" (
 	"id" text PRIMARY KEY NOT NULL,
 	"client_id" text NOT NULL,
 	"client_secret" text NOT NULL,
-	"app_name" text DEFAULT 'Dequel' NOT NULL,
+	"app_name" text DEFAULT 'Dequl' NOT NULL,
 	"webhook_secret" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -263,7 +263,7 @@ CREATE TABLE "smtp_settings" (
 	"pass_encrypted" text,
 	"pass_iv" text,
 	"pass_tag" text,
-	"from_address" text DEFAULT 'dequel@localhost' NOT NULL,
+	"from_address" text DEFAULT 'dequl@localhost' NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
