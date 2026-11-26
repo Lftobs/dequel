@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Check, Copy, Eye, EyeOff, Key, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, Key, Pause, Play, Plus, RefreshCw, ShieldCheck, Trash2, Zap } from "lucide-react";
 import { useState } from "react";
 import * as api from "../../api/client";
 import { Badge } from "../ui/badge";
@@ -21,13 +21,20 @@ export function ApiKeysSection() {
 		queryFn: () => api.listApiKeys().catch(() => []),
 	});
 
+	const { data: projects = [] } = useQuery({
+		queryKey: ["projects"],
+		queryFn: () => api.listProjects().catch(() => []),
+	});
+
 	const [name, setName] = useState("");
 	const [selectedScope, setSelectedScope] = useState("cicd");
+	const [selectedProjectId, setSelectedProjectId] = useState("");
 	const [newKey, setNewKey] = useState("");
 	const [showKey, setShowKey] = useState(true);
 	const [copied, setCopied] = useState(false);
 	const [isCreating, setIsCreating] = useState(false);
 	const [deletingKeyId, setDeletingKeyId] = useState<string | null>(null);
+	const [busyKeyId, setBusyKeyId] = useState<string | null>(null);
 
 	const handleDeleteKey = async () => {
 		if (!deletingKeyId) return;
@@ -43,17 +50,45 @@ export function ApiKeysSection() {
 		setTimeout(() => setCopied(false), 2000);
 	};
 
+	const handleTogglePause = async (id: string, paused: boolean) => {
+		setBusyKeyId(id);
+		try {
+			await api.pauseApiKey(id, paused);
+			refetch();
+		} finally {
+			setBusyKeyId(null);
+		}
+	};
+
+	const handleRoll = async (id: string) => {
+		setBusyKeyId(id);
+		try {
+			const result = await api.rollApiKey(id);
+			setNewKey(result.rawKey);
+			refetch();
+		} finally {
+			setBusyKeyId(null);
+		}
+	};
+
 	const add = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!name.trim()) return;
 		const scopeLabel = SCOPE_PRESETS.find((s) => s.id === selectedScope)?.label || "API Token";
 		const keyName = `${name.trim()} (${scopeLabel})`;
-		const result = await api.createApiKey({ name: keyName });
+		const result = await api.createApiKey({
+			name: keyName,
+			projectId: selectedProjectId || null,
+		});
 		setNewKey(result.rawKey || "");
 		setName("");
+		setSelectedProjectId("");
 		setIsCreating(false);
 		refetch();
 	};
+
+	const projectName = (projectId: string | null) =>
+		projectId ? (projects.find((project) => project.id === projectId)?.name ?? "Scoped project") : "All projects";
 
 	return (
 		<Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-xl overflow-hidden">
@@ -180,6 +215,24 @@ export function ApiKeysSection() {
 									})}
 								</div>
 							</div>
+							<div className="space-y-1.5 sm:col-span-2">
+								<label className="text-xs font-medium text-foreground">Project Scope</label>
+								<select
+									value={selectedProjectId}
+									onChange={(e) => setSelectedProjectId(e.target.value)}
+									className="h-9 w-full rounded-md border border-border/80 bg-card px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-orange-500/50"
+								>
+									<option value="">All projects</option>
+									{projects.map((project) => (
+										<option key={project.id} value={project.id}>
+											{project.name}
+										</option>
+									))}
+								</select>
+								<p className="text-[10px] text-muted-foreground">
+									Project-scoped tokens can only deploy, read deployments, and manage resources for that project.
+								</p>
+							</div>
 						</div>
 						<div className="flex justify-end gap-2 pt-2 border-t border-border/40">
 							<Button
@@ -224,23 +277,50 @@ export function ApiKeysSection() {
 					<div className="rounded-xl border border-border/60 overflow-hidden bg-card/30">
 						<div className="md:hidden divide-y divide-border/40">
 							{apiKeys.map((k) => (
-								<div key={k.id} className="p-3.5 flex items-center justify-between gap-3">
-									<div className="space-y-1 min-w-0">
-										<div className="flex items-center gap-2">
-											<div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+								<div key={k.id} className="p-3.5 space-y-2.5">
+									<div className="flex items-center justify-between gap-2">
+										<div className="flex items-center gap-2 min-w-0">
+											<div
+												className={`h-2 w-2 rounded-full shrink-0 ${k.pausedAt ? "bg-amber-500" : "bg-emerald-500"}`}
+											/>
 											<p className="font-medium text-sm text-foreground truncate">{k.name}</p>
 										</div>
-										<p className="font-mono text-xs text-muted-foreground">dequel_sec_{k.keyHash?.slice(0, 8)}...</p>
-										<p className="text-[11px] text-muted-foreground/70">{new Date(k.createdAt).toLocaleDateString()}</p>
+										<Badge variant="outline" className="text-[10px] shrink-0">
+											{k.pausedAt ? "Paused" : "Active"}
+										</Badge>
 									</div>
-									<Button
-										variant="ghost"
-										size="icon"
-										className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-										onClick={() => setDeletingKeyId(k.id)}
-									>
-										<Trash2 className="h-3.5 w-3.5" />
-									</Button>
+									<p className="font-mono text-xs text-muted-foreground">dequel_sec_{k.keyHash?.slice(0, 8)}...</p>
+									<div className="flex items-center justify-between gap-2">
+										<p className="text-[11px] text-muted-foreground/70">{projectName(k.projectId)}</p>
+										<div className="flex items-center gap-1">
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8 text-muted-foreground hover:text-amber-400"
+												disabled={busyKeyId === k.id}
+												onClick={() => handleTogglePause(k.id, !k.pausedAt)}
+											>
+												{k.pausedAt ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8 text-muted-foreground hover:text-blue-400"
+												disabled={busyKeyId === k.id}
+												onClick={() => handleRoll(k.id)}
+											>
+												<RefreshCw className="h-3.5 w-3.5" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8 text-muted-foreground hover:text-destructive"
+												onClick={() => setDeletingKeyId(k.id)}
+											>
+												<Trash2 className="h-3.5 w-3.5" />
+											</Button>
+										</div>
+									</div>
 								</div>
 							))}
 						</div>
@@ -250,8 +330,9 @@ export function ApiKeysSection() {
 								<TableHeader className="bg-muted/40">
 									<TableRow className="border-border/60 hover:bg-transparent">
 										<TableHead className="text-xs font-semibold">Token Label</TableHead>
+										<TableHead className="text-xs font-semibold">Project Scope</TableHead>
 										<TableHead className="text-xs font-semibold">Key Hash</TableHead>
-										<TableHead className="text-xs font-semibold">Created Date</TableHead>
+										<TableHead className="text-xs font-semibold">Status</TableHead>
 										<TableHead className="text-xs font-semibold text-right">Actions</TableHead>
 									</TableRow>
 								</TableHeader>
@@ -260,9 +341,14 @@ export function ApiKeysSection() {
 										<TableRow key={k.id} className="border-border/40 hover:bg-muted/20">
 											<TableCell className="font-medium text-foreground text-xs py-3.5">
 												<div className="flex items-center gap-2">
-													<div className="h-2 w-2 rounded-full bg-emerald-500" />
+													<div className={`h-2 w-2 rounded-full ${k.pausedAt ? "bg-amber-500" : "bg-emerald-500"}`} />
 													<span>{k.name}</span>
 												</div>
+											</TableCell>
+											<TableCell className="text-xs py-3.5">
+												<Badge variant="outline" className="text-[10px]">
+													{projectName(k.projectId)}
+												</Badge>
 											</TableCell>
 											<TableCell className="font-mono text-xs text-muted-foreground py-3.5">
 												<Badge
@@ -272,22 +358,45 @@ export function ApiKeysSection() {
 													dequel_sec_{k.keyHash?.slice(0, 8)}...
 												</Badge>
 											</TableCell>
-											<TableCell className="text-muted-foreground text-xs py-3.5">
-												{new Date(k.createdAt).toLocaleDateString(undefined, {
-													year: "numeric",
-													month: "short",
-													day: "numeric",
-												})}
+											<TableCell className="text-xs py-3.5">
+												{k.pausedAt ? (
+													<span className="text-amber-400">Paused</span>
+												) : (
+													<span className="text-emerald-400">Active</span>
+												)}
 											</TableCell>
 											<TableCell className="text-right py-3.5">
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-													onClick={() => setDeletingKeyId(k.id)}
-												>
-													<Trash2 className="h-4 w-4" />
-												</Button>
+												<div className="flex items-center justify-end gap-1">
+													<Button
+														variant="ghost"
+														size="icon"
+														title={k.pausedAt ? "Resume token" : "Pause token"}
+														className="h-8 w-8 text-muted-foreground hover:text-amber-400 rounded-lg"
+														disabled={busyKeyId === k.id}
+														onClick={() => handleTogglePause(k.id, !k.pausedAt)}
+													>
+														{k.pausedAt ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+													</Button>
+													<Button
+														variant="ghost"
+														size="icon"
+														title="Roll token"
+														className="h-8 w-8 text-muted-foreground hover:text-blue-400 rounded-lg"
+														disabled={busyKeyId === k.id}
+														onClick={() => handleRoll(k.id)}
+													>
+														<RefreshCw className="h-4 w-4" />
+													</Button>
+													<Button
+														variant="ghost"
+														size="icon"
+														title="Revoke token"
+														className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+														onClick={() => setDeletingKeyId(k.id)}
+													>
+														<Trash2 className="h-4 w-4" />
+													</Button>
+												</div>
 											</TableCell>
 										</TableRow>
 									))}

@@ -1,16 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import { Globe, Plus, Trash2 } from "lucide-react";
-import type React from "react";
+import { Globe, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import * as api from "../../../api/client";
 import { useProject } from "../../../hooks/useProjects";
+import type { Domain } from "../../../types";
 import { StatusBadge } from "../../StatusBadge";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
-import { AddDomainDialog } from "./AddDomainDialog";
 import { DeleteDomainDialog } from "./DeleteDomainDialog";
 import { DnsInstructionsCard } from "./DnsInstructionsCard";
+import { DomainFormDialog } from "./DomainFormDialog";
 
 interface DomainsTabProps {
 	projectId: string;
@@ -33,39 +33,25 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 		refetchInterval: 30000,
 	});
 	const [isAddOpen, setIsAddOpen] = useState(false);
+	const [editingDomain, setEditingDomain] = useState<Domain | null>(null);
 	const [deletingDomId, setDeletingDomId] = useState<string | null>(null);
 	const [lastAdded, setLastAdded] = useState("");
 	const [copiedTarget, setCopiedTarget] = useState(false);
-	const [domain, setDomain] = useState("");
-	const [targetService, setTargetService] = useState("");
-	const [targetPort, setTargetPort] = useState("");
-	const [cloudflareProxied, setCloudflareProxied] = useState(false);
-	const [isAdding, setIsAdding] = useState(false);
 
-	const add = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!domain.trim()) return;
-		setIsAdding(true);
-		try {
-			await api.createDomain(
-				projectId,
-				domain.trim(),
-				"custom",
-				targetService.trim() || undefined,
-				targetPort.trim() ? Number(targetPort) : undefined,
-				cloudflareProxied,
-			);
-			setLastAdded(domain.trim());
-			setDomain("");
-			setTargetService("");
-			setTargetPort("");
-			setCloudflareProxied(false);
-			setIsAddOpen(false);
-			refetch();
-			refetchStatus();
-		} finally {
-			setIsAdding(false);
-		}
+	const openCreate = () => {
+		setEditingDomain(null);
+		setIsAddOpen(true);
+	};
+
+	const openEdit = (domain: Domain) => {
+		setEditingDomain(domain);
+		setIsAddOpen(true);
+	};
+
+	const handleSaved = (domain: string) => {
+		setLastAdded(domain);
+		refetch();
+		refetchStatus();
 	};
 
 	const handleDeleteDomain = async () => {
@@ -103,7 +89,7 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 						SSL provisioning.
 					</p>
 					<Button
-						onClick={() => setIsAddOpen(true)}
+						onClick={openCreate}
 						className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-1.5 px-5 h-10 rounded-xl transition-all shadow-lg hover:shadow-primary/20"
 					>
 						<Plus className="h-4 w-4" /> Add Custom Domain
@@ -117,7 +103,7 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 							<p className="text-sm text-muted-foreground">Domains and subdomains linked to project endpoints.</p>
 						</div>
 						<Button
-							onClick={() => setIsAddOpen(true)}
+							onClick={openCreate}
 							className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center justify-center gap-1.5 px-4 h-9 rounded-xl transition-all text-xs shadow-md w-full sm:w-auto"
 						>
 							<Plus className="h-4.5 w-4.5" /> Add Domain
@@ -130,7 +116,7 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 							onDismiss={() => setLastAdded("")}
 							hasBaseDomain={hasBaseDomain}
 							dnsName={dnsName}
-							baseDomain={baseDomain}
+							baseDomain={baseDomain ?? ""}
 							serverIp={serverIp}
 							copiedTarget={copiedTarget}
 							onCopy={copyText}
@@ -145,14 +131,24 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 									<div key={d.id} className="p-3.5 space-y-2.5">
 										<div className="flex items-center justify-between gap-2">
 											<span className="font-semibold text-foreground text-sm break-all">{d.domain}</span>
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-												onClick={() => setDeletingDomId(d.id)}
-											>
-												<Trash2 className="h-3.5 w-3.5" />
-											</Button>
+											<div className="flex items-center gap-1 shrink-0">
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-8 w-8 text-muted-foreground hover:text-primary"
+													onClick={() => openEdit(d)}
+												>
+													<Pencil className="h-3.5 w-3.5" />
+												</Button>
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-8 w-8 text-muted-foreground hover:text-destructive"
+													onClick={() => setDeletingDomId(d.id)}
+												>
+													<Trash2 className="h-3.5 w-3.5" />
+												</Button>
+											</div>
 										</div>
 										<div className="flex flex-wrap items-center gap-2 text-xs">
 											<Badge
@@ -276,14 +272,24 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 												);
 											})()}
 											<TableCell className="py-3.5 pr-6 text-right">
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all opacity-80 group-hover:opacity-100"
-													onClick={() => setDeletingDomId(d.id)}
-												>
-													<Trash2 className="h-3.5 w-3.5" />
-												</Button>
+												<div className="flex items-center justify-end gap-1">
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-all opacity-80 group-hover:opacity-100"
+														onClick={() => openEdit(d)}
+													>
+														<Pencil className="h-3.5 w-3.5" />
+													</Button>
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all opacity-80 group-hover:opacity-100"
+														onClick={() => setDeletingDomId(d.id)}
+													>
+														<Trash2 className="h-3.5 w-3.5" />
+													</Button>
+												</div>
 											</TableCell>
 										</TableRow>
 									))}
@@ -294,20 +300,13 @@ export function DomainsTab({ projectId }: DomainsTabProps) {
 				</div>
 			)}
 
-			<AddDomainDialog
+			<DomainFormDialog
 				open={isAddOpen}
 				onOpenChange={setIsAddOpen}
-				domain={domain}
-				setDomain={setDomain}
-				targetService={targetService}
-				setTargetService={setTargetService}
-				targetPort={targetPort}
-				setTargetPort={setTargetPort}
-				isCompose={(project as any)?.buildType === "compose"}
-				cloudflareProxied={cloudflareProxied}
-				setCloudflareProxied={setCloudflareProxied}
-				isAdding={isAdding}
-				onAdd={add}
+				projectId={projectId}
+				isCompose={project?.buildType === "compose"}
+				editing={editingDomain}
+				onSaved={handleSaved}
 			/>
 
 			<DeleteDomainDialog

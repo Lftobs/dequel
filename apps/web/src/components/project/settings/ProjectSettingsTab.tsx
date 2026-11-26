@@ -1,17 +1,19 @@
 import { useLocation, useNavigate, useSearch } from "@tanstack/react-router";
-import { AlertTriangle, Layers, Sliders, Terminal } from "lucide-react";
+import { Activity, AlertTriangle, Layers, Megaphone, Sliders, Terminal } from "lucide-react";
 import { useProject } from "../../../hooks/useProjects";
 import { cn } from "../../../lib/utils";
+import { AutomationSettingsSection } from "./AutomationSettingsSection";
 import { BuildSettingsSection } from "./BuildSettingsSection";
 import { ComposeSettingsSection } from "./ComposeSettingsSection";
 import { DeleteProjectCard } from "./DeleteProjectCard";
+import { DeploySettingsSection } from "./DeploySettingsSection";
 import { GeneralSettingsSection } from "./GeneralSettingsSection";
 
 interface ProjectSettingsTabProps {
 	projectId: string;
 }
 
-type SettingsSection = "general" | "build" | "compose" | "danger";
+type SettingsSection = "general" | "build" | "deploy" | "automation" | "compose" | "danger";
 
 export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 	const { data: project } = useProject(projectId);
@@ -35,6 +37,8 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 	const navItems: { id: SettingsSection; label: string; icon: typeof Sliders; badge?: string }[] = [
 		{ id: "general", label: "General", icon: Sliders },
 		{ id: "build", label: "Build Strategy", icon: Terminal },
+		{ id: "deploy", label: "Deploy & Runtime", icon: Activity },
+		{ id: "automation", label: "Automation", icon: Megaphone },
 		...(isCompose ? [{ id: "compose" as const, label: "Docker Compose", icon: Layers, badge: "Compose Stack" }] : []),
 		{ id: "danger", label: "Danger Zone", icon: AlertTriangle },
 	];
@@ -94,6 +98,8 @@ export function ProjectSettingsTab({ projectId }: ProjectSettingsTabProps) {
 				<div className="flex-1 w-full min-w-0">
 					{activeSection === "general" && <GeneralSettingsSection project={project} />}
 					{activeSection === "build" && <BuildSettingsSection project={project} />}
+					{activeSection === "deploy" && <DeploySettingsSection project={project} />}
+					{activeSection === "automation" && <AutomationSettingsSection project={project} />}
 					{activeSection === "compose" && isCompose && <ComposeSettingsSection project={project} />}
 					{activeSection === "danger" && <DeleteProjectCard projectId={projectId} />}
 				</div>

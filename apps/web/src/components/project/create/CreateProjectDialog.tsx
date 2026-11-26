@@ -5,7 +5,7 @@ import * as api from "../../../api/client";
 import { getGithubIntegration } from "../../../api/client";
 import { useCreateProject } from "../../../hooks/useProjects";
 import { cn } from "../../../lib/utils";
-import type { DatabaseType, Server as DequelServer, GithubRepo } from "../../../types";
+import type { DatabaseType, GitProvider, ImagePullPolicy, Server as DequelServer, GithubRepo } from "../../../types";
 import type { FrameworkPreset } from "../../../utils/presets";
 import { Button } from "../../ui/button";
 import {
@@ -47,6 +47,11 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 	const [selectedRepo, setSelectedRepo] = useState<GithubRepo | null>(null);
 	const [githubConnected, setGithubConnected] = useState(false);
 	const [githubConfigured, setGithubConfigured] = useState(false);
+	const [gitProvider, setGitProvider] = useState<GitProvider | "">("");
+	const [gitToken, setGitToken] = useState("");
+	const [imageRef, setImageRef] = useState("");
+	const [imagePullPolicy, setImagePullPolicy] = useState<ImagePullPolicy>("always");
+	const [registryId, setRegistryId] = useState("");
 
 	const [stagedEnvs, setStagedEnvs] = useState<
 		Array<{
@@ -93,7 +98,6 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 						.catch(() => {});
 				} else {
 					setGithubConfigured(false);
-					setSourceType((prev) => (prev === "git" ? "upload" : prev));
 				}
 			})
 			.catch(() => {});
@@ -130,6 +134,11 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 			setZipFile(null);
 			setServerId("local");
 			setStagedSharedVarIds([]);
+			setGitProvider("");
+			setGitToken("");
+			setImageRef("");
+			setImagePullPolicy("always");
+			setRegistryId("");
 		}
 	};
 
@@ -153,16 +162,21 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 				description: description.trim() || undefined,
 				serverId: getDeploymentTargets(servers).some((s) => s.id === serverId) ? serverId : "local",
 				baseDomain: baseDomain.trim() || undefined,
-				repoUrl: repoUrl.trim() || undefined,
-				repoBranch: repoBranch.trim() || undefined,
+				repoUrl: sourceType === "git" ? repoUrl.trim() || undefined : undefined,
+				repoBranch: sourceType === "git" ? repoBranch.trim() || undefined : undefined,
 				port: port.trim() ? Number(port) || null : undefined,
-				sourceDir: sourceDir.trim() || undefined,
+				sourceDir: sourceType === "image" ? undefined : sourceDir.trim() || undefined,
 				sourceType,
 				projectType,
-				buildCommand: buildCommand.trim() || undefined,
-				installCommand: installCommand.trim() || undefined,
-				startCommand: startCommand.trim() || undefined,
-				outputDir: outputDir.trim() || undefined,
+				buildCommand: sourceType === "image" ? undefined : buildCommand.trim() || undefined,
+				installCommand: sourceType === "image" ? undefined : installCommand.trim() || undefined,
+				startCommand: sourceType === "image" ? undefined : startCommand.trim() || undefined,
+				outputDir: sourceType === "image" ? undefined : outputDir.trim() || undefined,
+				gitProvider: sourceType === "git" && gitProvider ? gitProvider : undefined,
+				gitToken: sourceType === "git" && gitToken.trim() ? gitToken.trim() : undefined,
+				imageRef: sourceType === "image" ? imageRef.trim() || undefined : undefined,
+				imagePullPolicy: sourceType === "image" ? imagePullPolicy : undefined,
+				registryId: sourceType === "image" ? registryId || undefined : undefined,
 			});
 
 			if (stagedEnvs.length > 0) {
@@ -322,11 +336,27 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 								serverId={serverId}
 								setServerId={setServerId}
 								servers={servers}
+								gitProvider={gitProvider}
+								setGitProvider={setGitProvider}
+								gitToken={gitToken}
+								setGitToken={setGitToken}
+								imageRef={imageRef}
+								setImageRef={setImageRef}
+								imagePullPolicy={imagePullPolicy}
+								setImagePullPolicy={setImagePullPolicy}
+								registryId={registryId}
+								setRegistryId={setRegistryId}
 							/>
 						)}
 
 						{step === 2 && (
-							<StepEnvironment key="step-environment" stagedEnvs={stagedEnvs} setStagedEnvs={setStagedEnvs} stagedSharedVarIds={stagedSharedVarIds} setStagedSharedVarIds={setStagedSharedVarIds} />
+							<StepEnvironment
+								key="step-environment"
+								stagedEnvs={stagedEnvs}
+								setStagedEnvs={setStagedEnvs}
+								stagedSharedVarIds={stagedSharedVarIds}
+								setStagedSharedVarIds={setStagedSharedVarIds}
+							/>
 						)}
 
 						{step === 3 && (

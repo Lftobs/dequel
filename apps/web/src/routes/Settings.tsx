@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { Database, GitBranch, Mail, Server, Settings2, ShieldCheck, Sparkles } from "lucide-react";
+import { Bell, Container, Database, GitBranch, Mail, Server, Settings2, ShieldCheck, Sparkles } from "lucide-react";
 import * as api from "../api/client";
 import { ConfigWarnings } from "../components/ConfigWarnings";
 import { BackupSettingsSection } from "../components/settings/BackupSettingsSection";
 import { GithubIntegrationSection } from "../components/settings/GithubIntegrationSection";
 import { LlmKeysSection } from "../components/settings/LlmKeysSection";
+import { NotificationChannelsSection } from "../components/settings/NotificationChannelsSection";
+import { RegistriesSection } from "../components/settings/RegistriesSection";
 import { ServersSection } from "../components/settings/ServersSection";
 import { SmtpSection } from "../components/settings/SmtpSection";
 import { Badge } from "../components/ui/badge";
@@ -100,6 +102,14 @@ export function Settings() {
 						<Mail className="h-3.5 w-3.5" />
 						SMTP Notifications
 					</TabsTrigger>
+					<TabsTrigger value="notifications" className="gap-2">
+						<Bell className="h-3.5 w-3.5" />
+						Event Channels
+					</TabsTrigger>
+					<TabsTrigger value="registries" className="gap-2">
+						<Container className="h-3.5 w-3.5" />
+						Registries
+					</TabsTrigger>
 					<TabsTrigger value="ai" className="gap-2">
 						<Sparkles className="h-3.5 w-3.5" />
 						AI Diagnosis
@@ -120,6 +130,12 @@ export function Settings() {
 
 				<TabsContent value="smtp">
 					<SmtpSection />
+				</TabsContent>
+				<TabsContent value="notifications">
+					<NotificationChannelsSection />
+				</TabsContent>
+				<TabsContent value="registries">
+					<RegistriesSection />
 				</TabsContent>
 				<TabsContent value="ai">
 					<LlmKeysSection />

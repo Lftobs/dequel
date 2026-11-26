@@ -1,9 +1,11 @@
 import { Box } from "lucide-react";
-import type { Server as DequelServer, GithubRepo } from "../../../types";
+import type { GitProvider, ImagePullPolicy, Server as DequelServer, GithubRepo } from "../../../types";
 import type { FrameworkPreset } from "../../../utils/presets";
 import { Input } from "../../ui/input";
 import { StepBasicsGeneralSettings } from "./StepBasicsGeneralSettings";
 import { StepBasicsSourceSection } from "./StepBasicsSourceSection";
+
+type GitProviderValue = GitProvider | "";
 
 interface StepBasicsProps {
 	name: string;
@@ -35,6 +37,16 @@ interface StepBasicsProps {
 	serverId: string;
 	setServerId: (v: string) => void;
 	servers: DequelServer[];
+	gitProvider: GitProviderValue;
+	setGitProvider: (v: GitProviderValue) => void;
+	gitToken: string;
+	setGitToken: (v: string) => void;
+	imageRef: string;
+	setImageRef: (v: string) => void;
+	imagePullPolicy: ImagePullPolicy;
+	setImagePullPolicy: (v: ImagePullPolicy) => void;
+	registryId: string;
+	setRegistryId: (v: string) => void;
 }
 
 export function StepBasics({
@@ -67,6 +79,16 @@ export function StepBasics({
 	serverId,
 	setServerId,
 	servers,
+	gitProvider,
+	setGitProvider,
+	gitToken,
+	setGitToken,
+	imageRef,
+	setImageRef,
+	imagePullPolicy,
+	setImagePullPolicy,
+	registryId,
+	setRegistryId,
 }: StepBasicsProps) {
 	return (
 		<div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
@@ -102,6 +124,16 @@ export function StepBasics({
 				githubConfigured={githubConfigured}
 				githubConnected={onGithubConnected()}
 				onGithubConnected={onGithubConnected}
+				gitProvider={gitProvider}
+				setGitProvider={setGitProvider}
+				gitToken={gitToken}
+				setGitToken={setGitToken}
+				imageRef={imageRef}
+				setImageRef={setImageRef}
+				imagePullPolicy={imagePullPolicy}
+				setImagePullPolicy={setImagePullPolicy}
+				registryId={registryId}
+				setRegistryId={setRegistryId}
 			/>
 
 			<div className="space-y-3.5 bg-[#0c0c0e]/60 p-4 rounded-xl border border-[#222227]">

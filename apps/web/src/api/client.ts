@@ -20,11 +20,12 @@ import type {
 	TemplateDeployResult,
 	Volume,
 } from "../types";
-import { apiFetch, BASE } from "./http";
+import { ApiError, apiFetch, BASE } from "./http";
 
 export * from "./auth";
 export * from "./databases";
 export * from "./http";
+export * from "./platform";
 
 // Projects
 export const listProjects = () => apiFetch<Project[]>("/projects");
@@ -45,6 +46,23 @@ export const updateProject = (
 		projectType?: string;
 		buildCommand?: string | null;
 		startCommand?: string | null;
+		gitProvider?: string;
+		gitToken?: string | null;
+		dockerfilePath?: string | null;
+		dockerTarget?: string | null;
+		imageRef?: string | null;
+		imagePullPolicy?: string;
+		registryId?: string | null;
+		healthCheck?: unknown;
+		restartPolicy?: string;
+		restartMaxRetries?: number | null;
+		stopGracePeriodSeconds?: number | null;
+		preDeployCommand?: string | null;
+		postDeployCommand?: string | null;
+		cancelOlderDeployments?: boolean;
+		tags?: string[];
+		maintenanceEnabled?: boolean;
+		maintenanceMessage?: string | null;
 	},
 ) =>
 	apiFetch<Project>(`/projects/${id}`, {
@@ -302,7 +320,7 @@ export const createAgentRegistrationToken = (data: { name: string; labels?: Reco
 
 // API Keys
 export const listApiKeys = () => apiFetch<ApiKey[]>("/api-keys");
-export const createApiKey = (data: { name: string; permissions?: string }) =>
+export const createApiKey = (data: { name: string; permissions?: string; projectId?: string | null }) =>
 	apiFetch<ApiKey>("/api-keys", {
 		method: "POST",
 		body: JSON.stringify(data),
