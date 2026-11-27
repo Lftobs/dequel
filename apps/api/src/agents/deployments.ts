@@ -2,6 +2,7 @@ import {
 	appendLog,
 	createAgentJob,
 	listEnvironmentVariablesForDeploy,
+	listVolumes,
 	updateDeploymentStatus,
 	upsertRoute,
 } from "../db/repo";
@@ -17,18 +18,39 @@ export const queueRemoteDeployment = async (deployment: Deployment, project: Pro
 	if (validationError) throw new Error(validationError);
 	if (!deployment.serverId || deployment.serverId === "local")
 		throw new Error("Remote deployment requires an agent server");
-	const environmentVariables = await listEnvironmentVariablesForDeploy(
-		project.id,
-		deployment.environment ?? "production",
-	);
+	const isImage = deployment.sourceType === "image";
+	const environmentVariables = (
+		await listEnvironmentVariablesForDeploy(project.id, deployment.environment ?? "production")
+	).filter((variable) => isImage || variable.scope !== "build");
+	const { slug, hostname, routeFile } = routeNamesFor(project.name, project.id, deployment.id);
+	const containerName = `${slug}-${deployment.id.slice(0, 8)}`;
+	const appPort = project.port || 3000;
+
+	let registryAuth: { url: string; username: string; password: string } | undefined;
+	if (isImage) {
+		const { findRegistryForImage, getRegistryCredentials } = await import("../db/repo/registries");
+		const registryId = project.registryId ?? (await findRegistryForImage(deployment.sourceRef).catch(() => null));
+		if (registryId) registryAuth = (await getRegistryCredentials(registryId)) ?? undefined;
+	}
+
 	const payload: RemoteGitDeployPayload = {
 		deploymentId: deployment.id,
 		projectId: project.id,
 		projectName: project.name,
-		gitUrl: deployment.sourceRef,
+		gitUrl: isImage ? undefined : deployment.sourceRef,
+		imageRef: isImage ? deployment.sourceRef : undefined,
+		imagePullPolicy: isImage ? project.imagePullPolicy : undefined,
+		registryAuth,
+		containerName,
+		volumes: isImage
+			? (await listVolumes(project.id)).map((v) => ({
+					volumeName: v.dockerVolumeName ?? `vol-${v.id.slice(0, 12)}`,
+					mountPath: v.mountPath,
+				}))
+			: undefined,
 		branch: deployment.branch ?? undefined,
 		commitSha: deployment.commitSha ?? undefined,
-		appPort: project.port || 3000,
+		appPort,
 		cpuLimit: project.cpuLimit ?? undefined,
 		memoryLimitMb: project.memoryLimitMb ?? undefined,
 		environmentVariables,
@@ -40,9 +62,6 @@ export const queueRemoteDeployment = async (deployment: Deployment, project: Pro
 		payload,
 		idempotencyKey: `deployment:${deployment.id}`,
 	});
-	const { slug, hostname, routeFile } = routeNamesFor(project.name, project.id, deployment.id);
-	const containerName = `${slug}-${deployment.id.slice(0, 8)}`;
-	const appPort = project.port || 3000;
 	await upsertRoute({
 		serverId: deployment.serverId,
 		deploymentId: deployment.id,
