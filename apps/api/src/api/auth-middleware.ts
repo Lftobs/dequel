@@ -25,7 +25,10 @@ export const authMiddleware = (app: Elysia) =>
 		if (match) {
 			const { verifyAccessToken } = await import("../utils/auth");
 			const payload = await verifyAccessToken(match[1]);
-			if (payload) return;
+			if (payload) {
+				(request as any).dequelActor = { type: "user", id: payload.sub };
+				return;
+			}
 		}
 
 		const authHeader = request.headers.get("authorization");
@@ -41,6 +44,7 @@ export const authMiddleware = (app: Elysia) =>
 					set.status = 401;
 					return fail("Invalid API key");
 				}
+				(request as any).dequelActor = { type: "api_key", id: key.id };
 				if (!canPerformMethod(parsePermissions(key.permissions), request.method)) {
 					set.status = 403;
 					return fail(`API key is missing the ${requiredPermissionForMethod(request.method)} scope`);

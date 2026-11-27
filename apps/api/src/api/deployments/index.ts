@@ -21,6 +21,7 @@ import { readRuntimeLogs, runtimeLogFollowerArgs } from "../../orchestrator/runt
 import { config } from "../../utils/config";
 import { terminateWithEscalation } from "../../utils/process-exec";
 import { isPrivateGitUrl } from "../../utils/validate";
+import { auditRequest } from "../audit";
 import { created, fail, ok } from "../response";
 
 export const dispatchDeployment = async (
@@ -118,6 +119,12 @@ export const deploymentsRoutes = new Elysia()
 				environment,
 			});
 			await dispatchDeployment(deployment, project, server);
+			await auditRequest(request, {
+				action: "deployment.triggered",
+				resourceType: "deployment",
+				resourceId: deployment.id,
+				details: { sourceType, projectId: projectId ?? null, serverId },
+			});
 			return created(deployment);
 		}
 		if (sourceType === "git") {
@@ -164,6 +171,12 @@ export const deploymentsRoutes = new Elysia()
 				await captureProjectGithubToken(projectId, gitUrl, request.headers.get("cookie"));
 			}
 			await dispatchDeployment(deployment, project, server);
+			await auditRequest(request, {
+				action: "deployment.triggered",
+				resourceType: "deployment",
+				resourceId: deployment.id,
+				details: { sourceType, projectId: projectId ?? null, serverId },
+			});
 			return created(deployment);
 		}
 		const file = form.get("archive");
@@ -199,6 +212,12 @@ export const deploymentsRoutes = new Elysia()
 			clearCache,
 		});
 		await dispatchDeployment(deployment, project, server);
+		await auditRequest(request, {
+			action: "deployment.triggered",
+			resourceType: "deployment",
+			resourceId: deployment.id,
+			details: { sourceType, projectId: projectId ?? null, serverId },
+		});
 		return created(deployment);
 	})
 	.post("/deployments/:id/rollback", async ({ params: { id }, set }) => {
@@ -239,7 +258,7 @@ export const deploymentsRoutes = new Elysia()
 			return fail(err.message || "Rollback failed");
 		}
 	})
-	.post("/deployments/:id/redeploy", async ({ params: { id }, set }) => {
+	.post("/deployments/:id/redeploy", async ({ params: { id }, request, set }) => {
 		const original = await getDeploymentById(id);
 		if (!original) {
 			set.status = 404;
@@ -275,9 +294,15 @@ export const deploymentsRoutes = new Elysia()
 			environment: original.environment || undefined,
 		});
 		await dispatchDeployment(deployment, project, server);
+		await auditRequest(request, {
+			action: "deployment.redeployed",
+			resourceType: "deployment",
+			resourceId: deployment.id,
+			details: { ofDeployment: id, sourceType: original.sourceType },
+		});
 		return created(deployment);
 	})
-	.post("/deployments/:id/cancel", async ({ params: { id }, set }) => {
+	.post("/deployments/:id/cancel", async ({ params: { id }, request, set }) => {
 		const deployment = await getDeploymentById(id);
 		if (!deployment) {
 			set.status = 404;
@@ -294,6 +319,11 @@ export const deploymentsRoutes = new Elysia()
 		}
 		const executor = executorFor(server.mode);
 		await executor.cancel({ deployment, server });
+		await auditRequest(request, {
+			action: "deployment.cancelled",
+			resourceType: "deployment",
+			resourceId: id,
+		});
 		return ok(null, "Deployment cancelled");
 	})
 	.delete("/deployments/:id", async ({ params: { id }, set }) => {

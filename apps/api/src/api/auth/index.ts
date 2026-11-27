@@ -7,6 +7,7 @@ import {
 	validateRefreshToken,
 	verifyAccessToken,
 } from "../../utils/auth";
+import { auditRequest } from "../audit";
 import { fail, ok } from "../response";
 
 const PAM_AUTH_URL = "http://pam-auth:4567";
@@ -49,7 +50,7 @@ export const authRoutes = new Elysia()
 		const isSecure = proto === "https" || request.url.startsWith("https://");
 		return { isSecure };
 	})
-	.post("/auth/login", async ({ body, cookie: { dequel_session, dequel_refresh }, set, isSecure }) => {
+	.post("/auth/login", async ({ body, request, cookie: { dequel_session, dequel_refresh }, set, isSecure }) => {
 		const { username, password } = body as { username?: string; password?: string };
 		if (!username || !password) {
 			set.status = 400;
@@ -58,6 +59,11 @@ export const authRoutes = new Elysia()
 		const result = await callPam(username, password);
 		if (!result.ok) {
 			set.status = 401;
+			await auditRequest(
+				request,
+				{ action: "auth.login_failed", resourceType: "session", details: { username } },
+				{ type: "user", id: username },
+			);
 			return fail(result.error || "Authentication failed");
 		}
 		const accessToken = await signAccessToken(username);
@@ -67,6 +73,11 @@ export const authRoutes = new Elysia()
 		dequel_session.set({ ...SESSION_COOKIE_OPTS, secure: isSecure });
 		dequel_refresh.value = refreshToken;
 		dequel_refresh.set({ ...REFRESH_COOKIE_OPTS, secure: isSecure });
+		await auditRequest(
+			request,
+			{ action: "auth.login", resourceType: "session", details: { username } },
+			{ type: "user", id: username },
+		);
 		return ok({ username, expiresIn: 900 }, "Logged in");
 	})
 	.post("/auth/logout", async ({ cookie: { dequel_session, dequel_refresh } }) => {

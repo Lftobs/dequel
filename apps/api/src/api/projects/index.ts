@@ -21,6 +21,7 @@ import { buildProjectRequestHostRegex, caddyRequestLogSelector } from "../../uti
 import { validateProjectConfig } from "../../utils/project-config";
 import { captureTelemetry } from "../../utils/telemetry";
 import { isPort, isPrivateGitUrl, SERVICE_NAME_RE, validateComposeServices } from "../../utils/validate";
+import { auditRequest } from "../audit";
 import { created, fail, ok } from "../response";
 
 const validateComposeFields = (body: any): string | null => {
@@ -146,9 +147,15 @@ export const projectsRoutes = new Elysia()
 				if (captured) project.hasGithubToken = true;
 			},
 		);
+		await auditRequest(request, {
+			action: "project.created",
+			resourceType: "project",
+			resourceId: project.id,
+			details: { name: project.name, sourceType: project.sourceType, buildType: project.buildType },
+		});
 		return created(project);
 	})
-	.patch("/projects/:id", async ({ params: { id }, body, set }: any) => {
+	.patch("/projects/:id", async ({ params: { id }, body, request, set }: any) => {
 		const validationError = validateComposeFields(body);
 		if (validationError) {
 			set.status = 400;
@@ -223,14 +230,26 @@ export const projectsRoutes = new Elysia()
 			set.status = 404;
 			return fail("Project not found");
 		}
+		await auditRequest(request, {
+			action: "project.updated",
+			resourceType: "project",
+			resourceId: id,
+			details: { fields: Object.keys(body ?? {}) },
+		});
 		return ok(project);
 	})
-	.delete("/projects/:id", async ({ params: { id }, set }) => {
+	.delete("/projects/:id", async ({ params: { id }, request, set }) => {
 		const info = await deleteProjectCascade(id);
 		if (!info) {
 			set.status = 404;
 			return fail("Project not found");
 		}
+		await auditRequest(request, {
+			action: "project.deleted",
+			resourceType: "project",
+			resourceId: id,
+			details: { slug: info.slug },
+		});
 
 		const cleanupFailures = await cleanupProjectContainers(info, {
 			getServerById,

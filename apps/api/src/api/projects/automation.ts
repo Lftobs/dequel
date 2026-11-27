@@ -8,6 +8,7 @@ import {
 	regenerateDeployWebhookToken,
 } from "../../db/repo";
 import { resolveDefaultServerId } from "../../utils/server-default";
+import { auditRequest } from "../audit";
 import { created, fail, ok } from "../response";
 
 const triggerProjectDeploy = async (projectId: string, branch?: string) => {
@@ -45,15 +46,20 @@ const triggerProjectDeploy = async (projectId: string, branch?: string) => {
 };
 
 export const projectAutomationRoutes = new Elysia()
-	.post("/projects/:id/webhook-token", async ({ params: { id }, set }) => {
+	.post("/projects/:id/webhook-token", async ({ params: { id }, request, set }) => {
 		const token = await regenerateDeployWebhookToken(id);
 		if (!token) {
 			set.status = 404;
 			return fail("Project not found");
 		}
+		await auditRequest(request, {
+			action: "project.webhook_token_regenerated",
+			resourceType: "project",
+			resourceId: id,
+		});
 		return ok({ token }, "Deploy webhook token regenerated");
 	})
-	.post("/projects/by-tag/:tag/deploy", async ({ params: { tag }, body, set }: any) => {
+	.post("/projects/by-tag/:tag/deploy", async ({ params: { tag }, body, request, set }: any) => {
 		const projects = await listProjectsByTag(String(tag).toLowerCase());
 		if (projects.length === 0) {
 			set.status = 404;
@@ -68,9 +74,14 @@ export const projectAutomationRoutes = new Elysia()
 				failures.push({ projectId: project.id, error: error instanceof Error ? error.message : String(error) });
 			}
 		}
+		await auditRequest(request, {
+			action: "deployment.triggered_by_tag",
+			resourceType: "project",
+			details: { tag: String(tag).toLowerCase(), triggered: deployments.length, failed: failures.length },
+		});
 		return created({ deployments, failures }, `Triggered ${deployments.length} deployment(s)`);
 	})
-	.post("/webhooks/deploy/:token", async ({ params: { token }, body, set }) => {
+	.post("/webhooks/deploy/:token", async ({ params: { token }, body, request, set }) => {
 		const project = await getProjectByDeployWebhookToken(token);
 		if (!project) {
 			set.status = 404;
@@ -78,6 +89,16 @@ export const projectAutomationRoutes = new Elysia()
 		}
 		try {
 			const deployment = await triggerProjectDeploy(project.id, body?.branch);
+			await auditRequest(
+				request,
+				{
+					action: "deployment.triggered",
+					resourceType: "deployment",
+					resourceId: deployment.id,
+					details: { projectId: project.id, via: "webhook" },
+				},
+				{ type: "webhook", id: "deploy-webhook" },
+			);
 			return created({ deployment }, "Deployment triggered");
 		} catch (error) {
 			set.status = 400;

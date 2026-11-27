@@ -7,6 +7,7 @@ import {
 } from "../../db/repo";
 import { sendEventNotification } from "../../monitoring/notifications";
 import type { NotificationEvent } from "../../types";
+import { auditRequest } from "../audit";
 import { created, fail, ok } from "../response";
 
 const NOTIFICATION_EVENTS: ReadonlySet<string> = new Set<NotificationEvent>([
@@ -25,22 +26,27 @@ const validateEvents = (events: unknown): NotificationEvent[] => {
 
 export const notificationsRoutes = new Elysia()
 	.get("/notifications", async () => ok(await listNotificationChannels()))
-	.post("/notifications", async ({ body, set }: any) => {
+	.post("/notifications", async ({ body, request, set }: any) => {
 		if (!body?.name || !body?.channel) {
 			set.status = 400;
 			return fail("name and channel are required");
 		}
-		return created(
-			await createNotificationChannel({
-				name: body.name,
-				channel: body.channel,
-				destination: body.destination || null,
-				events: validateEvents(body.events),
-				enabled: body.enabled ?? true,
-			}),
-		);
+		const channel = await createNotificationChannel({
+			name: body.name,
+			channel: body.channel,
+			destination: body.destination || null,
+			events: validateEvents(body.events),
+			enabled: body.enabled ?? true,
+		});
+		await auditRequest(request, {
+			action: "notification_channel.created",
+			resourceType: "notification_channel",
+			resourceId: channel.id,
+			details: { name: channel.name, channel: channel.channel },
+		});
+		return created(channel);
 	})
-	.patch("/notifications/:id", async ({ params: { id }, body, set }: any) => {
+	.patch("/notifications/:id", async ({ params: { id }, body, request, set }: any) => {
 		const channel = await updateNotificationChannel(id, {
 			name: body?.name,
 			channel: body?.channel,
@@ -52,13 +58,24 @@ export const notificationsRoutes = new Elysia()
 			set.status = 404;
 			return fail("Notification channel not found");
 		}
+		await auditRequest(request, {
+			action: "notification_channel.updated",
+			resourceType: "notification_channel",
+			resourceId: id,
+			details: { fields: Object.keys(body ?? {}) },
+		});
 		return ok(channel);
 	})
-	.delete("/notifications/:id", async ({ params: { id }, set }) => {
+	.delete("/notifications/:id", async ({ params: { id }, request, set }) => {
 		if (!(await deleteNotificationChannel(id))) {
 			set.status = 404;
 			return fail("Notification channel not found");
 		}
+		await auditRequest(request, {
+			action: "notification_channel.deleted",
+			resourceType: "notification_channel",
+			resourceId: id,
+		});
 		return ok(null, "Notification channel deleted");
 	})
 	.post("/notifications/test", async ({ body, set }: any) => {

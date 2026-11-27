@@ -10,6 +10,7 @@ import {
 	updateDomainValidation,
 } from "../../db/repo";
 import { isPort, SERVICE_NAME_RE } from "../../utils/validate";
+import { auditRequest } from "../audit";
 import { created, fail, ok } from "../response";
 
 const PRIVATE_IP_RANGES = [
@@ -72,7 +73,7 @@ export const domainsRoutes = new Elysia()
 		);
 		return ok(results);
 	})
-	.post("/projects/:id/domains", async ({ params, body, set }: any) => {
+	.post("/projects/:id/domains", async ({ params, body, request, set }: any) => {
 		if (!body?.domain) {
 			set.status = 400;
 			return fail("domain is required");
@@ -131,6 +132,12 @@ export const domainsRoutes = new Elysia()
 				}
 			});
 		});
+		await auditRequest(request, {
+			action: "domain.created",
+			resourceType: "domain",
+			resourceId: domain.id,
+			details: { domain: domain.domain, projectId: params.id, tlsMode: domain.tlsMode },
+		});
 		return created(domain);
 	})
 	.get("/domains/:id", async ({ params: { id }, set }) => {
@@ -167,7 +174,7 @@ export const domainsRoutes = new Elysia()
 			serverIp: ip,
 		});
 	})
-	.patch("/domains/:id", async ({ params: { id }, body, set }: any) => {
+	.patch("/domains/:id", async ({ params: { id }, body, request, set }: any) => {
 		const existing = await getDomainById(id);
 		if (!existing) {
 			set.status = 404;
@@ -206,9 +213,15 @@ export const domainsRoutes = new Elysia()
 			const { addToCaddyRoute } = await import("../../utils/domain-verifier");
 			await addToCaddyRoute(existing.domain, project.id, project.name).catch(() => {});
 		}
+		await auditRequest(request, {
+			action: "domain.updated",
+			resourceType: "domain",
+			resourceId: id,
+			details: { domain: existing.domain, fields: Object.keys(body ?? {}) },
+		});
 		return ok(updated);
 	})
-	.delete("/domains/:id", async ({ params: { id }, set }) => {
+	.delete("/domains/:id", async ({ params: { id }, request, set }) => {
 		const domain = await getDomainById(id);
 		if (!domain) {
 			set.status = 404;
@@ -218,5 +231,11 @@ export const domainsRoutes = new Elysia()
 		const project = await getProjectById(domain.projectId);
 		await deleteDomain(id);
 		if (project) removeFromCaddyRoute(domain.domain, project.id, project.name);
+		await auditRequest(request, {
+			action: "domain.deleted",
+			resourceType: "domain",
+			resourceId: id,
+			details: { domain: domain.domain, projectId: domain.projectId },
+		});
 		return ok(null, "Domain deleted");
 	});
