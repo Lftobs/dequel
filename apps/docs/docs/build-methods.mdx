@@ -63,8 +63,9 @@ configured reference; [deploy webhooks](/docs/automation) and
 trigger Git projects.
 
 :::note[Remote nodes]
-Image deploys currently target the local deployment server. SSH and
-agent nodes will accept image sources in a later release.
+Image deploys work on local, SSH, and agent nodes. Registry credentials
+from Settings → Registries are resolved for the target node, and agent
+nodes log in and pull the image before starting the container.
 :::
 
 ## Next steps
