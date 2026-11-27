@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "../types";
+import { config } from "./config";
 import { safeSpawn, terminateWithEscalation } from "./process-exec";
 
 export interface SshExecutionOptions {
@@ -156,6 +157,7 @@ export const syncRemoteCaddyRoute = (
 	server: Server | { host: string; port?: number; sshUser?: string | null },
 	filename: string,
 	content: string,
+	assets: string[] = [],
 ): Promise<void> =>
 	new Promise((resolve, reject) => {
 		const rejectRoute = (reason: string) =>
@@ -184,6 +186,76 @@ export const syncRemoteCaddyRoute = (
 		const keyArgs = keyPath ? ["-i", keyPath, "-o", "IdentitiesOnly=yes"] : [];
 		const user = server.sshUser || "root";
 		const port = server.port || 22;
+		const reloadCmd =
+			"(sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequl-caddy caddy reload --config /etc/caddy/Caddyfile || true)";
+
+		if (assets.length > 0) {
+			for (const asset of assets) {
+				if (!/^[a-zA-Z0-9._-]+$/.test(asset) || asset.includes("..")) {
+					rejectRoute("invalid certificate asset filename");
+					return;
+				}
+			}
+			const staging = join(tmpdir(), "dequl-route-sync", `${process.pid}-${Date.now()}`);
+			try {
+				mkdirSync(staging, { recursive: true });
+				writeFileSync(join(staging, filename), content);
+				for (const asset of assets) {
+					const source = join(config.caddyRoutesDir, asset);
+					if (!existsSync(source)) {
+						rejectRoute(`certificate asset ${asset} is missing locally`);
+						return;
+					}
+					copyFileSync(source, join(staging, asset));
+				}
+				const archive = Bun.spawnSync(["tar", "-cf", "-", "-C", staging, "."], {
+					stdout: "pipe",
+					stderr: "pipe",
+				});
+				if (archive.exitCode !== 0) {
+					rejectRoute(
+						`failed to archive route assets: ${Buffer.from(archive.stderr ?? [])
+							.toString()
+							.trim()}`,
+					);
+					return;
+				}
+				const sshCmd = spawn(
+					"ssh",
+					[
+						"-p",
+						String(port),
+						"-o",
+						"StrictHostKeyChecking=no",
+						"-o",
+						"ConnectTimeout=10",
+						...keyArgs,
+						`${user}@${server.host}`,
+						`sudo mkdir -p /etc/caddy/routes && sudo tar -x -C /etc/caddy/routes && ${reloadCmd}`,
+					],
+					{ stdio: ["pipe", "pipe", "pipe"] },
+				);
+				sshCmd.stdout?.on("data", () => {});
+				sshCmd.stdin?.write(Buffer.from(archive.stdout));
+				sshCmd.stdin?.end();
+				let archiveStderr = "";
+				sshCmd.stderr?.on("data", (chunk) => {
+					archiveStderr += String(chunk);
+				});
+				sshCmd.on("close", (code) => {
+					if (code === 0) {
+						resolve();
+						return;
+					}
+					rejectRoute(archiveStderr.trim() || `ssh exited with code ${code}`);
+				});
+				sshCmd.on("error", (err) => rejectRoute(err.message));
+			} finally {
+				rmSync(staging, { recursive: true, force: true });
+			}
+			return;
+		}
+
 		const sshCmd = spawn(
 			"ssh",
 			[
@@ -195,7 +267,7 @@ export const syncRemoteCaddyRoute = (
 				"ConnectTimeout=10",
 				...keyArgs,
 				`${user}@${server.host}`,
-				`sudo mkdir -p /etc/caddy/routes && sudo tee /etc/caddy/routes/${filename} > /dev/null && (sudo systemctl reload caddy || sudo caddy reload --config /etc/caddy/Caddyfile || docker exec dequl-caddy caddy reload --config /etc/caddy/Caddyfile || true)`,
+				`sudo mkdir -p /etc/caddy/routes && sudo tee /etc/caddy/routes/${filename} > /dev/null && ${reloadCmd}`,
 			],
 			{ stdio: ["pipe", "pipe", "pipe"] },
 		);

@@ -39,7 +39,6 @@ const SYSTEM = {
 	redisUrl: "redis://redis:6379",
 	dequlSourceRepoUrl: "https://github.com/Lftobs/dequl.git",
 	workspaceRoot: "/app/workspace",
-	caddyRoutesDir: "/caddy/routes",
 	caddyDataDir: "/caddy-data/caddy",
 	port: 3001,
 	appInternalPort: 3000,
@@ -51,6 +50,7 @@ const SYSTEM = {
 export const config = {
 	...SYSTEM,
 	databaseUrl,
+	caddyRoutesDir: withFile<string>("CADDY_ROUTES_DIR", "/caddy/routes"),
 	caddyBaseDomain: withFile<string>("CADDY_BASE_DOMAIN", "localhost"),
 	caddyContainer: withFile<string>("CADDY_CONTAINER", "dequl-caddy-1"),
 	controlPlaneUrl: withFile<string>("CONTROL_PLANE_URL", ""),

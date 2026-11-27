@@ -13,6 +13,7 @@ import {
 import { destroyComposeStack } from "../../orchestrator/compose";
 import { failoverProject } from "../../orchestrator/failover";
 import { cleanupProjectContainers } from "../../orchestrator/project-cleanup";
+import { reconcileProjectRoute } from "../../orchestrator/route-reconcile";
 import { reloadCaddy } from "../../orchestrator/runtime";
 import { config } from "../../utils/config";
 import { dockerRunTry, ensureContainerRemoved, ensureVolumeRemoved } from "../../utils/docker-run";
@@ -236,6 +237,10 @@ export const projectsRoutes = new Elysia()
 			resourceId: id,
 			details: { fields: Object.keys(body ?? {}) },
 		});
+		const routeAffectingFields = ["maintenanceEnabled", "maintenanceMessage", "name", "port"];
+		if (routeAffectingFields.some((field) => field in (body ?? {}))) {
+			await reconcileProjectRoute(id);
+		}
 		return ok(project);
 	})
 	.delete("/projects/:id", async ({ params: { id }, request, set }) => {

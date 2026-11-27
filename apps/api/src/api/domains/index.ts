@@ -1,4 +1,6 @@
 import { promises as dns } from "node:dns";
+import { unlink } from "node:fs/promises";
+import { join } from "node:path";
 import { Elysia } from "elysia";
 import {
 	createDomain,
@@ -9,6 +11,8 @@ import {
 	updateDomainSettings,
 	updateDomainValidation,
 } from "../../db/repo";
+import { reconcileProjectRoute } from "../../orchestrator/route-reconcile";
+import { config } from "../../utils/config";
 import { isPort, SERVICE_NAME_RE } from "../../utils/validate";
 import { auditRequest } from "../audit";
 import { created, fail, ok } from "../response";
@@ -126,8 +130,8 @@ export const domainsRoutes = new Elysia()
 			validateDomain(body.domain, ip, project?.baseDomain).then((valid) => {
 				if (valid) {
 					updateDomainValidation(domain.id, "verified", "provisioned");
-					import("../../utils/domain-verifier").then((m) =>
-						m.addToCaddyRoute(body.domain, params.id, project?.name ?? ""),
+					reconcileProjectRoute(params.id).catch((error) =>
+						console.error("[Domains] Failed to apply route after verification:", error),
 					);
 				}
 			});
@@ -210,8 +214,7 @@ export const domainsRoutes = new Elysia()
 		});
 		const project = await getProjectById(existing.projectId);
 		if (project) {
-			const { addToCaddyRoute } = await import("../../utils/domain-verifier");
-			await addToCaddyRoute(existing.domain, project.id, project.name).catch(() => {});
+			await reconcileProjectRoute(existing.projectId);
 		}
 		await auditRequest(request, {
 			action: "domain.updated",
@@ -227,10 +230,11 @@ export const domainsRoutes = new Elysia()
 			set.status = 404;
 			return fail("Domain not found");
 		}
-		const { removeFromCaddyRoute } = await import("../../utils/domain-verifier");
-		const project = await getProjectById(domain.projectId);
 		await deleteDomain(id);
-		if (project) removeFromCaddyRoute(domain.domain, project.id, project.name);
+		await reconcileProjectRoute(domain.projectId);
+		const safeName = domain.domain.replace(/[^a-z0-9.-]/gi, "_");
+		await unlink(join(config.caddyRoutesDir, `${safeName}.crt`)).catch(() => {});
+		await unlink(join(config.caddyRoutesDir, `${safeName}.key`)).catch(() => {});
 		await auditRequest(request, {
 			action: "domain.deleted",
 			resourceType: "domain",
