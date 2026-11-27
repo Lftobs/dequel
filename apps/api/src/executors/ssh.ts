@@ -10,8 +10,8 @@ import { buildRemoteDeployScript, cleanupRemoteWorkspace, parseRemoteBuildResult
 import {
 	buildRemoteComposeDestroyScript,
 	buildRemoteComposeScript,
-	parseRemoteComposeVarsMarker,
 	parseRemoteComposeResult,
+	parseRemoteComposeVarsMarker,
 } from "./ssh-compose-script";
 import type { DeploymentExecutor, ExecutorCancelInput, ExecutorDeployInput, ExecutorRollbackInput } from "./types";
 
@@ -78,6 +78,10 @@ const deployFromImage = async (
 			cpuLimit: project?.cpuLimit,
 			memoryLimitMb: project?.memoryLimitMb,
 			appPort: project?.port,
+			healthCheck: project?.healthCheck,
+			restartPolicy: project?.restartPolicy,
+			restartMaxRetries: project?.restartMaxRetries,
+			stopGracePeriodSeconds: project?.stopGracePeriodSeconds,
 			targetServer: server,
 		},
 	);
@@ -88,6 +92,33 @@ const deployFromImage = async (
 	});
 	await emitLog(deployment.id, "system", "Deployment is running");
 	return runtime;
+};
+
+const deployImageRemote = async (deployment: Deployment, project: Project, server: Server) => {
+	const { listDeployments, updateDeploymentStatus } = await getRepo();
+	const { ensureRegistryLogin, pullImage } = await import("../orchestrator/registry");
+	const { findRegistryForImage } = await import("../db/repo/registries");
+
+	await updateDeploymentStatus(deployment.id, "building", { failureReason: null });
+	await emitLog(deployment.id, "system", `Deploying image ${deployment.sourceRef} on server ${server.name}`);
+
+	const registryId = project.registryId ?? (await findRegistryForImage(deployment.sourceRef).catch(() => null));
+	await ensureRegistryLogin(registryId, server, async (line) => emitLog(deployment.id, "build", line));
+	await pullImage(deployment.sourceRef, project.imagePullPolicy ?? "always", server, async (line) =>
+		emitLog(deployment.id, "build", line),
+	);
+
+	await updateDeploymentStatus(deployment.id, "deploying");
+	const previous = (await listDeployments(project.id)).find(
+		(d) => d.id !== deployment.id && d.status === "running" && d.containerName,
+	);
+
+	await deployFromImage(deployment, project, server, deployment.sourceRef, previous);
+
+	if (previous) {
+		await updateDeploymentStatus(previous.id, "inactive", { failureReason: "Superseded by new deployment" });
+		await emitLog(previous.id, "system", `Deployment marked inactive (superseded by ${deployment.id.slice(0, 8)})`);
+	}
 };
 
 const deployComposeRemote = async (deployment: Deployment, project: Project, server: Server) => {
@@ -313,8 +344,12 @@ export const sshExecutor: DeploymentExecutor = {
 	mode: "ssh",
 
 	async deploy({ deployment, project, server }: ExecutorDeployInput) {
-		if (deployment.sourceType !== "git") throw new Error("SSH mode currently supports Git deployments only");
 		if (!project) throw new Error("Deployment requires a project");
+		if (deployment.sourceType === "image") {
+			await deployImageRemote(deployment, project, server);
+			return;
+		}
+		if (deployment.sourceType !== "git") throw new Error("SSH mode currently supports Git and image deployments");
 
 		if (project.buildType === "compose") {
 			try {

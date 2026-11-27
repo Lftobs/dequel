@@ -34,7 +34,9 @@ export const dispatchDeployment = async (
 		return;
 	}
 	if (!project) throw new Error("Remote deployment requires a project");
-	if (deployment.sourceType !== "git") throw new Error("Remote servers currently support Git deployments only");
+	if (deployment.sourceType !== "git" && deployment.sourceType !== "image") {
+		throw new Error("Remote servers currently support Git and image deployments only");
+	}
 	const executor = executorFor(server.mode);
 	if (server.mode === "ssh") {
 		void executor.deploy({ deployment, project, server }).catch(async (error) => {
@@ -107,9 +109,13 @@ export const deploymentsRoutes = new Elysia()
 				set.status = 400;
 				return fail("imageRef is required for image source");
 			}
-			if (server.mode !== "local") {
+			if (server.mode !== "local" && !projectId) {
 				set.status = 400;
-				return fail("Image deployments currently require a local deployment server");
+				return fail("Remote image deployments require a project");
+			}
+			if (project?.buildType === "compose") {
+				set.status = 400;
+				return fail("Image deployments are not supported for Compose projects");
 			}
 			const deployment = await createDeployment({
 				projectId,

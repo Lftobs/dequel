@@ -82,26 +82,29 @@ const waitForRunningContainer = async (
 	containerName: string,
 	retries: number,
 	onLog: (line: string) => Promise<void>,
+	server?: Server | null,
 ) => {
 	for (let attempt = 0; attempt < retries; attempt++) {
 		try {
-			const exists = await run(dockerBin, ["inspect", "-f", "{{.Id}}", containerName])
+			const exists = await run(dockerBin, ["inspect", "-f", "{{.Id}}", containerName], server)
 				.then(() => true)
 				.catch(() => false);
 			const status = exists
-				? (await run(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName])).trim()
+				? (await run(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName], server)).trim()
 				: null;
 			const logs =
 				exists && status === "exited"
-					? await run(dockerBin, ["logs", "--tail", "50", containerName]).catch(() => null)
+					? await run(dockerBin, ["logs", "--tail", "50", containerName], server).catch(() => null)
 					: null;
 			const verdict = evaluateInstanceState({ exists, status, logs });
 			if (verdict.action === "return") {
 				await new Promise((r) => setTimeout(r, 2000));
-				const stabilityStatus = (await run(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName])).trim();
+				const stabilityStatus = (
+					await run(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName], server)
+				).trim();
 				const stabilityLogs =
 					stabilityStatus !== "running"
-						? await run(dockerBin, ["logs", "--tail", "50", containerName]).catch(() => null)
+						? await run(dockerBin, ["logs", "--tail", "50", containerName], server).catch(() => null)
 						: null;
 				const stabilityVerdict = evaluateInstanceState(
 					{ exists: true, status: stabilityStatus, logs: stabilityLogs },
@@ -122,27 +125,30 @@ const waitForRunningContainer = async (
 		await new Promise((r) => setTimeout(r, 500));
 	}
 	await onLog(`Container ${containerName} did not reach running state — attempting docker start`);
-	await tryRun(dockerBin, ["network", "disconnect", "-f", config.dockerNetwork, containerName]);
-	await tryRun(dockerBin, ["start", containerName]);
-	await tryRun(dockerBin, ["network", "connect", config.dockerNetwork, containerName]);
-	await verifyRunningAfterStart(containerName, onLog);
+	await tryRun(dockerBin, ["network", "disconnect", "-f", config.dockerNetwork, containerName], server);
+	await tryRun(dockerBin, ["start", containerName], server);
+	await tryRun(dockerBin, ["network", "connect", config.dockerNetwork, containerName], server);
+	await verifyRunningAfterStart(containerName, onLog, server);
 };
 
 const verifyRunningAfterStart = async (
 	containerName: string,
 	onLog: (line: string) => Promise<void>,
+	server?: Server | null,
 ): Promise<string> => {
 	let lastStatus: string | null = null;
 	let lastLogs: string | null = null;
 	for (let attempt = 0; attempt < 10; attempt++) {
 		await new Promise((r) => setTimeout(r, 1000));
 		try {
-			const exists = await run(dockerBin, ["inspect", "-f", "{{.Id}}", containerName])
+			const exists = await run(dockerBin, ["inspect", "-f", "{{.Id}}", containerName], server)
 				.then(() => true)
 				.catch(() => false);
-			lastStatus = exists ? (await run(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName])).trim() : null;
+			lastStatus = exists
+				? (await run(dockerBin, ["inspect", "-f", "{{.State.Status}}", containerName], server)).trim()
+				: null;
 			if (exists && lastStatus !== "running") {
-				lastLogs = await run(dockerBin, ["logs", "--tail", "50", containerName]).catch(() => lastLogs);
+				lastLogs = await run(dockerBin, ["logs", "--tail", "50", containerName], server).catch(() => lastLogs);
 			}
 			const verdict = evaluateInstanceState({ exists, status: lastStatus, logs: lastLogs }, "restart");
 			if (verdict.action === "fatal") throw verdict.error;
@@ -305,7 +311,7 @@ export const deployContainer = async (
 
 	await run(dockerBin, dockerArgs, opts.targetServer);
 	await onLog(`Waiting for container ${containerName} to report running`);
-	await waitForRunningContainer(containerName, 40, onLog);
+	await waitForRunningContainer(containerName, 40, onLog, opts.targetServer);
 	await tryRun(dockerBin, ["network", "connect", config.dockerNetwork, containerName], opts.targetServer);
 	if (opts.healthCheck && opts.healthCheck.type !== "none") {
 		await waitForHealthyContainer(containerName, opts.healthCheck, onLog, opts.targetServer);
