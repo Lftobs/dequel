@@ -38,6 +38,7 @@ const mockDb = {
 		}),
 	),
 	updateDeploymentStatus: mock(() => Promise.resolve()),
+	activateDeployment: mock(() => Promise.resolve(true)),
 	updateDeploymentCommitSha: mock(() => Promise.resolve()),
 	appendLog: mock(async (_depId: string, stage: string, message: string) => {
 		if (stage === "system" && message === "Deployment is running") {

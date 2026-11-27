@@ -48,6 +48,7 @@ export {
 	recordDeploymentFailure,
 } from "./deployment-events";
 export {
+	activateDeployment,
 	appendLog,
 	countDeployments,
 	createDeployment,

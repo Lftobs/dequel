@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import type { CreateDeploymentInput, Deployment, DeploymentLog, DeploymentStatus, LogEvent } from "../../types";
 import { getDb } from "../db-provider";
 import { deploymentLogs, deployments } from "../schema";
@@ -148,6 +148,22 @@ export const updateDeploymentStatus = async (
 ) => {
 	const db = await getDb();
 	await applyStatusUpdate(db, id, status, patch);
+};
+
+export const activateDeployment = async (
+	id: string,
+	patch: Partial<Pick<Deployment, "imageTag" | "containerName" | "liveUrl" | "failureReason" | "replicas">> = {},
+): Promise<boolean> => {
+	const db = await getDb();
+	const guarded = await db
+		.update(deployments)
+		.set({ status: "running", updatedAt: now() })
+		.where(and(eq(deployments.id, id), ne(deployments.status, "failed"), ne(deployments.status, "inactive")))
+		.returning({ id: deployments.id })
+		.execute();
+	if (guarded.length === 0) return false;
+	await applyStatusUpdate(db, id, "running", patch);
+	return true;
 };
 
 export const deleteDeploymentAndLogs = async (id: string): Promise<boolean> => {

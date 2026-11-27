@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import {
+	activateDeployment,
 	appendLog,
 	createDeploymentEvent,
 	deleteDeploymentAndLogs,
@@ -21,6 +22,7 @@ import {
 } from "../db/repo";
 import { deployments } from "../db/schema";
 import { config } from "../utils/config";
+import { dockerBin } from "../utils/docker-bin";
 import { CANCELLED_FAILURE_REASON } from "../utils/failure-outcome";
 import { ensureProjectDashboard } from "../utils/grafana";
 import { buildWithCompose, destroyComposeStack } from "./compose";
@@ -29,11 +31,13 @@ import { ensureComposeVariables } from "./compose-vars";
 import { summarizeDeploymentError } from "./deployment-errors";
 import { buildWithDockerfile } from "./dockerfile";
 import { logBus } from "./log-bus";
+import { acquireProjectLock } from "./project-lock";
 import { DeploymentQueue } from "./queue";
 import { buildWithRailpack, CancelledError } from "./railpack";
 import { ensureRegistryLogin, pullImage } from "./registry";
 import { cleanupFailedDeployment, deployContainer, ensureContainerRunning, reloadCaddy, tryRun } from "./runtime";
 import { cleanupWorkspace, getHeadSha, prepareSourceWorkspace, prepareUploadWorkspace } from "./source";
+import { supersedeRunningDeployments } from "./supersede";
 
 const now = () =>
 	new Date()
@@ -222,6 +226,9 @@ export class PipelineOrchestrator {
 		let projectName: string | undefined;
 		let project: import("../../types").Project | null = null;
 		let deployed = false;
+		let targetServer: import("../../types").Server | null = null;
+		let runtimeContainerName = "";
+		let releaseProjectLock: (() => void) | null = null;
 
 		try {
 			await emitLog(deploymentId, "system", "Deployment enqueued");
@@ -230,7 +237,12 @@ export class PipelineOrchestrator {
 
 			project = deployment.projectId ? await getProjectById(deployment.projectId) : null;
 
-			const targetServer = project?.serverId ? await getServerById(project.serverId) : null;
+			targetServer = project?.serverId ? await getServerById(project.serverId) : null;
+
+			if (deployment.projectId) {
+				releaseProjectLock = await acquireProjectLock(deployment.projectId);
+				await this.checkCancelled(deploymentId);
+			}
 
 			if (project?.cancelOlderDeployments && deployment.projectId) {
 				const siblings = await listDeployments(deployment.projectId);
@@ -254,6 +266,7 @@ export class PipelineOrchestrator {
 			await ensureRegistryLogin(registryId, targetServer, async (line) => emitLog(deploymentId, "build", line));
 
 			if (deployment.sourceType !== "image") {
+				await this.checkCancelled(deploymentId);
 				await updateDeploymentStatus(deploymentId, "building", { failureReason: null });
 				await createDeploymentEvent({
 					deploymentId,
@@ -440,7 +453,6 @@ export class PipelineOrchestrator {
 				appPort = project.port;
 			}
 
-			let runtimeContainerName = "";
 			let runtimeLiveUrl = "";
 
 			const { runPostDeployCommand, runPreDeployCommand } = await import("./runtime");
@@ -503,6 +515,8 @@ export class PipelineOrchestrator {
 				runtimeLiveUrl = runtime.liveUrl;
 			}
 
+			await this.checkCancelled(deploymentId);
+
 			if (project?.postDeployCommand && runtimeContainerName) {
 				await runPostDeployCommand(runtimeContainerName, project.postDeployCommand, {
 					server: targetServer,
@@ -512,12 +526,17 @@ export class PipelineOrchestrator {
 
 			deployed = true;
 
-			await updateDeploymentStatus(deploymentId, "running", {
+			const activated = await activateDeployment(deploymentId, {
 				imageTag,
 				containerName: runtimeContainerName,
 				liveUrl: runtimeLiveUrl,
 				failureReason: null,
 			});
+			if (!activated) {
+				await emitLog(deploymentId, "system", "Deployment is no longer active; removing started container");
+				await this.removeStartedContainer(project, runtimeContainerName, deploymentId, targetServer).catch(() => {});
+				return true;
+			}
 
 			if (projectName) {
 				(await import("../monitoring/notifications"))
@@ -542,15 +561,15 @@ export class PipelineOrchestrator {
 				);
 			}
 
-			if (oldContainerName && deployment.projectId) {
-				const all = await listDeployments(deployment.projectId);
-				const prev = all.find((d) => d.containerName === oldContainerName && d.id !== deploymentId);
-				if (prev) {
-					await updateDeploymentStatus(prev.id, "inactive", {
-						failureReason: "Superseded by new deployment",
-					});
-					await emitLog(prev.id, "system", `Deployment marked inactive (superseded by ${deploymentId})`);
-				}
+			if (deployment.projectId) {
+				await supersedeRunningDeployments({
+					projectId: deployment.projectId,
+					currentDeploymentId: deploymentId,
+					keepContainerName: runtimeContainerName,
+					compose: project?.buildType === "compose",
+					targetServer,
+					onLog: (id, message) => emitLog(id, "system", message),
+				});
 			}
 
 			await emitLog(deploymentId, "system", "Deployment is running");
@@ -562,6 +581,10 @@ export class PipelineOrchestrator {
 			return true;
 		} catch (error) {
 			if (error instanceof CancelledError) {
+				if (runtimeContainerName) {
+					await emitLog(deploymentId, "system", "Cleaning up container from cancelled deployment").catch(() => {});
+					await this.removeStartedContainer(project, runtimeContainerName, deploymentId, targetServer).catch(() => {});
+				}
 				return true;
 			}
 			const message = summarizeDeploymentError(error);
@@ -599,12 +622,28 @@ export class PipelineOrchestrator {
 			return false;
 		} finally {
 			this.abortControllers.delete(deploymentId);
+			if (releaseProjectLock) releaseProjectLock();
 			try {
 				if (workspacePath) await cleanupWorkspace(workspacePath);
 			} catch {
 				// cleanup failures must never mask the deployment result
 			}
 		}
+	}
+
+	private async removeStartedContainer(
+		project: import("../../types").Project | null,
+		containerName: string,
+		deploymentId: string,
+		server: import("../../types").Server | null,
+	) {
+		if (!containerName) return;
+		if (project?.buildType === "compose") {
+			await destroyComposeStack(`deploy-${deploymentId}`).catch(() => {});
+			return;
+		}
+		await tryRun(dockerBin, ["stop", "-t", "10", containerName], server);
+		await tryRun(dockerBin, ["rm", "-f", containerName], server);
 	}
 
 	async rollbackTo(targetDeploymentId: string): Promise<void> {
