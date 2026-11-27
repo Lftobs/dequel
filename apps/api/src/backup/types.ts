@@ -1,4 +1,4 @@
-export const S3_BACKUP_PREFIX = "dequel-db-backup";
+export const S3_BACKUP_PREFIX = "dequl-db-backup";
 
 export type DatabaseType = "postgresql" | "mysql" | "redis" | "mongodb";
 

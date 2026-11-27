@@ -262,7 +262,7 @@ export function ApiKeysSection() {
 						</div>
 						<h3 className="text-sm font-semibold text-foreground">No API Tokens Found</h3>
 						<p className="text-xs text-muted-foreground max-w-sm mt-1 mb-4">
-							Generate access tokens to allow external deployment tools and CI scripts to authenticate with Dequel.
+							Generate access tokens to allow external deployment tools and CI scripts to authenticate with Dequl.
 						</p>
 						<Button
 							size="sm"
@@ -289,7 +289,7 @@ export function ApiKeysSection() {
 											{k.pausedAt ? "Paused" : "Active"}
 										</Badge>
 									</div>
-									<p className="font-mono text-xs text-muted-foreground">dequel_sec_{k.keyHash?.slice(0, 8)}...</p>
+									<p className="font-mono text-xs text-muted-foreground">dequl_sec_{k.keyHash?.slice(0, 8)}...</p>
 									<div className="flex items-center justify-between gap-2">
 										<p className="text-[11px] text-muted-foreground/70">{projectName(k.projectId)}</p>
 										<div className="flex items-center gap-1">
@@ -355,7 +355,7 @@ export function ApiKeysSection() {
 													variant="outline"
 													className="font-mono text-[11px] bg-black/40 text-zinc-400 border-border/60"
 												>
-													dequel_sec_{k.keyHash?.slice(0, 8)}...
+													dequl_sec_{k.keyHash?.slice(0, 8)}...
 												</Badge>
 											</TableCell>
 											<TableCell className="text-xs py-3.5">

@@ -1,7 +1,7 @@
 ---
 title: Custom Domains
 category: Projects
-description: Point your own domains at Dequel projects with automatic HTTPS.
+description: Point your own domains at Dequl projects with automatic HTTPS.
 slug: domains
 ---
 
@@ -15,13 +15,13 @@ project's **Domains** tab to serve the app on addresses you own, like
 1. Click **Add Domain** and enter the domain.
 2. For Docker Compose projects, pick the target service and port; for
    single-service projects the running container is the target.
-3. Dequel shows DNS instructions. Create the record at your registrar:
+3. Dequl shows DNS instructions. Create the record at your registrar:
    - **Subdomain** (`app.mycompany.com`): a `CNAME` pointing at your
      base domain, or an `A` record pointing at the server IP.
    - **Apex domain** (`mycompany.com`): an `A` record pointing at the
      server IP (find it under **Settings → Servers** or
      `GET /server/ip`).
-4. Dequel verifies DNS in the background and marks the domain
+4. Dequl verifies DNS in the background and marks the domain
    `verified`. Caddy then serves it with an automatic Let's Encrypt
    certificate (see [SSL](/docs/ssl)).
 
@@ -30,7 +30,7 @@ state, whether DNS resolves, and whether TLS handshakes succeed (polled
 continuously). **Edit** any domain to change its controls below.
 
 :::note[DNS propagation]
-New records can take minutes to hours to propagate. Dequel keeps
+New records can take minutes to hours to propagate. Dequl keeps
 re-checking until they resolve — you don't need to click anything while
 waiting.
 :::
@@ -40,7 +40,7 @@ waiting.
 - **Pending** — waiting for DNS to resolve to the server.
 - **Verified** — DNS matches and the route is live.
 - **Failed** — records point somewhere else. Fix the DNS values and
-  Dequel re-checks.
+  Dequl re-checks.
 
 ## TLS mode
 

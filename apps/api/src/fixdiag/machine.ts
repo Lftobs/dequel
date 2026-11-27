@@ -31,7 +31,7 @@ import {
 	ensureSandbox,
 	investigateInSandbox,
 	readLocalVersion,
-	syncDequelSource,
+	syncDequlSource,
 	syncProjectSource,
 } from "./sandbox-host";
 import { parseGithubRepo } from "./repo-url";
@@ -44,7 +44,7 @@ const activeDrives = new Set<string>();
 const defaultInvestigator: InvestigateFn = async ({ run, deployment, logText, verdict, onProgress }) => {
 	await ensureSandbox();
 	const version = await readLocalVersion();
-	const { rev, stale } = await syncDequelSource(version);
+	const { rev, stale } = await syncDequlSource(version);
 	const project = await syncProjectSource(deployment, run.id);
 	try {
 		return await investigateInSandbox({
@@ -55,8 +55,8 @@ const defaultInvestigator: InvestigateFn = async ({ run, deployment, logText, ve
 			failureReason: failureReasonOf(deployment.failureReason),
 			logText,
 			verdict,
-			dequelRev: rev,
-			dequelStale: stale,
+			dequlRev: rev,
+			dequlStale: stale,
 			projectAvailable: project.available,
 			onProgress,
 		});
@@ -175,7 +175,7 @@ export const DiagRunMachine = {
 				const proposal = (await getStagePayload(runId, "propose")) as Proposal | null;
 				const finalProposal: Proposal = proposal && proposal.cause ? proposal : { cause: "unknown" };
 				await finishDiagRun(runId, "done", finalProposal.cause, finalProposal, null);
-				if (finalProposal.cause === "dequel-source") {
+				if (finalProposal.cause === "dequl-source") {
 					const posted = await approveSlackPost(runId, `auto-${runId}`).catch(() => null);
 					if (!posted?.ok) console.log(`[Fixdiag] Slack auto-post skipped for ${runId}: ${posted?.message ?? "error"}`);
 				}

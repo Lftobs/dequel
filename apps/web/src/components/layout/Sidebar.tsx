@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { DequelLogo } from "../DequelLogo";
+import { DequlLogo } from "../DequlLogo";
 import { NodeStatusCard } from "./NodeStatusCard";
 import { ProjectSelector } from "./ProjectSelector";
 import { SidebarNav } from "./SidebarNav";
@@ -56,12 +56,12 @@ export function Sidebar({
 				<div className="flex flex-col flex-1 min-h-0">
 					<div className="px-6 pt-5 pb-3 flex items-center justify-between border-b border-[#1a1a1f]">
 						<div className="flex items-center gap-2.5">
-							<DequelLogo className="h-6 w-6" />
+							<DequlLogo className="h-6 w-6" />
 							<span className="font-display font-black text-base tracking-wider bg-gradient-to-r from-zinc-100 via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-								dequel
+								dequl
 							</span>
 							<span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 font-mono font-bold scale-90">
-								v{__DEQUEL_VERSION__}
+								v{__DEQUL_VERSION__}
 							</span>
 						</div>
 						<button
@@ -93,7 +93,7 @@ export function Sidebar({
 					<NodeStatusCard metrics={metrics} />
 					<SupportSection />
 					<div className="flex items-center justify-between text-[10px] text-zinc-600">
-						<span>Dequel Platform v{__DEQUEL_VERSION__}</span>
+						<span>Dequl Platform v{__DEQUL_VERSION__}</span>
 					</div>
 				</div>
 			</aside>

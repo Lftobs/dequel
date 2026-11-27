@@ -19,7 +19,7 @@ export const loadCredential = async (): Promise<StoredCredential | null> => {
 };
 
 export const registerAgent = async (capabilities: AgentCapabilities): Promise<StoredCredential> => {
-	if (!config.registrationToken) throw new Error("No stored credential and DEQUEL_REGISTRATION_TOKEN is not set");
+	if (!config.registrationToken) throw new Error("No stored credential and DEQUL_REGISTRATION_TOKEN is not set");
 	const response = await fetch(`${requireControlPlaneUrl()}/api/agents/register`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },

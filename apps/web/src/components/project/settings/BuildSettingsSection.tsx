@@ -88,7 +88,7 @@ export function BuildSettingsSection({ project }: BuildSettingsSectionProps) {
 							<p className="text-zinc-500 text-xs mt-1">
 								{isImage
 									? "Choose the image to run and how credentials are resolved."
-									: "Choose how Dequel compiles and launches your application."}
+									: "Choose how Dequl compiles and launches your application."}
 							</p>
 						</div>
 						<div className="flex items-center gap-3">

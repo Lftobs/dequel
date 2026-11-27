@@ -87,15 +87,15 @@ const bootstrap = async () => {
 		const [result] = await db.select({ count: count() }).from(deployments).where(eq(deployments.status, "running"));
 		metrics.activeDeployments = Number(result?.count ?? 0);
 		const uptimeSec = Math.floor((Date.now() - metrics.uptime) / 1000);
-		return `# HELP dequel_requests_total Total API requests
-# TYPE dequel_requests_total counter
-dequel_requests_total ${metrics.requestsTotal}
-# HELP dequel_active_deployments Currently running deployments
-# TYPE dequel_active_deployments gauge
-dequel_active_deployments ${metrics.activeDeployments}
-# HELP dequel_uptime_seconds API uptime in seconds
-# TYPE dequel_uptime_seconds counter
-dequel_uptime_seconds ${uptimeSec}
+		return `# HELP dequl_requests_total Total API requests
+# TYPE dequl_requests_total counter
+dequl_requests_total ${metrics.requestsTotal}
+# HELP dequl_active_deployments Currently running deployments
+# TYPE dequl_active_deployments gauge
+dequl_active_deployments ${metrics.activeDeployments}
+# HELP dequl_uptime_seconds API uptime in seconds
+# TYPE dequl_uptime_seconds counter
+dequl_uptime_seconds ${uptimeSec}
 `;
 	};
 
@@ -110,7 +110,7 @@ dequel_uptime_seconds ${uptimeSec}
 			metrics.requestsTotal++;
 		})
 		.use(apiRoutes)
-		.get("/", () => ({ service: "dequel-api", ok: true }))
+		.get("/", () => ({ service: "dequl-api", ok: true }))
 		.get("/metrics", renderMetrics)
 		.get("/api/metrics", renderMetrics);
 

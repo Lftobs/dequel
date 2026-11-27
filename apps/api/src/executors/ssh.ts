@@ -284,7 +284,7 @@ const markFailed = async (deploymentId: string, error: unknown) => {
 const remoteBuilds = new Map<string, { controller: AbortController; pgid?: string }>();
 
 export const parseRemoteBuildPgid = (line: string): string | undefined => {
-	const match = line.match(/DEQUEL_PGID:\s*(\d+)/);
+	const match = line.match(/DEQUL_PGID:\s*(\d+)/);
 	if (!match) return undefined;
 	const pgid = Number(match[1]);
 	if (!Number.isSafeInteger(pgid) || pgid <= 1) return undefined;
@@ -337,7 +337,7 @@ export const sshExecutor: DeploymentExecutor = {
 		const allRows = await listEnvironmentVariablesForDeploy(project.id, deployment.environment ?? undefined);
 		const envVars = allRows.filter((v) => v.scope !== "runtime");
 		const { resolveProjectGitUrl } = await import("../orchestrator/source");
-		const pgidEcho = `echo "DEQUEL_PGID:$(ps -o pgid= -p $$ | tr -d ' ')"`;
+		const pgidEcho = `echo "DEQUL_PGID:$(ps -o pgid= -p $$ | tr -d ' ')"`;
 		const script = `${pgidEcho}\n${buildRemoteDeployScript({
 			deploymentId: deployment.id,
 			workspaceRoot: config.workspaceRoot,

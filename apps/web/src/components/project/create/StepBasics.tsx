@@ -1,5 +1,5 @@
 import { Box } from "lucide-react";
-import type { GitProvider, ImagePullPolicy, Server as DequelServer, GithubRepo } from "../../../types";
+import type { GitProvider, ImagePullPolicy, Server as DequlServer, GithubRepo } from "../../../types";
 import type { FrameworkPreset } from "../../../utils/presets";
 import { Input } from "../../ui/input";
 import { StepBasicsGeneralSettings } from "./StepBasicsGeneralSettings";
@@ -36,7 +36,7 @@ interface StepBasicsProps {
 	onSelectPreset: (preset: FrameworkPreset) => void;
 	serverId: string;
 	setServerId: (v: string) => void;
-	servers: DequelServer[];
+	servers: DequlServer[];
 	gitProvider: GitProviderValue;
 	setGitProvider: (v: GitProviderValue) => void;
 	gitToken: string;

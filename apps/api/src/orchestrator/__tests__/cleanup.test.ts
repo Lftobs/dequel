@@ -48,14 +48,14 @@ describe("pruneDocker", () => {
 		tryRunCalls.length = 0;
 	});
 
-	it("prunes containers with dequel label filter only", async () => {
+	it("prunes containers with dequl label filter only", async () => {
 		await pruneDocker();
 
 		const containerPrune = tryRunCalls.find((c) => c.args[0] === "container" && c.args[1] === "prune");
 		expect(containerPrune).toBeDefined();
 		expect(containerPrune!.args).toContain("-f");
 		expect(containerPrune!.args).toContain("--filter");
-		expect(containerPrune!.args.some((a) => a.includes("com.dequel.managed"))).toBe(true);
+		expect(containerPrune!.args.some((a) => a.includes("com.dequl.managed"))).toBe(true);
 	});
 
 	it("prunes dangling images without -a flag (preserves cache)", async () => {

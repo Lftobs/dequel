@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug to help us improve Dequel
+about: Report a bug to help us improve Dequl
 title: "[Bug]: "
 labels: bug, triage
 assignees: ""
@@ -31,7 +31,7 @@ If applicable, add screenshots or relevant logs.
 
 ## Environment
 
-- **Dequel Version**: (check `VERSION` or `scripts/dequel status`)
+- **Dequl Version**: (check `VERSION` or `scripts/dequl status`)
 - **OS**:
 - **Docker version**:
 - **Bun version** (if relevant):

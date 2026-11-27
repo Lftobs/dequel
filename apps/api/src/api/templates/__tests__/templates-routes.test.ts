@@ -33,7 +33,7 @@ beforeAll(async () => {
 	pool = createTestPool();
 	const db = drizzle(pool, { schema });
 	setDbProvider(async () => db);
-	workspaceRoot = mkdtempSync(join(tmpdir(), "dequel-template-routes-"));
+	workspaceRoot = mkdtempSync(join(tmpdir(), "dequl-template-routes-"));
 	routes = createTemplateRoutes({
 		repo: repoOverrides,
 		resolveServerId: async () => "local",

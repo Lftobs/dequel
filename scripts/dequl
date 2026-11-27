@@ -3,11 +3,11 @@ set -euo pipefail
 
 SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-DEQUEL_HOME="${DEQUEL_HOME:-$SCRIPT_DIR}"
-COMPOSE_FILE="$DEQUEL_HOME/docker-compose.yml"
-[ -f "$DEQUEL_HOME/.env" ] && set -a && . "$DEQUEL_HOME/.env" && set +a
-INSTALLED_VERSION="$(cat "$DEQUEL_HOME/VERSION" 2>/dev/null || echo "0.1.0")"
-export DEQUEL_VERSION="$INSTALLED_VERSION"
+DEQUL_HOME="${DEQUL_HOME:-$SCRIPT_DIR}"
+COMPOSE_FILE="$DEQUL_HOME/docker-compose.yml"
+[ -f "$DEQUL_HOME/.env" ] && set -a && . "$DEQUL_HOME/.env" && set +a
+INSTALLED_VERSION="$(cat "$DEQUL_HOME/VERSION" 2>/dev/null || echo "0.1.0")"
+export DEQUL_VERSION="$INSTALLED_VERSION"
 
 BOLD='\033[1m'
 DIM='\033[2m'
@@ -25,17 +25,17 @@ fail()    { printf "  ${RED}✗${NC} %s\n" "$*"; exit 1; }
 ensure_encryption_key() {
 	[ -n "${ENV_ENCRYPTION_KEY:-}" ] && return 0
 	local key=""
-	if [ -f "$DEQUEL_HOME/data/dequel.json" ]; then
-		key="$(sed -n 's/^.*"ENV_ENCRYPTION_KEY"[[:space:]]*:[[:space:]]*"\([^"]*\)".*$/\1/p' "$DEQUEL_HOME/data/dequel.json" | head -n1)"
+	if [ -f "$DEQUL_HOME/data/dequl.json" ]; then
+		key="$(sed -n 's/^.*"ENV_ENCRYPTION_KEY"[[:space:]]*:[[:space:]]*"\([^"]*\)".*$/\1/p' "$DEQUL_HOME/data/dequl.json" | head -n1)"
 	fi
 	if [ -z "$key" ]; then
 		key="$(openssl rand -hex 32 2>/dev/null || dd if=/dev/urandom bs=32 count=1 status=none 2>/dev/null | od -A n -t x1 | tr -d ' \n')"
 	fi
 	[ -n "$key" ] || fail "Cannot generate encryption key"
 	export ENV_ENCRYPTION_KEY="$key"
-	local env_file="$DEQUEL_HOME/.env"
+	local env_file="$DEQUL_HOME/.env"
 	if [ ! -f "$env_file" ]; then
-		printf '# Dequel environment configuration\n' > "$env_file"
+		printf '# Dequl environment configuration\n' > "$env_file"
 		chmod 600 "$env_file"
 	fi
 	if ! grep -q '^ENV_ENCRYPTION_KEY=..*' "$env_file" 2>/dev/null; then
@@ -48,32 +48,32 @@ ensure_encryption_key
 
 cmd() {
 	if [ ! -f "$COMPOSE_FILE" ]; then
-		fail "Dequel not found at $DEQUEL_HOME. Run install.sh first or set \$DEQUEL_HOME."
+		fail "Dequl not found at $DEQUL_HOME. Run install.sh first or set \$DEQUL_HOME."
 	fi
 	docker compose -f "$COMPOSE_FILE" "$@"
 }
 
 cmd_start() {
-	header "Starting Dequel"
+	header "Starting Dequl"
 	cmd up -d
 	local domain="${CADDY_BASE_DOMAIN:-localhost}"
 	if [ "$domain" = "localhost" ]; then
-		success "Dequel is running at http://localhost"
+		success "Dequl is running at http://localhost"
 	else
-		success "Dequel is running at https://$domain"
+		success "Dequl is running at https://$domain"
 	fi
 }
 
 cmd_stop() {
-	header "Stopping Dequel"
+	header "Stopping Dequl"
 	cmd down
-	success "Dequel stopped."
+	success "Dequl stopped."
 }
 
 cmd_restart() {
-	header "Restarting Dequel"
+	header "Restarting Dequl"
 	cmd restart
-	success "Dequel restarted."
+	success "Dequl restarted."
 }
 
 cmd_status() {
@@ -86,9 +86,9 @@ cmd_logs() {
 }
 
 cmd_update() {
-	header "Updating Dequel"
+	header "Updating Dequl"
 
-	local repo="Lftobs/dequel"
+	local repo="Lftobs/dequl"
 	local tag=""
 	local base_url=""
 	local target_arg="${2:-}"
@@ -125,7 +125,7 @@ cmd_update() {
 	fi
 
 	local current_version
-	current_version="$(cat "$DEQUEL_HOME/VERSION" 2>/dev/null || echo "unknown")"
+	current_version="$(cat "$DEQUL_HOME/VERSION" 2>/dev/null || echo "unknown")"
 
 	local tmp_dir
 	tmp_dir=$(mktemp -d)
@@ -135,7 +135,7 @@ cmd_update() {
 	info "Downloading updated configuration..."
 	curl -fsSL "$base_url/docker-compose.yml" -o "$tmp_dir/docker-compose.yml" || fail "Failed to download docker-compose.yml"
 	curl -fsSL "$base_url/infra/caddy/Caddyfile" -o "$tmp_dir/Caddyfile" || fail "Failed to download Caddyfile"
-	curl -fsSL "$base_url/scripts/dequel" -o "$tmp_dir/dequel" || fail "Failed to download dequel CLI"
+	curl -fsSL "$base_url/scripts/dequl" -o "$tmp_dir/dequl" || fail "Failed to download dequl CLI"
 	curl -fsSL "$base_url/scripts/firewall-setup.sh" -o "$tmp_dir/firewall-setup.sh" 2>/dev/null || true
 	curl -fsSL "$base_url/VERSION" -o "$tmp_dir/VERSION" 2>/dev/null || echo "${tag#v}" > "$tmp_dir/VERSION"
 
@@ -168,44 +168,44 @@ cmd_update() {
 import re, sys
 with open('$tmp_dir/docker-compose.yml', 'r') as f:
     content = f.read()
-content = re.sub(r'ghcr\.io/lftobs/dequel/api:\w+', 'ghcr.io/lftobs/dequel/api:$resolved_tag', content)
-content = re.sub(r'ghcr\.io/lftobs/dequel/web:\w+', 'ghcr.io/lftobs/dequel/web:$resolved_tag', content)
-content = re.sub(r'#\s*(image:\s*ghcr\.io/lftobs/dequel/)', r'\1', content)
+content = re.sub(r'ghcr\.io/lftobs/dequl/api:\w+', 'ghcr.io/lftobs/dequl/api:$resolved_tag', content)
+content = re.sub(r'ghcr\.io/lftobs/dequl/web:\w+', 'ghcr.io/lftobs/dequl/web:$resolved_tag', content)
+content = re.sub(r'#\s*(image:\s*ghcr\.io/lftobs/dequl/)', r'\1', content)
 content = re.sub(r'([ \t]+)build:\s*\n\s+context:\s*(?:\.|\./apps/api)\s*\n\s+dockerfile:\s*\S+', r'\1# build:\n\1#     context: ./apps/api\n\1#     dockerfile: Dockerfile', content)
-content = re.sub(r'([ \t]+)build:\s*\n\s+context:\s*\./apps/web(?:\s*\n\s+args:\s*\n\s+DEQUEL_VERSION:\s*\S+)?', r'\1# build:\n\1#     context: ./apps/web\n\1#     args:\n\1#         DEQUEL_VERSION: \${DEQUEL_VERSION:-}', content)
+content = re.sub(r'([ \t]+)build:\s*\n\s+context:\s*\./apps/web(?:\s*\n\s+args:\s*\n\s+DEQUL_VERSION:\s*\S+)?', r'\1# build:\n\1#     context: ./apps/web\n\1#     args:\n\1#         DEQUL_VERSION: \${DEQUL_VERSION:-}', content)
 with open('$tmp_dir/docker-compose.yml', 'w') as f:
     f.write(content)
 " 2>/dev/null || true
 
-	mkdir -p "$DEQUEL_HOME/infra/caddy" \
-		"$DEQUEL_HOME/infra/monitoring/grafana/datasources" \
-		"$DEQUEL_HOME/infra/monitoring/grafana/dashboards" \
-		"$DEQUEL_HOME/scripts/auth"
+	mkdir -p "$DEQUL_HOME/infra/caddy" \
+		"$DEQUL_HOME/infra/monitoring/grafana/datasources" \
+		"$DEQUL_HOME/infra/monitoring/grafana/dashboards" \
+		"$DEQUL_HOME/scripts/auth"
 
-	mv "$tmp_dir/docker-compose.yml" "$DEQUEL_HOME/docker-compose.yml"
-	mv "$tmp_dir/Caddyfile" "$DEQUEL_HOME/infra/caddy/Caddyfile"
+	mv "$tmp_dir/docker-compose.yml" "$DEQUL_HOME/docker-compose.yml"
+	mv "$tmp_dir/Caddyfile" "$DEQUL_HOME/infra/caddy/Caddyfile"
 
 	for f in prometheus.yml loki-config.yml promtail-config.yml; do
-		[ -f "$tmp_dir/infra/monitoring/$f" ] && mv "$tmp_dir/infra/monitoring/$f" "$DEQUEL_HOME/infra/monitoring/$f"
+		[ -f "$tmp_dir/infra/monitoring/$f" ] && mv "$tmp_dir/infra/monitoring/$f" "$DEQUL_HOME/infra/monitoring/$f"
 	done
 	for f in loki.yml prometheus.yml; do
-		[ -f "$tmp_dir/infra/monitoring/grafana/datasources/$f" ] && mv "$tmp_dir/infra/monitoring/grafana/datasources/$f" "$DEQUEL_HOME/infra/monitoring/grafana/datasources/$f"
+		[ -f "$tmp_dir/infra/monitoring/grafana/datasources/$f" ] && mv "$tmp_dir/infra/monitoring/grafana/datasources/$f" "$DEQUL_HOME/infra/monitoring/grafana/datasources/$f"
 	done
 	for f in dashboards.yml deployed-apps.json; do
-		[ -f "$tmp_dir/infra/monitoring/grafana/dashboards/$f" ] && mv "$tmp_dir/infra/monitoring/grafana/dashboards/$f" "$DEQUEL_HOME/infra/monitoring/grafana/dashboards/$f"
+		[ -f "$tmp_dir/infra/monitoring/grafana/dashboards/$f" ] && mv "$tmp_dir/infra/monitoring/grafana/dashboards/$f" "$DEQUL_HOME/infra/monitoring/grafana/dashboards/$f"
 	done
 	for f in pam-server.py pam-verify.py; do
-		[ -f "$tmp_dir/scripts/auth/$f" ] && mv "$tmp_dir/scripts/auth/$f" "$DEQUEL_HOME/scripts/auth/$f"
+		[ -f "$tmp_dir/scripts/auth/$f" ] && mv "$tmp_dir/scripts/auth/$f" "$DEQUL_HOME/scripts/auth/$f"
 	done
 	if [ -f "$tmp_dir/firewall-setup.sh" ]; then
-		mkdir -p "$DEQUEL_HOME/scripts"
-		mv "$tmp_dir/firewall-setup.sh" "$DEQUEL_HOME/scripts/firewall-setup.sh"
-		chmod +x "$DEQUEL_HOME/scripts/firewall-setup.sh" 2>/dev/null || true
+		mkdir -p "$DEQUL_HOME/scripts"
+		mv "$tmp_dir/firewall-setup.sh" "$DEQUL_HOME/scripts/firewall-setup.sh"
+		chmod +x "$DEQUL_HOME/scripts/firewall-setup.sh" 2>/dev/null || true
 	fi
 
-	mv "$tmp_dir/VERSION" "$DEQUEL_HOME/VERSION"
-	chmod +x "$tmp_dir/dequel"
-	mv "$tmp_dir/dequel" "$SCRIPT_PATH"
+	mv "$tmp_dir/VERSION" "$DEQUL_HOME/VERSION"
+	chmod +x "$tmp_dir/dequl"
+	mv "$tmp_dir/dequl" "$SCRIPT_PATH"
 
 	success "Configuration updated"
 
@@ -229,24 +229,24 @@ with open('$tmp_dir/docker-compose.yml', 'w') as f:
 	done
 
 	if [ $retries -ge $max_retries ]; then
-		warn "API did not become healthy within ${max_retries}x2s — check logs with 'dequel logs api'"
-		warn "To rollback: dequel update v${current_version#v}"
+		warn "API did not become healthy within ${max_retries}x2s — check logs with 'dequl logs api'"
+		warn "To rollback: dequl update v${current_version#v}"
 	else
-		success "Dequel updated to ${tag:-main} (was ${current_version})"
+		success "Dequl updated to ${tag:-main} (was ${current_version})"
 	fi
 }
 
 cmd_uninstall() {
 	echo ""
-	echo "${BOLD}${RED}⚠  Dequel Uninstall${NC}"
+	echo "${BOLD}${RED}⚠  Dequl Uninstall${NC}"
 	echo ""
 	echo "  This will permanently remove:"
 	echo ""
-	[ -d "$DEQUEL_HOME" ] && echo "  • Config directory: $DEQUEL_HOME"
-	[ -L "/usr/local/bin/dequel" ] && echo "  • CLI symlink: /usr/local/bin/dequel"
+	[ -d "$DEQUL_HOME" ] && echo "  • Config directory: $DEQUL_HOME"
+	[ -L "/usr/local/bin/dequl" ] && echo "  • CLI symlink: /usr/local/bin/dequl"
 	echo "  • Docker Compose stack (services + networks)"
 	echo "  • Docker named volumes (buildkit, redis, prometheus, loki, grafana data)"
-	echo "  • Docker images (ghcr.io/lftobs/dequel/api, ghcr.io/lftobs/dequel/web)"
+	echo "  • Docker images (ghcr.io/lftobs/dequl/api, ghcr.io/lftobs/dequl/web)"
 	echo ""
 	echo "  ${BOLD}Your deployed projects will lose their observability stack.${NC}"
 	echo ""
@@ -265,37 +265,37 @@ cmd_uninstall() {
 	fi
 
 	header "Removing Docker images"
-	docker rmi -f ghcr.io/lftobs/dequel/api:latest ghcr.io/lftobs/dequel/web:latest 2>/dev/null || true
+	docker rmi -f ghcr.io/lftobs/dequl/api:latest ghcr.io/lftobs/dequl/web:latest 2>/dev/null || true
 	success "Images removed."
 
-	if [ -d "$DEQUEL_HOME" ]; then
+	if [ -d "$DEQUL_HOME" ]; then
 		header "Removing config directory"
-		rm -rf "$DEQUEL_HOME"
-		success "Removed $DEQUEL_HOME"
+		rm -rf "$DEQUL_HOME"
+		success "Removed $DEQUL_HOME"
 	fi
 
-	if [ -L "/usr/local/bin/dequel" ]; then
+	if [ -L "/usr/local/bin/dequl" ]; then
 		header "Removing CLI symlink"
-		rm -f /usr/local/bin/dequel
-		success "Removed /usr/local/bin/dequel"
+		rm -f /usr/local/bin/dequl
+		success "Removed /usr/local/bin/dequl"
 	fi
 
 	echo ""
-	success "${BOLD}Dequel uninstalled.${NC}"
+	success "${BOLD}Dequl uninstalled.${NC}"
 	echo ""
 	info "Docker Engine and Docker Compose were left untouched."
 	echo ""
 }
 
 cmd_version() {
-	echo "dequel v$INSTALLED_VERSION"
+	echo "dequl v$INSTALLED_VERSION"
 }
 
 cmd_backup() {
 	header "Creating backup"
 	
 	local target="${1:-internal}"
-	local api_url="${DEQUEL_API_URL:-http://localhost:3001}"
+	local api_url="${DEQUL_API_URL:-http://localhost:3001}"
 	
 	info "Backing up target: $target"
 	
@@ -319,7 +319,7 @@ cmd_backup() {
 cmd_backup_list() {
 	header "Listing backups"
 	
-	local api_url="${DEQUEL_API_URL:-http://localhost:3001}"
+	local api_url="${DEQUL_API_URL:-http://localhost:3001}"
 	local response
 	response=$(curl -s "$api_url/api/backups" 2>&1)
 	
@@ -329,12 +329,12 @@ cmd_backup_list() {
 cmd_backup_restore() {
 	local backup_id="${1:-}"
 	if [ -z "$backup_id" ]; then
-		fail "Usage: dequel backup restore <backup-id>"
+		fail "Usage: dequl backup restore <backup-id>"
 	fi
 	
 	header "Restoring from backup: $backup_id"
 	
-	local api_url="${DEQUEL_API_URL:-http://localhost:3001}"
+	local api_url="${DEQUL_API_URL:-http://localhost:3001}"
 	local response
 	response=$(curl -s -X POST "$api_url/api/backups/$backup_id/restore" \
 		-H "Content-Type: application/json" \
@@ -353,46 +353,46 @@ cmd_backup_restore() {
 }
 
 cmd_help() {
-	echo "Dequel - Self-hosted deployment platform"
+	echo "Dequl - Self-hosted deployment platform"
 	echo ""
-	echo "Usage: dequel <command>"
+	echo "Usage: dequl <command>"
 	echo ""
 	echo "Commands:"
-	echo "  start             Start all Dequel services"
-	echo "  stop              Stop all Dequel services"
-	echo "  restart           Restart all Dequel services"
+	echo "  start             Start all Dequl services"
+	echo "  stop              Stop all Dequl services"
+	echo "  restart           Restart all Dequl services"
 	echo "  status            Show service status"
 	echo "  logs              Follow service logs"
-	echo "  update            Update Dequel (zero-downtime rolling restart)"
+	echo "  update            Update Dequl (zero-downtime rolling restart)"
 	echo "  backup            Create a backup of the database"
 	echo "  backup list       List all backups"
 	echo "  backup restore    Restore from a backup"
 	echo "  firewall          Manage host firewall (status, setup)"
-	echo "  uninstall         Remove Dequel completely (config, images, volumes)"
+	echo "  uninstall         Remove Dequl completely (config, images, volumes)"
 	echo "  --version         Show version"
 	echo "  --help            Show this help"
 	echo ""
 	echo "Backup commands:"
-	echo "  dequel backup                  Backup internal database"
-	echo "  dequel backup <db-id>          Backup a specific managed database"
-	echo "  dequel backup list             List all backups"
-	echo "  dequel backup restore <id>     Restore from a backup"
+	echo "  dequl backup                  Backup internal database"
+	echo "  dequl backup <db-id>          Backup a specific managed database"
+	echo "  dequl backup list             List all backups"
+	echo "  dequl backup restore <id>     Restore from a backup"
 	echo ""
 	echo "Update options:"
-	echo "  dequel update                 Update to latest stable release"
-	echo "  dequel update latest          Update to latest stable release"
-	echo "  dequel update --pre           Update to latest pre-release"
-	echo "  dequel update --rc            Update to latest release candidate"
-	echo "  dequel update v0.3.0-rc.8     Update to specific version"
-	echo "  dequel update v1.0.0          Update to specific version"
+	echo "  dequl update                 Update to latest stable release"
+	echo "  dequl update latest          Update to latest stable release"
+	echo "  dequl update --pre           Update to latest pre-release"
+	echo "  dequl update --rc            Update to latest release candidate"
+	echo "  dequl update v0.3.0-rc.8     Update to specific version"
+	echo "  dequl update v1.0.0          Update to specific version"
 	echo ""
 	echo "Environment:"
-	echo "  DEQUEL_HOME  Config directory (default: auto-detected from install path)"
+	echo "  DEQUL_HOME  Config directory (default: auto-detected from install path)"
 }
 
 cmd_firewall() {
 	shift
-	local script="$DEQUEL_HOME/scripts/firewall-setup.sh"
+	local script="$DEQUL_HOME/scripts/firewall-setup.sh"
 	if [ ! -f "$script" ]; then
 		script="$(dirname "$SCRIPT_PATH")/firewall-setup.sh"
 	fi
@@ -422,5 +422,5 @@ case "${1:-}" in
 	uninstall) cmd_uninstall ;;
 	--version|-v) cmd_version ;;
 	--help|-h|"") cmd_help ;;
-	*)        fail "Unknown command: $1. Run 'dequel --help' for usage." ;;
+	*)        fail "Unknown command: $1. Run 'dequl --help' for usage." ;;
 esac

@@ -33,7 +33,7 @@ describe("auth routes", () => {
 		const res = await authRoutes.handle(
 			new Request("http://localhost/auth/me", {
 				headers: {
-					cookie: `dequel_session=${token}`,
+					cookie: `dequl_session=${token}`,
 				},
 			}),
 		);
@@ -59,7 +59,7 @@ describe("auth routes", () => {
 		const res = await authRoutes.handle(
 			new Request("http://localhost/auth/me", {
 				headers: {
-					cookie: `dequel_refresh=${rt}`,
+					cookie: `dequl_refresh=${rt}`,
 				},
 			}),
 		);
@@ -74,8 +74,8 @@ describe("auth routes", () => {
 		expect(json.data.expiresIn).toBe(900);
 
 		const cookies = res.headers.get("set-cookie") || "";
-		expect(cookies).toContain("dequel_session=");
-		expect(cookies).toContain("dequel_refresh=");
+		expect(cookies).toContain("dequl_session=");
+		expect(cookies).toContain("dequl_refresh=");
 	});
 
 	it("GET /auth/me returns unauthenticated when no valid tokens exist", async () => {
@@ -97,7 +97,7 @@ describe("auth routes", () => {
 			new Request("http://localhost/auth/refresh", {
 				method: "POST",
 				headers: {
-					cookie: `dequel_refresh=${rt}`,
+					cookie: `dequl_refresh=${rt}`,
 				},
 			}),
 		);

@@ -41,9 +41,9 @@ const userReport: Proposal = {
 	userFix: { title: "Fix it", body: "Do the thing", suggestedDiff: "diff --git a/x b/x\n" },
 };
 
-const dequelReport: Proposal = {
-	cause: "dequel-source",
-	dequelReport: { problem: "p", cause: "c", proposedFix: "f" },
+const dequlReport: Proposal = {
+	cause: "dequl-source",
+	dequlReport: { problem: "p", cause: "c", proposedFix: "f" },
 };
 
 const doneRun = async (deploymentId: string, commitSha: string, report: Proposal) => {
@@ -124,11 +124,11 @@ describe("approveFixPr guards", () => {
 });
 
 describe("approveSlackPost guards", () => {
-	it("requires a finished dequel-source run and a configured webhook", async () => {
+	it("requires a finished dequl-source run and a configured webhook", async () => {
 		expect(await approveSlackPost("nope", "s-1")).toMatchObject({ ok: false, status: 404 });
 		const user = await doneRun("dep-git-1", "bbbbccccdddd", userReport);
 		expect(await approveSlackPost(user.id, "s-2")).toMatchObject({ ok: false, status: 409 });
-		const deq = await doneRun("dep-git-1", "aaaabbbbcccc", dequelReport);
+		const deq = await doneRun("dep-git-1", "aaaabbbbcccc", dequlReport);
 		expect(await approveSlackPost(deq.id, "s-3")).toMatchObject({ ok: false, status: 409 });
 	});
 });

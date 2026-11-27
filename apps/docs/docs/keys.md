@@ -19,7 +19,7 @@ monitoring and logs, or full admin), and an optional project scope. The
 its hash prefix is listed. Send it as a Bearer token:
 
 ```bash
-curl -H "Authorization: Bearer dql_<key>" https://dequel.example.com/api/projects
+curl -H "Authorization: Bearer dql_<key>" https://dequl.example.com/api/projects
 ```
 
 ### Scopes
@@ -55,7 +55,7 @@ deploys and [webhooks](/docs/automation) from the reference page.
 
 Servers connected over SSH authenticate with a key from this pool, not
 with per-server pastes. Add a PEM/OpenSSH private key (paste or upload
-`.pem` / `.key`); Dequel detects Ed25519/RSA formats, fingerprints the
+`.pem` / `.key`); Dequl detects Ed25519/RSA formats, fingerprints the
 key, and rejects duplicates. Private material is never displayed again
 — only name, fingerprint, tags, and date.
 

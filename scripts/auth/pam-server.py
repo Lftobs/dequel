@@ -7,8 +7,8 @@ import ctypes.util
 import subprocess
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-GRP_NAME = "dequel"
-SERVICE = "dequel"
+GRP_NAME = "dequl"
+SERVICE = "dequl"
 
 PAM_PROMPT_ECHO_OFF = 1
 PAM_SUCCESS = 0

@@ -29,7 +29,7 @@ services:
             start_period: 5s
 
     api:
-        image: ghcr.io/lftobs/dequel/api
+        image: ghcr.io/lftobs/dequl/api
         build:
             context: ./apps/api
             dockerfile: Dockerfile
@@ -37,19 +37,19 @@ services:
         restart: unless-stopped
         environment:
             PORT: 3001
-            DATABASE_URL: postgresql://${POSTGRES_USER:-dequel}:${POSTGRES_PASSWORD:-dequel}@postgres:5432/${POSTGRES_DB:-dequel}
+            DATABASE_URL: postgresql://${POSTGRES_USER:-dequl}:${POSTGRES_PASSWORD:-dequl}@postgres:5432/${POSTGRES_DB:-dequl}
             WORKSPACE_ROOT: /app/workspace
             CADDY_ROUTES_DIR: /caddy/routes
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
-            CADDY_CONTAINER: ${CADDY_CONTAINER:-dequel-caddy-1}
+            CADDY_CONTAINER: ${CADDY_CONTAINER:-dequl-caddy-1}
             CADDY_DATA_DIR: /caddy-data/caddy
-            DOCKER_NETWORK: dequel_net
+            DOCKER_NETWORK: dequl_net
             APP_INTERNAL_PORT: 3000
             BUILDKIT_HOST: tcp://buildkit:1234
             DOCKER_BIN: /usr/bin/docker
             RAILPACK_VERBOSE: "1"
             RAILPACK_BUILD_TIMEOUT_MS: "1200000"
-            POSTGRES_CONTAINER: ${POSTGRES_CONTAINER:-dequel-postgres-1}
+            POSTGRES_CONTAINER: ${POSTGRES_CONTAINER:-dequl-postgres-1}
             ENV_ENCRYPTION_KEY: '${ENV_ENCRYPTION_KEY:?ENV_ENCRYPTION_KEY is required - set it in .env (see .env.example) or generate with openssl rand -hex 32}'
         volumes:
             - ./workspace:/app/workspace
@@ -85,16 +85,16 @@ services:
             control:
                 aliases:
                     - api
-            dequel:
+            dequl:
                 aliases:
                     - api
 
     diagnose-sandbox:
-        image: ghcr.io/lftobs/dequel/sandbox
+        image: ghcr.io/lftobs/dequl/sandbox
         build:
             context: ./apps/api
             dockerfile: Dockerfile.sandbox
-        container_name: dequel-diag-sandbox
+        container_name: dequl-diag-sandbox
         restart: unless-stopped
         command: ["sleep", "infinity"]
         volumes:
@@ -110,7 +110,7 @@ services:
             - sh
             - -c
             - |
-                apt-get update -qq > /dev/null 2>&1 && apt-get install -y -qq libpam-modules > /dev/null 2>&1 && cp /app/dequel /etc/pam.d/dequel
+                apt-get update -qq > /dev/null 2>&1 && apt-get install -y -qq libpam-modules > /dev/null 2>&1 && cp /app/dequl /etc/pam.d/dequl
                 sync_host_etc() {
                     cp /host-etc/passwd /etc/passwd 2>/dev/null || true
                     cp /host-etc/shadow /etc/shadow 2>/dev/null || true
@@ -121,7 +121,7 @@ services:
                 exec python3 -u /app/pam-server.py
         volumes:
             - ./scripts/auth/pam-server.py:/app/pam-server.py:ro
-            - ./scripts/auth/dequel:/app/dequel:ro
+            - ./scripts/auth/dequl:/app/dequl:ro
             - /etc/passwd:/host-etc/passwd:ro
             - /etc/shadow:/host-etc/shadow:ro
             - /etc/group:/host-etc/group:ro
@@ -143,11 +143,11 @@ services:
             start_period: 10s
 
     web:
-        image: ghcr.io/lftobs/dequel/web
+        image: ghcr.io/lftobs/dequl/web
         build:
             context: ./apps/web
             args:
-                DEQUEL_VERSION: ${DEQUEL_VERSION:-}
+                DEQUL_VERSION: ${DEQUL_VERSION:-}
         restart: unless-stopped
         healthcheck:
             test:
@@ -162,19 +162,19 @@ services:
             retries: 10
             start_period: 30s
         networks:
-            dequel:
+            dequl:
                 aliases:
                     - web
 
     gateway:
-        image: ghcr.io/lftobs/dequel/api
+        image: ghcr.io/lftobs/dequl/api
         build:
             context: ./apps/api
             dockerfile: Dockerfile
         restart: unless-stopped
         command: ["bun", "src/tunnels/gateway.ts"]
         environment:
-            DATABASE_URL: postgresql://${POSTGRES_USER:-dequel}:${POSTGRES_PASSWORD:-dequel}@postgres:5432/${POSTGRES_DB:-dequel}
+            DATABASE_URL: postgresql://${POSTGRES_USER:-dequl}:${POSTGRES_PASSWORD:-dequl}@postgres:5432/${POSTGRES_DB:-dequl}
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
             GATEWAY_CERT_DIR: /app/data
             CADDY_DATA_DIR: /caddy-data/caddy
@@ -195,7 +195,7 @@ services:
             start_period: 5s
         networks:
             control:
-            dequel:
+            dequl:
 
     caddy:
         image: caddy:2.8-alpine
@@ -211,7 +211,7 @@ services:
                 "--watch",
             ]
         environment:
-            CADDY_EMAIL: ${CADDY_EMAIL:-admin@dequel.local}
+            CADDY_EMAIL: ${CADDY_EMAIL:-admin@dequl.local}
             CADDY_BASE_DOMAIN: ${CADDY_BASE_DOMAIN:-localhost}
         ports:
             - "80:80"
@@ -225,7 +225,7 @@ services:
             web:
                 condition: service_healthy
         networks:
-            dequel:
+            dequl:
 
     redis:
         image: redis:7-alpine
@@ -247,9 +247,9 @@ services:
         image: postgres:16-alpine
         restart: unless-stopped
         environment:
-            POSTGRES_USER: ${POSTGRES_USER:-dequel}
-            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dequel}
-            POSTGRES_DB: ${POSTGRES_DB:-dequel}
+            POSTGRES_USER: ${POSTGRES_USER:-dequl}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dequl}
+            POSTGRES_DB: ${POSTGRES_DB:-dequl}
         volumes:
             - postgres-data:/var/lib/postgresql/data
         networks:
@@ -257,7 +257,7 @@ services:
                 aliases:
                     - postgres
         healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U dequel"]
+            test: ["CMD-SHELL", "pg_isready -U dequl"]
             interval: 5s
             timeout: 3s
             retries: 5
@@ -311,7 +311,7 @@ services:
             control:
                 aliases:
                     - prometheus
-            dequel:
+            dequl:
                 aliases:
                     - prometheus
         healthcheck:
@@ -369,7 +369,7 @@ services:
                 condition: service_started
         networks:
             control:
-            dequel:
+            dequl:
 
     grafana:
         image: grafana/grafana:latest
@@ -393,7 +393,7 @@ services:
             control:
                 aliases:
                     - grafana
-            dequel:
+            dequl:
                 aliases:
                     - grafana
         healthcheck:
@@ -411,10 +411,10 @@ services:
             start_period: 15s
 
 networks:
-    dequel:
-        name: dequel_net
+    dequl:
+        name: dequl_net
     control:
-        name: dequel_control
+        name: dequl_control
 
 volumes:
     buildkit-data:

@@ -193,18 +193,18 @@ export function DiagnoseSheet({ deployment, open, onOpenChange }: DiagnoseSheetP
 	const cause: DiagCause | null = run?.report?.cause ?? run?.cause ?? null;
 	const explainStage = stages.find((s) => s.stage === "explain")?.payload;
 	const investigateStage = stages.find((s) => s.stage === "investigate")?.payload;
-	const dequelVersion =
+	const dequlVersion =
 		investigateStage && typeof investigateStage === "object"
-			? String((investigateStage as Record<string, unknown>).dequelRev ?? "")
+			? String((investigateStage as Record<string, unknown>).dequlRev ?? "")
 			: "";
-	const dequelStale =
+	const dequlStale =
 		investigateStage && typeof investigateStage === "object"
-			? (investigateStage as Record<string, unknown>).dequelStale === true
+			? (investigateStage as Record<string, unknown>).dequlStale === true
 			: false;
 	const summary = payloadText(explainStage, "summary");
 	const fixSteps = payloadList(explainStage, "fixSteps");
 	const userFix = run?.report?.userFix;
-	const dequelReport = run?.report?.dequelReport;
+	const dequlReport = run?.report?.dequlReport;
 	const isGit = deployment.sourceType === "git";
 
 	return (
@@ -348,9 +348,9 @@ export function DiagnoseSheet({ deployment, open, onOpenChange }: DiagnoseSheetP
 							summary={summary}
 							fixSteps={fixSteps}
 							userFix={userFix}
-							dequelReport={dequelReport}
-							dequelVersion={dequelVersion}
-							dequelStale={dequelStale}
+							dequlReport={dequlReport}
+							dequlVersion={dequlVersion}
+							dequlStale={dequlStale}
 							slackPosted={slackPosted}
 							isGit={isGit}
 							prUrl={prUrl}

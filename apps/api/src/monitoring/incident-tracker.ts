@@ -10,7 +10,7 @@ import {
 	decide,
 } from "./incident-policy";
 
-const KEY_PREFIX = "dequel:alert:incident:";
+const KEY_PREFIX = "dequl:alert:incident:";
 const TTL_SECONDS = 604_800;
 
 export type StepInput = {

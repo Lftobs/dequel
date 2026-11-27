@@ -13,7 +13,7 @@ export interface SshEngineTarget {
 	targetPort: number;
 }
 
-const KEYS_DIR = join(tmpdir(), "dequel_gateway_keys");
+const KEYS_DIR = join(tmpdir(), "dequl_gateway_keys");
 
 const safeName = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, "_");
 

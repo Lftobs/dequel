@@ -100,7 +100,7 @@ When a verified custom domain is added to a project, `addToCaddyRoute()` in `app
 
 ## Reload vs Restart
 
-Dequel uses `caddy reload`, not `caddy restart`:
+Dequl uses `caddy reload`, not `caddy restart`:
 
 - **Reload** (`caddy reload --config /etc/caddy/Caddyfile`) applies configuration changes without dropping active connections. Existing requests continue to be served.
 - **Restart** would terminate all connections and re-initialize Caddy, causing downtime.
@@ -118,18 +118,18 @@ Reload is triggered after every route file change (deploy, rollback, delete, cus
 ### Caddy not picking up changes
 
 1. Confirm the route file exists in the routes directory: `ls /etc/caddy/routes/`.
-2. Manually reload Caddy: `docker exec dequel-caddy caddy reload --config /etc/caddy/Caddyfile`.
-3. Check Caddy logs for configuration errors: `docker logs dequel-caddy`.
+2. Manually reload Caddy: `docker exec dequl-caddy caddy reload --config /etc/caddy/Caddyfile`.
+3. Check Caddy logs for configuration errors: `docker logs dequl-caddy`.
 
 ### 502 Bad Gateway
 
-The route file points to a container name that does not exist or is not on the same Docker network. Verify the container is running and connected to `dequel_net`:
+The route file points to a container name that does not exist or is not on the same Docker network. Verify the container is running and connected to `dequl_net`:
 
 ```bash
 docker ps --filter name=<project-slug>
-docker network inspect dequel_net
+docker network inspect dequl_net
 ```
 
 ### Custom domain not routing
 
-Ensure the domain is verified in the Dequel dashboard and the DNS record points to the correct IP. Check that the hostname appears in the route file's first line.
+Ensure the domain is verified in the Dequl dashboard and the DNS record points to the correct IP. Check that the hostname appears in the route file's first line.

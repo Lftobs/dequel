@@ -70,7 +70,7 @@ export const settingsRoutes = new Elysia({ prefix: "/settings" })
 			port: body.port ?? 587,
 			user: body.user ?? "",
 			pass: body.pass ?? "",
-			fromAddress: body.fromAddress ?? "dequel@localhost",
+			fromAddress: body.fromAddress ?? "dequl@localhost",
 		});
 		return ok(null, "SMTP settings updated");
 	})
@@ -94,7 +94,7 @@ export const settingsRoutes = new Elysia({ prefix: "/settings" })
 				to: settings.fromAddress,
 				subject,
 				html,
-				text: "This is a test email from Dequel. Your SMTP settings are working correctly.",
+				text: "This is a test email from Dequl. Your SMTP settings are working correctly.",
 			});
 			return ok(null, "Test email sent");
 		} catch (err: any) {

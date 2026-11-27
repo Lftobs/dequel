@@ -232,7 +232,7 @@ export function DatabaseSettingsForm({ database, onRefetch }: DatabaseSettingsFo
 						<div>
 							<p className="text-xs font-semibold text-foreground">Allow Public Access from Anywhere (`0.0.0.0/0`)</p>
 							<p className="text-[11px] text-muted-foreground mt-0.5">
-								Expose port externally for direct client connection outside Dequel network.
+								Expose port externally for direct client connection outside Dequl network.
 							</p>
 						</div>
 						<input

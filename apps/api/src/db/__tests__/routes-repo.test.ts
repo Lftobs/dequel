@@ -4,7 +4,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgresql://dequel:dequel@localhost:5433/dequel";
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgresql://dequl:dequl@localhost:5433/dequl";
 
 const runRepo = async () => {
 	const result = await execFileAsync(process.execPath, [path.join(__dirname, "routes-repo-runner.ts")], {

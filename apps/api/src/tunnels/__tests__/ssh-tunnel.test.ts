@@ -16,7 +16,7 @@ const TARGET: SshEngineTarget = {
 const keyPath = writeIdentityFile(TARGET);
 
 afterAll(() => {
-	rmSync(join(tmpdir(), "dequel_gateway_keys"), { recursive: true, force: true });
+	rmSync(join(tmpdir(), "dequl_gateway_keys"), { recursive: true, force: true });
 });
 
 describe("writeIdentityFile", () => {

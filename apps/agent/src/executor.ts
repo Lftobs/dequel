@@ -226,15 +226,15 @@ const startContainer = async (
 		"--network",
 		config.dockerNetwork,
 		"--label",
-		"com.dequel.managed=true",
+		"com.dequl.managed=true",
 		"--publish",
 		String(spec.appPort),
 		"--env",
 		`PORT=${spec.appPort}`,
 	];
 	if (spec.projectId) {
-		args.push("--label", `com.dequel.project=${spec.projectId}`);
-		args.push("--label", `com.dequel.deployment=${spec.deploymentId}`);
+		args.push("--label", `com.dequl.project=${spec.projectId}`);
+		args.push("--label", `com.dequl.deployment=${spec.deploymentId}`);
 	}
 	if (spec.cpuLimit) args.push("--cpus", String(spec.cpuLimit));
 	if (spec.memoryLimitMb) args.push("--memory", `${Math.round(spec.memoryLimitMb)}m`);
@@ -266,7 +266,7 @@ const startContainer = async (
 	const hostPort = Number(match[1]);
 	if (spec.projectId) {
 		const previous = (
-			await run("docker", ["ps", "-aq", "--filter", `label=com.dequel.project=${spec.projectId}`], { signal })
+			await run("docker", ["ps", "-aq", "--filter", `label=com.dequl.project=${spec.projectId}`], { signal })
 		)
 			.split("\n")
 			.map((id) => id.trim())
@@ -284,7 +284,7 @@ const deployFromGit = async (
 ): Promise<RemoteDeployResult> => {
 	const workspace = join(config.workspaceRoot, payload.deploymentId);
 	const slug = slugify(payload.projectName);
-	const imageTag = `dequel-${slug}:${payload.deploymentId.slice(0, 12)}`;
+	const imageTag = `dequl-${slug}:${payload.deploymentId.slice(0, 12)}`;
 	const containerName = `${slug}-${payload.deploymentId.slice(0, 8)}`;
 	try {
 		const commitSha = await prepareSource(payload, workspace, signal, progress);
@@ -344,17 +344,17 @@ const scaleDeployment = async (payload: RemoteScalePayload, signal: AbortSignal,
 		"--network",
 		config.dockerNetwork,
 		"--label",
-		"com.dequel.managed=true",
+		"com.dequl.managed=true",
 		"--label",
-		"com.dequel.replica=1",
+		"com.dequl.replica=1",
 		"--label",
-		`com.dequel.deployment=${payload.deploymentId}`,
+		`com.dequl.deployment=${payload.deploymentId}`,
 		"--publish",
 		String(payload.appPort),
 		"--env",
 		`PORT=${payload.appPort}`,
 	];
-	if (payload.projectId) args.push("--label", `com.dequel.project=${payload.projectId}`);
+	if (payload.projectId) args.push("--label", `com.dequl.project=${payload.projectId}`);
 	if (payload.cpuLimit) args.push("--cpus", String(payload.cpuLimit));
 	if (payload.memoryLimitMb) args.push("--memory", `${Math.round(payload.memoryLimitMb)}m`);
 	for (const env of payload.environmentVariables) args.push("--env", `${env.key}=${env.value}`);

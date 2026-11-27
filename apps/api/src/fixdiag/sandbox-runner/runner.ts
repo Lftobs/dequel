@@ -13,8 +13,8 @@ interface BaseInput {
 	baseUrl: string | null;
 	hasProjectSource: boolean;
 	projectSrcDir?: string | null;
-	dequelRev: string;
-	dequelStale: boolean;
+	dequlRev: string;
+	dequlStale: boolean;
 	deadlineMs?: number;
 }
 
@@ -59,7 +59,7 @@ const main = async (): Promise<void> => {
 		const ctx = {
 			progressPath,
 			projectRoot: raw.hasProjectSource ? (raw.projectSrcDir ?? "/srv/project-src") : null,
-			dequelRef: raw.dequelRev,
+			dequlRef: raw.dequlRev,
 		};
 		if (raw.mode === "fix") {
 			await appendFile(progressPath, "fix started\n").catch(() => {});
@@ -99,8 +99,8 @@ const main = async (): Promise<void> => {
 				culpritPaths: asStringArray(out.culpritPaths, 8),
 				rationale: asString(out.rationale),
 				keyEvidence: asStringArray(out.keyEvidence, 8),
-				dequelRev: raw.dequelRev,
-				dequelStale: raw.dequelStale,
+				dequlRev: raw.dequlRev,
+				dequlStale: raw.dequlStale,
 			}),
 		);
 		await appendFile(progressPath, "investigation complete\n").catch(() => {});

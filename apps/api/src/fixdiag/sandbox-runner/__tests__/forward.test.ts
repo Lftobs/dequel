@@ -10,10 +10,10 @@ const answerOnly = (): Forwardable => ({
 describe("forwardWithFallback", () => {
 	it("returns the first result when the program finishes in budget", async () => {
 		const prog: Forwardable = {
-			forward: async () => ({ cause: "dequel-source" }),
+			forward: async () => ({ cause: "dequl-source" }),
 		};
 		const out = await forwardWithFallback(prog, answerOnly(), {}, { q: "x" }, "/tmp/nonexistent-progress.log");
-		expect(out).toEqual({ cause: "dequel-source" });
+		expect(out).toEqual({ cause: "dequl-source" });
 	});
 
 	it("retries answer-only on shared memory after max steps", async () => {

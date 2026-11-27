@@ -5,7 +5,7 @@ description: Repo picker, push-to-deploy webhooks, fix pull requests, and Git cr
 slug: github
 ---
 
-Connect a GitHub OAuth app once, and Dequel picks repos, installs
+Connect a GitHub OAuth app once, and Dequl picks repos, installs
 push-to-deploy webhooks, and opens AI fix pull requests on your behalf.
 GitLab, Bitbucket, Gitea/Forgejo, and self-hosted Git servers connect
 without an integration through per-project HTTPS credentials.
@@ -19,19 +19,19 @@ OAuth Apps** and walks through creating the app.
 
 Then click **Connect GitHub** (in Settings or in the project wizard) to
 authorize with `repo`, `read:org`, and `admin:repo_hook` scopes.
-Dequel stores the token server-side and shows a connected badge.
+Dequl stores the token server-side and shows a connected badge.
 
 ## What it unlocks
 
 - **Repo picker** — in the project wizard, choose **GitHub Account**
-  instead of pasting URLs: search your repos, and Dequel fills in the
+  instead of pasting URLs: search your repos, and Dequl fills in the
   clone URL, branch, and project name.
 - **Push-to-deploy** — toggle **Auto-deploy** on the Deployments tab.
-  Dequel registers a webhook (`/api/github/webhook`, HMAC-verified with
+  Dequl registers a webhook (`/api/github/webhook`, HMAC-verified with
   your secret) that rebuilds the project on every push to the tracked
   branch.
 - **Fix pull requests** — [AI Diagnosis](/docs/ai-diagnosis) can open a
-  `dequel-fix/*` branch and PR against your repo when it determines the
+  `dequl-fix/*` branch and PR against your repo when it determines the
   failure is in your code. Requires the connected account to have push
   access.
 

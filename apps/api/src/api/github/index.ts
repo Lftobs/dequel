@@ -14,7 +14,7 @@ import { fail, ok } from "../response";
 const validateToken = async (token: string): Promise<boolean> => {
 	try {
 		const res = await fetch("https://api.github.com/user", {
-			headers: { Authorization: `Bearer ${token}`, "User-Agent": "dequel" },
+			headers: { Authorization: `Bearer ${token}`, "User-Agent": "dequl" },
 		});
 		return res.ok;
 	} catch {
@@ -68,7 +68,7 @@ const fetchGitHub = async (path: string, token: string) => {
 		headers: {
 			Authorization: `Bearer ${token}`,
 			Accept: "application/vnd.github.v3+json",
-			"User-Agent": "dequel",
+			"User-Agent": "dequl",
 		},
 	});
 	if (!res.ok) {
@@ -85,7 +85,7 @@ const fetchGitHubWithBody = async (path: string, token: string, method: string, 
 			Authorization: `Bearer ${token}`,
 			Accept: "application/vnd.github.v3+json",
 			"Content-Type": "application/json",
-			"User-Agent": "dequel",
+			"User-Agent": "dequl",
 		},
 		body: body ? JSON.stringify(body) : undefined,
 	});
@@ -341,7 +341,7 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 		console.log(`[GitWebhook] received event=${event} delivery=${delivery}`);
 
 		if (!integration?.webhookSecret) {
-			console.log("[GitWebhook] rejected: no webhook secret configured on this Dequel instance");
+			console.log("[GitWebhook] rejected: no webhook secret configured on this Dequl instance");
 			set.status = 400;
 			return fail("GitHub webhook not configured");
 		}
@@ -366,14 +366,14 @@ export const githubRoutes = new Elysia({ prefix: "/github" })
 
 		if (signature.length !== expectedSig.length) {
 			console.log(
-				`[GitWebhook] rejected delivery=${delivery}: signature length mismatch (check webhook secret matches Dequel settings)`,
+				`[GitWebhook] rejected delivery=${delivery}: signature length mismatch (check webhook secret matches Dequl settings)`,
 			);
 			set.status = 401;
 			return fail("Invalid signature");
 		}
 		if (!crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signature))) {
 			console.log(
-				`[GitWebhook] rejected delivery=${delivery}: signature mismatch (check webhook secret matches Dequel settings)`,
+				`[GitWebhook] rejected delivery=${delivery}: signature mismatch (check webhook secret matches Dequl settings)`,
 			);
 			set.status = 401;
 			return fail("Invalid signature");

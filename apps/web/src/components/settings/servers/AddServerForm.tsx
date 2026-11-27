@@ -58,7 +58,7 @@ export function AddServerForm({ sshKeys, onServerAdded, onCancel }: AddServerFor
 			const result = await api.createAgentRegistrationToken({ name: agentName.trim() });
 			const controlPlane = window.location.origin;
 			setRegistrationCommand(
-				`docker run -d --name dequel-agent --cap-add=NET_ADMIN --device /dev/net/tun --restart unless-stopped -e DEQUEL_CONTROL_PLANE=${controlPlane} -e DEQUEL_REGISTRATION_TOKEN=${result.token} -v dequel-agent-data:/root/.dequel -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/lftobs/dequel/agent:latest`,
+				`docker run -d --name dequl-agent --cap-add=NET_ADMIN --device /dev/net/tun --restart unless-stopped -e DEQUL_CONTROL_PLANE=${controlPlane} -e DEQUL_REGISTRATION_TOKEN=${result.token} -v dequl-agent-data:/root/.dequl -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/lftobs/dequl/agent:latest`,
 			);
 		} catch (err) {
 			setRegistrationError(err instanceof Error ? err.message : "Could not create registration token");
@@ -107,7 +107,7 @@ export function AddServerForm({ sshKeys, onServerAdded, onCancel }: AddServerFor
 			{activeTab === "ssh" ? (
 				<form onSubmit={addSshServer} className="space-y-4">
 					<p className="text-xs text-muted-foreground leading-relaxed">
-						Connect directly to any cloud VPS over SSH. Dequel manages container orchestration without requiring static
+						Connect directly to any cloud VPS over SSH. Dequl manages container orchestration without requiring static
 						agent installation.
 					</p>
 					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">

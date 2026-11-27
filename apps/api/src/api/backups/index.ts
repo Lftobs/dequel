@@ -42,12 +42,12 @@ async function resolveTarget(targetId: string): Promise<BackupTarget> {
 			id: "internal",
 			type: "internal",
 			engine: "postgresql",
-			containerName: process.env.POSTGRES_CONTAINER || "dequel-postgres-1",
-			databaseName: process.env.POSTGRES_DB || "dequel",
+			containerName: process.env.POSTGRES_CONTAINER || "dequl-postgres-1",
+			databaseName: process.env.POSTGRES_DB || "dequl",
 			serverId: null,
 			credentials: {
-				username: process.env.POSTGRES_USER || "dequel",
-				password: process.env.POSTGRES_PASSWORD || "dequel",
+				username: process.env.POSTGRES_USER || "dequl",
+				password: process.env.POSTGRES_PASSWORD || "dequl",
 			},
 		};
 	}

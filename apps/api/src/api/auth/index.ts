@@ -50,7 +50,7 @@ export const authRoutes = new Elysia()
 		const isSecure = proto === "https" || request.url.startsWith("https://");
 		return { isSecure };
 	})
-	.post("/auth/login", async ({ body, request, cookie: { dequel_session, dequel_refresh }, set, isSecure }) => {
+	.post("/auth/login", async ({ body, request, cookie: { dequl_session, dequl_refresh }, set, isSecure }) => {
 		const { username, password } = body as { username?: string; password?: string };
 		if (!username || !password) {
 			set.status = 400;
@@ -69,10 +69,10 @@ export const authRoutes = new Elysia()
 		const accessToken = await signAccessToken(username);
 		const refreshToken = generateRefreshToken();
 		await storeRefreshToken(username, refreshToken);
-		dequel_session.value = accessToken;
-		dequel_session.set({ ...SESSION_COOKIE_OPTS, secure: isSecure });
-		dequel_refresh.value = refreshToken;
-		dequel_refresh.set({ ...REFRESH_COOKIE_OPTS, secure: isSecure });
+		dequl_session.value = accessToken;
+		dequl_session.set({ ...SESSION_COOKIE_OPTS, secure: isSecure });
+		dequl_refresh.value = refreshToken;
+		dequl_refresh.set({ ...REFRESH_COOKIE_OPTS, secure: isSecure });
 		await auditRequest(
 			request,
 			{ action: "auth.login", resourceType: "session", details: { username } },
@@ -80,19 +80,19 @@ export const authRoutes = new Elysia()
 		);
 		return ok({ username, expiresIn: 900 }, "Logged in");
 	})
-	.post("/auth/logout", async ({ cookie: { dequel_session, dequel_refresh } }) => {
-		const rt = dequel_refresh.value;
+	.post("/auth/logout", async ({ cookie: { dequl_session, dequl_refresh } }) => {
+		const rt = dequl_refresh.value;
 		if (rt) {
 			try {
 				await blacklistRefreshToken(rt);
 			} catch {}
 		}
-		dequel_session.remove();
-		dequel_refresh.remove();
+		dequl_session.remove();
+		dequl_refresh.remove();
 		return ok(null, "Logged out");
 	})
-	.post("/auth/refresh", async ({ cookie: { dequel_session, dequel_refresh }, set, isSecure }) => {
-		const rt = dequel_refresh.value;
+	.post("/auth/refresh", async ({ cookie: { dequl_session, dequl_refresh }, set, isSecure }) => {
+		const rt = dequl_refresh.value;
 		if (!rt) {
 			set.status = 401;
 			return fail("No refresh token");
@@ -106,14 +106,14 @@ export const authRoutes = new Elysia()
 		const accessToken = await signAccessToken(username);
 		const newRefreshToken = generateRefreshToken();
 		await storeRefreshToken(username, newRefreshToken);
-		dequel_session.value = accessToken;
-		dequel_session.set({ ...SESSION_COOKIE_OPTS, secure: isSecure });
-		dequel_refresh.value = newRefreshToken;
-		dequel_refresh.set({ ...REFRESH_COOKIE_OPTS, secure: isSecure });
+		dequl_session.value = accessToken;
+		dequl_session.set({ ...SESSION_COOKIE_OPTS, secure: isSecure });
+		dequl_refresh.value = newRefreshToken;
+		dequl_refresh.set({ ...REFRESH_COOKIE_OPTS, secure: isSecure });
 		return ok({ username, expiresIn: 900 }, "Token refreshed");
 	})
-	.get("/auth/me", async ({ cookie: { dequel_session, dequel_refresh }, isSecure }) => {
-		const token = dequel_session.value;
+	.get("/auth/me", async ({ cookie: { dequl_session, dequl_refresh }, isSecure }) => {
+		const token = dequl_session.value;
 		if (token) {
 			const payload = await verifyAccessToken(token);
 			if (payload) {
@@ -125,7 +125,7 @@ export const authRoutes = new Elysia()
 				});
 			}
 		}
-		const rt = dequel_refresh.value;
+		const rt = dequl_refresh.value;
 		if (rt) {
 			const username = await validateRefreshToken(rt);
 			if (username) {
@@ -133,10 +133,10 @@ export const authRoutes = new Elysia()
 				const accessToken = await signAccessToken(username);
 				const newRefreshToken = generateRefreshToken();
 				await storeRefreshToken(username, newRefreshToken);
-				dequel_session.value = accessToken;
-				dequel_session.set({ ...SESSION_COOKIE_OPTS, secure: isSecure });
-				dequel_refresh.value = newRefreshToken;
-				dequel_refresh.set({ ...REFRESH_COOKIE_OPTS, secure: isSecure });
+				dequl_session.value = accessToken;
+				dequl_session.set({ ...SESSION_COOKIE_OPTS, secure: isSecure });
+				dequl_refresh.value = newRefreshToken;
+				dequl_refresh.set({ ...REFRESH_COOKIE_OPTS, secure: isSecure });
 				return ok({
 					authenticated: true,
 					username,

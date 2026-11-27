@@ -4,21 +4,21 @@ category: Getting Started
 slug: docs
 ---
 
-Dequel is a self-hosted deployment platform. You connect your servers,
-push code from Git or a ZIP file, and Dequel builds, runs, routes, and
+Dequl is a self-hosted deployment platform. You connect your servers,
+push code from Git or a ZIP file, and Dequl builds, runs, routes, and
 monitors your apps — with automatic HTTPS, managed databases, horizontal
 autoscaling, and AI-assisted failure diagnosis built in.
 
-If you have used Heroku, Render, or Railway, Dequel gives you that same
+If you have used Heroku, Render, or Railway, Dequl gives you that same
 push-to-deploy workflow on infrastructure you own. There is no control
 plane phoning home: the dashboard, API, builders, and observability stack
 all run as containers on your machine.
 
-## How Dequel works
+## How Dequl works
 
 When you create a project and trigger a deployment:
 
-1. Dequel fetches your code from a Git repository (or unpacks your ZIP
+1. Dequl fetches your code from a Git repository (or unpacks your ZIP
    upload) into a build workspace.
 2. It detects your framework automatically with Railpack — no Dockerfile
    required — or follows your `docker-compose.yml` for multi-container
@@ -33,7 +33,7 @@ When you create a project and trigger a deployment:
    alert rules, and autoscaling policies all run against the deployment.
 
 :::note[Key concept: projects]
-A project in Dequel is a single service — its source, build settings,
+A project in Dequl is a single service — its source, build settings,
 environment variables, volumes, domains, scaling policy, alert rules,
 and deployment history. Databases are separate managed resources you
 attach to projects.

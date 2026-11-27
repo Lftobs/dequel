@@ -20,7 +20,7 @@ export interface SshBuildScriptInput {
 
 const sh = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
 
-const GENERATOR_EOF = "DEQUEL_RAILPACK_GEN_EOF";
+const GENERATOR_EOF = "DEQUL_RAILPACK_GEN_EOF";
 
 const GENERATOR_CLI = `const [workspace, sourceDir, projectType, buildCommand, startCommand, installCommand, outputDir] =
 	process.argv.slice(2);
@@ -50,7 +50,7 @@ export const buildRemoteDeployScript = (input: SshBuildScriptInput): string => {
 			? `git checkout ${sh(input.branch)}`
 			: "true";
 
-	const remoteWorkspace = input.workspaceRoot.startsWith("/app") ? "$HOME/.dequel/workspace" : input.workspaceRoot;
+	const remoteWorkspace = input.workspaceRoot.startsWith("/app") ? "$HOME/.dequl/workspace" : input.workspaceRoot;
 
 	const generatorArgs = [
 		'"$PROJECT_DIR"',
@@ -123,12 +123,12 @@ export const buildRemoteDeployScript = (input: SshBuildScriptInput): string => {
 		"fi",
 		"",
 		'echo "[build] Generating dynamic railpack.json for caching and monorepo resolution"',
-		`cat > "$PROJECT_DIR/.dequel-railpack-gen.ts" <<'${GENERATOR_EOF}'`,
+		`cat > "$PROJECT_DIR/.dequl-railpack-gen.ts" <<'${GENERATOR_EOF}'`,
 		input.railpackGenerator,
 		GENERATOR_CLI,
 		GENERATOR_EOF,
-		`bun "$PROJECT_DIR/.dequel-railpack-gen.ts" ${generatorArgs}`,
-		'rm -f "$PROJECT_DIR/.dequel-railpack-gen.ts"',
+		`bun "$PROJECT_DIR/.dequl-railpack-gen.ts" ${generatorArgs}`,
+		'rm -f "$PROJECT_DIR/.dequl-railpack-gen.ts"',
 		"",
 		'SHA="$(git rev-parse HEAD)"',
 		`echo "[build] Building image ${input.imageTag} with Railpack"`,
@@ -173,7 +173,7 @@ export const cleanupRemoteWorkspace = async (
 ): Promise<void> => {
 	const { config } = await import("../utils/config");
 	const { runRemoteScript } = await import("../utils/ssh");
-	const remoteWorkspace = config.workspaceRoot.startsWith("/app") ? "$HOME/.dequel/workspace" : config.workspaceRoot;
+	const remoteWorkspace = config.workspaceRoot.startsWith("/app") ? "$HOME/.dequl/workspace" : config.workspaceRoot;
 	const runFn = run ?? runRemoteScript;
 	await runFn(server, `rm -rf "${remoteWorkspace}/${deploymentId}"`).catch(() => {});
 };

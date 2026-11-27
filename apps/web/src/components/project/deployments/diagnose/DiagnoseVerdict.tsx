@@ -10,9 +10,9 @@ interface DiagnoseVerdictProps {
 	summary: string;
 	fixSteps: string[] | undefined;
 	userFix?: { title: string; body: string; suggestedDiff: string | null };
-	dequelReport?: { problem: string; cause: string; proposedFix: string };
-	dequelVersion?: string;
-	dequelStale?: boolean;
+	dequlReport?: { problem: string; cause: string; proposedFix: string };
+	dequlVersion?: string;
+	dequlStale?: boolean;
 	slackPosted: boolean;
 	isGit: boolean;
 	prUrl: string | null;
@@ -25,9 +25,9 @@ export function DiagnoseVerdict({
 	summary,
 	fixSteps = [],
 	userFix,
-	dequelReport,
-	dequelVersion,
-	dequelStale,
+	dequlReport,
+	dequlVersion,
+	dequlStale,
 	slackPosted,
 	isGit,
 	prUrl,
@@ -42,19 +42,19 @@ export function DiagnoseVerdict({
 						Diagnosis Verdict
 					</CardTitle>
 					<Badge
-						variant={cause === "user-source" ? "warning" : cause === "dequel-source" ? "destructive" : "secondary"}
+						variant={cause === "user-source" ? "warning" : cause === "dequl-source" ? "destructive" : "secondary"}
 						className={`text-xs font-medium ${
 							cause === "user-source"
 								? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-								: cause === "dequel-source"
+								: cause === "dequl-source"
 									? "bg-red-500/15 text-red-300 border-red-500/30"
 									: "bg-muted text-muted-foreground"
 						}`}
 					>
 						{cause === "user-source"
 							? "Application Code Issue"
-							: cause === "dequel-source"
-								? "Dequel Platform Issue"
+							: cause === "dequl-source"
+								? "Dequl Platform Issue"
 								: "Inconclusive"}
 					</Badge>
 				</div>
@@ -130,21 +130,21 @@ export function DiagnoseVerdict({
 					</div>
 				)}
 
-				{dequelReport && (
+				{dequlReport && (
 					<div className="space-y-2.5 pt-2 border-t border-border/30">
 						<div className="space-y-1">
 							<span className="text-muted-foreground text-[11px] uppercase tracking-wider font-semibold">Problem</span>
-							<p className="text-foreground">{dequelReport.problem}</p>
+							<p className="text-foreground">{dequlReport.problem}</p>
 						</div>
 
-						{dequelVersion && (
+						{dequlVersion && (
 							<div className="space-y-0.5">
 								<span className="text-muted-foreground text-[11px] uppercase tracking-wider font-semibold">
-									Dequel Version
+									Dequl Version
 								</span>
 								<p className="font-mono text-xs">
-									{dequelVersion}
-									{dequelStale && <span className="text-amber-400"> (potentially stale build)</span>}
+									{dequlVersion}
+									{dequlStale && <span className="text-amber-400"> (potentially stale build)</span>}
 								</p>
 							</div>
 						)}
@@ -153,19 +153,19 @@ export function DiagnoseVerdict({
 							<span className="text-muted-foreground text-[11px] uppercase tracking-wider font-semibold">
 								Root Cause
 							</span>
-							<p className="text-foreground">{dequelReport.cause}</p>
+							<p className="text-foreground">{dequlReport.cause}</p>
 						</div>
 
 						<div className="space-y-1">
 							<span className="text-muted-foreground text-[11px] uppercase tracking-wider font-semibold">
 								Proposed Platform Fix
 							</span>
-							<p className="text-foreground">{dequelReport.proposedFix}</p>
+							<p className="text-foreground">{dequlReport.proposedFix}</p>
 						</div>
 
 						{slackPosted ? (
 							<p className="text-emerald-400 flex items-center gap-1.5 pt-1">
-								<CheckCircle2 className="h-3.5 w-3.5" /> Incident automatically submitted to the Dequel team Slack
+								<CheckCircle2 className="h-3.5 w-3.5" /> Incident automatically submitted to the Dequl team Slack
 								channel.
 							</p>
 						) : (

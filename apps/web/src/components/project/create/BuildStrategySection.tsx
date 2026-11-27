@@ -76,7 +76,7 @@ export function BuildStrategySection({
 					<Container className="h-4 w-4 text-orange-500" />
 					Build & Runtime Strategy
 				</h3>
-				<p className="text-xs text-zinc-400 mt-1">Select how Dequel builds and manages your application containers.</p>
+				<p className="text-xs text-zinc-400 mt-1">Select how Dequl builds and manages your application containers.</p>
 			</div>
 
 			<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

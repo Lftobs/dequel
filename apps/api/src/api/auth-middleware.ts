@@ -21,7 +21,7 @@ export const authMiddleware = (app: Elysia) =>
 		if (path.startsWith("/api/webhooks/deploy/")) return;
 
 		const cookie = request.headers.get("cookie") || "";
-		const match = cookie.match(/(?:^|;\s*)dequel_session=([^;]+)/);
+		const match = cookie.match(/(?:^|;\s*)dequl_session=([^;]+)/);
 		if (match) {
 			const { verifyAccessToken } = await import("../utils/auth");
 			const payload = await verifyAccessToken(match[1]);

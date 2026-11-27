@@ -29,7 +29,7 @@ const generate = async (dir: string): Promise<GatewayCert> => {
 		"-out",
 		certPath,
 		"-subj",
-		"/CN=dequel-gateway",
+		"/CN=dequl-gateway",
 	]);
 	return { key: await readFile(keyPath, "utf8"), cert: await readFile(certPath, "utf8") };
 };

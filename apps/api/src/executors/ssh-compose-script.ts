@@ -19,10 +19,10 @@ export interface RemoteComposeVarRef {
 }
 
 export const parseRemoteComposeVarsMarker = (stdout: string): RemoteComposeVarRef[] => {
-	const line = stdout.split("\n").find((l) => l.startsWith("DEQUEL_COMPOSE_VARS:"));
+	const line = stdout.split("\n").find((l) => l.startsWith("DEQUL_COMPOSE_VARS:"));
 	if (!line) return [];
 	try {
-		const parsed = JSON.parse(line.slice("DEQUEL_COMPOSE_VARS:".length).trim());
+		const parsed = JSON.parse(line.slice("DEQUL_COMPOSE_VARS:".length).trim());
 		return Array.isArray(parsed) ? parsed : [];
 	} catch {
 		return [];
@@ -38,7 +38,7 @@ export const buildRemoteComposeScript = (input: RemoteComposeScriptInput): strin
 			? `git checkout ${sh(input.branch)}`
 			: "true";
 
-	const remoteWorkspace = input.workspaceRoot.startsWith("/app") ? "$HOME/.dequel/workspace" : input.workspaceRoot;
+	const remoteWorkspace = input.workspaceRoot.startsWith("/app") ? "$HOME/.dequl/workspace" : input.workspaceRoot;
 
 	const envLines = input.environmentVariables.map((v) => `${v.key}=${v.value}`).join("\n");
 	const envRecord = JSON.stringify(Object.fromEntries(input.environmentVariables.map((v) => [v.key, v.value])));
@@ -81,17 +81,17 @@ export const buildRemoteComposeScript = (input: RemoteComposeScriptInput): strin
 		"done",
 		'if [ -z "$COMPOSE_FILE" ]; then echo "[compose] ERROR: no compose file found"; exit 1; fi',
 		"",
-		`export DEQUEL_EXTRA_ENV=${sh(envRecord)}`,
-		`export DEQUEL_ENV_SCOPES=${sh(scopeRecord)}`,
+		`export DEQUL_EXTRA_ENV=${sh(envRecord)}`,
+		`export DEQUL_ENV_SCOPES=${sh(scopeRecord)}`,
 		"",
 		"if command -v python3 >/dev/null 2>&1; then",
-		"DEQUEL_COMPOSE_FILE=\"$COMPOSE_FILE\" python3 - <<'DEQUEL_PREFLIGHT_EOF'",
+		"DEQUL_COMPOSE_FILE=\"$COMPOSE_FILE\" python3 - <<'DEQUL_PREFLIGHT_EOF'",
 		"import json, os, re, subprocess, sys",
 		"",
-		'compose_file = os.environ["DEQUEL_COMPOSE_FILE"]',
-		'envs = json.loads(os.environ["DEQUEL_EXTRA_ENV"])',
+		'compose_file = os.environ["DEQUL_COMPOSE_FILE"]',
+		'envs = json.loads(os.environ["DEQUL_EXTRA_ENV"])',
 		"try:",
-		'    scopes = json.loads(os.environ.get("DEQUEL_ENV_SCOPES") or "{}")',
+		'    scopes = json.loads(os.environ.get("DEQUL_ENV_SCOPES") or "{}")',
 		"except Exception:",
 		"    scopes = {}",
 		"",
@@ -126,7 +126,7 @@ export const buildRemoteComposeScript = (input: RemoteComposeScriptInput): strin
 		'    add_ref(m.group(1), "plain")',
 		"",
 		"if refs:",
-		'    print("DEQUEL_COMPOSE_VARS: " + json.dumps(list(refs.values())))',
+		'    print("DEQUL_COMPOSE_VARS: " + json.dumps(list(refs.values())))',
 		"",
 		"missing = []",
 		"for ref in refs.values():",
@@ -174,15 +174,15 @@ export const buildRemoteComposeScript = (input: RemoteComposeScriptInput): strin
 		'            lines.append("      args:")',
 		"            for k, v in build:",
 		'                lines.append("        %s: %s" % (k, json.dumps(v.replace("$", "$$"))))',
-		'    open("dequel-env-override.yml", "w").write("\\n".join(lines) + "\\n")',
+		'    open("dequl-env-override.yml", "w").write("\\n".join(lines) + "\\n")',
 		'    print("[compose] Injected %d runtime env var(s) and %d build arg(s) into %d service(s)" % (len(runtime), len(build), len(services)))',
-		"DEQUEL_PREFLIGHT_EOF",
+		"DEQUL_PREFLIGHT_EOF",
 		"else:",
 		'  echo "[compose] WARNING: python3 not found; skipping compose variable pre-flight"',
 		"fi",
 		"",
 		'OVERRIDE_ARGS=""',
-		'if [ -f dequel-env-override.yml ]; then OVERRIDE_ARGS="-f dequel-env-override.yml"; fi',
+		'if [ -f dequl-env-override.yml ]; then OVERRIDE_ARGS="-f dequl-env-override.yml"; fi',
 		`echo "[compose] Building and starting stack (project: deploy-${input.deploymentId})"`,
 		`docker compose -f "$COMPOSE_FILE" $OVERRIDE_ARGS -p deploy-${input.deploymentId} build`,
 		`docker compose -f "$COMPOSE_FILE" $OVERRIDE_ARGS -p deploy-${input.deploymentId} up -d`,

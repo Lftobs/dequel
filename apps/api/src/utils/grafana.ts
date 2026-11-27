@@ -44,9 +44,9 @@ export async function ensureProjectDashboard(
 
 	const dashboard: GrafanaDashboard = {
 		dashboard: {
-			title: `Dequel \u2014 ${projectName}`,
-			uid: `dequel-project-${slug}`,
-			tags: ["dequel", "project", slug],
+			title: `Dequl \u2014 ${projectName}`,
+			uid: `dequl-project-${slug}`,
+			tags: ["dequl", "project", slug],
 			schemaVersion: 39,
 			version: 1,
 			timezone: "browser",

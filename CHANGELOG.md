@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Monitoring stack hardened: Prometheus now validates TSDB blocks and quarantines corrupted ones on startup; Promtail scoped to `dequel_net` network; Grafana datasources use stable UIDs for reliable dashboard provisioning
+- Monitoring stack hardened: Prometheus now validates TSDB blocks and quarantines corrupted ones on startup; Promtail scoped to `dequl_net` network; Grafana datasources use stable UIDs for reliable dashboard provisioning
 - `PUBLIC_URL` is now derived from `CADDY_BASE_DOMAIN` instead of requiring separate configuration
 - Refactored infrastructure monitoring configs into dedicated files for maintainability
 
@@ -72,11 +72,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `docker-compose.yml` now references versioned images from `ghcr.io/dequel/*` with local build as fallback
+- `docker-compose.yml` now references versioned images from `ghcr.io/dequl/*` with local build as fallback
 - README updated with new install flow
 
 ### Fixed
 
 - Railpack build timeout handling and log scrolling
 
-[0.1.0]: https://github.com/tobshub/dequel/releases/tag/v0.1.0
+[0.1.0]: https://github.com/tobshub/dequl/releases/tag/v0.1.0

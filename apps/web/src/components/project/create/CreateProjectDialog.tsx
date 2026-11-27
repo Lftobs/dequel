@@ -5,7 +5,7 @@ import * as api from "../../../api/client";
 import { getGithubIntegration } from "../../../api/client";
 import { useCreateProject } from "../../../hooks/useProjects";
 import { cn } from "../../../lib/utils";
-import type { DatabaseType, GitProvider, ImagePullPolicy, Server as DequelServer, GithubRepo } from "../../../types";
+import type { DatabaseType, GitProvider, ImagePullPolicy, Server as DequlServer, GithubRepo } from "../../../types";
 import type { FrameworkPreset } from "../../../utils/presets";
 import { Button } from "../../ui/button";
 import {
@@ -34,7 +34,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
 
 	const { data: servers = [] } = useQuery({
 		queryKey: ["servers"],
-		queryFn: () => api.listServers().catch(() => [] as DequelServer[]),
+		queryFn: () => api.listServers().catch(() => [] as DequlServer[]),
 		staleTime: 30_000,
 	});
 

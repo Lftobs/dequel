@@ -1,13 +1,13 @@
 ---
 title: AI Diagnosis
 category: Deployment
-description: Diagnose failed builds with an AI agent, then apply one-click fix PRs or report Dequel bugs.
+description: Diagnose failed builds with an AI agent, then apply one-click fix PRs or report Dequl bugs.
 slug: ai-diagnosis
 ---
 
-When a deployment fails, Dequel lets you hand the failure to an AI agent. The agent runs inside an isolated sandbox container holding a fresh checkout of Dequel's own source and your project's source. It looks up the files it needs itself, decides whether the fault is in your code or in Dequel itself, and proposes what to do next. Every write action requires your explicit click — the one exception is a Dequel bug report, which is posted to Slack automatically once the diagnosis finishes.
+When a deployment fails, Dequl lets you hand the failure to an AI agent. The agent runs inside an isolated sandbox container holding a fresh checkout of Dequl's own source and your project's source. It looks up the files it needs itself, decides whether the fault is in your code or in Dequl itself, and proposes what to do next. Every write action requires your explicit click — the one exception is a Dequl bug report, which is posted to Slack automatically once the diagnosis finishes.
 
-The sandbox persists between diagnoses: Dequel's source is cloned once and updated to your running version on each run, while your project's source is pulled fresh per diagnosis and cleared afterwards.
+The sandbox persists between diagnoses: Dequl's source is cloned once and updated to your running version on each run, while your project's source is pulled fresh per diagnosis and cleared afterwards.
 
 ## Configure a provider key
 
@@ -24,17 +24,17 @@ Follow these steps to run a diagnosis.
 5. Watch the agent work through four stages: reading logs, investigating in the sandbox, explaining the fix, and drafting the proposal.
 6. Read the verdict and the explanation.
 
-The verdict is one of three outcomes. **Your code** means the fault is in your source. **Dequel** means the fault is in Dequel's builder or platform code. **Inconclusive** means the evidence was not sufficient, and no action buttons are shown.
+The verdict is one of three outcomes. **Your code** means the fault is in your source. **Dequl** means the fault is in Dequl's builder or platform code. **Inconclusive** means the evidence was not sufficient, and no action buttons are shown.
 
 ## Fix your code with one click
 
-When the verdict is **Your code** and the project deploys from Git, the sheet shows a **Create Fix Pull Request** button. Clicking it sends the agent back into the sandbox to edit the project source, still read-only everywhere else. Dequel takes the resulting diff, applies it to a new `dequel-fix/*` branch, and opens a pull request against your repository, so you only review and merge. If the agent cannot produce a change, or the diff does not apply cleanly, Dequel reports the problem and you apply the fix manually. This action is idempotent: repeated clicks return the same pull request.
+When the verdict is **Your code** and the project deploys from Git, the sheet shows a **Create Fix Pull Request** button. Clicking it sends the agent back into the sandbox to edit the project source, still read-only everywhere else. Dequl takes the resulting diff, applies it to a new `dequl-fix/*` branch, and opens a pull request against your repository, so you only review and merge. If the agent cannot produce a change, or the diff does not apply cleanly, Dequl reports the problem and you apply the fix manually. This action is idempotent: repeated clicks return the same pull request.
 
-> **Note:** Fix PRs require a connected GitHub account with repository access. Connect it under **Settings → GitHub Integration** first. Without it, Dequel refuses to proceed.
+> **Note:** Fix PRs require a connected GitHub account with repository access. Connect it under **Settings → GitHub Integration** first. Without it, Dequl refuses to proceed.
 
-## Report a Dequel bug
+## Report a Dequl bug
 
-When the verdict is **Dequel**, Dequel posts the drafted report to the Dequel team's Slack channel automatically as soon as the diagnosis completes — no button, no approval step. The post carries the report in problem, Dequel version, root cause, proposed fix order, with the investigated source revision attached. If the channel is not configured, the run still completes and the sheet says so; copy the report text and share it manually.
+When the verdict is **Dequl**, Dequl posts the drafted report to the Dequl team's Slack channel automatically as soon as the diagnosis completes — no button, no approval step. The post carries the report in problem, Dequl version, root cause, proposed fix order, with the investigated source revision attached. If the channel is not configured, the run still completes and the sheet says so; copy the report text and share it manually.
 
 ## Limits
 

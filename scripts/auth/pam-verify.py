@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Authenticate a Linux user via PAM and check dequel group membership.
+"""Authenticate a Linux user via PAM and check dequl group membership.
 
 Reads JSON { username, password } from stdin.
 Exits 0 with { "ok": true, "username": "..." } on success.
@@ -11,8 +11,8 @@ import ctypes
 import ctypes.util
 import subprocess
 
-GRP_NAME = "dequel"
-SERVICE = "dequel"
+GRP_NAME = "dequl"
+SERVICE = "dequl"
 
 PAM_PROMPT_ECHO_OFF = 1
 PAM_SUCCESS = 0

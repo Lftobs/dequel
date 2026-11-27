@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Laptop, LayoutTemplate, Rocket, Server, X } from "lucide-react";
 import { useState } from "react";
 import * as api from "../../api/client";
-import type { DeployTemplateMeta, Server as DequelServer } from "../../types";
+import type { DeployTemplateMeta, Server as DequlServer } from "../../types";
 import { getDeploymentTargets } from "../project/create/DeploymentTargetSection";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { templateLogo } from "./logos";
@@ -13,7 +13,7 @@ interface TemplateFlowProps {
 	showHeading?: boolean;
 }
 
-const resourceHint = (s: DequelServer): string | null => {
+const resourceHint = (s: DequlServer): string | null => {
 	if (!s.memoryTotalMb || s.memoryUsedMb == null) return null;
 	const freeGb = ((s.memoryTotalMb - s.memoryUsedMb) / 1024).toFixed(1);
 	const totalGb = (s.memoryTotalMb / 1024).toFixed(0);
@@ -47,7 +47,7 @@ export function TemplateFlow({ onDeployed, wide = false, showHeading = true }: T
 	});
 	const { data: servers = [] } = useQuery({
 		queryKey: ["servers"],
-		queryFn: () => api.listServers().catch(() => [] as DequelServer[]),
+		queryFn: () => api.listServers().catch(() => [] as DequlServer[]),
 	});
 	const serverTargets = getDeploymentTargets(servers).filter((s) => s.mode === "local");
 	const [selected, setSelected] = useState<DeployTemplateMeta | null>(null);

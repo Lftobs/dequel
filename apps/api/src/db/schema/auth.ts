@@ -14,7 +14,7 @@ export const githubIntegrations = pgTable("github_integrations", {
 	clientSecret: text("client_secret").notNull(),
 	clientSecretIv: text("client_secret_iv"),
 	clientSecretTag: text("client_secret_tag"),
-	appName: text("app_name").notNull().default("Dequel"),
+	appName: text("app_name").notNull().default("Dequl"),
 	webhookSecret: text("webhook_secret"),
 	webhookSecretIv: text("webhook_secret_iv"),
 	webhookSecretTag: text("webhook_secret_tag"),

@@ -5,7 +5,7 @@ import { tegami } from "tegami";
 import { runCli } from "tegami/cli";
 import type { Draft, TegamiPlugin } from "tegami";
 
-const REPO = "Lftobs/dequel";
+const REPO = "Lftobs/dequl";
 
 function getPreviousTag(): string {
   try {
@@ -95,7 +95,7 @@ function docsChangelogPlugin(): TegamiPlugin {
 
       for (const [pkgId, packageDraft] of draft.getPackageDrafts()) {
         if (!packageDraft.changelogs?.length) continue;
-        if (pkgId === "npm:dequel") continue;
+        if (pkgId === "npm:dequl") continue;
         const pkg = this.graph.get(pkgId);
         if (!pkg) continue;
 
@@ -130,7 +130,7 @@ ${body}
       }
 
       for (const [pkgId, packageDraft] of draft.getPackageDrafts()) {
-        if (pkgId === "npm:dequel") continue;
+        if (pkgId === "npm:dequl") continue;
         packageDraft.changelogs = [];
       }
     },
@@ -145,16 +145,16 @@ const paper = tegami({
     docsChangelogPlugin(),
   ],
   groups: {
-    dequel: {
+    dequl: {
       syncBump: true,
       syncGitTag: true,
     },
   },
   packages: {
-    "npm:dequel": { publish: false },
-    "npm:dequel-api": { group: "dequel", publish: false },
-    "npm:dequel-web": { group: "dequel", publish: false },
-    "npm:dequel-docs": { group: "dequel", publish: false },
+    "npm:dequl": { publish: false },
+    "npm:dequl-api": { group: "dequl", publish: false },
+    "npm:dequl-web": { group: "dequl", publish: false },
+    "npm:dequl-docs": { group: "dequl", publish: false },
   },
 });
 

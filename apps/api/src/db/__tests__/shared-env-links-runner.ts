@@ -10,7 +10,7 @@ import {
 } from "../repo/shared-env-vars";
 import * as schema from "../schema";
 
-const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgresql://dequel:dequel@localhost:5433/dequel";
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgresql://dequl:dequl@localhost:5433/dequl";
 const pool = new Pool({ connectionString: TEST_DATABASE_URL });
 const db = drizzle(pool, { schema });
 setDbProvider(async () => db);

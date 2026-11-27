@@ -2,7 +2,7 @@ export type LlmProvider = "openai" | "anthropic" | "gemini" | "groq" | "ollama" 
 
 export type DiagStageName = "triage" | "investigate" | "explain" | "propose";
 
-export type CauseKind = "user-source" | "dequel-source" | "unknown";
+export type CauseKind = "user-source" | "dequl-source" | "unknown";
 
 export type TriageConfidence = "low" | "medium" | "high";
 
@@ -53,7 +53,7 @@ export interface UserFix {
 	suggestedDiff: string | null;
 }
 
-export interface DequelReport {
+export interface DequlReport {
 	problem: string;
 	cause: string;
 	proposedFix: string;
@@ -62,7 +62,7 @@ export interface DequelReport {
 export interface Proposal {
 	cause: CauseKind;
 	userFix?: UserFix;
-	dequelReport?: DequelReport;
+	dequlReport?: DequlReport;
 }
 
 export interface DiagRun {
@@ -106,8 +106,8 @@ export interface Investigation {
 	culpritPaths: string[];
 	rationale: string;
 	keyEvidence: string[];
-	dequelRev: string;
-	dequelStale: boolean;
+	dequlRev: string;
+	dequlStale: boolean;
 }
 
 export interface InvestigateInput {

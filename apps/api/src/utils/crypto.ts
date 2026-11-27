@@ -5,7 +5,7 @@ const IV_LEN = 12;
 
 export const DEFAULT_ENV_ENCRYPTION_KEY = "dev-env-key-change-me";
 
-export const deriveKey = (secret: string) => scryptSync(secret, "dequel-env", 32);
+export const deriveKey = (secret: string) => scryptSync(secret, "dequl-env", 32);
 
 export const encryptValue = (value: string, secret: string) => {
 	const iv = randomBytes(IV_LEN);

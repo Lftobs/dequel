@@ -55,7 +55,7 @@ export const fixdiagRoutes = new Elysia()
 			set.status = res.status;
 			return fail(res.message);
 		}
-		return ok(res.data, "Report posted to Dequel Slack");
+		return ok(res.data, "Report posted to Dequl Slack");
 	})
 	.get("/diagnoses/:id/stream", async ({ params: { id }, request, set }: any) => {
 		const run = await getDiagRun(String(id));

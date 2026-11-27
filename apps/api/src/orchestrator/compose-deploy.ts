@@ -232,7 +232,7 @@ export const deployComposeStack = async (options: ComposeDeployOptions): Promise
 			rows,
 		);
 		if (overrideYaml) {
-			overridePath = join(workspacePath, "dequel-env-override.yml");
+			overridePath = join(workspacePath, "dequl-env-override.yml");
 			await writeFile(overridePath, overrideYaml);
 			const runtimeCount = rows.filter((r) => r.scope !== "build").length;
 			const buildCount = rows.filter((r) => r.scope !== "runtime").length;

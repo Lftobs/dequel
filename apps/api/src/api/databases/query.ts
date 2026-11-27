@@ -104,9 +104,9 @@ export const getDatabaseTables = async (dbRecord: Database): Promise<TableInfo[]
             try { count = db[name].estimatedDocumentCount(); } catch {}
             return { name, type: 'collection', rowCount: count };
         });
-        return '__DEQUEL_JSON_START__' + EJSON.stringify(res) + '__DEQUEL_JSON_END__';
+        return '__DEQUL_JSON_START__' + EJSON.stringify(res) + '__DEQUL_JSON_END__';
     } catch (e) {
-        return '__DEQUEL_JSON_START__' + EJSON.stringify(db.getCollectionNames().map(name => ({ name, type: 'collection' }))) + '__DEQUEL_JSON_END__';
+        return '__DEQUL_JSON_START__' + EJSON.stringify(db.getCollectionNames().map(name => ({ name, type: 'collection' }))) + '__DEQUL_JSON_END__';
     }
 })()
 `;
@@ -128,11 +128,11 @@ export const getDatabaseTables = async (dbRecord: Database): Promise<TableInfo[]
 				server,
 			);
 			if (res.code === 0) {
-				const startIdx = res.stdout.indexOf("__DEQUEL_JSON_START__");
-				const endIdx = res.stdout.indexOf("__DEQUEL_JSON_END__");
+				const startIdx = res.stdout.indexOf("__DEQUL_JSON_START__");
+				const endIdx = res.stdout.indexOf("__DEQUL_JSON_END__");
 				if (startIdx !== -1 && endIdx !== -1) {
 					try {
-						const jsonStr = res.stdout.substring(startIdx + "__DEQUEL_JSON_START__".length, endIdx);
+						const jsonStr = res.stdout.substring(startIdx + "__DEQUL_JSON_START__".length, endIdx);
 						const list = JSON.parse(jsonStr);
 						if (Array.isArray(list)) return list;
 					} catch {}
@@ -318,16 +318,16 @@ export const executeDatabaseQuery = async (dbRecord: Database, query: string): P
         if (__res && typeof __res.toArray === 'function') {
             __res = __res.toArray();
         }
-        return '__DEQUEL_JSON_START__' + EJSON.stringify(__res) + '__DEQUEL_JSON_END__';
+        return '__DEQUL_JSON_START__' + EJSON.stringify(__res) + '__DEQUL_JSON_END__';
     } catch (e) {
         try {
             let __res2 = eval(${JSON.stringify(query)});
             if (__res2 && typeof __res2.toArray === 'function') {
                 __res2 = __res2.toArray();
             }
-            return '__DEQUEL_JSON_START__' + EJSON.stringify(__res2) + '__DEQUEL_JSON_END__';
+            return '__DEQUL_JSON_START__' + EJSON.stringify(__res2) + '__DEQUL_JSON_END__';
         } catch (e2) {
-            return '__DEQUEL_JSON_START__' + EJSON.stringify({ __mongo_error: e2.message || String(e2) }) + '__DEQUEL_JSON_END__';
+            return '__DEQUL_JSON_START__' + EJSON.stringify({ __mongo_error: e2.message || String(e2) }) + '__DEQUL_JSON_END__';
         }
     }
 })()
@@ -352,10 +352,10 @@ export const executeDatabaseQuery = async (dbRecord: Database, query: string): P
 		const executionTimeMs = Date.now() - startTime;
 
 		if (res.code === 0) {
-			const startIdx = res.stdout.indexOf("__DEQUEL_JSON_START__");
-			const endIdx = res.stdout.indexOf("__DEQUEL_JSON_END__");
+			const startIdx = res.stdout.indexOf("__DEQUL_JSON_START__");
+			const endIdx = res.stdout.indexOf("__DEQUL_JSON_END__");
 			if (startIdx !== -1 && endIdx !== -1) {
-				const jsonStr = res.stdout.substring(startIdx + "__DEQUEL_JSON_START__".length, endIdx);
+				const jsonStr = res.stdout.substring(startIdx + "__DEQUL_JSON_START__".length, endIdx);
 				try {
 					const parsed = JSON.parse(jsonStr);
 					if (parsed && typeof parsed === "object" && "__mongo_error" in parsed) {

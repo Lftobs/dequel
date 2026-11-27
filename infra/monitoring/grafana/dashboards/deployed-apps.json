@@ -1,7 +1,7 @@
 {
-  "title": "Dequel — System & Apps Overview",
-  "uid": "dequel-deployed-apps",
-  "tags": ["dequel"],
+  "title": "Dequl — System & Apps Overview",
+  "uid": "dequl-deployed-apps",
+  "tags": ["dequl"],
   "schemaVersion": 39,
   "version": 2,
   "timezone": "browser",
@@ -335,7 +335,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "dequel_active_deployments",
+          "expr": "dequl_active_deployments",
           "refId": "A"
         }
       ]
@@ -370,7 +370,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "dequel_uptime_seconds",
+          "expr": "dequl_uptime_seconds",
           "refId": "A"
         }
       ]
@@ -405,7 +405,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "dequel_requests_total",
+          "expr": "dequl_requests_total",
           "refId": "A"
         }
       ]

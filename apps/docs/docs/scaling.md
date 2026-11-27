@@ -28,7 +28,7 @@ Click **Enable autoscaling** and configure:
 - **Min replicas** — the floor of instances always running (at least 1).
 - **Max replicas** — the ceiling under load.
 - **CPU threshold (%)** — when average CPU utilization across replicas
-  exceeds this for the evaluation window, Dequel adds a replica; when
+  exceeds this for the evaluation window, Dequl adds a replica; when
   load falls, it removes replicas down to the floor.
 - **Cooldown** — quiet period between scaling actions so the system does
   not flap.

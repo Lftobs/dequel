@@ -7,7 +7,7 @@ const runEngineSuite = () => {
 		cwd: join(import.meta.dir, "../.."),
 		env: {
 			...process.env,
-			TEST_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgresql://dequel:dequel@localhost:5434/dequel",
+			TEST_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgresql://dequl:dequl@localhost:5434/dequl",
 		},
 		encoding: "utf8",
 		timeout: 120_000,

@@ -10,7 +10,7 @@ const run = () =>
 		timeout: 30000,
 		env: {
 			...process.env,
-			TEST_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgresql://dequel:dequel@localhost:5433/dequel",
+			TEST_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgresql://dequl:dequl@localhost:5433/dequl",
 		},
 	});
 

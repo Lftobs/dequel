@@ -76,7 +76,7 @@ describe("parseContainerTargetPort", () => {
 
 describe("parseComposeTarget", () => {
 	test("parses single service with ports correctly", () => {
-		const dir = mkdtempSync(join(tmpdir(), "dequel-compose-test-"));
+		const dir = mkdtempSync(join(tmpdir(), "dequl-compose-test-"));
 		try {
 			const yaml = `
 version: '3.8'
@@ -96,7 +96,7 @@ services:
 	});
 
 	test("parses mapping with host:container ports", () => {
-		const dir = mkdtempSync(join(tmpdir(), "dequel-compose-test-"));
+		const dir = mkdtempSync(join(tmpdir(), "dequl-compose-test-"));
 		try {
 			const yaml = `
 version: '3.8'
@@ -118,7 +118,7 @@ services:
 	});
 
 	test("respects preferred service and port overrides", () => {
-		const dir = mkdtempSync(join(tmpdir(), "dequel-compose-test-"));
+		const dir = mkdtempSync(join(tmpdir(), "dequl-compose-test-"));
 		try {
 			const yaml = `
 version: '3.8'
@@ -140,7 +140,7 @@ services:
 
 describe("parseAllComposeServices", () => {
 	test("extracts all services with target ports and long-form syntax", () => {
-		const dir = mkdtempSync(join(tmpdir(), "dequel-compose-test-"));
+		const dir = mkdtempSync(join(tmpdir(), "dequl-compose-test-"));
 		try {
 			const yaml = `
 version: '3.8'
@@ -181,7 +181,7 @@ describe("spawnComposeCommand env merge with project env vars", () => {
 	});
 
 	test("passes project env vars alongside process.env to docker compose subprocess", async () => {
-		process.env.IDEK_DATABASE_URL = "postgresql://dequel:secret@localhost:5432/dequel";
+		process.env.IDEK_DATABASE_URL = "postgresql://dequl:secret@localhost:5432/dequl";
 		process.env.IDEK_PORT = "3001";
 
 		let capturedEnv: Record<string, string> | undefined;
@@ -195,7 +195,7 @@ describe("spawnComposeCommand env merge with project env vars", () => {
 			},
 		}));
 
-		const dir = mkdtempSync(join(tmpdir(), "dequel-compose-env-test-"));
+		const dir = mkdtempSync(join(tmpdir(), "dequl-compose-env-test-"));
 		try {
 			writeFileSync(
 				join(dir, "docker-compose.yml"),
@@ -214,7 +214,7 @@ describe("spawnComposeCommand env merge with project env vars", () => {
 			expect(capturedEnv).toBeDefined();
 			expect(capturedEnv).toHaveProperty("MY_APP_VAR", "hello");
 			expect(capturedEnv).toHaveProperty("ANOTHER_VAR", "world");
-			expect(capturedEnv).toHaveProperty("IDEK_DATABASE_URL", "postgresql://dequel:secret@localhost:5432/dequel");
+			expect(capturedEnv).toHaveProperty("IDEK_DATABASE_URL", "postgresql://dequl:secret@localhost:5432/dequl");
 			expect(capturedEnv).toHaveProperty("PATH");
 			expect(capturedEnv).toHaveProperty("IDEK_PORT", "4000");
 		} finally {
@@ -224,7 +224,7 @@ describe("spawnComposeCommand env merge with project env vars", () => {
 		}
 	});
 	test("passes process.env through when no project env vars provided", async () => {
-		process.env.IDEK_DATABASE_URL = "postgresql://dequel:secret@localhost:5432/dequel";
+		process.env.IDEK_DATABASE_URL = "postgresql://dequl:secret@localhost:5432/dequl";
 
 		let capturedEnv: Record<string, string> | undefined;
 		const originalSpawn = (await import("node:child_process")).spawn;
@@ -237,7 +237,7 @@ describe("spawnComposeCommand env merge with project env vars", () => {
 			},
 		}));
 
-		const dir = mkdtempSync(join(tmpdir(), "dequel-compose-env-test-"));
+		const dir = mkdtempSync(join(tmpdir(), "dequl-compose-env-test-"));
 		try {
 			writeFileSync(
 				join(dir, "docker-compose.yml"),
@@ -253,7 +253,7 @@ describe("spawnComposeCommand env merge with project env vars", () => {
 			}
 
 			expect(capturedEnv).toBeDefined();
-			expect(capturedEnv).toHaveProperty("IDEK_DATABASE_URL", "postgresql://dequel:secret@localhost:5432/dequel");
+			expect(capturedEnv).toHaveProperty("IDEK_DATABASE_URL", "postgresql://dequl:secret@localhost:5432/dequl");
 			expect(capturedEnv).toHaveProperty("PATH");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
@@ -273,7 +273,7 @@ describe("writeComposeEnvFile", () => {
 	};
 
 	const withComposeDir = async (fn: (dir: string) => Promise<void>) => {
-		const dir = mkdtempSync(join(tmpdir(), "dequel-compose-envfile-"));
+		const dir = mkdtempSync(join(tmpdir(), "dequl-compose-envfile-"));
 		writeFileSync(join(dir, "docker-compose.yml"), `services:\n  app:\n    build: {NEVER_EXISTS}\n`);
 		try {
 			await fn(dir);
