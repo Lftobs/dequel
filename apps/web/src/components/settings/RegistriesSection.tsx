@@ -205,7 +205,7 @@ export function RegistriesSection() {
 						</div>
 						<h3 className="text-sm font-semibold text-foreground">No Registries Configured</h3>
 						<p className="text-xs text-muted-foreground max-w-sm mt-1 mb-4">
-							Add private registry credentials so Dequel can pull images for image-based projects.
+							Add private registry credentials so Dequl can pull images for image-based projects.
 						</p>
 						<Button
 							size="sm"

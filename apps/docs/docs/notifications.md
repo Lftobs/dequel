@@ -21,7 +21,7 @@ them.
 | Generic webhook | any HTTPS URL receiving a JSON POST |
 | Telegram | `botToken|chatId` |
 | Pushover | `appToken|userKey` |
-| ntfy | topic URL, e.g. `https://ntfy.sh/dequel` |
+| ntfy | topic URL, e.g. `https://ntfy.sh/dequl` |
 | Gotify | `https://gotify.example.com|appToken` |
 
 ## Events

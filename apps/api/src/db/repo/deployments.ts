@@ -3,7 +3,15 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import type { CreateDeploymentInput, Deployment, DeploymentLog, DeploymentStatus, LogEvent } from "../../types";
 import { getDb } from "../db-provider";
 import { deploymentLogs, deployments } from "../schema";
-import { formatTimestamp, getRowsAffected, now } from "./helpers";
+import { formatTimestamp, getRowsAffected, now, pickDefined } from "./helpers";
+
+const DEPLOYMENT_STATUS_PATCH_FIELDS = [
+	"imageTag",
+	"containerName",
+	"liveUrl",
+	"failureReason",
+	"replicas",
+] as const satisfies readonly (keyof typeof deployments.$inferInsert)[];
 
 const mapDeployment = (row: typeof deployments.$inferSelect): Deployment => ({
 	id: row.id,
@@ -118,19 +126,15 @@ export const applyStatusUpdate = async (
 		.from(deployments)
 		.where(eq(deployments.id, id))
 		.execute();
-	const updates: Record<string, unknown> = { status, updatedAt: now() };
-	if (patch.imageTag !== undefined) updates.imageTag = patch.imageTag;
-	if (patch.containerName !== undefined) updates.containerName = patch.containerName;
-	if (patch.liveUrl !== undefined) updates.liveUrl = patch.liveUrl;
-	if (patch.failureReason !== undefined) updates.failureReason = patch.failureReason;
-	if (patch.replicas !== undefined) updates.replicas = patch.replicas;
-	if (!ACTIVE_STATUSES.includes(status)) {
-		if (!existing?.finishedAt) {
-			updates.finishedAt = now();
-		} else if (STAMP_FINISHED_UNCONDITIONALLY.includes(status)) {
-			updates.finishedAt = now();
-		}
-	}
+	const timestamp = now();
+	const shouldStampFinished =
+		!ACTIVE_STATUSES.includes(status) && (!existing?.finishedAt || STAMP_FINISHED_UNCONDITIONALLY.includes(status));
+	const updates: Partial<typeof deployments.$inferInsert> = {
+		status,
+		...pickDefined(patch, DEPLOYMENT_STATUS_PATCH_FIELDS),
+		...(shouldStampFinished ? { finishedAt: timestamp } : {}),
+		updatedAt: timestamp,
+	};
 	await tx.update(deployments).set(updates).where(eq(deployments.id, id)).execute();
 
 	if (status === "running" || status === "failed") {

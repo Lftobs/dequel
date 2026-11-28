@@ -3,7 +3,15 @@ import { desc, eq } from "drizzle-orm";
 import type { NotificationChannel, NotificationEvent } from "../../types";
 import { getDb } from "../db-provider";
 import { notificationChannels } from "../schema";
-import { getRowsAffected, now } from "./helpers";
+import { getRowsAffected, now, pickDefined } from "./helpers";
+
+const CHANNEL_PATCH_FIELDS = [
+	"name",
+	"channel",
+	"destination",
+	"events",
+	"enabled",
+] as const satisfies readonly (keyof typeof notificationChannels.$inferInsert)[];
 
 const mapChannel = (row: typeof notificationChannels.$inferSelect): NotificationChannel => ({
 	id: row.id,
@@ -59,12 +67,10 @@ export const updateNotificationChannel = async (
 		enabled?: boolean;
 	},
 ): Promise<NotificationChannel | null> => {
-	const updates: Record<string, unknown> = { updatedAt: now() };
-	if (patch.name !== undefined) updates.name = patch.name;
-	if (patch.channel !== undefined) updates.channel = patch.channel;
-	if (patch.destination !== undefined) updates.destination = patch.destination;
-	if (patch.events !== undefined) updates.events = patch.events;
-	if (patch.enabled !== undefined) updates.enabled = patch.enabled;
+	const updates: Partial<typeof notificationChannels.$inferInsert> = {
+		...pickDefined(patch, CHANNEL_PATCH_FIELDS),
+		updatedAt: now(),
+	};
 	const db = await getDb();
 	const result = await db.update(notificationChannels).set(updates).where(eq(notificationChannels.id, id)).execute();
 	if (getRowsAffected(result) === 0) return null;

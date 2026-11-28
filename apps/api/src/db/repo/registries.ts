@@ -5,7 +5,23 @@ import { config } from "../../utils/config";
 import { decryptValue, encryptValue } from "../../utils/crypto";
 import { getDb } from "../db-provider";
 import { registries } from "../schema";
-import { getRowsAffected, now } from "./helpers";
+import { getRowsAffected, now, pickDefined } from "./helpers";
+
+const REGISTRY_PATCH_FIELDS = [
+	"name",
+	"serverId",
+	"url",
+	"username",
+] as const satisfies readonly (keyof typeof registries.$inferInsert)[];
+
+const toPasswordColumns = (password: string) => {
+	const enc = encryptValue(password, config.envEncryptionKey);
+	return {
+		passwordEncrypted: enc.encrypted,
+		passwordIv: enc.iv,
+		passwordTag: enc.tag,
+	};
+};
 
 const mapRegistry = (row: typeof registries.$inferSelect): Registry => ({
 	id: row.id,
@@ -27,7 +43,6 @@ export const createRegistry = async (input: {
 }): Promise<Registry> => {
 	const id = randomUUID();
 	const timestamp = now();
-	const enc = encryptValue(input.password, config.envEncryptionKey);
 	const db = await getDb();
 	await db
 		.insert(registries)
@@ -37,9 +52,7 @@ export const createRegistry = async (input: {
 			serverId: input.serverId ?? null,
 			url: input.url,
 			username: input.username,
-			passwordEncrypted: enc.encrypted,
-			passwordIv: enc.iv,
-			passwordTag: enc.tag,
+			...toPasswordColumns(input.password),
 			createdAt: timestamp,
 			updatedAt: timestamp,
 		})
@@ -96,17 +109,11 @@ export const updateRegistry = async (
 ): Promise<Registry | null> => {
 	const existing = await getRegistryById(id);
 	if (!existing) return null;
-	const updates: Record<string, unknown> = { updatedAt: now() };
-	if (patch.name !== undefined) updates.name = patch.name;
-	if (patch.serverId !== undefined) updates.serverId = patch.serverId;
-	if (patch.url !== undefined) updates.url = patch.url;
-	if (patch.username !== undefined) updates.username = patch.username;
-	if (patch.password) {
-		const enc = encryptValue(patch.password, config.envEncryptionKey);
-		updates.passwordEncrypted = enc.encrypted;
-		updates.passwordIv = enc.iv;
-		updates.passwordTag = enc.tag;
-	}
+	const updates: Partial<typeof registries.$inferInsert> = {
+		...pickDefined(patch, REGISTRY_PATCH_FIELDS),
+		...(patch.password ? toPasswordColumns(patch.password) : {}),
+		updatedAt: now(),
+	};
 	const db = await getDb();
 	await db.update(registries).set(updates).where(eq(registries.id, id)).execute();
 	return getRegistryById(id);

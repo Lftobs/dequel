@@ -14,7 +14,7 @@ bulk deploys, and park a project behind a maintenance page.
 Every project has a secret deploy URL:
 
 ```
-POST https://dequel.example.com/api/webhooks/deploy/<token>
+POST https://dequl.example.com/api/webhooks/deploy/<token>
 ```
 
 No auth header is needed — the token in the URL is the credential. An
@@ -22,7 +22,7 @@ optional JSON body picks a branch; omit it to deploy the project's
 configured branch:
 
 ```bash
-curl -X POST https://dequel.example.com/api/webhooks/deploy/<token> \
+curl -X POST https://dequl.example.com/api/webhooks/deploy/<token> \
   -H "Content-Type: application/json" \
   -d '{"branch": "main"}'
 ```
@@ -39,7 +39,7 @@ the Automation section. One call deploys every project sharing a tag:
 
 ```bash
 curl -X POST -H "Authorization: Bearer dql_<key>" \
-  https://dequel.example.com/api/projects/by-tag/frontend/deploy \
+  https://dequl.example.com/api/projects/by-tag/frontend/deploy \
   -H "Content-Type: application/json" \
   -d '{"branch": "main"}'
 ```

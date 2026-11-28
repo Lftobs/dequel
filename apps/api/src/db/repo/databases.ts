@@ -175,9 +175,15 @@ export const updateDatabaseStatus = async (
 	containerName?: string,
 ): Promise<void> => {
 	const db = await getDb();
-	const updates: Record<string, unknown> = { status, updatedAt: now() };
-	if (containerName !== undefined) updates.containerName = containerName;
-	await db.update(databases).set(updates).where(eq(databases.id, id)).execute();
+	await db
+		.update(databases)
+		.set({
+			status,
+			...(containerName !== undefined ? { containerName } : {}),
+			updatedAt: now(),
+		})
+		.where(eq(databases.id, id))
+		.execute();
 };
 
 export const updateDatabaseRuntime = async (

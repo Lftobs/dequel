@@ -29,7 +29,7 @@ events at a time. The same filters are available over the API:
 
 ```bash
 curl -H "Authorization: Bearer dql_<key>" \
-  "https://dequel.example.com/api/audit-logs?resourceType=domain&limit=100"
+  "https://dequl.example.com/api/audit-logs?resourceType=domain&limit=100"
 ```
 
 `limit` caps at 100 and `offset` pages backward through history.

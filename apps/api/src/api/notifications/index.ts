@@ -84,7 +84,7 @@ export const notificationsRoutes = new Elysia()
 			return fail("channel is required");
 		}
 		const results = await sendEventNotification("alert", {
-			title: "Dequel test notification",
+			title: "Dequl test notification",
 			message: "If you can read this, the channel is configured correctly.",
 			channel: body.channel,
 			destination: body.destination,

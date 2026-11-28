@@ -15,7 +15,7 @@ import {
 	scalingPolicies,
 	volumes,
 } from "../schema";
-import { formatTimestamp, getRowsAffected, now } from "./helpers";
+import { formatTimestamp, getRowsAffected, now, pickDefined } from "./helpers";
 
 export interface ProjectCleanupInfo {
 	isCompose: boolean;
@@ -95,7 +95,6 @@ const encryptGitToken = (token: string | null | undefined) => {
 export const createProject = async (input: CreateProjectInput): Promise<Project> => {
 	const id = randomUUID();
 	const timestamp = now();
-	const token = encryptGitToken(input.gitToken);
 	const db = await getDb();
 	await db
 		.insert(projects)
@@ -122,9 +121,7 @@ export const createProject = async (input: CreateProjectInput): Promise<Project>
 			outputDir: input.outputDir ?? null,
 			startCommand: input.startCommand ?? null,
 			gitProvider: input.gitProvider ?? "github",
-			gitTokenEncrypted: token.encrypted,
-			gitTokenIv: token.iv,
-			gitTokenTag: token.tag,
+			...toGitTokenColumns(input.gitToken),
 			dockerfilePath: input.dockerfilePath ?? "Dockerfile",
 			dockerTarget: input.dockerTarget ?? null,
 			imageRef: input.imageRef ?? null,
@@ -257,53 +254,64 @@ export const listProjectsByTag = async (tag: string): Promise<Project[]> => {
 	return rows.map(mapProject).filter((p) => p.tags.includes(tag));
 };
 
+const PROJECT_PATCH_FIELDS = [
+	"name",
+	"serverId",
+	"description",
+	"repoUrl",
+	"repoBranch",
+	"baseDomain",
+	"cpuLimit",
+	"memoryLimitMb",
+	"port",
+	"sourceDir",
+	"sourceType",
+	"projectType",
+	"buildType",
+	"composeService",
+	"composePort",
+	"composeServices",
+	"buildCommand",
+	"installCommand",
+	"outputDir",
+	"startCommand",
+	"gitProvider",
+	"dockerTarget",
+	"imageRef",
+	"imagePullPolicy",
+	"registryId",
+	"healthCheck",
+	"restartPolicy",
+	"restartMaxRetries",
+	"stopGracePeriodSeconds",
+	"preDeployCommand",
+	"postDeployCommand",
+	"cancelOlderDeployments",
+	"tags",
+	"deployWebhookToken",
+	"maintenanceEnabled",
+	"maintenanceMessage",
+] as const satisfies readonly (keyof CreateProjectInput & keyof typeof projects.$inferInsert)[];
+
+const toGitTokenColumns = (token: string | null | undefined) => {
+	const encrypted = encryptGitToken(token);
+	return {
+		gitTokenEncrypted: encrypted.encrypted,
+		gitTokenIv: encrypted.iv,
+		gitTokenTag: encrypted.tag,
+	};
+};
+
 export const updateProject = async (id: string, patch: Partial<CreateProjectInput>): Promise<Project | null> => {
 	const existing = await getProjectById(id);
 	if (!existing) return null;
 	const db = await getDb();
-	const updates: Record<string, unknown> = { updatedAt: now() };
-	if (patch.name !== undefined) updates.name = patch.name;
-	if (patch.serverId !== undefined) updates.serverId = patch.serverId;
-	if (patch.description !== undefined) updates.description = patch.description;
-	if (patch.repoUrl !== undefined) updates.repoUrl = patch.repoUrl;
-	if (patch.repoBranch !== undefined) updates.repoBranch = patch.repoBranch;
-	if (patch.baseDomain !== undefined) updates.baseDomain = patch.baseDomain;
-	if (patch.cpuLimit !== undefined) updates.cpuLimit = patch.cpuLimit;
-	if (patch.memoryLimitMb !== undefined) updates.memoryLimitMb = patch.memoryLimitMb;
-	if (patch.port !== undefined) updates.port = patch.port;
-	if (patch.sourceDir !== undefined) updates.sourceDir = patch.sourceDir;
-	if (patch.projectType !== undefined) updates.projectType = patch.projectType;
-	if (patch.buildType !== undefined) updates.buildType = patch.buildType;
-	if (patch.composeService !== undefined) updates.composeService = patch.composeService;
-	if (patch.composePort !== undefined) updates.composePort = patch.composePort;
-	if (patch.composeServices !== undefined) updates.composeServices = patch.composeServices;
-	if (patch.buildCommand !== undefined) updates.buildCommand = patch.buildCommand;
-	if (patch.installCommand !== undefined) updates.installCommand = patch.installCommand;
-	if (patch.outputDir !== undefined) updates.outputDir = patch.outputDir;
-	if (patch.startCommand !== undefined) updates.startCommand = patch.startCommand;
-	if (patch.gitProvider !== undefined) updates.gitProvider = patch.gitProvider;
-	if (patch.gitToken !== undefined) {
-		const token = encryptGitToken(patch.gitToken);
-		updates.gitTokenEncrypted = token.encrypted;
-		updates.gitTokenIv = token.iv;
-		updates.gitTokenTag = token.tag;
-	}
-	if (patch.dockerfilePath !== undefined) updates.dockerfilePath = patch.dockerfilePath || "Dockerfile";
-	if (patch.dockerTarget !== undefined) updates.dockerTarget = patch.dockerTarget;
-	if (patch.imageRef !== undefined) updates.imageRef = patch.imageRef;
-	if (patch.imagePullPolicy !== undefined) updates.imagePullPolicy = patch.imagePullPolicy;
-	if (patch.registryId !== undefined) updates.registryId = patch.registryId;
-	if (patch.healthCheck !== undefined) updates.healthCheck = patch.healthCheck;
-	if (patch.restartPolicy !== undefined) updates.restartPolicy = patch.restartPolicy;
-	if (patch.restartMaxRetries !== undefined) updates.restartMaxRetries = patch.restartMaxRetries;
-	if (patch.stopGracePeriodSeconds !== undefined) updates.stopGracePeriodSeconds = patch.stopGracePeriodSeconds;
-	if (patch.preDeployCommand !== undefined) updates.preDeployCommand = patch.preDeployCommand;
-	if (patch.postDeployCommand !== undefined) updates.postDeployCommand = patch.postDeployCommand;
-	if (patch.cancelOlderDeployments !== undefined) updates.cancelOlderDeployments = patch.cancelOlderDeployments;
-	if (patch.tags !== undefined) updates.tags = patch.tags;
-	if (patch.deployWebhookToken !== undefined) updates.deployWebhookToken = patch.deployWebhookToken;
-	if (patch.maintenanceEnabled !== undefined) updates.maintenanceEnabled = patch.maintenanceEnabled;
-	if (patch.maintenanceMessage !== undefined) updates.maintenanceMessage = patch.maintenanceMessage;
+	const updates: Partial<typeof projects.$inferInsert> = {
+		...pickDefined(patch, PROJECT_PATCH_FIELDS),
+		...(patch.dockerfilePath !== undefined ? { dockerfilePath: patch.dockerfilePath || "Dockerfile" } : {}),
+		...(patch.gitToken !== undefined ? toGitTokenColumns(patch.gitToken) : {}),
+		updatedAt: now(),
+	};
 	await db.update(projects).set(updates).where(eq(projects.id, id)).execute();
 	return getProjectById(id);
 };

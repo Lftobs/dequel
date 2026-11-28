@@ -5,7 +5,41 @@ import { config } from "../../utils/config";
 import { decryptValue, encryptValue } from "../../utils/crypto";
 import { getDb } from "../db-provider";
 import { domains } from "../schema";
-import { getRowsAffected, now } from "./helpers";
+import { getRowsAffected, now, pickDefined } from "./helpers";
+
+const DOMAIN_PATCH_FIELDS = [
+	"targetService",
+	"targetPort",
+	"cloudflareProxied",
+	"tlsMode",
+	"certificate",
+	"basicAuthUser",
+	"httpsRedirect",
+	"gzip",
+	"noindex",
+	"wwwRedirect",
+	"pathPrefix",
+	"stripPrefix",
+	"rawSnippet",
+] as const satisfies readonly (keyof CreateDomainInput & keyof typeof domains.$inferInsert)[];
+
+const toCertificateKeyColumns = (key: string | null | undefined) => {
+	const enc = key ? encryptValue(key, config.envEncryptionKey) : null;
+	return {
+		certificateKeyEncrypted: enc?.encrypted ?? null,
+		certificateKeyIv: enc?.iv ?? null,
+		certificateKeyTag: enc?.tag ?? null,
+	};
+};
+
+const toBasicAuthPasswordColumns = (password: string | null | undefined) => {
+	const enc = password ? encryptValue(password, config.envEncryptionKey) : null;
+	return {
+		basicAuthPasswordEncrypted: enc?.encrypted ?? null,
+		basicAuthPasswordIv: enc?.iv ?? null,
+		basicAuthPasswordTag: enc?.tag ?? null,
+	};
+};
 
 const mapDomain = (row: typeof domains.$inferSelect): Domain => ({
 	id: row.id,
@@ -36,8 +70,6 @@ export const createDomain = async (input: CreateDomainInput): Promise<Domain> =>
 	const id = randomUUID();
 	const timestamp = now();
 	const db = await getDb();
-	const keyEnc = input.certificateKey ? encryptValue(input.certificateKey, config.envEncryptionKey) : null;
-	const passEnc = input.basicAuthPassword ? encryptValue(input.basicAuthPassword, config.envEncryptionKey) : null;
 	await db
 		.insert(domains)
 		.values({
@@ -52,13 +84,9 @@ export const createDomain = async (input: CreateDomainInput): Promise<Domain> =>
 			cloudflareProxied: Boolean(input.cloudflareProxied),
 			tlsMode: input.tlsMode ?? "auto",
 			certificate: input.certificate ?? null,
-			certificateKeyEncrypted: keyEnc?.encrypted ?? null,
-			certificateKeyIv: keyEnc?.iv ?? null,
-			certificateKeyTag: keyEnc?.tag ?? null,
+			...toCertificateKeyColumns(input.certificateKey),
 			basicAuthUser: input.basicAuthUser ?? null,
-			basicAuthPasswordEncrypted: passEnc?.encrypted ?? null,
-			basicAuthPasswordIv: passEnc?.iv ?? null,
-			basicAuthPasswordTag: passEnc?.tag ?? null,
+			...toBasicAuthPasswordColumns(input.basicAuthPassword),
 			httpsRedirect: input.httpsRedirect ?? true,
 			gzip: input.gzip ?? true,
 			noindex: input.noindex ?? false,
@@ -97,9 +125,15 @@ export const updateDomainValidation = async (
 	sslStatus?: SslStatus,
 ): Promise<void> => {
 	const db = await getDb();
-	const updates: Record<string, unknown> = { validationStatus, updatedAt: now() };
-	if (sslStatus !== undefined) updates.sslStatus = sslStatus;
-	await db.update(domains).set(updates).where(eq(domains.id, id)).execute();
+	await db
+		.update(domains)
+		.set({
+			validationStatus,
+			...(sslStatus !== undefined ? { sslStatus } : {}),
+			updatedAt: now(),
+		})
+		.where(eq(domains.id, id))
+		.execute();
 };
 
 export const updateDomainSslStatus = async (id: string, sslStatus: SslStatus): Promise<void> => {
@@ -108,34 +142,14 @@ export const updateDomainSslStatus = async (id: string, sslStatus: SslStatus): P
 };
 
 export const updateDomainSettings = async (id: string, patch: Partial<CreateDomainInput>): Promise<Domain | null> => {
-	const updates: Record<string, unknown> = { updatedAt: now() };
-	if (patch.targetService !== undefined) updates.targetService = patch.targetService;
-	if (patch.targetPort !== undefined) updates.targetPort = patch.targetPort;
-	if (patch.cloudflareProxied !== undefined) updates.cloudflareProxied = patch.cloudflareProxied;
-	if (patch.tlsMode !== undefined) updates.tlsMode = patch.tlsMode;
-	if (patch.certificate !== undefined) {
-		updates.certificate = patch.certificate;
-		if (patch.certificateKey !== undefined) {
-			const enc = patch.certificateKey ? encryptValue(patch.certificateKey, config.envEncryptionKey) : null;
-			updates.certificateKeyEncrypted = enc?.encrypted ?? null;
-			updates.certificateKeyIv = enc?.iv ?? null;
-			updates.certificateKeyTag = enc?.tag ?? null;
-		}
-	}
-	if (patch.basicAuthUser !== undefined) updates.basicAuthUser = patch.basicAuthUser;
-	if (patch.basicAuthPassword !== undefined) {
-		const enc = patch.basicAuthPassword ? encryptValue(patch.basicAuthPassword, config.envEncryptionKey) : null;
-		updates.basicAuthPasswordEncrypted = enc?.encrypted ?? null;
-		updates.basicAuthPasswordIv = enc?.iv ?? null;
-		updates.basicAuthPasswordTag = enc?.tag ?? null;
-	}
-	if (patch.httpsRedirect !== undefined) updates.httpsRedirect = patch.httpsRedirect;
-	if (patch.gzip !== undefined) updates.gzip = patch.gzip;
-	if (patch.noindex !== undefined) updates.noindex = patch.noindex;
-	if (patch.wwwRedirect !== undefined) updates.wwwRedirect = patch.wwwRedirect;
-	if (patch.pathPrefix !== undefined) updates.pathPrefix = patch.pathPrefix;
-	if (patch.stripPrefix !== undefined) updates.stripPrefix = patch.stripPrefix;
-	if (patch.rawSnippet !== undefined) updates.rawSnippet = patch.rawSnippet;
+	const updates: Partial<typeof domains.$inferInsert> = {
+		...pickDefined(patch, DOMAIN_PATCH_FIELDS),
+		...(patch.certificate !== undefined && patch.certificateKey !== undefined
+			? toCertificateKeyColumns(patch.certificateKey)
+			: {}),
+		...(patch.basicAuthPassword !== undefined ? toBasicAuthPasswordColumns(patch.basicAuthPassword) : {}),
+		updatedAt: now(),
+	};
 	const db = await getDb();
 	const result = await db.update(domains).set(updates).where(eq(domains.id, id)).execute();
 	if (getRowsAffected(result) === 0) return null;

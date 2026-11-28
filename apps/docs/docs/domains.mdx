@@ -46,7 +46,7 @@ waiting.
 
 - **Automatic** (default) — Let's Encrypt issuance via Caddy.
 - **Custom certificate** — paste a PEM certificate and private key.
-  Dequel stores the key encrypted and mounts both into Caddy for that
+  Dequl stores the key encrypted and mounts both into Caddy for that
   domain, so corporate or internal CAs work without touching the
   Caddyfile. Upload a wildcard certificate to cover
   `*.mycompany.com` here.
@@ -70,7 +70,7 @@ waiting.
   in front of the whole domain.
 - **Raw Caddy snippet** — escape hatch: extra directives injected
   directly into this domain's site block, for redirects, headers, or
-  middleware Dequel does not model.
+  middleware Dequl does not model.
 
 Remove a domain any time with the delete action; its route is removed
 on the next Caddy reload.

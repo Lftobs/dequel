@@ -14,10 +14,10 @@ const CHANNELS = [
 	{ value: "slack", label: "Slack", hint: "https://hooks.slack.com/services/..." },
 	{ value: "discord", label: "Discord", hint: "https://discord.com/api/webhooks/..." },
 	{ value: "mattermost", label: "Mattermost", hint: "https://mattermost.example.com/hooks/..." },
-	{ value: "webhook", label: "Generic Webhook", hint: "https://example.com/dequel-events" },
+	{ value: "webhook", label: "Generic Webhook", hint: "https://example.com/dequl-events" },
 	{ value: "telegram", label: "Telegram", hint: "botToken|chatId" },
 	{ value: "pushover", label: "Pushover", hint: "appToken|userKey" },
-	{ value: "ntfy", label: "ntfy", hint: "https://ntfy.sh/dequel" },
+	{ value: "ntfy", label: "ntfy", hint: "https://ntfy.sh/dequl" },
 	{ value: "gotify", label: "Gotify", hint: "https://gotify.example.com|token" },
 ];
 

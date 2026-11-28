@@ -3,7 +3,16 @@ import { eq } from "drizzle-orm";
 import type { CreateScalingPolicyInput, ScalingPolicy } from "../../types";
 import { getDb } from "../db-provider";
 import { scalingPolicies } from "../schema";
-import { getRowsAffected, now } from "./helpers";
+import { getRowsAffected, now, pickDefined } from "./helpers";
+
+const SCALING_PATCH_FIELDS = [
+	"minReplicas",
+	"maxReplicas",
+	"cpuThresholdPercent",
+	"memoryThresholdPercent",
+	"cooldownSeconds",
+	"enabled",
+] as const satisfies readonly (keyof CreateScalingPolicyInput & keyof typeof scalingPolicies.$inferInsert)[];
 
 const mapScalingPolicy = (row: typeof scalingPolicies.$inferSelect): ScalingPolicy => ({
 	id: row.id,
@@ -40,13 +49,10 @@ export const upsertScalingPolicy = async (input: CreateScalingPolicyInput): Prom
 		const maxReplicas = input.maxReplicas ?? current?.maxReplicas ?? 5;
 		if (maxReplicas < minReplicas) throw new ScalingRangeError();
 		if (current) {
-			const updates: Record<string, unknown> = { updatedAt: timestamp };
-			if (input.minReplicas !== undefined) updates.minReplicas = input.minReplicas;
-			if (input.maxReplicas !== undefined) updates.maxReplicas = input.maxReplicas;
-			if (input.cpuThresholdPercent !== undefined) updates.cpuThresholdPercent = input.cpuThresholdPercent;
-			if (input.memoryThresholdPercent !== undefined) updates.memoryThresholdPercent = input.memoryThresholdPercent;
-			if (input.cooldownSeconds !== undefined) updates.cooldownSeconds = input.cooldownSeconds;
-			if (input.enabled !== undefined) updates.enabled = input.enabled;
+			const updates: Partial<typeof scalingPolicies.$inferInsert> = {
+				...pickDefined(input, SCALING_PATCH_FIELDS),
+				updatedAt: timestamp,
+			};
 			await tx.update(scalingPolicies).set(updates).where(eq(scalingPolicies.projectId, input.projectId)).execute();
 			const [updated] = await tx
 				.select()

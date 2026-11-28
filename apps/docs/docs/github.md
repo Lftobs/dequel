@@ -45,7 +45,7 @@ Forgejo, or a company Git server — work without an integration:
 
 1. In the wizard, select **Git Repository** and set the provider in the
    Git authentication fields (or leave it on auto-detect).
-2. Paste a repository access token with read (clone) scope. Dequel
+2. Paste a repository access token with read (clone) scope. Dequl
    encrypts it per project and uses it only to authenticate clones on
    the deployment node.
 

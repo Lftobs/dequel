@@ -5,13 +5,13 @@ description: Probe containers before routing traffic and control restart behavio
 slug: health-checks
 ---
 
-The **Settings → Deploy & Runtime** section controls how Dequel decides
+The **Settings → Deploy & Runtime** section controls how Dequl decides
 that a new container is ready for traffic, and what happens when it
 dies.
 
 ## Health checks
 
-By default Dequel only waits for the container to report `running`.
+By default Dequl only waits for the container to report `running`.
 Enable a probe so a crash loop, wrong port, or half-initialized app
 fails the deployment before the route is swapped:
 

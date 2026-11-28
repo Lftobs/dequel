@@ -6,7 +6,14 @@ import { config } from "../../utils/config";
 import { buildWireGuardPeerConfig, generateWireGuardKeyPair } from "../../utils/wireguard";
 import { getDb } from "../db-provider";
 import { agentCredentials, agentRegistrationTokens, servers } from "../schema";
-import { getRowsAffected, now } from "./helpers";
+import { getRowsAffected, now, pickDefined } from "./helpers";
+
+const AGENT_HEARTBEAT_FIELDS = [
+	"agentVersion",
+	"capabilities",
+	"cpuUsedPercent",
+	"memoryUsedMb",
+] as const satisfies readonly (keyof typeof servers.$inferInsert)[];
 
 export const createAgentRegistrationToken = async (serverName: string, labels: Record<string, string> = {}) => {
 	const rawToken = `dqr_${randomBytes(32).toString("hex")}`;
@@ -139,11 +146,12 @@ export const updateAgentHeartbeat = async (
 	patch: { agentVersion?: string; capabilities?: AgentCapabilities; cpuUsedPercent?: number; memoryUsedMb?: number },
 ) => {
 	const timestamp = now();
-	const updates: Record<string, unknown> = { status: "connected", lastHeartbeat: timestamp, updatedAt: timestamp };
-	if (patch.agentVersion !== undefined) updates.agentVersion = patch.agentVersion;
-	if (patch.capabilities !== undefined) updates.capabilities = patch.capabilities;
-	if (patch.cpuUsedPercent !== undefined) updates.cpuUsedPercent = patch.cpuUsedPercent;
-	if (patch.memoryUsedMb !== undefined) updates.memoryUsedMb = patch.memoryUsedMb;
+	const updates: Partial<typeof servers.$inferInsert> = {
+		status: "connected",
+		lastHeartbeat: timestamp,
+		updatedAt: timestamp,
+		...pickDefined(patch, AGENT_HEARTBEAT_FIELDS),
+	};
 	const db = await getDb();
 	await db
 		.update(servers)

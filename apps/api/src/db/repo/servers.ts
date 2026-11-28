@@ -5,7 +5,15 @@ import { config } from "../../utils/config";
 import { decryptValue } from "../../utils/crypto";
 import { getDb } from "../db-provider";
 import { servers } from "../schema";
-import { formatTimestamp, getRowsAffected, now } from "./helpers";
+import { formatTimestamp, getRowsAffected, now, pickDefined } from "./helpers";
+
+const SERVER_RESOURCE_FIELDS = [
+	"cpuTotal",
+	"memoryTotalMb",
+	"diskTotalMb",
+	"cpuUsedPercent",
+	"memoryUsedMb",
+] as const satisfies readonly (keyof typeof servers.$inferInsert)[];
 import { resolveServerSshKey } from "./ssh-keys";
 
 const mapServer = (row: typeof servers.$inferSelect): Server => ({
@@ -181,15 +189,11 @@ export const updateServerStatus = async (
 	},
 ): Promise<void> => {
 	const db = await getDb();
-	const updates: Record<string, unknown> = { status, updatedAt: now() };
-	if (resources) {
-		if (resources.cpuTotal !== undefined) updates.cpuTotal = resources.cpuTotal;
-		if (resources.memoryTotalMb !== undefined) updates.memoryTotalMb = resources.memoryTotalMb;
-		if (resources.diskTotalMb !== undefined) updates.diskTotalMb = resources.diskTotalMb;
-		if (resources.cpuUsedPercent !== undefined) updates.cpuUsedPercent = resources.cpuUsedPercent;
-		if (resources.memoryUsedMb !== undefined) updates.memoryUsedMb = resources.memoryUsedMb;
-		updates.lastHeartbeat = now();
-	}
+	const updates: Partial<typeof servers.$inferInsert> = {
+		status,
+		updatedAt: now(),
+		...(resources ? { ...pickDefined(resources, SERVER_RESOURCE_FIELDS), lastHeartbeat: now() } : {}),
+	};
 	await db.update(servers).set(updates).where(eq(servers.id, id)).execute();
 };
 

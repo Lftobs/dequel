@@ -24,6 +24,7 @@ import { captureTelemetry } from "../../utils/telemetry";
 import { isPort, isPrivateGitUrl, SERVICE_NAME_RE, validateComposeServices } from "../../utils/validate";
 import { auditRequest } from "../audit";
 import { created, fail, ok } from "../response";
+import { buildProjectPatch } from "./patch";
 
 const validateComposeFields = (body: any): string | null => {
 	if (body?.composeService && !SERVICE_NAME_RE.test(String(body.composeService))) {
@@ -171,62 +172,7 @@ export const projectsRoutes = new Elysia()
 			set.status = 400;
 			return fail("Selected server does not exist");
 		}
-		const project = await updateProject(id, {
-			name: body?.name,
-			serverId: body?.serverId,
-			description: body?.description,
-			baseDomain: body?.baseDomain,
-			repoUrl: body?.repoUrl,
-			repoBranch: body?.repoBranch,
-			cpuLimit: body?.cpuLimit,
-			memoryLimitMb: body?.memoryLimitMb,
-			port: body?.port ? Number(body.port) : body?.port === null ? null : undefined,
-			sourceDir: "sourceDir" in (body ?? {}) ? body.sourceDir || null : undefined,
-			projectType: body?.projectType ?? undefined,
-			buildType: body?.buildType ?? undefined,
-			composeService: "composeService" in (body ?? {}) ? body.composeService || null : undefined,
-			composePort: "composePort" in (body ?? {}) ? (body.composePort ? Number(body.composePort) : null) : undefined,
-			composeServices:
-				"composeServices" in (body ?? {})
-					? body.composeServices
-						? typeof body.composeServices === "string"
-							? body.composeServices
-							: JSON.stringify(body.composeServices)
-						: null
-					: undefined,
-			buildCommand: "buildCommand" in (body ?? {}) ? (body.buildCommand ?? "") || null : undefined,
-			installCommand: "installCommand" in (body ?? {}) ? (body.installCommand ?? "") || null : undefined,
-			outputDir: "outputDir" in (body ?? {}) ? (body.outputDir ?? "") || null : undefined,
-			startCommand: "startCommand" in (body ?? {}) ? (body.startCommand ?? "") || null : undefined,
-			sourceType: body?.sourceType ?? undefined,
-			gitProvider: body?.gitProvider ?? undefined,
-			gitToken: "gitToken" in (body ?? {}) ? body.gitToken || null : undefined,
-			dockerfilePath: "dockerfilePath" in (body ?? {}) ? (body.dockerfilePath ?? "") || null : undefined,
-			dockerTarget: "dockerTarget" in (body ?? {}) ? (body.dockerTarget ?? "") || null : undefined,
-			imageRef: "imageRef" in (body ?? {}) ? (body.imageRef ?? "") || null : undefined,
-			imagePullPolicy: body?.imagePullPolicy ?? undefined,
-			registryId: "registryId" in (body ?? {}) ? body.registryId || null : undefined,
-			healthCheck: "healthCheck" in (body ?? {}) ? projectConfig.healthCheck : undefined,
-			restartPolicy: body?.restartPolicy ?? undefined,
-			restartMaxRetries:
-				"restartMaxRetries" in (body ?? {})
-					? body.restartMaxRetries === null
-						? null
-						: Number(body.restartMaxRetries)
-					: undefined,
-			stopGracePeriodSeconds:
-				"stopGracePeriodSeconds" in (body ?? {})
-					? body.stopGracePeriodSeconds === null
-						? null
-						: Number(body.stopGracePeriodSeconds)
-					: undefined,
-			preDeployCommand: "preDeployCommand" in (body ?? {}) ? (body.preDeployCommand ?? "") || null : undefined,
-			postDeployCommand: "postDeployCommand" in (body ?? {}) ? (body.postDeployCommand ?? "") || null : undefined,
-			cancelOlderDeployments: body?.cancelOlderDeployments ?? undefined,
-			tags: projectConfig.tags ?? undefined,
-			maintenanceEnabled: body?.maintenanceEnabled ?? undefined,
-			maintenanceMessage: "maintenanceMessage" in (body ?? {}) ? (body.maintenanceMessage ?? "") || null : undefined,
-		});
+		const project = await updateProject(id, buildProjectPatch(body, projectConfig));
 		if (!project) {
 			set.status = 404;
 			return fail("Project not found");
