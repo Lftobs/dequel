@@ -1,8 +1,8 @@
 import nodemailer from "nodemailer";
 import { getSmtpSettings } from "../db/repo/settings";
 import type { FailureNotificationContext, MailDelivery } from "../types";
-import { appBaseUrl } from "../utils/routes";
 import { validateDestination } from "../utils/destination";
+import { appBaseUrl } from "../utils/routes";
 import { buildSlackMessage } from "./slack-message";
 import { type AlertDetails, buildDeploymentFailureEmail, buildEmail } from "./templates";
 
@@ -150,6 +150,24 @@ export const sendNotification = async (opts: NotifyOpts): Promise<MailDelivery> 
 		return { status: "sent" };
 	} catch (err) {
 		console.error(`[Notifier] Failed to send ${channel} alert:`, err);
+		return { status: "failed", error: err instanceof Error ? err.message : String(err) };
+	}
+};
+
+export const sendEventEmail = async (to: string, subject: string, text: string): Promise<MailDelivery> => {
+	const smtp = await loadSmtpConfig();
+	if (!smtp) return { status: "skipped", reason: "no_smtp" };
+	try {
+		const t = await getTransporter(smtp);
+		await t.sendMail({
+			from: smtp.from,
+			to,
+			subject,
+			text,
+			html: `<p>${text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")}</p>`,
+		});
+		return { status: "sent" };
+	} catch (err) {
 		return { status: "failed", error: err instanceof Error ? err.message : String(err) };
 	}
 };

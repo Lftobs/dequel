@@ -9,6 +9,7 @@ import {
 	KeyRound,
 	Laptop,
 	Layers,
+	ScrollText,
 	Settings,
 	Share2,
 	Sliders,
@@ -70,6 +71,18 @@ export function SidebarNav({ currentProjectId, currentProject, location, navigat
 					>
 						<KeyRound className="h-4 w-4" />
 						Keys & Tokens
+					</Link>
+					<Link
+						to="/audit"
+						className={cn(
+							"flex items-center gap-2.5 px-3 py-2 rounded-md text-xs transition-all duration-200",
+							location.pathname.startsWith("/audit")
+								? "bg-zinc-800/60 text-zinc-100 font-medium shadow-inner"
+								: "text-zinc-400 hover:text-zinc-200 hover:bg-[#141417]",
+						)}
+					>
+						<ScrollText className="h-4 w-4" />
+						Audit Logs
 					</Link>
 					<Link
 						to="/shared-env"

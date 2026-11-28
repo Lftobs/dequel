@@ -10,6 +10,7 @@ export const ID_RE = /^[a-zA-Z0-9-]{1,100}$/;
 export const ENV_KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 export const SHA_RE = /^[0-9a-f]{7,40}$/i;
 export const IMAGE_TAG_RE = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*:[a-zA-Z0-9._-]+$/;
+export const IMAGE_REF_RE = /^[a-zA-Z0-9][a-zA-Z0-9._/:-]*(?::[a-zA-Z0-9._-]+)?$/;
 export const VOLUME_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/;
 export const MOUNT_PATH_RE = /^\/(?:[a-zA-Z0-9._-]+\/?)+$/;
 export const HOSTNAME_RE = /^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?(?::\d{1,5})?$/;
@@ -24,14 +25,51 @@ export const validateDeploymentPayload = (value: unknown): RemoteGitDeployPayloa
 		throw new Error("Invalid deployment ID");
 	if (typeof input.projectId !== "string" || !ID_RE.test(input.projectId)) throw new Error("Invalid project ID");
 	if (typeof input.projectName !== "string" || !input.projectName.trim()) throw new Error("Invalid project name");
-	if (typeof input.gitUrl !== "string") throw new Error("Invalid Git URL");
-	const gitUrl = new URL(input.gitUrl);
-	if (gitUrl.protocol !== "https:" || gitUrl.username || gitUrl.password)
-		throw new Error("Only public HTTPS Git URLs are supported");
-	if (input.branch !== undefined && (typeof input.branch !== "string" || input.branch.startsWith("-")))
-		throw new Error("Invalid Git branch");
-	if (input.commitSha !== undefined && (typeof input.commitSha !== "string" || !SHA_RE.test(input.commitSha)))
-		throw new Error("Invalid commit SHA");
+	if (input.imageRef !== undefined) {
+		if (typeof input.imageRef !== "string" || !IMAGE_REF_RE.test(input.imageRef))
+			throw new Error("Invalid container image reference");
+		if (input.gitUrl !== undefined) throw new Error("Image deployments cannot include a Git URL");
+		if (
+			input.imagePullPolicy !== undefined &&
+			!["always", "if-not-present", "never"].includes(String(input.imagePullPolicy))
+		)
+			throw new Error("Invalid image pull policy");
+		if (
+			input.registryAuth !== undefined &&
+			(typeof input.registryAuth !== "object" ||
+				typeof (input.registryAuth as Record<string, unknown>).url !== "string" ||
+				typeof (input.registryAuth as Record<string, unknown>).username !== "string" ||
+				typeof (input.registryAuth as Record<string, unknown>).password !== "string")
+		)
+			throw new Error("Invalid registry credentials");
+	} else {
+		if (typeof input.gitUrl !== "string") throw new Error("Invalid Git URL");
+		const gitUrl = new URL(input.gitUrl);
+		if (gitUrl.protocol !== "https:" || gitUrl.username || gitUrl.password)
+			throw new Error("Only public HTTPS Git URLs are supported");
+		if (input.branch !== undefined && (typeof input.branch !== "string" || input.branch.startsWith("-")))
+			throw new Error("Invalid Git branch");
+		if (input.commitSha !== undefined && (typeof input.commitSha !== "string" || !SHA_RE.test(input.commitSha)))
+			throw new Error("Invalid commit SHA");
+	}
+	if (
+		input.containerName !== undefined &&
+		(typeof input.containerName !== "string" || !ID_RE.test(input.containerName))
+	)
+		throw new Error("Invalid container name");
+	if (
+		input.volumes !== undefined &&
+		(!Array.isArray(input.volumes) ||
+			input.volumes.some(
+				(volume) =>
+					!volume ||
+					typeof volume.volumeName !== "string" ||
+					!VOLUME_NAME_RE.test(volume.volumeName) ||
+					typeof volume.mountPath !== "string" ||
+					!MOUNT_PATH_RE.test(volume.mountPath),
+			))
+	)
+		throw new Error("Invalid volumes");
 	if (!Number.isInteger(input.appPort) || Number(input.appPort) < 1 || Number(input.appPort) > 65535)
 		throw new Error("Invalid application port");
 	if (input.cpuLimit !== undefined && (typeof input.cpuLimit !== "number" || input.cpuLimit <= 0))
@@ -116,6 +154,8 @@ export const validateDestroyPayload = (value: unknown): RemoteDestroyPayload => 
 		throw new Error("Invalid container name");
 	if (input.imageTag !== null && (typeof input.imageTag !== "string" || !IMAGE_TAG_RE.test(input.imageTag)))
 		throw new Error("Invalid image tag");
+	if (input.imageOwnedByDequel !== undefined && typeof input.imageOwnedByDequel !== "boolean")
+		throw new Error("Invalid image ownership flag");
 	return input as RemoteDestroyPayload;
 };
 

@@ -40,7 +40,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 	const cancel = useCancelDeployment();
 	const deleteDep = useDeleteDeployment();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
-	const [sourceType, setSourceType] = useState<"git" | "upload" | "compose">("git");
+	const [sourceType, setSourceType] = useState<"git" | "upload" | "compose" | "image">("git");
 	const [gitUrl, setGitUrl] = useState("");
 	const [branch, setBranch] = useState("");
 	const [environment, setEnvironment] = useState("");
@@ -116,7 +116,7 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 		if (!project) return;
 		setGitUrl(project.repoUrl ?? "");
 		setBranch(project.repoBranch ?? "");
-		setSourceType(project.repoUrl ? "git" : "upload");
+		setSourceType(project.sourceType === "image" ? "image" : project.repoUrl ? "git" : "upload");
 		setSwitchGitUrl(project.repoUrl ?? "");
 		setSwitchBranch(project.repoBranch ?? "");
 	}, [project?.repoUrl, project?.repoBranch, project]);
@@ -159,6 +159,15 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 		setEnvironment("");
 		setClearCache(false);
 		setSourceType("git");
+	};
+
+	const handleDeployImage = async () => {
+		const form = new FormData();
+		form.set("sourceType", "image");
+		form.set("projectId", projectId);
+		if (environment) form.set("environment", environment);
+		await createDeployment.mutateAsync(form);
+		setEnvironment("");
 	};
 
 	const handleSwitchToGit = async () => {
@@ -206,7 +215,59 @@ export function DeploymentsTab({ projectId }: DeploymentsTabProps) {
 						</div>
 					)}
 
-					{project?.buildType === "compose" && !project?.repoUrl ? (
+					{project?.sourceType === "image" ? (
+						<div className="space-y-4">
+							<div className="p-4 rounded-lg bg-[#141417]/50 border border-[#222227] space-y-3">
+								<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+									<div className="space-y-1 min-w-0">
+										<div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+											Container Image
+										</div>
+										<div className="text-sm font-mono text-zinc-200 break-all">
+											{project.imageRef || "No image configured"}
+										</div>
+										<div className="text-xs text-muted-foreground">
+											Pull policy: <span className="font-mono text-zinc-300">{project.imagePullPolicy}</span>
+										</div>
+									</div>
+									<Button
+										type="button"
+										onClick={() => navigate({ search: { tab: "settings", section: "build" } as any })}
+										variant="outline"
+										size="sm"
+										className="w-full sm:w-auto border-[#33333b] text-zinc-300"
+									>
+										<Layers className="h-3.5 w-3.5 mr-1.5" /> Edit Image
+									</Button>
+								</div>
+								<div className="flex flex-col sm:flex-row gap-2 pt-2">
+									<Input
+										placeholder="Environment (e.g. production)"
+										value={environment}
+										onChange={(e) => setEnvironment(e.target.value)}
+										className="flex-1"
+									/>
+									<Button
+										type="button"
+										onClick={handleDeployImage}
+										disabled={createDeployment.isPending || !project.imageRef}
+										className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-medium"
+									>
+										{createDeployment.isPending ? (
+											"Deploying..."
+										) : (
+											<>
+												<Play className="mr-1.5 h-4 w-4 fill-current" /> Deploy Image
+											</>
+										)}
+									</Button>
+								</div>
+								<p className="text-[11px] text-muted-foreground">
+									Pulls the image reference from project settings and replaces the running container.
+								</p>
+							</div>
+						</div>
+					) : project?.buildType === "compose" && !project?.repoUrl ? (
 						<div className="space-y-4">
 							<div className="p-4 rounded-lg bg-[#141417]/50 border border-[#222227] space-y-3">
 								<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

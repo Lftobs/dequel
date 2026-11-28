@@ -11,6 +11,7 @@ import {
 	buildRemoteComposeDestroyScript,
 	buildRemoteComposeScript,
 	parseRemoteComposeResult,
+	parseRemoteComposeVarsMarker,
 } from "./ssh-compose-script";
 import type { DeploymentExecutor, ExecutorCancelInput, ExecutorDeployInput, ExecutorRollbackInput } from "./types";
 
@@ -32,9 +33,10 @@ const slugify = (s: string) =>
 const buildEnvVars = async (deployment: Deployment) => {
 	const { listEnvironmentVariablesForDeploy } = await getRepo();
 	const vars = await listEnvironmentVariablesForDeploy(deployment.projectId ?? "", deployment.environment ?? undefined);
-	if (vars.length === 0) return undefined;
+	const runtime = vars.filter((v) => v.scope !== "build");
+	if (runtime.length === 0) return undefined;
 	const envVars: Record<string, string> = {};
-	for (const v of vars) envVars[v.key] = v.value;
+	for (const v of runtime) envVars[v.key] = v.value;
 	return envVars;
 };
 
@@ -76,6 +78,10 @@ const deployFromImage = async (
 			cpuLimit: project?.cpuLimit,
 			memoryLimitMb: project?.memoryLimitMb,
 			appPort: project?.port,
+			healthCheck: project?.healthCheck,
+			restartPolicy: project?.restartPolicy,
+			restartMaxRetries: project?.restartMaxRetries,
+			stopGracePeriodSeconds: project?.stopGracePeriodSeconds,
 			targetServer: server,
 		},
 	);
@@ -88,6 +94,33 @@ const deployFromImage = async (
 	return runtime;
 };
 
+const deployImageRemote = async (deployment: Deployment, project: Project, server: Server) => {
+	const { listDeployments, updateDeploymentStatus } = await getRepo();
+	const { ensureRegistryLogin, pullImage } = await import("../orchestrator/registry");
+	const { findRegistryForImage } = await import("../db/repo/registries");
+
+	await updateDeploymentStatus(deployment.id, "building", { failureReason: null });
+	await emitLog(deployment.id, "system", `Deploying image ${deployment.sourceRef} on server ${server.name}`);
+
+	const registryId = project.registryId ?? (await findRegistryForImage(deployment.sourceRef).catch(() => null));
+	await ensureRegistryLogin(registryId, server, async (line) => emitLog(deployment.id, "build", line));
+	await pullImage(deployment.sourceRef, project.imagePullPolicy ?? "always", server, async (line) =>
+		emitLog(deployment.id, "build", line),
+	);
+
+	await updateDeploymentStatus(deployment.id, "deploying");
+	const previous = (await listDeployments(project.id)).find(
+		(d) => d.id !== deployment.id && d.status === "running" && d.containerName,
+	);
+
+	await deployFromImage(deployment, project, server, deployment.sourceRef, previous);
+
+	if (previous) {
+		await updateDeploymentStatus(previous.id, "inactive", { failureReason: "Superseded by new deployment" });
+		await emitLog(previous.id, "system", `Deployment marked inactive (superseded by ${deployment.id.slice(0, 8)})`);
+	}
+};
+
 const deployComposeRemote = async (deployment: Deployment, project: Project, server: Server) => {
 	const { listEnvironmentVariablesForDeploy, listDeployments, updateDeploymentStatus } = await getRepo();
 	await updateDeploymentStatus(deployment.id, "building", { failureReason: null });
@@ -95,6 +128,7 @@ const deployComposeRemote = async (deployment: Deployment, project: Project, ser
 
 	const envVars = await listEnvironmentVariablesForDeploy(project.id, deployment.environment ?? undefined);
 	const { resolveProjectGitUrl } = await import("../orchestrator/source");
+	const { seedComposeEnvVars } = await getRepo();
 
 	const script = buildRemoteComposeScript({
 		deploymentId: deployment.id,
@@ -113,6 +147,17 @@ const deployComposeRemote = async (deployment: Deployment, project: Project, ser
 			await emitLog(deployment.id, "build", line);
 		},
 	});
+	const refs = parseRemoteComposeVarsMarker(result.stdout);
+	if (refs.length > 0) {
+		const seeded = await seedComposeEnvVars(project.id, deployment.environment, refs);
+		if (seeded.size > 0) {
+			await emitLog(
+				deployment.id,
+				"build",
+				`Registered ${seeded.size} compose-defined env var(s) from the compose file: ${[...seeded.keys()].join(", ")}`,
+			);
+		}
+	}
 	if (result.code !== 0) throw new Error(remoteScriptFailure(result, "Remote compose build failed"));
 
 	const composeResult = parseRemoteComposeResult(result.stdout);
@@ -299,8 +344,12 @@ export const sshExecutor: DeploymentExecutor = {
 	mode: "ssh",
 
 	async deploy({ deployment, project, server }: ExecutorDeployInput) {
-		if (deployment.sourceType !== "git") throw new Error("SSH mode currently supports Git deployments only");
 		if (!project) throw new Error("Deployment requires a project");
+		if (deployment.sourceType === "image") {
+			await deployImageRemote(deployment, project, server);
+			return;
+		}
+		if (deployment.sourceType !== "git") throw new Error("SSH mode currently supports Git and image deployments");
 
 		if (project.buildType === "compose") {
 			try {
@@ -320,7 +369,8 @@ export const sshExecutor: DeploymentExecutor = {
 		);
 
 		const imageTag = `${slugify(project.name)}-${deployment.id.slice(0, 8)}:latest`;
-		const envVars = await listEnvironmentVariablesForDeploy(project.id, deployment.environment ?? undefined);
+		const allRows = await listEnvironmentVariablesForDeploy(project.id, deployment.environment ?? undefined);
+		const envVars = allRows.filter((v) => v.scope !== "runtime");
 		const { resolveProjectGitUrl } = await import("../orchestrator/source");
 		const pgidEcho = `echo "DEQUL_PGID:$(ps -o pgid= -p $$ | tr -d ' ')"`;
 		const script = `${pgidEcho}\n${buildRemoteDeployScript({

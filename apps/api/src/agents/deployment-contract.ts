@@ -4,8 +4,15 @@ const GIT_URL = /^https:\/\/[^\s]+$/;
 const PRIVATE_IP_RE =
 	/(?::\/\/|^)(?:10\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.|localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])/;
 
+const IMAGE_REF_RE = /^[a-zA-Z0-9][a-zA-Z0-9._/:-]*(?::[a-zA-Z0-9._-]+)?$/;
+
 export const validateRemoteDeployment = (deployment: Deployment, project: Project): string | null => {
-	if (deployment.sourceType !== "git") return "Remote agents currently support Git deployments only";
+	if (deployment.sourceType === "image") {
+		if (!IMAGE_REF_RE.test(deployment.sourceRef)) return "Invalid container image reference";
+		if (project.buildType === "compose") return "Remote agents do not support Compose image deployments";
+		return null;
+	}
+	if (deployment.sourceType !== "git") return "Remote agents currently support Git and image deployments only";
 	if (!GIT_URL.test(deployment.sourceRef)) return "Remote Git deployments require a public HTTPS repository URL";
 	try {
 		const url = new URL(deployment.sourceRef);

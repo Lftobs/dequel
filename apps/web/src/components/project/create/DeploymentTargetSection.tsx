@@ -60,7 +60,7 @@ export function DeploymentTargetSelect({ serverId, setServerId, servers }: Deplo
 				</div>
 			)}
 			<span className="text-[10px] text-zinc-500">
-				Remote agents currently support Git sources with Railpack web builds.
+				Remote agents support Git (Railpack web builds) and prebuilt container images.
 			</span>
 		</div>
 	);

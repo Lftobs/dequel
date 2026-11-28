@@ -1,4 +1,4 @@
-export type AuditActorType = "user" | "api_key" | "system";
+export type AuditActorType = "user" | "api_key" | "system" | "webhook";
 
 export interface AuditLog {
 	id: string;

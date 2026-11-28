@@ -2,7 +2,12 @@ export type RemoteGitDeployPayload = {
 	deploymentId: string;
 	projectId: string;
 	projectName: string;
-	gitUrl: string;
+	gitUrl?: string;
+	imageRef?: string;
+	imagePullPolicy?: "always" | "if-not-present" | "never";
+	registryAuth?: { url: string; username: string; password: string };
+	containerName?: string;
+	volumes?: { volumeName: string; mountPath: string }[];
 	branch?: string;
 	commitSha?: string;
 	appPort: number;
@@ -27,6 +32,7 @@ export type RemoteDestroyPayload = {
 	deploymentId: string;
 	containerName: string | null;
 	imageTag: string | null;
+	imageOwnedByDequel?: boolean;
 };
 
 export type RemoteScalePayload = {

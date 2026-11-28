@@ -1,20 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, ArrowLeft, GitBranch, LayoutTemplate, Rocket, Server } from "lucide-react";
+import { AlertCircle, ArrowLeft, GitBranch, LayoutTemplate } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as api from "../api/client";
 import { getGithubIntegration } from "../api/client";
 import { ApiError } from "../api/http";
 import { BuildStrategySection, type ComposeServiceRow } from "../components/project/create/BuildStrategySection";
 import { CreationStatusOverlay } from "../components/project/create/CreationStatusOverlay";
+import { DeploymentSummaryCard } from "../components/project/create/DeploymentSummaryCard";
 import { DeploymentTargetSection, getDeploymentTargets } from "../components/project/create/DeploymentTargetSection";
 import { EnvVarsSection, type StagedEnv } from "../components/project/create/EnvVarsSection";
+import type { GitProviderValue } from "../components/project/create/GitAuthFields";
 import { ProjectNameSection } from "../components/project/create/ProjectNameSection";
 import { SourceSelectionSection } from "../components/project/create/SourceSelectionSection";
 import { TemplateFlow } from "../components/templates/TemplateFlow";
 import { Button } from "../components/ui/button";
 import { useCreateProject } from "../hooks/useProjects";
-import type { CreateProjectInput, Server as DequlServer, GithubRepo } from "../types";
+import type { CreateProjectInput, Server as DequlServer, GithubRepo, ImagePullPolicy } from "../types";
 import type { FrameworkPreset } from "../utils/presets";
 import { slugifyProjectName } from "../utils/slugify";
 
@@ -30,7 +32,7 @@ export function CreateProjectPage() {
 	});
 
 	// Source State
-	const [sourceType, setSourceType] = useState<"git" | "upload">("git");
+	const [sourceType, setSourceType] = useState<"git" | "upload" | "image">("git");
 	const [selectedRepo, setSelectedRepo] = useState<GithubRepo | null>(null);
 	const [repoUrl, setRepoUrl] = useState("");
 	const [repoBranch, setRepoBranch] = useState("");
@@ -38,6 +40,11 @@ export function CreateProjectPage() {
 	const [githubConnected, setGithubConnected] = useState(false);
 	const [githubConfigured, setGithubConfigured] = useState(false);
 	const [showManualGit, setShowManualGit] = useState(false);
+	const [gitProvider, setGitProvider] = useState<GitProviderValue>("");
+	const [gitToken, setGitToken] = useState("");
+	const [imageRef, setImageRef] = useState("");
+	const [imagePullPolicy, setImagePullPolicy] = useState<ImagePullPolicy>("always");
+	const [registryId, setRegistryId] = useState("");
 
 	// Form State
 	const [name, setName] = useState("");
@@ -45,7 +52,9 @@ export function CreateProjectPage() {
 	const [serverId, setServerId] = useState("auto");
 
 	// Build & Runtime Strategy State
-	const [buildType, setBuildType] = useState<"railpack" | "compose">("railpack");
+	const [buildType, setBuildType] = useState<"railpack" | "dockerfile" | "compose">("railpack");
+	const [dockerfilePath, setDockerfilePath] = useState("");
+	const [dockerTarget, setDockerTarget] = useState("");
 	const [projectType, setProjectType] = useState("web");
 	const [selectedPresetId, setSelectedPresetId] = useState("");
 	const [port, setPort] = useState("");
@@ -162,6 +171,11 @@ export function CreateProjectPage() {
 			return;
 		}
 
+		if (sourceType === "image" && !imageRef.trim()) {
+			setErrorMessage("Please enter a container image reference.");
+			return;
+		}
+
 		if (sourceType === "upload" && !zipFile) {
 			setErrorMessage("Please select a source ZIP archive.");
 			return;
@@ -185,17 +199,25 @@ export function CreateProjectPage() {
 				serverId:
 					serverId !== "auto" && getDeploymentTargets(servers).some((s) => s.id === serverId) ? serverId : undefined,
 				sourceType,
-				repoUrl: sourceType === "upload" ? undefined : repoUrl,
-				repoBranch: sourceType === "upload" ? undefined : repoBranch.trim() || undefined,
-				buildType,
+				repoUrl: sourceType === "git" ? repoUrl : undefined,
+				repoBranch: sourceType === "git" ? repoBranch.trim() || undefined : undefined,
+				buildType: sourceType === "image" ? "railpack" : buildType,
 				projectType,
-				sourceDir: sourceDir.trim() || undefined,
-				buildCommand: buildType === "railpack" ? buildCommand.trim() || undefined : undefined,
-				installCommand: buildType === "railpack" ? installCommand.trim() || undefined : undefined,
-				outputDir: buildType === "railpack" ? outputDir.trim() || undefined : undefined,
-				startCommand: buildType === "railpack" ? startCommand.trim() || undefined : undefined,
+				sourceDir: sourceType === "image" ? undefined : sourceDir.trim() || undefined,
+				buildCommand: sourceType !== "image" && buildType === "railpack" ? buildCommand.trim() || undefined : undefined,
+				installCommand:
+					sourceType !== "image" && buildType === "railpack" ? installCommand.trim() || undefined : undefined,
+				outputDir: sourceType !== "image" && buildType === "railpack" ? outputDir.trim() || undefined : undefined,
+				startCommand: sourceType !== "image" && buildType === "railpack" ? startCommand.trim() || undefined : undefined,
 				port: port ? Number(port) : undefined,
 				composeServices: composeServicesPayload,
+				gitProvider: sourceType === "git" && gitProvider ? gitProvider : undefined,
+				gitToken: sourceType === "git" && gitToken.trim() ? gitToken.trim() : undefined,
+				dockerfilePath: buildType === "dockerfile" ? dockerfilePath.trim() || undefined : undefined,
+				dockerTarget: buildType === "dockerfile" ? dockerTarget.trim() || undefined : undefined,
+				imageRef: sourceType === "image" ? imageRef.trim() : undefined,
+				imagePullPolicy: sourceType === "image" ? imagePullPolicy : undefined,
+				registryId: registryId || undefined,
 			};
 
 			const project = await createProject.mutateAsync(projectPayload);
@@ -333,6 +355,16 @@ export function CreateProjectPage() {
 								setGithubConnected(false);
 								setSelectedRepo(null);
 							}}
+							gitProvider={gitProvider}
+							setGitProvider={setGitProvider}
+							gitToken={gitToken}
+							setGitToken={setGitToken}
+							imageRef={imageRef}
+							setImageRef={setImageRef}
+							imagePullPolicy={imagePullPolicy}
+							setImagePullPolicy={setImagePullPolicy}
+							registryId={registryId}
+							setRegistryId={setRegistryId}
 						/>
 
 						{/* Project Details */}
@@ -347,30 +379,36 @@ export function CreateProjectPage() {
 						<DeploymentTargetSection serverId={serverId} setServerId={setServerId} servers={servers} />
 
 						{/* Build Strategy & Application Preset (with SVG logos) */}
-						<BuildStrategySection
-							buildType={buildType}
-							setBuildType={setBuildType}
-							projectType={projectType}
-							setProjectType={setProjectType}
-							selectedPresetId={selectedPresetId}
-							onSelectPreset={handleSelectPreset}
-							buildCommand={buildCommand}
-							setBuildCommand={setBuildCommand}
-							installCommand={installCommand}
-							setInstallCommand={setInstallCommand}
-							startCommand={startCommand}
-							setStartCommand={setStartCommand}
-							outputDir={outputDir}
-							setOutputDir={setOutputDir}
-							port={port}
-							setPort={setPort}
-							sourceDir={sourceDir}
-							setSourceDir={setSourceDir}
-							composeServicesList={composeServicesList}
-							addComposeServiceRow={addComposeServiceRow}
-							removeComposeServiceRow={removeComposeServiceRow}
-							updateComposeServiceRow={updateComposeServiceRow}
-						/>
+						{sourceType !== "image" && (
+							<BuildStrategySection
+								buildType={buildType}
+								setBuildType={setBuildType}
+								dockerfilePath={dockerfilePath}
+								setDockerfilePath={setDockerfilePath}
+								dockerTarget={dockerTarget}
+								setDockerTarget={setDockerTarget}
+								projectType={projectType}
+								setProjectType={setProjectType}
+								selectedPresetId={selectedPresetId}
+								onSelectPreset={handleSelectPreset}
+								buildCommand={buildCommand}
+								setBuildCommand={setBuildCommand}
+								installCommand={installCommand}
+								setInstallCommand={setInstallCommand}
+								startCommand={startCommand}
+								setStartCommand={setStartCommand}
+								outputDir={outputDir}
+								setOutputDir={setOutputDir}
+								port={port}
+								setPort={setPort}
+								sourceDir={sourceDir}
+								setSourceDir={setSourceDir}
+								composeServicesList={composeServicesList}
+								addComposeServiceRow={addComposeServiceRow}
+								removeComposeServiceRow={removeComposeServiceRow}
+								updateComposeServiceRow={updateComposeServiceRow}
+							/>
+						)}
 
 						{/* Environment Variables (with File Upload, Key-Value builder, and Bulk paste) */}
 						<EnvVarsSection
@@ -396,65 +434,18 @@ export function CreateProjectPage() {
 
 					{/* Right Column: Live Summary Sidebar */}
 					<div className="lg:col-span-4 space-y-4">
-						<div className="bg-[#0c0c0e] border border-[#1c1c21] p-5 rounded-2xl space-y-4 sticky top-6 shadow-xl">
-							<h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-								<Server className="h-4 w-4 text-orange-500" />
-								Deployment Summary
-							</h3>
-
-							<div className="space-y-3 text-xs">
-								<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-									<div className="text-[10px] text-zinc-400 font-bold uppercase">Project Name</div>
-									<div className="font-bold text-zinc-100 font-mono">{name || "—"}</div>
-								</div>
-
-								<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-									<div className="text-[10px] text-zinc-400 font-bold uppercase">Code Provider</div>
-									<div className="font-bold text-emerald-400 uppercase">{sourceType}</div>
-								</div>
-
-								<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-									<div className="text-[10px] text-zinc-400 font-bold uppercase">Build Strategy</div>
-									<div className="font-bold text-amber-400 uppercase">{buildType}</div>
-								</div>
-
-								{buildType === "compose" ? (
-									<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-										<div className="text-[10px] text-zinc-400 font-bold uppercase">Compose Ingress</div>
-										<div className="text-zinc-300 font-mono text-[11px]">
-											{composeServicesList[0]?.serviceName.trim() || "Auto-detect"}{" "}
-											{composeServicesList[0]?.port.trim() ? `:${composeServicesList[0].port.trim()}` : ""}
-										</div>
-									</div>
-								) : (
-									<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-										<div className="text-[10px] text-zinc-400 font-bold uppercase">Type & Port</div>
-										<div className="text-zinc-300 font-mono text-[11px]">
-											{projectType === "web" ? "Web Service" : "Static Site"} ({port || "3000"})
-										</div>
-									</div>
-								)}
-
-								<div className="p-3 rounded-xl bg-[#121215] border border-[#1c1c21] space-y-1">
-									<div className="text-[10px] text-zinc-400 font-bold uppercase">Environment Vars</div>
-									<div className="text-zinc-300 font-mono text-[11px]">{stagedEnvs.length} variables</div>
-								</div>
-							</div>
-
-							<Button
-								type="button"
-								onClick={handleSubmit}
-								disabled={!name.trim() || (submittingStatus !== "idle" && submittingStatus !== "error")}
-								className="w-full bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white font-bold h-11 text-xs rounded-xl shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 mt-4"
-							>
-								<Rocket className="h-4 w-4" />
-								{submittingStatus === "error"
-									? "Retry Deployment"
-									: submittingStatus === "idle"
-										? "Launch Deployment"
-										: "Deploying..."}
-							</Button>
-						</div>
+						<DeploymentSummaryCard
+							name={name}
+							sourceType={sourceType}
+							buildType={buildType}
+							projectType={projectType}
+							port={port}
+							composeServicesList={composeServicesList}
+							envCount={stagedEnvs.length}
+							submittingStatus={submittingStatus}
+							canLaunch={!!name.trim()}
+							onLaunch={handleSubmit}
+						/>
 					</div>
 				</div>
 			)}

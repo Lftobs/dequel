@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import * as api from "../../../api/client";
 import { useDeployments, useRedeployDeployment } from "../../../hooks/useDeployments";
+import type { EnvVarScope } from "../../../types";
 import { AddEnvVarSheet } from "./AddEnvVarSheet";
 import { DeleteEnvVarDialog } from "./DeleteEnvVarDialog";
 import { EmptyEnvState } from "./EmptyEnvState";
@@ -35,6 +36,7 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 	const [deletingEvId, setDeletingEvId] = useState<string | null>(null);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [editingValue, setEditingValue] = useState("");
+	const [editingScope, setEditingScope] = useState<EnvVarScope>("both");
 	const [savingEdit, setSavingEdit] = useState<Record<string, boolean>>({});
 	const [revealValues, setRevealValues] = useState<Record<string, string>>({});
 	const [revealing, setRevealing] = useState<Record<string, boolean>>({});
@@ -51,6 +53,7 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 	const startEdit = async (id: string) => {
 		setEditingId(id);
 		setEditingValue("");
+		setEditingScope(envVars.find((v) => v.id === id)?.scope ?? "both");
 		setSavingEdit((prev) => ({ ...prev, [id]: true }));
 		try {
 			const data = await api.revealEnvVar(id);
@@ -64,7 +67,7 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 	const saveEdit = async (id: string) => {
 		setSavingEdit((prev) => ({ ...prev, [id]: true }));
 		try {
-			await api.updateEnvVar(id, editingValue);
+			await api.updateEnvVar(id, editingValue, editingScope);
 			setEditingId(null);
 			setEditingValue("");
 			setRevealValues((prev) => ({ ...prev, [id]: editingValue }));
@@ -110,13 +113,14 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 		});
 	};
 
-	const handleAddVars = async (vars: { key: string; value: string; env: string }[]) => {
+	const handleAddVars = async (vars: { key: string; value: string; env: string; scope: string }[]) => {
 		await Promise.all(
 			vars.map((v) =>
 				api.createEnvVar(projectId, {
 					key: v.key.trim(),
 					value: v.value.trim(),
 					environment: v.env.trim() || undefined,
+					scope: v.scope || undefined,
 				}),
 			),
 		);
@@ -162,6 +166,7 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 					envVars={envVars}
 					editingId={editingId}
 					editingValue={editingValue}
+					editingScope={editingScope}
 					savingEdit={savingEdit}
 					revealValues={revealValues}
 					revealing={revealing}
@@ -179,6 +184,7 @@ export function EnvVarsTab({ projectId }: EnvVarsTabProps) {
 					onHide={handleHide}
 					onCopy={copyToClipboard}
 					onEditingValueChange={setEditingValue}
+					onEditingScopeChange={setEditingScope}
 				/>
 			)}
 

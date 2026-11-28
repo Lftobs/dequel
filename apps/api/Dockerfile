@@ -24,7 +24,7 @@ RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.
 
 
 WORKDIR /app
-COPY package.json bun.lock* drizzle.config.ts* ./
+COPY package.json bun.lock* drizzle.config.ts* tsconfig.json ./
 RUN bun install
 
 COPY src ./src

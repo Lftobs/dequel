@@ -250,6 +250,15 @@ const startContainer = async (
 		args.push("--volume", `${defaultVolume}:/app/data`);
 	}
 	args.push(imageTag);
+	if (spec.projectId) {
+		const previous = (
+			await run("docker", ["ps", "-aq", "--filter", `label=com.dequl.project=${spec.projectId}`], { signal })
+		)
+			.split("\n")
+			.map((id) => id.trim())
+			.filter(Boolean);
+		for (const id of previous) await run("docker", ["rm", "-f", id]).catch(() => "");
+	}
 	progress("deploy", `Starting container ${containerName}`);
 	await run("docker", args, { signal });
 	await Bun.sleep(2_000);
@@ -264,16 +273,6 @@ const startContainer = async (
 	const match = portOutput.match(/:(\d+)\s*$/m);
 	if (!match) throw new Error("Docker did not publish an application port");
 	const hostPort = Number(match[1]);
-	if (spec.projectId) {
-		const previous = (
-			await run("docker", ["ps", "-aq", "--filter", `label=com.dequl.project=${spec.projectId}`], { signal })
-		)
-			.split("\n")
-			.map((id) => id.trim())
-			.filter(Boolean);
-		const currentId = await run("docker", ["inspect", "--format", "{{.Id}}", containerName], { signal });
-		for (const id of previous) if (id !== currentId) await run("docker", ["rm", "-f", id]).catch(() => "");
-	}
 	return hostPort;
 };
 
@@ -301,6 +300,58 @@ const deployFromGit = async (
 	}
 };
 
+const deployFromImage = async (
+	payload: RemoteGitDeployPayload,
+	signal: AbortSignal,
+	progress: Progress,
+): Promise<RemoteDeployResult> => {
+	const imageRef = payload.imageRef as string;
+	const slug = slugify(payload.projectName);
+	const containerName = payload.containerName || `${slug}-${payload.deploymentId.slice(0, 8)}`;
+	try {
+		if (payload.registryAuth) {
+			progress("build", `Logging in to ${payload.registryAuth.url}`);
+			const login = Bun.spawn(
+				["docker", "login", "--username", payload.registryAuth.username, "--password-stdin", payload.registryAuth.url],
+				{
+					stdin: new Response(payload.registryAuth.password),
+					stdout: "pipe",
+					stderr: "pipe",
+					signal,
+				},
+			);
+			const code = await login.exited;
+			if (code !== 0) {
+				throw new Error(`Registry login failed: ${(await new Response(login.stderr).text()).trim()}`);
+			}
+		}
+
+		const policy = payload.imagePullPolicy ?? "always";
+		let present = false;
+		if (policy === "if-not-present" || policy === "never") {
+			present = await run("docker", ["image", "inspect", imageRef], { signal })
+				.then(() => true)
+				.catch(() => false);
+		}
+		if (policy === "never" && !present) throw new Error(`Image ${imageRef} is not present on the agent`);
+		if (policy !== "never" && !present) {
+			progress("build", `Pulling image ${imageRef}`);
+			await run("docker", ["pull", imageRef], {
+				signal,
+				onLine: (line) => progress("build", line),
+			});
+		}
+
+		const hostPort = await startContainer(payload, imageRef, containerName, signal, progress);
+		const liveUrl = config.publicHost ? `http://${config.publicHost}:${hostPort}` : null;
+		progress("deploy", liveUrl ? `Deployment reachable at ${liveUrl}` : `Container published on host port ${hostPort}`);
+		return { imageTag: imageRef, containerName, hostPort, liveUrl, commitSha: null };
+	} catch (error) {
+		await run("docker", ["rm", "-f", containerName]).catch(() => "");
+		throw error;
+	}
+};
+
 const rollbackToImage = async (
 	payload: RemoteRollbackPayload,
 	signal: AbortSignal,
@@ -321,7 +372,7 @@ const destroyDeployment = async (payload: RemoteDestroyPayload, progress: Progre
 	if (payload.containerName) {
 		await run("docker", ["rm", "-f", payload.containerName]).catch(() => "");
 	}
-	if (payload.imageTag) {
+	if (payload.imageTag && payload.imageOwnedByDequel !== false) {
 		await run("docker", ["rmi", "-f", payload.imageTag]).catch(() => "");
 	}
 	progress("deploy", "Container and image removed");
@@ -379,8 +430,10 @@ export const executeJob = async (
 	progress: Progress,
 ): Promise<RemoteDeployResult | RemoteRouteResult | RemoteScaleResult | { ok: true }> => {
 	switch (job.type) {
-		case "deploy":
-			return deployFromGit(validateDeploymentPayload(job.payload), signal, progress);
+		case "deploy": {
+			const payload = validateDeploymentPayload(job.payload);
+			return payload.imageRef ? deployFromImage(payload, signal, progress) : deployFromGit(payload, signal, progress);
+		}
 		case "rollback":
 			return rollbackToImage(validateRollbackPayload(job.payload), signal, progress);
 		case "destroy":

@@ -1,0 +1,65 @@
+---
+title: Health Checks & Restart Policy
+category: Projects
+description: Probe containers before routing traffic and control restart behavior.
+slug: health-checks
+---
+
+The **Settings → Deploy & Runtime** section controls how Dequl decides
+that a new container is ready for traffic, and what happens when it
+dies.
+
+## Health checks
+
+By default Dequl only waits for the container to report `running`.
+Enable a probe so a crash loop, wrong port, or half-initialized app
+fails the deployment before the route is swapped:
+
+- **HTTP** — requests a path inside the container (wget/curl fallback);
+  the probe port defaults to the project port. 2xx/3xx counts as
+  healthy.
+- **TCP** — opens a connection to the probe port.
+- **Command** — runs a shell command inside the container; exit code
+  `0` is healthy.
+
+Tunables (defaults: interval 10s, timeout 3s, start period 5s, 3
+retries) map directly to Docker's `--health-*` flags. The container
+keeps the probe running for its whole lifetime, so Docker's restart
+policy also reacts to failing probes.
+
+Deployment waits for the first `healthy` result — bounded by the start
+period plus a few probe cycles — before writing the Caddy route. A
+container that exits or reports `unhealthy` fails the deployment with
+its probe output in the build log.
+
+## Restart policy
+
+- **Unless stopped** (default) — restarts on crashes, Docker restarts,
+  and host reboots.
+- **Always** — also restarts after a manual stop.
+- **On failure** — restarts only on non-zero exit, optionally capped at
+  a max retry count.
+- **Never** — no automatic restarts.
+
+**Stop grace period** sets how long Docker waits for graceful shutdown
+before force-killing the container during redeploys.
+
+## Deploy hooks
+
+- **Pre-deploy command** — runs inside a throwaway container from the
+  new image, with the project env vars, on the Docker network, before
+  the new container starts. Use it for migrations or cache warmup. A
+  non-zero exit fails the deployment; the old release stays live.
+- **Post-deploy command** — runs inside the new container after it
+  starts. Failures are logged but do not fail the deployment.
+
+## Deployment concurrency
+
+**Cancel older deployments** cancels in-flight builds of the same
+project when a newer one starts, so a burst of pushes does not queue
+every commit.
+
+## Next steps
+
+- Read [Deployments](/docs/deployments) for the deploy lifecycle.
+- Read [Automation](/docs/automation) for webhooks and maintenance mode.

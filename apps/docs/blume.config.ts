@@ -38,12 +38,15 @@ export default defineConfig({
 				items: [
 					"/docs/deployments",
 					"/docs/configuration",
+					"/docs/build-methods",
 					"/docs/env-vars",
 					"/docs/shared-env-vars",
 					"/docs/templates",
 					"/docs/volumes",
 					"/docs/domains",
 					"/docs/scaling",
+					"/docs/health-checks",
+					"/docs/automation",
 				],
 			},
 			{
@@ -64,11 +67,11 @@ export default defineConfig({
 			},
 			{
 				label: "Integrations",
-				items: ["/docs/github", "/docs/settings"],
+				items: ["/docs/github", "/docs/settings", "/docs/registries", "/docs/notifications"],
 			},
 			{
 				label: "Security",
-				items: ["/docs/auth", "/docs/keys", "/docs/ssl"],
+				items: ["/docs/auth", "/docs/keys", "/docs/ssl", "/docs/audit-logs"],
 			},
 			{
 				label: "Platform",

@@ -1,4 +1,6 @@
 import { promises as dns } from "node:dns";
+import { unlink } from "node:fs/promises";
+import { join } from "node:path";
 import { Elysia } from "elysia";
 import {
 	createDomain,
@@ -6,9 +8,13 @@ import {
 	getDomainById,
 	getProjectById,
 	listDomains,
+	updateDomainSettings,
 	updateDomainValidation,
 } from "../../db/repo";
+import { reconcileProjectRoute } from "../../orchestrator/route-reconcile";
+import { config } from "../../utils/config";
 import { isPort, SERVICE_NAME_RE } from "../../utils/validate";
+import { auditRequest } from "../audit";
 import { created, fail, ok } from "../response";
 
 const PRIVATE_IP_RANGES = [
@@ -71,7 +77,7 @@ export const domainsRoutes = new Elysia()
 		);
 		return ok(results);
 	})
-	.post("/projects/:id/domains", async ({ params, body, set }: any) => {
+	.post("/projects/:id/domains", async ({ params, body, request, set }: any) => {
 		if (!body?.domain) {
 			set.status = 400;
 			return fail("domain is required");
@@ -85,6 +91,18 @@ export const domainsRoutes = new Elysia()
 			set.status = 400;
 			return fail("targetPort must be an integer between 1 and 65535");
 		}
+		if (body.tlsMode && !["auto", "custom", "dns"].includes(body.tlsMode)) {
+			set.status = 400;
+			return fail("tlsMode must be auto, custom, or dns");
+		}
+		if (body.tlsMode === "custom" && (!body.certificate || !body.certificateKey)) {
+			set.status = 400;
+			return fail("certificate and certificateKey are required for custom TLS");
+		}
+		if (body.basicAuthUser && !body.basicAuthPassword) {
+			set.status = 400;
+			return fail("basicAuthPassword is required when basicAuthUser is set");
+		}
 		const domain = await createDomain({
 			projectId: params.id,
 			domain: body.domain,
@@ -92,6 +110,18 @@ export const domainsRoutes = new Elysia()
 			targetService: body.targetService || null,
 			targetPort,
 			cloudflareProxied: Boolean(body.cloudflareProxied),
+			tlsMode: body.tlsMode ?? "auto",
+			certificate: body.certificate || null,
+			certificateKey: body.certificateKey || null,
+			basicAuthUser: body.basicAuthUser || null,
+			basicAuthPassword: body.basicAuthPassword || null,
+			httpsRedirect: body.httpsRedirect ?? true,
+			gzip: body.gzip ?? true,
+			noindex: Boolean(body.noindex),
+			wwwRedirect: Boolean(body.wwwRedirect),
+			pathPrefix: body.pathPrefix || null,
+			stripPrefix: Boolean(body.stripPrefix),
+			rawSnippet: body.rawSnippet || null,
 		});
 		const { validateDomain, resolveServerIp } = await import("../../utils/dns");
 		const project = await getProjectById(params.id);
@@ -100,11 +130,17 @@ export const domainsRoutes = new Elysia()
 			validateDomain(body.domain, ip, project?.baseDomain).then((valid) => {
 				if (valid) {
 					updateDomainValidation(domain.id, "verified", "provisioned");
-					import("../../utils/domain-verifier").then((m) =>
-						m.addToCaddyRoute(body.domain, params.id, project?.name ?? ""),
+					reconcileProjectRoute(params.id).catch((error) =>
+						console.error("[Domains] Failed to apply route after verification:", error),
 					);
 				}
 			});
+		});
+		await auditRequest(request, {
+			action: "domain.created",
+			resourceType: "domain",
+			resourceId: domain.id,
+			details: { domain: domain.domain, projectId: params.id, tlsMode: domain.tlsMode },
 		});
 		return created(domain);
 	})
@@ -142,15 +178,68 @@ export const domainsRoutes = new Elysia()
 			serverIp: ip,
 		});
 	})
-	.delete("/domains/:id", async ({ params: { id }, set }) => {
+	.patch("/domains/:id", async ({ params: { id }, body, request, set }: any) => {
+		const existing = await getDomainById(id);
+		if (!existing) {
+			set.status = 404;
+			return fail("Domain not found");
+		}
+		if (body?.tlsMode && !["auto", "custom", "dns"].includes(body.tlsMode)) {
+			set.status = 400;
+			return fail("tlsMode must be auto, custom, or dns");
+		}
+		if (body?.targetPort) {
+			const port = Number(body.targetPort);
+			if (!isPort(port)) {
+				set.status = 400;
+				return fail("targetPort must be an integer between 1 and 65535");
+			}
+		}
+		const updated = await updateDomainSettings(id, {
+			targetService: body?.targetService,
+			targetPort: body?.targetPort ? Number(body.targetPort) : body?.targetPort === null ? null : undefined,
+			cloudflareProxied: body?.cloudflareProxied,
+			tlsMode: body?.tlsMode,
+			certificate: body?.certificate,
+			certificateKey: body?.certificateKey,
+			basicAuthUser: body?.basicAuthUser,
+			basicAuthPassword: body?.basicAuthPassword,
+			httpsRedirect: body?.httpsRedirect,
+			gzip: body?.gzip,
+			noindex: body?.noindex,
+			wwwRedirect: body?.wwwRedirect,
+			pathPrefix: body?.pathPrefix,
+			stripPrefix: body?.stripPrefix,
+			rawSnippet: body?.rawSnippet,
+		});
+		const project = await getProjectById(existing.projectId);
+		if (project) {
+			await reconcileProjectRoute(existing.projectId);
+		}
+		await auditRequest(request, {
+			action: "domain.updated",
+			resourceType: "domain",
+			resourceId: id,
+			details: { domain: existing.domain, fields: Object.keys(body ?? {}) },
+		});
+		return ok(updated);
+	})
+	.delete("/domains/:id", async ({ params: { id }, request, set }) => {
 		const domain = await getDomainById(id);
 		if (!domain) {
 			set.status = 404;
 			return fail("Domain not found");
 		}
-		const { removeFromCaddyRoute } = await import("../../utils/domain-verifier");
-		const project = await getProjectById(domain.projectId);
 		await deleteDomain(id);
-		if (project) removeFromCaddyRoute(domain.domain, project.id, project.name);
+		await reconcileProjectRoute(domain.projectId);
+		const safeName = domain.domain.replace(/[^a-z0-9.-]/gi, "_");
+		await unlink(join(config.caddyRoutesDir, `${safeName}.crt`)).catch(() => {});
+		await unlink(join(config.caddyRoutesDir, `${safeName}.key`)).catch(() => {});
+		await auditRequest(request, {
+			action: "domain.deleted",
+			resourceType: "domain",
+			resourceId: id,
+			details: { domain: domain.domain, projectId: domain.projectId },
+		});
 		return ok(null, "Domain deleted");
 	});

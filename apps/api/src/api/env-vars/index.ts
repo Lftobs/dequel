@@ -2,10 +2,12 @@ import { Elysia } from "elysia";
 import {
 	createEnvironmentVariable,
 	deleteEnvironmentVariable,
+	getEnvironmentVariableById,
 	getEnvironmentVariablePlaintext,
 	listEnvironmentVariables,
 	updateEnvironmentVariable,
 } from "../../db/repo";
+import { auditRequest } from "../audit";
 import { created, fail, ok } from "../response";
 
 const handleError = (e: unknown, set: any) => {
@@ -18,59 +20,83 @@ export const envVarsRoutes = new Elysia()
 	.get("/projects/:id/env-vars", async ({ params: { id }, query }: any) =>
 		ok(await listEnvironmentVariables(id, query.environment)),
 	)
-	.post("/projects/:id/env-vars", async ({ params: { id }, body, set }: any) => {
+	.post("/projects/:id/env-vars", async ({ params: { id }, body, request, set }: any) => {
 		try {
 			if (!body?.key || body.value === undefined) {
 				set.status = 400;
 				return fail("key and value are required");
 			}
-			return created(
-				await createEnvironmentVariable({
-					projectId: id,
-					key: body.key,
-					value: body.value,
-					environment: body.environment,
-				}),
-			);
+			const envVar = await createEnvironmentVariable({
+				projectId: id,
+				key: body.key,
+				value: body.value,
+				environment: body.environment,
+				scope: body.scope,
+			});
+			await auditRequest(request, {
+				action: "env_var.created",
+				resourceType: "environment_variable",
+				resourceId: envVar.id,
+				details: { key: body.key, projectId: id, environment: body.environment ?? "production" },
+			});
+			return created(envVar);
 		} catch (e) {
 			return handleError(e, set);
 		}
 	})
-	.patch("/env-vars/:id", async ({ params: { id }, body, set }: any) => {
+	.patch("/env-vars/:id", async ({ params: { id }, body, request, set }: any) => {
 		try {
 			if (body.value === undefined) {
 				set.status = 400;
 				return fail("value is required");
 			}
-			const ev = await updateEnvironmentVariable(id, body.value);
+			const ev = await updateEnvironmentVariable(id, body.value, body.scope);
 			if (!ev) {
 				set.status = 404;
 				return fail("Environment variable not found");
 			}
+			await auditRequest(request, {
+				action: "env_var.updated",
+				resourceType: "environment_variable",
+				resourceId: id,
+				details: { key: ev.key },
+			});
 			return ok(ev);
 		} catch (e) {
 			return handleError(e, set);
 		}
 	})
-	.get("/env-vars/:id/reveal", async ({ params: { id }, set }) => {
+	.get("/env-vars/:id/reveal", async ({ params: { id }, request, set }) => {
 		try {
 			const value = await getEnvironmentVariablePlaintext(id);
 			if (value === null) {
 				set.status = 404;
 				return fail("Environment variable not found");
 			}
+			await auditRequest(request, {
+				action: "env_var.revealed",
+				resourceType: "environment_variable",
+				resourceId: id,
+			});
 			return ok({ value });
 		} catch (e) {
 			return handleError(e, set);
 		}
 	})
-	.delete("/env-vars/:id", async ({ params: { id }, set }) => {
+	.delete("/env-vars/:id", async ({ params: { id }, request, set }) => {
 		try {
+			const existing = await getEnvironmentVariableById(id);
 			const deleted = await deleteEnvironmentVariable(id);
 			if (!deleted) {
 				set.status = 404;
 				return fail("Environment variable not found");
 			}
+			await auditRequest(request, {
+				action: "env_var.deleted",
+				resourceType: "environment_variable",
+				resourceId: id,
+				details: existing ? { key: existing.key } : {},
+			});
 			return ok(null, "Environment variable deleted");
 		} catch (e) {
 			return handleError(e, set);

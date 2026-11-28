@@ -24,21 +24,47 @@ const isValidSha = (s: string) => /^[0-9a-f]{7,40}$/i.test(s);
 
 export const isGithubHttpsUrl = (gitUrl: string) => /^https:\/\/github\.com\//i.test(gitUrl.trim());
 
+export const isHttpsGitUrl = (gitUrl: string) => /^https:\/\//i.test(gitUrl.trim());
+
+export const detectGitProvider = (gitUrl: string): string => {
+	const host = gitUrl
+		.trim()
+		.replace(/^https?:\/\//i, "")
+		.split("/")[0]
+		?.toLowerCase();
+	if (host === "github.com" || host?.endsWith(".github.com")) return "github";
+	if (host === "gitlab.com" || host?.includes("gitlab")) return "gitlab";
+	if (host === "bitbucket.org" || host?.includes("bitbucket")) return "bitbucket";
+	if (host?.includes("gitea") || host?.includes("forgejo") || host?.includes("codeberg")) return "gitea";
+	return "generic";
+};
+
+const providerUsername = (provider: string | null | undefined, detected: string) => {
+	const value = provider && provider !== "generic" ? provider : detected;
+	if (value === "github") return "x-access-token";
+	if (value === "bitbucket") return "x-token-auth";
+	if (value === "gitlab" || value === "gitea") return "oauth2";
+	return "oauth2";
+};
+
 export const redactGitUrl = (gitUrl: string) => gitUrl.replace(/^(https:\/\/)[^/@]+@([^/]+)/i, "$1$2");
 
-export const buildAuthenticatedGitUrl = (gitUrl: string, token?: string | null) => {
+export const buildAuthenticatedGitUrl = (gitUrl: string, token?: string | null, provider?: string | null) => {
 	if (!token) return gitUrl;
 	const trimmed = gitUrl.trim();
-	if (!isGithubHttpsUrl(trimmed)) return gitUrl;
-	if (trimmed.includes("@")) return gitUrl;
-	return trimmed.replace(/^https:\/\/github\.com\//i, `https://x-access-token:${token}@github.com/`);
+	if (!isHttpsGitUrl(trimmed)) return gitUrl;
+	if (/^https:\/\/[^/@]+@/i.test(trimmed)) return gitUrl;
+	const detected = detectGitProvider(trimmed);
+	const username = providerUsername(provider, detected);
+	return trimmed.replace(/^https:\/\//i, `https://${username}:${token}@`);
 };
 
 export const resolveProjectGitUrl = async (projectId: string | null | undefined, gitUrl: string): Promise<string> => {
-	if (!projectId || !isGithubHttpsUrl(gitUrl)) return gitUrl;
+	if (!projectId || !isHttpsGitUrl(gitUrl)) return gitUrl;
 	try {
-		const { getProjectGithubToken } = await import("../db/repo/projects");
-		return buildAuthenticatedGitUrl(gitUrl, await getProjectGithubToken(projectId));
+		const { getProjectById, getProjectGitToken } = await import("../db/repo/projects");
+		const project = await getProjectById(projectId);
+		return buildAuthenticatedGitUrl(gitUrl, await getProjectGitToken(projectId), project?.gitProvider);
 	} catch {
 		return gitUrl;
 	}
@@ -49,7 +75,7 @@ const shq = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
 export const buildGitAuthEnv = (authedUrl: string): { env: Record<string, string>; cleanUrl: string } | null => {
 	const cleanUrl = redactGitUrl(authedUrl);
 	if (cleanUrl === authedUrl) return null;
-	if (!isGithubHttpsUrl(cleanUrl)) return null;
+	if (!isHttpsGitUrl(cleanUrl)) return null;
 	return {
 		env: {
 			GIT_CONFIG_COUNT: "1",
@@ -76,11 +102,12 @@ export const prepareSourceWorkspace = async (
 	branch?: string,
 	commitSha?: string,
 	token?: string | null,
+	provider?: string | null,
 ) => {
 	const root = join(config.workspaceRoot, deploymentId);
 	await rm(root, { recursive: true, force: true });
 	await mkdir(root, { recursive: true });
-	const authedUrl = buildAuthenticatedGitUrl(gitUrl, token);
+	const authedUrl = buildAuthenticatedGitUrl(gitUrl, token, provider);
 	const auth = buildGitAuthEnv(authedUrl);
 	const remoteUrl = auth?.cleanUrl ?? authedUrl;
 	if (commitSha) {

@@ -207,3 +207,49 @@ describe("remote route payload", () => {
 		);
 	});
 });
+
+describe("image deployment payloads", () => {
+	const imagePayload = {
+		deploymentId: "deployment-1",
+		projectId: "project-1",
+		projectName: "my-app",
+		imageRef: "registry.example.com/team/app:v1.2.3",
+		imagePullPolicy: "if-not-present",
+		containerName: "my-app-deployme",
+		registryAuth: { url: "registry.example.com", username: "bot", password: "secret" },
+		appPort: 3000,
+		environmentVariables: [{ key: "NODE_ENV", value: "production" }],
+	};
+
+	it("accepts an image payload without a Git URL", () => {
+		const parsed = validateDeploymentPayload(imagePayload);
+		expect(parsed.imageRef).toBe(imagePayload.imageRef);
+		expect(parsed.gitUrl).toBeUndefined();
+	});
+
+	it("rejects an image payload that also carries a Git URL", () => {
+		expect(() => validateDeploymentPayload({ ...imagePayload, gitUrl: "https://example.com/x.git" })).toThrow(
+			"Image deployments cannot include a Git URL",
+		);
+	});
+
+	it("rejects an invalid image reference and pull policy", () => {
+		expect(() => validateDeploymentPayload({ ...imagePayload, imageRef: "-bad" })).toThrow(
+			"Invalid container image reference",
+		);
+		expect(() => validateDeploymentPayload({ ...imagePayload, imagePullPolicy: "sometimes" })).toThrow(
+			"Invalid image pull policy",
+		);
+	});
+
+	it("does not remove externally managed images on destroy", () => {
+		expect(() =>
+			validateDestroyPayload({
+				deploymentId: "deployment-1",
+				containerName: "my-app-deployme",
+				imageTag: "nginx:alpine",
+				imageOwnedByDequel: false,
+			}),
+		).not.toThrow();
+	});
+});

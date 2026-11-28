@@ -1,3 +1,19 @@
+export type GitProvider = "github" | "gitlab" | "bitbucket" | "gitea" | "generic";
+export type ImagePullPolicy = "always" | "if-not-present" | "never";
+export type RestartPolicy = "no" | "always" | "unless-stopped" | "on-failure";
+export type HealthCheckType = "none" | "http" | "tcp" | "command";
+
+export interface HealthCheckConfig {
+	type: HealthCheckType;
+	path?: string | null;
+	port?: number | null;
+	command?: string | null;
+	intervalSeconds?: number | null;
+	timeoutSeconds?: number | null;
+	startPeriodSeconds?: number | null;
+	retries?: number | null;
+}
+
 export interface Project {
 	id: string;
 	serverId: string | null;
@@ -20,6 +36,24 @@ export interface Project {
 	installCommand: string | null;
 	outputDir: string | null;
 	startCommand: string | null;
+	gitProvider: GitProvider;
+	hasGitToken: boolean;
+	dockerfilePath: string | null;
+	dockerTarget: string | null;
+	imageRef: string | null;
+	imagePullPolicy: ImagePullPolicy;
+	registryId: string | null;
+	healthCheck: HealthCheckConfig | null;
+	restartPolicy: RestartPolicy;
+	restartMaxRetries: number | null;
+	stopGracePeriodSeconds: number | null;
+	preDeployCommand: string | null;
+	postDeployCommand: string | null;
+	cancelOlderDeployments: boolean;
+	tags: string[];
+	deployWebhookToken: string | null;
+	maintenanceEnabled: boolean;
+	maintenanceMessage: string | null;
 	hasGithubToken: boolean;
 	createdAt: string;
 	updatedAt: string;
@@ -46,7 +80,27 @@ export interface CreateProjectInput {
 	installCommand?: string | null;
 	outputDir?: string | null;
 	startCommand?: string | null;
+	gitProvider?: GitProvider;
+	gitToken?: string | null;
+	dockerfilePath?: string | null;
+	dockerTarget?: string | null;
+	imageRef?: string | null;
+	imagePullPolicy?: ImagePullPolicy;
+	registryId?: string | null;
+	healthCheck?: HealthCheckConfig | null;
+	restartPolicy?: RestartPolicy;
+	restartMaxRetries?: number | null;
+	stopGracePeriodSeconds?: number | null;
+	preDeployCommand?: string | null;
+	postDeployCommand?: string | null;
+	cancelOlderDeployments?: boolean;
+	tags?: string[];
+	deployWebhookToken?: string | null;
+	maintenanceEnabled?: boolean;
+	maintenanceMessage?: string | null;
 }
+
+export type EnvVarScope = "runtime" | "build" | "both";
 
 export interface EnvironmentVariable {
 	id: string;
@@ -54,6 +108,7 @@ export interface EnvironmentVariable {
 	key: string;
 	value: string;
 	environment: string;
+	scope: EnvVarScope;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -63,6 +118,7 @@ export interface CreateEnvironmentVariableInput {
 	key: string;
 	value: string;
 	environment?: string;
+	scope?: EnvVarScope;
 }
 
 export interface Volume {
@@ -84,6 +140,7 @@ export interface SharedEnvVar {
 	key: string;
 	value: string;
 	environment: string;
+	scope: EnvVarScope;
 	description: string | null;
 	tags: string[];
 	createdAt: string;
@@ -94,6 +151,7 @@ export interface CreateSharedEnvVarInput {
 	key: string;
 	value: string;
 	environment?: string;
+	scope?: EnvVarScope;
 	description?: string;
 	tags?: string[];
 }

@@ -1,4 +1,4 @@
-import { Box, CheckCircle, Globe, Save } from "lucide-react";
+import { Box, CheckCircle, GitBranch, Globe, Save } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useUpdateProject } from "../../../hooks/useProjects";
@@ -7,6 +7,7 @@ import type { Project } from "../../../types";
 import { Button } from "../../ui/button";
 import { Card, CardContent } from "../../ui/card";
 import { Input } from "../../ui/input";
+import { GitAuthFields, type GitProviderValue } from "../create/GitAuthFields";
 
 interface GeneralSettingsSectionProps {
 	project: Project;
@@ -19,6 +20,8 @@ export function GeneralSettingsSection({ project }: GeneralSettingsSectionProps)
 	const [projectType, setProjectType] = useState("web");
 	const [sourceDir, setSourceDir] = useState("");
 	const [port, setPort] = useState("");
+	const [gitProvider, setGitProvider] = useState<GitProviderValue>("");
+	const [gitToken, setGitToken] = useState("");
 	const [saveSuccess, setSaveSuccess] = useState(false);
 
 	useEffect(() => {
@@ -27,6 +30,8 @@ export function GeneralSettingsSection({ project }: GeneralSettingsSectionProps)
 			setProjectType(project.projectType || "web");
 			setSourceDir(project.sourceDir || "");
 			setPort(project.port ? String(project.port) : "");
+			setGitProvider(project.gitProvider || "");
+			setGitToken("");
 		}
 	}, [project]);
 
@@ -39,7 +44,10 @@ export function GeneralSettingsSection({ project }: GeneralSettingsSectionProps)
 				projectType,
 				sourceDir: sourceDir.trim() || null,
 				port: port.trim() ? Number(port) || null : null,
+				gitProvider: gitProvider || undefined,
+				...(gitToken.trim() ? { gitToken: gitToken.trim() } : {}),
 			});
+			setGitToken("");
 			setSaveSuccess(true);
 			setTimeout(() => setSaveSuccess(false), 3000);
 		} catch (err) {
@@ -175,6 +183,22 @@ export function GeneralSettingsSection({ project }: GeneralSettingsSectionProps)
 								</p>
 							</div>
 						</div>
+
+						{!isCompose && (
+							<div className="pt-4 border-t border-[#222227] space-y-3">
+								<div className="flex items-center gap-1.5">
+									<GitBranch className="h-3.5 w-3.5 text-orange-500" />
+									<span className="font-semibold text-xs text-zinc-400">Git Authentication</span>
+								</div>
+								<GitAuthFields
+									provider={gitProvider}
+									setProvider={setGitProvider}
+									token={gitToken}
+									setToken={setGitToken}
+									hasStoredToken={project.hasGitToken}
+								/>
+							</div>
+						)}
 					</div>
 				</form>
 			</CardContent>

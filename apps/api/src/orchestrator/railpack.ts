@@ -10,7 +10,7 @@ export interface RailpackBuildResult {
 
 const buildTimeoutMs = Number(process.env.RAILPACK_BUILD_TIMEOUT_MS ?? "600000");
 
-const cleanBuildkitLine = (raw: string): string => {
+export const cleanBuildkitLine = (raw: string): string => {
 	const line = raw.trim();
 	if (!line) return "";
 
@@ -67,7 +67,7 @@ export class CancelledError extends Error {
 	}
 }
 
-const spawnAsync = (
+export const spawnAsync = (
 	cmd: string,
 	args: string[],
 	opts?: {

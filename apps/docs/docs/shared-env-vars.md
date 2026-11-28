@@ -20,6 +20,10 @@ value, description, and optional tags. Values are encrypted at rest and
 masked in the UI, exactly like project variables — reveal or copy them
 per row.
 
+Shared variables carry the same [injection scope](/docs/env-vars) as
+project variables: `both` (default) reaches running containers and
+build args, while `runtime` or `build` restrict it to one side.
+
 ## Linking into projects
 
 Link variables from the project's **Env Variables** tab (linked section)

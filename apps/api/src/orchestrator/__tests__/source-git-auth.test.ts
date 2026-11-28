@@ -2,8 +2,10 @@ import { describe, expect, test } from "bun:test";
 import {
 	buildAuthenticatedGitUrl,
 	buildGitAuthEnv,
+	detectGitProvider,
 	gitAuthScriptLines,
 	isGithubHttpsUrl,
+	isHttpsGitUrl,
 	redactGitUrl,
 } from "../source";
 
@@ -20,15 +22,47 @@ describe("git URL helpers", () => {
 		expect(redactGitUrl("https://github.com/owner/repo")).toBe("https://github.com/owner/repo");
 	});
 
-	test("builds authenticated github urls only for https github repos", () => {
+	test("builds authenticated https urls for known and generic providers", () => {
 		expect(buildAuthenticatedGitUrl("https://github.com/owner/repo", "tok")).toBe(
 			"https://x-access-token:tok@github.com/owner/repo",
 		);
 		expect(buildAuthenticatedGitUrl("https://github.com/owner/repo", null)).toBe("https://github.com/owner/repo");
-		expect(buildAuthenticatedGitUrl("https://gitlab.com/owner/repo", "tok")).toBe("https://gitlab.com/owner/repo");
+		expect(buildAuthenticatedGitUrl("https://gitlab.com/owner/repo", "tok")).toBe(
+			"https://oauth2:tok@gitlab.com/owner/repo",
+		);
+		expect(buildAuthenticatedGitUrl("https://bitbucket.org/owner/repo", "tok")).toBe(
+			"https://x-token-auth:tok@bitbucket.org/owner/repo",
+		);
+		expect(buildAuthenticatedGitUrl("https://git.example.com/owner/repo", "tok")).toBe(
+			"https://oauth2:tok@git.example.com/owner/repo",
+		);
 		expect(buildAuthenticatedGitUrl("https://user@github.com/owner/repo", "tok")).toBe(
 			"https://user@github.com/owner/repo",
 		);
+		expect(buildAuthenticatedGitUrl("git@github.com:owner/repo.git", "tok")).toBe("git@github.com:owner/repo.git");
+	});
+
+	test("prefers the configured provider over host detection", () => {
+		expect(buildAuthenticatedGitUrl("https://git.example.com/owner/repo", "tok", "github")).toBe(
+			"https://x-access-token:tok@git.example.com/owner/repo",
+		);
+		expect(buildAuthenticatedGitUrl("https://github.com/owner/repo", "tok", "gitlab")).toBe(
+			"https://oauth2:tok@github.com/owner/repo",
+		);
+	});
+
+	test("detects providers from repository hosts", () => {
+		expect(detectGitProvider("https://github.com/owner/repo")).toBe("github");
+		expect(detectGitProvider("https://gitlab.com/owner/repo")).toBe("gitlab");
+		expect(detectGitProvider("https://bitbucket.org/owner/repo")).toBe("bitbucket");
+		expect(detectGitProvider("https://codeberg.org/owner/repo")).toBe("gitea");
+		expect(detectGitProvider("https://git.example.com/owner/repo")).toBe("generic");
+	});
+
+	test("identifies https git urls", () => {
+		expect(isHttpsGitUrl("https://gitlab.com/owner/repo")).toBe(true);
+		expect(isHttpsGitUrl("http://gitlab.com/owner/repo")).toBe(false);
+		expect(isHttpsGitUrl("git@gitlab.com:owner/repo.git")).toBe(false);
 	});
 });
 

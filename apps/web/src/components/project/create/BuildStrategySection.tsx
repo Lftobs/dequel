@@ -13,8 +13,12 @@ export interface ComposeServiceRow {
 }
 
 interface BuildStrategySectionProps {
-	buildType: "railpack" | "compose";
-	setBuildType: (v: "railpack" | "compose") => void;
+	buildType: "railpack" | "dockerfile" | "compose";
+	setBuildType: (v: "railpack" | "dockerfile" | "compose") => void;
+	dockerfilePath: string;
+	setDockerfilePath: (v: string) => void;
+	dockerTarget: string;
+	setDockerTarget: (v: string) => void;
 	projectType: string;
 	setProjectType: (v: string) => void;
 	selectedPresetId: string;
@@ -40,6 +44,10 @@ interface BuildStrategySectionProps {
 export function BuildStrategySection({
 	buildType,
 	setBuildType,
+	dockerfilePath,
+	setDockerfilePath,
+	dockerTarget,
+	setDockerTarget,
 	projectType,
 	setProjectType,
 	selectedPresetId,
@@ -71,7 +79,7 @@ export function BuildStrategySection({
 				<p className="text-xs text-zinc-400 mt-1">Select how Dequl builds and manages your application containers.</p>
 			</div>
 
-			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+			<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 				<button
 					type="button"
 					onClick={() => setBuildType("railpack")}
@@ -85,13 +93,31 @@ export function BuildStrategySection({
 					<div className="flex items-center justify-between">
 						<Container className="h-5 w-5 text-orange-500" />
 						<span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-orange-500/20 text-orange-300">
-							Automatic Build
+							Auto
 						</span>
 					</div>
-					<div className="font-bold text-xs text-zinc-100">Railpack Engine</div>
-					<p className="text-[11px] text-zinc-400">
-						Auto-detect language, install dependencies, compile, and run in isolated container.
-					</p>
+					<div className="font-bold text-xs text-zinc-100">Railpack</div>
+					<p className="text-[11px] text-zinc-400">Auto-detect the language, install dependencies, build, and run.</p>
+				</button>
+
+				<button
+					type="button"
+					onClick={() => setBuildType("dockerfile")}
+					className={cn(
+						"p-4 rounded-xl border text-left transition-all space-y-1.5",
+						buildType === "dockerfile"
+							? "bg-orange-500/10 border-orange-500/40 text-orange-400 ring-1 ring-orange-500/20"
+							: "bg-[#121215] border-[#22222a] text-zinc-400 hover:border-zinc-700",
+					)}
+				>
+					<div className="flex items-center justify-between">
+						<Terminal className="h-5 w-5 text-emerald-400" />
+						<span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+							Dockerfile
+						</span>
+					</div>
+					<div className="font-bold text-xs text-zinc-100">Dockerfile</div>
+					<p className="text-[11px] text-zinc-400">Build from a Dockerfile in your repository with a custom target.</p>
 				</button>
 
 				<button
@@ -107,15 +133,56 @@ export function BuildStrategySection({
 					<div className="flex items-center justify-between">
 						<Box className="h-5 w-5 text-blue-400" />
 						<span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">
-							Multi-Container
+							Multi
 						</span>
 					</div>
 					<div className="font-bold text-xs text-zinc-100">Docker Compose</div>
-					<p className="text-[11px] text-zinc-400">
-						Orchestrate multi-service apps via <code className="text-zinc-200">docker-compose.yml</code> in repo root.
-					</p>
+					<p className="text-[11px] text-zinc-400">Orchestrate multi-service apps from docker-compose.yml.</p>
 				</button>
 			</div>
+
+			{buildType === "dockerfile" && (
+				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-[#1a1a22]">
+					<div className="space-y-1.5">
+						<label className="text-xs font-semibold text-zinc-300">Dockerfile Path</label>
+						<Input
+							value={dockerfilePath}
+							onChange={(e) => setDockerfilePath(e.target.value)}
+							placeholder="Dockerfile"
+							className="bg-[#121215] border-[#22222a] text-zinc-100 h-9 rounded-xl font-mono text-xs"
+						/>
+						<span className="text-[10px] text-zinc-500">Relative to the root directory.</span>
+					</div>
+					<div className="space-y-1.5">
+						<label className="text-xs font-semibold text-zinc-300">Build Target</label>
+						<Input
+							value={dockerTarget}
+							onChange={(e) => setDockerTarget(e.target.value)}
+							placeholder="e.g. runtime (optional)"
+							className="bg-[#121215] border-[#22222a] text-zinc-100 h-9 rounded-xl font-mono text-xs"
+						/>
+						<span className="text-[10px] text-zinc-500">Multi-stage target to build.</span>
+					</div>
+					<div className="space-y-1.5">
+						<label className="text-xs font-semibold text-zinc-300">Listen Port</label>
+						<Input
+							value={port}
+							onChange={(e) => setPort(e.target.value)}
+							placeholder="3000"
+							className="bg-[#121215] border-[#22222a] text-zinc-100 h-9 rounded-xl font-mono text-xs"
+						/>
+					</div>
+					<div className="space-y-1.5">
+						<label className="text-xs font-semibold text-zinc-300">Build Context Directory</label>
+						<Input
+							value={sourceDir}
+							onChange={(e) => setSourceDir(e.target.value)}
+							placeholder="./"
+							className="bg-[#121215] border-[#22222a] text-zinc-100 h-9 rounded-xl font-mono text-xs"
+						/>
+					</div>
+				</div>
+			)}
 
 			{buildType === "railpack" && (
 				<div className="space-y-6 pt-4 border-t border-[#1a1a22]">

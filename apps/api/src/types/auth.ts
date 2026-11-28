@@ -12,6 +12,8 @@ export interface ApiKey {
 	name: string;
 	keyHash: string;
 	permissions: string;
+	projectId: string | null;
+	pausedAt: string | null;
 	createdAt: string;
 	lastUsedAt: string | null;
 }
@@ -19,6 +21,7 @@ export interface ApiKey {
 export interface CreateApiKeyInput {
 	name: string;
 	permissions?: string;
+	projectId?: string | null;
 }
 
 export interface Permission {

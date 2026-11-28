@@ -1,4 +1,5 @@
 import { Check, Copy, Eye, EyeOff, Lock, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import type { EnvVarScope } from "../../../types";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
@@ -10,12 +11,14 @@ interface EnvVar {
 	key: string;
 	value: string | null;
 	environment: string;
+	scope: EnvVarScope;
 }
 
 interface EnvVarTableProps {
 	envVars: EnvVar[];
 	editingId: string | null;
 	editingValue: string;
+	editingScope: EnvVarScope;
 	savingEdit: Record<string, boolean>;
 	revealValues: Record<string, string>;
 	revealing: Record<string, boolean>;
@@ -30,12 +33,14 @@ interface EnvVarTableProps {
 	onHide: (id: string) => void;
 	onCopy: (id: string) => Promise<void>;
 	onEditingValueChange: (value: string) => void;
+	onEditingScopeChange: (scope: EnvVarScope) => void;
 }
 
 export function EnvVarTable({
 	envVars,
 	editingId,
 	editingValue,
+	editingScope,
 	savingEdit,
 	revealValues,
 	revealing,
@@ -50,6 +55,7 @@ export function EnvVarTable({
 	onHide,
 	onCopy,
 	onEditingValueChange,
+	onEditingScopeChange,
 }: EnvVarTableProps) {
 	return (
 		<div className="space-y-4">
@@ -89,16 +95,22 @@ export function EnvVarTable({
 								<div className="flex items-center justify-between gap-2">
 									<div className="flex items-center gap-2 min-w-0">
 										<Lock className="h-3.5 w-3.5 text-primary opacity-60 shrink-0" />
-										<span className="font-mono text-sm font-semibold text-foreground truncate">
-											{ev.key}
-										</span>
+										<span className="font-mono text-sm font-semibold text-foreground truncate">{ev.key}</span>
 									</div>
-									<Badge
-										variant="outline"
-										className="text-[10px] uppercase border-primary/20 text-primary bg-primary/5 px-2 py-0.5 shrink-0"
-									>
-										{ev.environment || "all"}
-									</Badge>
+									<div className="flex items-center gap-1.5 shrink-0">
+										<Badge
+											variant="outline"
+											className="text-[10px] border-border/60 text-muted-foreground px-1.5 py-0.5 font-mono"
+										>
+											{ev.scope ?? "both"}
+										</Badge>
+										<Badge
+											variant="outline"
+											className="text-[10px] uppercase border-primary/20 text-primary bg-primary/5 px-2 py-0.5 shrink-0"
+										>
+											{ev.environment || "all"}
+										</Badge>
+									</div>
 								</div>
 
 								<div className="font-mono text-xs text-muted-foreground bg-black/20 p-2.5 rounded-lg border border-border/40 min-h-[38px] flex items-center">
@@ -192,6 +204,7 @@ export function EnvVarTable({
 								<TableHead className="text-xs font-semibold py-3">Key</TableHead>
 								<TableHead className="text-xs font-semibold py-3">Value</TableHead>
 								<TableHead className="text-xs font-semibold py-3">Environment</TableHead>
+								<TableHead className="text-xs font-semibold py-3">Scope</TableHead>
 								<TableHead className="w-32 text-right pr-6"></TableHead>
 							</TableRow>
 						</TableHeader>
@@ -204,6 +217,7 @@ export function EnvVarTable({
 									revealing={!!revealing[ev.id]}
 									editing={editingId === ev.id}
 									editingValue={editingValue}
+									editingScope={editingScope}
 									saving={!!savingEdit[ev.id]}
 									copied={copiedId === ev.id}
 									projectId=""
@@ -215,6 +229,7 @@ export function EnvVarTable({
 									onHide={onHide}
 									onCopy={onCopy}
 									onEditingValueChange={onEditingValueChange}
+									onEditingScopeChange={onEditingScopeChange}
 								/>
 							))}
 						</TableBody>

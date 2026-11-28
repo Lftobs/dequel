@@ -1,5 +1,6 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
 import { Layout } from "../components/Layout";
+import { AuditLogs } from "./AuditLogs";
 import { CreateDatabasePage } from "./CreateDatabasePage";
 import { CreateProjectPage } from "./CreateProjectPage";
 import { Dashboard } from "./Dashboard";
@@ -86,6 +87,12 @@ const sharedEnvRoute = createRoute({
 	component: SharedEnv,
 });
 
+const auditLogsRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/audit",
+	component: AuditLogs,
+});
+
 const ProjectPage = () => {
 	const { projectId } = projectRoute.useParams();
 	return <ProjectDetail projectId={projectId} />;
@@ -121,6 +128,7 @@ const routeTree = rootRoute.addChildren([
 	databaseDetailRoute,
 	keysRoute,
 	sharedEnvRoute,
+	auditLogsRoute,
 	projectRoute,
 	projectDeploymentDetailRoute,
 	createProjectRoute,

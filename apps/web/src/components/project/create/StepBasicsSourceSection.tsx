@@ -1,10 +1,13 @@
-import { Container, GitBranch, Lock, Upload } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Container, GitBranch, Upload } from "lucide-react";
 import { useState } from "react";
+import * as api from "../../../api/client";
 import { getGithubAuthUrl } from "../../../api/client";
 import { cn } from "../../../lib/utils";
-import type { GithubRepo } from "../../../types";
+import type { GithubRepo, ImagePullPolicy } from "../../../types";
 import { RepoPicker } from "../../github/RepoPicker";
 import { Input } from "../../ui/input";
+import { GitAuthFields, type GitProviderValue } from "./GitAuthFields";
 
 const sourceOptions = [
 	{
@@ -18,6 +21,12 @@ const sourceOptions = [
 		label: "ZIP Upload",
 		icon: Upload,
 		desc: "Upload your source code as a ZIP archive",
+	},
+	{
+		value: "image",
+		label: "Docker Image",
+		icon: Container,
+		desc: "Pull a prebuilt image from a registry",
 	},
 	{
 		value: "compose",
@@ -43,6 +52,16 @@ interface StepBasicsSourceSectionProps {
 	githubConfigured: boolean;
 	githubConnected: boolean;
 	onGithubConnected: () => boolean;
+	gitProvider: GitProviderValue;
+	setGitProvider: (v: GitProviderValue) => void;
+	gitToken: string;
+	setGitToken: (v: string) => void;
+	imageRef: string;
+	setImageRef: (v: string) => void;
+	imagePullPolicy: ImagePullPolicy;
+	setImagePullPolicy: (v: ImagePullPolicy) => void;
+	registryId: string;
+	setRegistryId: (v: string) => void;
 }
 
 export function StepBasicsSourceSection({
@@ -58,12 +77,26 @@ export function StepBasicsSourceSection({
 	setSourceDir,
 	zipFile,
 	setZipFile,
-	githubConfigured,
-	githubConnected,
 	onGithubConnected,
+	gitProvider,
+	setGitProvider,
+	gitToken,
+	setGitToken,
+	imageRef,
+	setImageRef,
+	imagePullPolicy,
+	setImagePullPolicy,
+	registryId,
+	setRegistryId,
 }: StepBasicsSourceSectionProps) {
 	const [showManual, setShowManual] = useState(false);
 	const connected = onGithubConnected();
+	const { data: registries = [] } = useQuery({
+		queryKey: ["registries"],
+		queryFn: () => api.listRegistries().catch(() => []),
+		enabled: sourceType === "image",
+		staleTime: 60_000,
+	});
 
 	const handleConnectGithub = async () => {
 		try {
@@ -99,24 +132,19 @@ export function StepBasicsSourceSection({
 					<Upload className="h-3.5 w-3.5 text-amber-500" />
 					Deployment Source
 				</h4>
-				<div className="grid grid-cols-2 gap-2">
+				<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
 					{sourceOptions.map((opt) => {
 						const Icon = opt.icon;
 						const active = sourceType === opt.value;
-						const disabled = opt.value === "git" && !githubConfigured;
-						const isCompose = opt.value === "compose";
 						return (
 							<button
 								key={opt.value}
 								type="button"
-								onClick={() => !disabled && setSourceType(opt.value)}
-								disabled={disabled}
-								title={disabled ? "GitHub integration not configured in Settings" : undefined}
+								onClick={() => setSourceType(opt.value)}
 								className={cn(
-									"relative p-3 rounded-lg border text-left flex items-start gap-2.5 transition-all",
-									isCompose && "col-span-2",
+									"relative p-3 rounded-lg border text-left flex items-start gap-2.5 transition-all min-w-0",
 									active ? "bg-[#141418] border-amber-500/40 shadow-sm" : "bg-transparent border-zinc-800",
-									disabled ? "opacity-40 cursor-not-allowed" : "hover:border-zinc-700 cursor-pointer",
+									"hover:border-zinc-700 cursor-pointer",
 								)}
 							>
 								<div
@@ -130,11 +158,7 @@ export function StepBasicsSourceSection({
 								<div className="min-w-0 flex-1">
 									<p className="text-xs font-bold text-zinc-300">{opt.label}</p>
 									<p className="text-[9px] text-zinc-500 mt-0.5 leading-normal">{opt.desc}</p>
-									{disabled && (
-										<p className="text-[9px] text-amber-600/80 mt-1 leading-normal">Configure in Settings</p>
-									)}
 								</div>
-								{disabled && <Lock className="h-3 w-3 text-zinc-600 shrink-0 mt-0.5" />}
 							</button>
 						);
 					})}
@@ -231,6 +255,15 @@ export function StepBasicsSourceSection({
 							<SourceDirInput sourceDir={sourceDir} setSourceDir={setSourceDir} />
 						</div>
 					)}
+
+					<div className="pt-3.5 border-t border-[#1c1c21]">
+						<GitAuthFields
+							provider={gitProvider}
+							setProvider={setGitProvider}
+							token={gitToken}
+							setToken={setGitToken}
+						/>
+					</div>
 				</div>
 			)}
 
@@ -291,13 +324,43 @@ export function StepBasicsSourceSection({
 					{sourceType === "image" && (
 						<div key="image-details" className="grid gap-3.5 text-xs">
 							<div className="grid gap-1.5">
-								<label className="font-semibold text-zinc-400">Container Image</label>
+								<label className="font-semibold text-zinc-400">Image Reference</label>
 								<Input
 									placeholder="e.g. nginx:alpine or ghcr.io/user/app:latest"
-									className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9"
-									value={repoUrl}
-									onChange={(e) => setRepoUrl(e.target.value)}
+									className="bg-[#141418] border-[#222227] focus:border-amber-500 text-zinc-200 h-9 font-mono"
+									value={imageRef}
+									onChange={(e) => setImageRef(e.target.value)}
 								/>
+							</div>
+							<div className="grid gap-3.5 sm:grid-cols-2">
+								<div className="grid gap-1.5">
+									<label className="font-semibold text-zinc-400">Pull Policy</label>
+									<select
+										value={imagePullPolicy}
+										onChange={(e) => setImagePullPolicy(e.target.value as ImagePullPolicy)}
+										className="h-9 rounded-md border border-[#222227] bg-[#141418] px-3 text-xs text-zinc-200 focus:border-amber-500 focus:outline-none"
+									>
+										<option value="always">Always pull</option>
+										<option value="if-not-present">Pull if not present</option>
+										<option value="never">Never pull</option>
+									</select>
+								</div>
+								<div className="grid gap-1.5">
+									<label className="font-semibold text-zinc-400">Registry Credentials</label>
+									<select
+										value={registryId}
+										onChange={(e) => setRegistryId(e.target.value)}
+										className="h-9 rounded-md border border-[#222227] bg-[#141418] px-3 text-xs text-zinc-200 focus:border-amber-500 focus:outline-none"
+									>
+										<option value="">Public / no credentials</option>
+										{registries.map((registry) => (
+											<option key={registry.id} value={registry.id}>
+												{registry.name} ({registry.url})
+											</option>
+										))}
+									</select>
+									<span className="text-[10px] text-zinc-500">Add private registries in Settings.</span>
+								</div>
 							</div>
 						</div>
 					)}

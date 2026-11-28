@@ -67,6 +67,7 @@ export const queueRemoteDestroy = async (deployment: Deployment, server: Server,
 			deploymentId: deployment.id,
 			containerName: deployment.containerName ?? null,
 			imageTag: deployment.imageTag ?? null,
+			imageOwnedByDequel: deployment.sourceType !== "image",
 		},
 		idempotencyKey: `destroy:${deployment.id}`,
 	});

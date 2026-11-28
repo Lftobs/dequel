@@ -125,7 +125,9 @@ export function LinkedSharedEnvVars({ projectId, onLinkedChange }: LinkedSharedE
 					{available.length > 0 && (
 						<div className="space-y-2">
 							<div className="flex items-center justify-between">
-								<div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Available</div>
+								<div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+									Available
+								</div>
 								{available.length > 1 && (
 									<Button
 										variant="ghost"

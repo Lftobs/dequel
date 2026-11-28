@@ -16,6 +16,29 @@ export type SslStatus = "pending" | "provisioned" | "failed";
 export type ServerStatus = "pending" | "connected" | "disconnected" | "failed";
 export type AlertChannel = "email" | "slack" | "webhook";
 export type AlertType = "cpu" | "memory" | "downtime" | "cert_expiry";
+export type GitProvider = "github" | "gitlab" | "bitbucket" | "gitea" | "generic";
+export type ImagePullPolicy = "always" | "if-not-present" | "never";
+export type RestartPolicy = "no" | "always" | "unless-stopped" | "on-failure";
+export type HealthCheckType = "none" | "http" | "tcp" | "command";
+export type DomainTlsMode = "auto" | "custom" | "dns";
+export type NotificationEvent =
+	| "deployment_failed"
+	| "deployment_succeeded"
+	| "backup_failed"
+	| "backup_succeeded"
+	| "server_offline"
+	| "alert";
+
+export interface HealthCheckConfig {
+	type: HealthCheckType;
+	path?: string | null;
+	port?: number | null;
+	command?: string | null;
+	intervalSeconds?: number | null;
+	timeoutSeconds?: number | null;
+	startPeriodSeconds?: number | null;
+	retries?: number | null;
+}
 
 export interface Project {
 	id: string;
@@ -31,6 +54,7 @@ export interface Project {
 	sourceDir: string | null;
 	sourceType: string;
 	projectType: string;
+	buildType: string;
 	composeService?: string | null;
 	composePort?: number | null;
 	composeServices?: string | null;
@@ -38,6 +62,25 @@ export interface Project {
 	installCommand?: string | null;
 	outputDir?: string | null;
 	startCommand: string | null;
+	gitProvider: GitProvider;
+	hasGitToken: boolean;
+	dockerfilePath: string | null;
+	dockerTarget: string | null;
+	imageRef: string | null;
+	imagePullPolicy: ImagePullPolicy;
+	registryId: string | null;
+	healthCheck: HealthCheckConfig | null;
+	restartPolicy: RestartPolicy;
+	restartMaxRetries: number | null;
+	stopGracePeriodSeconds: number | null;
+	preDeployCommand: string | null;
+	postDeployCommand: string | null;
+	cancelOlderDeployments: boolean;
+	tags: string[];
+	deployWebhookToken: string | null;
+	maintenanceEnabled: boolean;
+	maintenanceMessage: string | null;
+	hasGithubToken?: boolean;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -63,6 +106,23 @@ export interface CreateProjectInput {
 	composeService?: string | null;
 	composePort?: number | null;
 	composeServices?: string | null;
+	gitProvider?: GitProvider;
+	gitToken?: string | null;
+	dockerfilePath?: string | null;
+	dockerTarget?: string | null;
+	imageRef?: string | null;
+	imagePullPolicy?: ImagePullPolicy;
+	registryId?: string | null;
+	healthCheck?: HealthCheckConfig | null;
+	restartPolicy?: RestartPolicy;
+	restartMaxRetries?: number | null;
+	stopGracePeriodSeconds?: number | null;
+	preDeployCommand?: string | null;
+	postDeployCommand?: string | null;
+	cancelOlderDeployments?: boolean;
+	tags?: string[];
+	maintenanceEnabled?: boolean;
+	maintenanceMessage?: string | null;
 }
 
 export interface Deployment {
@@ -85,12 +145,15 @@ export interface Deployment {
 	updatedAt: string;
 }
 
+export type EnvVarScope = "runtime" | "build" | "both";
+
 export interface EnvironmentVariable {
 	id: string;
 	projectId: string;
 	key: string;
 	value: string | null;
 	environment: string;
+	scope: EnvVarScope;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -144,8 +207,76 @@ export interface Domain {
 	validationStatus: DomainValidationStatus;
 	sslStatus: SslStatus;
 	cloudflareProxied?: boolean;
+	targetService: string | null;
+	targetPort: number | null;
+	tlsMode: DomainTlsMode;
+	hasCustomCertificate: boolean;
+	basicAuthUser: string | null;
+	hasBasicAuthPassword: boolean;
+	httpsRedirect: boolean;
+	gzip: boolean;
+	noindex: boolean;
+	wwwRedirect: boolean;
+	pathPrefix: string | null;
+	stripPrefix: boolean;
+	rawSnippet: string | null;
 	createdAt: string;
 	updatedAt: string;
+}
+
+export interface CreateDomainInput {
+	domain: string;
+	type?: DomainType;
+	targetService?: string | null;
+	targetPort?: number | null;
+	cloudflareProxied?: boolean;
+	tlsMode?: DomainTlsMode;
+	certificate?: string | null;
+	certificateKey?: string | null;
+	basicAuthUser?: string | null;
+	basicAuthPassword?: string | null;
+	httpsRedirect?: boolean;
+	gzip?: boolean;
+	noindex?: boolean;
+	wwwRedirect?: boolean;
+	pathPrefix?: string | null;
+	stripPrefix?: boolean;
+	rawSnippet?: string | null;
+}
+
+export interface Registry {
+	id: string;
+	name: string;
+	serverId: string | null;
+	url: string;
+	username: string;
+	hasPassword: boolean;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface NotificationChannel {
+	id: string;
+	name: string;
+	channel: string;
+	destination: string | null;
+	enabled: boolean;
+	events: NotificationEvent[];
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface AuditLog {
+	id: string;
+	actorType: string;
+	actorId: string;
+	action: string;
+	resourceType: string;
+	resourceId: string | null;
+	details: Record<string, unknown>;
+	ipAddress: string | null;
+	userAgent: string | null;
+	createdAt: string;
 }
 
 export interface ScalingPolicy {
@@ -191,6 +322,8 @@ export interface ApiKey {
 	name: string;
 	keyHash: string;
 	permissions: string;
+	projectId: string | null;
+	pausedAt: string | null;
 	rawKey?: string;
 	createdAt: string;
 	lastUsedAt: string | null;

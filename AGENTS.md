@@ -187,6 +187,14 @@ Requires secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
 | `BUILDKIT_HOST` | `tcp://buildkit:1234` | Buildkit daemon |
 | `RAILPACK_BUILD_TIMEOUT_MS` | `1200000` | Build timeout |
 
+## Local Working Locations (gitignored)
+
+`.specs/`, `.agents/`, and `artifacts/` are gitignored on purpose and hold shared session state. They always live in the **base checkout** (the repo root you ran `git worktree add` from), never inside `.worktrees/<name>/`. Agents working in a worktree must read and write these at the base repo path.
+
+- `.specs/` — architecture and implementation plans (e.g. `multi-server-plan.md`, `remote-cli/`). Write new plans here, not in a `specs/` directory inside a worktree.
+- `.agents/skills/` — project agent skills (`verify-dequel`, `tegami-release`). Create and maintain verification skills here, not in a worktree.
+- `artifacts/` — verification outputs and logs (e.g. `artifacts/verify-dequel/BUGS.md`).
+
 ## Boundaries
 
 - Never commit secrets or `.env` files

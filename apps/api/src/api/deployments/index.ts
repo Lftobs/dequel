@@ -21,6 +21,7 @@ import { readRuntimeLogs, runtimeLogFollowerArgs } from "../../orchestrator/runt
 import { config } from "../../utils/config";
 import { terminateWithEscalation } from "../../utils/process-exec";
 import { isPrivateGitUrl } from "../../utils/validate";
+import { auditRequest } from "../audit";
 import { created, fail, ok } from "../response";
 
 export const dispatchDeployment = async (
@@ -33,7 +34,9 @@ export const dispatchDeployment = async (
 		return;
 	}
 	if (!project) throw new Error("Remote deployment requires a project");
-	if (deployment.sourceType !== "git") throw new Error("Remote servers currently support Git deployments only");
+	if (deployment.sourceType !== "git" && deployment.sourceType !== "image") {
+		throw new Error("Remote servers currently support Git and image deployments only");
+	}
 	const executor = executorFor(server.mode);
 	if (server.mode === "ssh") {
 		void executor.deploy({ deployment, project, server }).catch(async (error) => {
@@ -50,10 +53,13 @@ export const dispatchDeployment = async (
 };
 
 export const deploymentsRoutes = new Elysia()
-	.get("/deployments", async ({ query }: any) => {
+	.get("/deployments", async ({ query, request }: any) => {
 		const offset = Number(query.offset) || 0;
 		const limit = Math.min(Number(query.limit) || 50, 100);
-		const projectId = query.projectId;
+		const projectId = (request as any).dequelProjectScopeOnly ? (request as any).dequelProjectScope : query.projectId;
+		if ((request as any).dequelProjectScopeOnly && query.projectId && query.projectId !== projectId) {
+			return ok({ items: [], total: 0, offset, limit });
+		}
 		const [items, total] = await Promise.all([listDeployments(projectId, offset, limit), countDeployments(projectId)]);
 		return ok({ items, total, offset, limit });
 	})
@@ -74,6 +80,11 @@ export const deploymentsRoutes = new Elysia()
 		const form = await request.formData();
 		const sourceType = String(form.get("sourceType") ?? "");
 		const projectId = String(form.get("projectId") ?? "").trim() || undefined;
+		const scopedProjectId = (request as any).dequelDeploymentScope as string | undefined;
+		if (scopedProjectId && projectId !== scopedProjectId) {
+			set.status = 403;
+			return fail("API key is scoped to a different project");
+		}
 		const project = projectId ? await getProjectById(projectId) : null;
 		const { resolveDefaultServerId } = await import("../../utils/server-default");
 		const serverId = await resolveDefaultServerId(project?.serverId);
@@ -88,9 +99,39 @@ export const deploymentsRoutes = new Elysia()
 		const clearCache = form.get("clearCache") === "true";
 		const resolvedBranch =
 			branch || (projectId ? (await getProjectById(projectId))?.repoBranch || undefined : undefined);
-		if (sourceType !== "git" && sourceType !== "upload" && sourceType !== "compose") {
+		if (sourceType !== "git" && sourceType !== "upload" && sourceType !== "compose" && sourceType !== "image") {
 			set.status = 400;
-			return fail("sourceType must be git, upload, or compose");
+			return fail("sourceType must be git, upload, compose, or image");
+		}
+		if (sourceType === "image") {
+			const imageRef = String(form.get("imageRef") ?? "").trim() || project?.imageRef || "";
+			if (!imageRef) {
+				set.status = 400;
+				return fail("imageRef is required for image source");
+			}
+			if (server.mode !== "local" && !projectId) {
+				set.status = 400;
+				return fail("Remote image deployments require a project");
+			}
+			if (project?.buildType === "compose") {
+				set.status = 400;
+				return fail("Image deployments are not supported for Compose projects");
+			}
+			const deployment = await createDeployment({
+				projectId,
+				serverId,
+				sourceType: "image",
+				sourceRef: imageRef,
+				environment,
+			});
+			await dispatchDeployment(deployment, project, server);
+			await auditRequest(request, {
+				action: "deployment.triggered",
+				resourceType: "deployment",
+				resourceId: deployment.id,
+				details: { sourceType, projectId: projectId ?? null, serverId },
+			});
+			return created(deployment);
 		}
 		if (sourceType === "git") {
 			const gitUrl = String(form.get("gitUrl") ?? "").trim();
@@ -136,6 +177,12 @@ export const deploymentsRoutes = new Elysia()
 				await captureProjectGithubToken(projectId, gitUrl, request.headers.get("cookie"));
 			}
 			await dispatchDeployment(deployment, project, server);
+			await auditRequest(request, {
+				action: "deployment.triggered",
+				resourceType: "deployment",
+				resourceId: deployment.id,
+				details: { sourceType, projectId: projectId ?? null, serverId },
+			});
 			return created(deployment);
 		}
 		const file = form.get("archive");
@@ -171,6 +218,12 @@ export const deploymentsRoutes = new Elysia()
 			clearCache,
 		});
 		await dispatchDeployment(deployment, project, server);
+		await auditRequest(request, {
+			action: "deployment.triggered",
+			resourceType: "deployment",
+			resourceId: deployment.id,
+			details: { sourceType, projectId: projectId ?? null, serverId },
+		});
 		return created(deployment);
 	})
 	.post("/deployments/:id/rollback", async ({ params: { id }, set }) => {
@@ -211,7 +264,7 @@ export const deploymentsRoutes = new Elysia()
 			return fail(err.message || "Rollback failed");
 		}
 	})
-	.post("/deployments/:id/redeploy", async ({ params: { id }, set }) => {
+	.post("/deployments/:id/redeploy", async ({ params: { id }, request, set }) => {
 		const original = await getDeploymentById(id);
 		if (!original) {
 			set.status = 404;
@@ -247,9 +300,15 @@ export const deploymentsRoutes = new Elysia()
 			environment: original.environment || undefined,
 		});
 		await dispatchDeployment(deployment, project, server);
+		await auditRequest(request, {
+			action: "deployment.redeployed",
+			resourceType: "deployment",
+			resourceId: deployment.id,
+			details: { ofDeployment: id, sourceType: original.sourceType },
+		});
 		return created(deployment);
 	})
-	.post("/deployments/:id/cancel", async ({ params: { id }, set }) => {
+	.post("/deployments/:id/cancel", async ({ params: { id }, request, set }) => {
 		const deployment = await getDeploymentById(id);
 		if (!deployment) {
 			set.status = 404;
@@ -266,6 +325,11 @@ export const deploymentsRoutes = new Elysia()
 		}
 		const executor = executorFor(server.mode);
 		await executor.cancel({ deployment, server });
+		await auditRequest(request, {
+			action: "deployment.cancelled",
+			resourceType: "deployment",
+			resourceId: id,
+		});
 		return ok(null, "Deployment cancelled");
 	})
 	.delete("/deployments/:id", async ({ params: { id }, set }) => {

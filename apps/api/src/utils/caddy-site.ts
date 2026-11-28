@@ -21,7 +21,21 @@ export const CADDY_REQUEST_LIMITS_BLOCK = `  request_body {
 export interface CaddySiteOptions {
 	includeSecurityHeaders?: boolean;
 	includeRequestLimits?: boolean;
+	tlsMode?: "auto" | "custom" | "dns";
+	certificatePath?: string | null;
+	certificateKeyPath?: string | null;
+	basicAuth?: { username: string; passwordHash: string } | null;
+	httpsRedirect?: boolean;
+	gzip?: boolean;
+	noindex?: boolean;
+	rawSnippet?: string | null;
 }
+
+const indentBlock = (block: string, spaces = 2) =>
+	block
+		.split("\n")
+		.map((line) => (line.trim() ? `${" ".repeat(spaces)}${line}` : line))
+		.join("\n");
 
 export interface CaddyReverseProxyOptions {
 	cloudflareProxied?: boolean;
@@ -30,7 +44,27 @@ export interface CaddyReverseProxyOptions {
 export const caddySite = (hosts: string, reverseProxy: string, options?: CaddySiteOptions): string => {
 	const secHeaders = options?.includeSecurityHeaders ? `\n${CADDY_SECURITY_HEADERS_BLOCK}` : "";
 	const reqLimits = options?.includeRequestLimits ? `\n${CADDY_REQUEST_LIMITS_BLOCK}` : "";
-	return `${hosts} {\n${CADDY_ACCESS_LOG_BLOCK}${secHeaders}${reqLimits}\n${reverseProxy}\n}\n`;
+	const extras: string[] = [];
+	if (options?.httpsRedirect === false) {
+		extras.push(`  auto_https disable_redirects`);
+	}
+	if (options?.gzip) {
+		extras.push(`  encode gzip`);
+	}
+	if (options?.noindex) {
+		extras.push(`  header X-Robots-Tag "noindex, nofollow"`);
+	}
+	if (options?.basicAuth) {
+		extras.push(`  basic_auth {\n    ${options.basicAuth.username} ${options.basicAuth.passwordHash}\n  }`);
+	}
+	if (options?.tlsMode === "custom" && options.certificatePath && options.certificateKeyPath) {
+		extras.push(`  tls ${options.certificatePath} ${options.certificateKeyPath}`);
+	}
+	if (options?.rawSnippet) {
+		extras.push(indentBlock(options.rawSnippet));
+	}
+	const extra = extras.length > 0 ? `\n${extras.join("\n")}` : "";
+	return `${hosts} {\n${CADDY_ACCESS_LOG_BLOCK}${secHeaders}${reqLimits}${extra}\n${reverseProxy}\n}\n`;
 };
 
 export const caddyReverseProxy = (targets: string, options?: CaddyReverseProxyOptions): string => {

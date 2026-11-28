@@ -17,7 +17,14 @@ export {
 	validateAgentCredential,
 } from "./agents";
 export { createAlert, deleteAlert, getAlertById, listAlerts, updateAlertEnabled } from "./alerts";
-export { createApiKey, deleteApiKey, listApiKeys, validateApiKey } from "./api-keys";
+export {
+	createApiKey,
+	deleteApiKey,
+	listApiKeys,
+	pauseApiKey,
+	rollApiKey,
+	validateApiKey,
+} from "./api-keys";
 export { countAuditLogs, createAuditLog, listAuditLogs } from "./audit-logs";
 
 export {
@@ -41,6 +48,7 @@ export {
 	recordDeploymentFailure,
 } from "./deployment-events";
 export {
+	activateDeployment,
 	appendLog,
 	countDeployments,
 	createDeployment,
@@ -76,7 +84,9 @@ export {
 	createDomain,
 	deleteDomain,
 	getDomainById,
+	getDomainSecrets,
 	listDomains,
+	updateDomainSettings,
 	updateDomainSslStatus,
 	updateDomainValidation,
 } from "./domains";
@@ -87,6 +97,7 @@ export {
 	getEnvironmentVariablePlaintext,
 	listEnvironmentVariables,
 	listEnvironmentVariablesForDeploy,
+	seedComposeEnvVars,
 	updateEnvironmentVariable,
 } from "./env-vars";
 export { getGithubIntegration, setGithubIntegration } from "./github";
@@ -105,6 +116,12 @@ export {
 	updateLlmModels,
 	upsertLlmKey,
 } from "./llm-keys";
+export {
+	createNotificationChannel,
+	deleteNotificationChannel,
+	listNotificationChannels,
+	updateNotificationChannel,
+} from "./notifications";
 export { getPlatformSettings, setIngressServer } from "./platform-settings";
 export type { ProjectCleanupInfo } from "./projects";
 export {
@@ -112,12 +129,25 @@ export {
 	createProject,
 	deleteProject,
 	deleteProjectCascade,
+	getProjectByDeployWebhookToken,
 	getProjectById,
 	getProjectGithubToken,
+	getProjectGitToken,
 	listProjects,
+	listProjectsByTag,
+	regenerateDeployWebhookToken,
 	updateProject,
 	updateProjectGithubToken,
 } from "./projects";
+export {
+	createRegistry,
+	deleteRegistry,
+	findRegistryForImage,
+	getRegistryById,
+	getRegistryCredentials,
+	listRegistries,
+	updateRegistry,
+} from "./registries";
 export {
 	deleteRoute,
 	deleteRouteByHostname,

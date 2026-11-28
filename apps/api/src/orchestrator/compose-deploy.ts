@@ -8,6 +8,8 @@ import { buildCaddySnippet } from "../utils/domain-verifier";
 import {
 	deployWithCompose,
 	destroyComposeStack,
+	deployWithCompose,
+	destroyComposeStack,
 	evaluateComposeContainerState,
 	fetchContainerExitLogs,
 	findComposeFilePath,
@@ -15,7 +17,8 @@ import {
 	inspectComposeContainerStates,
 	parseAllComposeServices,
 } from "./compose";
-import { buildComposeEnvOverrideYaml } from "./compose-env";
+import { buildComposeScopedOverrideYaml, type ComposeEnvRow } from "./compose-env";
+import { parseComposeBuildServices } from "./compose-vars";
 import { reloadCaddy, tryRun } from "./runtime";
 
 export interface ComposeDeployResult {
@@ -182,6 +185,7 @@ export interface ComposeDeployOptions {
 	composeServicesJson?: string | null;
 	oldDeploymentId?: string | null;
 	envVars?: Record<string, string>;
+	envVarRows?: ComposeEnvRow[];
 	signal?: AbortSignal;
 	onLog: (line: string) => Promise<void>;
 }
@@ -198,6 +202,7 @@ export const deployComposeStack = async (options: ComposeDeployOptions): Promise
 		composeServicesJson,
 		oldDeploymentId,
 		envVars,
+		envVarRows,
 		signal,
 		onLog,
 	} = options;
@@ -217,16 +222,22 @@ export const deployComposeStack = async (options: ComposeDeployOptions): Promise
 	const allServices = parseAllComposeServices(workspacePath, sourceDir, composeService, composePort);
 
 	let overridePath: string | null = null;
-	if (envVars && Object.keys(envVars).length > 0) {
-		const overrideYaml = buildComposeEnvOverrideYaml(
+	const rows = envVarRows ?? (envVars ? Object.entries(envVars).map(([key, value]) => ({ key, value })) : []);
+	if (rows.length > 0) {
+		const composeFile = findComposeFilePath(workspacePath, sourceDir);
+		const buildServices = composeFile ? await parseComposeBuildServices(composeFile) : [];
+		const overrideYaml = buildComposeScopedOverrideYaml(
 			allServices.map((s) => s.serviceName),
-			envVars,
+			buildServices,
+			rows,
 		);
 		if (overrideYaml) {
 			overridePath = join(workspacePath, "dequl-env-override.yml");
 			await writeFile(overridePath, overrideYaml);
+			const runtimeCount = rows.filter((r) => r.scope !== "build").length;
+			const buildCount = rows.filter((r) => r.scope !== "runtime").length;
 			await onLog(
-				`Injecting ${Object.keys(envVars).length} env var(s) into ${allServices.length} compose service(s) via override file.`,
+				`Injecting ${runtimeCount} runtime env var(s) into ${allServices.length} service(s) and ${buildCount} build arg(s) into ${buildServices.length} buildable service(s) via override file.`,
 			);
 		}
 	}

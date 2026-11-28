@@ -13,14 +13,18 @@ import {
 import { destroyComposeStack } from "../../orchestrator/compose";
 import { failoverProject } from "../../orchestrator/failover";
 import { cleanupProjectContainers } from "../../orchestrator/project-cleanup";
+import { reconcileProjectRoute } from "../../orchestrator/route-reconcile";
 import { reloadCaddy } from "../../orchestrator/runtime";
 import { config } from "../../utils/config";
 import { dockerRunTry, ensureContainerRemoved, ensureVolumeRemoved } from "../../utils/docker-run";
 import { removeFromCaddyRoute } from "../../utils/domain-verifier";
 import { buildProjectRequestHostRegex, caddyRequestLogSelector } from "../../utils/loki";
+import { validateProjectConfig } from "../../utils/project-config";
 import { captureTelemetry } from "../../utils/telemetry";
 import { isPort, isPrivateGitUrl, SERVICE_NAME_RE, validateComposeServices } from "../../utils/validate";
+import { auditRequest } from "../audit";
 import { created, fail, ok } from "../response";
+import { buildProjectPatch } from "./patch";
 
 const validateComposeFields = (body: any): string | null => {
 	if (body?.composeService && !SERVICE_NAME_RE.test(String(body.composeService))) {
@@ -69,6 +73,11 @@ export const projectsRoutes = new Elysia()
 			set.status = 400;
 			return fail(validationError);
 		}
+		const projectConfig = validateProjectConfig(body);
+		if (projectConfig.error) {
+			set.status = 400;
+			return fail(projectConfig.error);
+		}
 		const { resolveDefaultServerId } = await import("../../utils/server-default");
 		const serverId = await resolveDefaultServerId(body.serverId);
 		if (body.serverId && serverId !== body.serverId) {
@@ -111,6 +120,23 @@ export const projectsRoutes = new Elysia()
 			installCommand: body.installCommand || undefined,
 			outputDir: body.outputDir || undefined,
 			startCommand: body.startCommand || undefined,
+			gitProvider: body.gitProvider || undefined,
+			gitToken: body.gitToken || undefined,
+			dockerfilePath: body.dockerfilePath || undefined,
+			dockerTarget: body.dockerTarget || undefined,
+			imageRef: body.imageRef || undefined,
+			imagePullPolicy: body.imagePullPolicy || undefined,
+			registryId: body.registryId || undefined,
+			healthCheck: projectConfig.healthCheck ?? undefined,
+			restartPolicy: body.restartPolicy || undefined,
+			restartMaxRetries: body.restartMaxRetries ?? undefined,
+			stopGracePeriodSeconds: body.stopGracePeriodSeconds ?? undefined,
+			preDeployCommand: body.preDeployCommand || undefined,
+			postDeployCommand: body.postDeployCommand || undefined,
+			cancelOlderDeployments: body.cancelOlderDeployments ?? undefined,
+			tags: projectConfig.tags ?? undefined,
+			maintenanceEnabled: body.maintenanceEnabled ?? undefined,
+			maintenanceMessage: body.maintenanceMessage || undefined,
 		});
 
 		captureTelemetry("project_created", {
@@ -123,58 +149,58 @@ export const projectsRoutes = new Elysia()
 				if (captured) project.hasGithubToken = true;
 			},
 		);
+		await auditRequest(request, {
+			action: "project.created",
+			resourceType: "project",
+			resourceId: project.id,
+			details: { name: project.name, sourceType: project.sourceType, buildType: project.buildType },
+		});
 		return created(project);
 	})
-	.patch("/projects/:id", async ({ params: { id }, body, set }: any) => {
+	.patch("/projects/:id", async ({ params: { id }, body, request, set }: any) => {
 		const validationError = validateComposeFields(body);
 		if (validationError) {
 			set.status = 400;
 			return fail(validationError);
 		}
+		const projectConfig = validateProjectConfig(body, { partial: true });
+		if (projectConfig.error) {
+			set.status = 400;
+			return fail(projectConfig.error);
+		}
 		if (body?.serverId !== undefined && !(await getServerById(body.serverId))) {
 			set.status = 400;
 			return fail("Selected server does not exist");
 		}
-		const project = await updateProject(id, {
-			name: body?.name,
-			serverId: body?.serverId,
-			description: body?.description,
-			baseDomain: body?.baseDomain,
-			repoUrl: body?.repoUrl,
-			repoBranch: body?.repoBranch,
-			cpuLimit: body?.cpuLimit,
-			memoryLimitMb: body?.memoryLimitMb,
-			port: body?.port ? Number(body.port) : body?.port === null ? null : undefined,
-			sourceDir: "sourceDir" in (body ?? {}) ? body.sourceDir || null : undefined,
-			projectType: body?.projectType ?? undefined,
-			buildType: body?.buildType ?? undefined,
-			composeService: "composeService" in (body ?? {}) ? body.composeService || null : undefined,
-			composePort: "composePort" in (body ?? {}) ? (body.composePort ? Number(body.composePort) : null) : undefined,
-			composeServices:
-				"composeServices" in (body ?? {})
-					? body.composeServices
-						? typeof body.composeServices === "string"
-							? body.composeServices
-							: JSON.stringify(body.composeServices)
-						: null
-					: undefined,
-			buildCommand: "buildCommand" in (body ?? {}) ? (body.buildCommand ?? "") || null : undefined,
-			installCommand: "installCommand" in (body ?? {}) ? (body.installCommand ?? "") || null : undefined,
-			outputDir: "outputDir" in (body ?? {}) ? (body.outputDir ?? "") || null : undefined,
-			startCommand: "startCommand" in (body ?? {}) ? (body.startCommand ?? "") || null : undefined,
-		});
+		const project = await updateProject(id, buildProjectPatch(body, projectConfig));
 		if (!project) {
 			set.status = 404;
 			return fail("Project not found");
 		}
+		await auditRequest(request, {
+			action: "project.updated",
+			resourceType: "project",
+			resourceId: id,
+			details: { fields: Object.keys(body ?? {}) },
+		});
+		const routeAffectingFields = ["maintenanceEnabled", "maintenanceMessage", "name", "port"];
+		if (routeAffectingFields.some((field) => field in (body ?? {}))) {
+			await reconcileProjectRoute(id);
+		}
 		return ok(project);
 	})
-	.delete("/projects/:id", async ({ params: { id }, set }) => {
+	.delete("/projects/:id", async ({ params: { id }, request, set }) => {
 		const info = await deleteProjectCascade(id);
 		if (!info) {
 			set.status = 404;
 			return fail("Project not found");
 		}
+		await auditRequest(request, {
+			action: "project.deleted",
+			resourceType: "project",
+			resourceId: id,
+			details: { slug: info.slug },
+		});
 
 		const cleanupFailures = await cleanupProjectContainers(info, {
 			getServerById,

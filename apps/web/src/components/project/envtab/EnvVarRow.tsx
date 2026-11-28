@@ -1,13 +1,21 @@
 import { Check, Copy, Eye, EyeOff, Lock, Pencil, Trash2 } from "lucide-react";
+import type { EnvVarScope } from "../../../types";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
+
+const SCOPE_LABELS: Record<EnvVarScope, string> = {
+	runtime: "runtime",
+	build: "build",
+	both: "run+build",
+};
 
 interface EnvVar {
 	id: string;
 	key: string;
 	value: string | null;
 	environment: string;
+	scope: EnvVarScope;
 }
 
 interface EnvVarRowProps {
@@ -16,6 +24,7 @@ interface EnvVarRowProps {
 	revealing: boolean;
 	editing: boolean;
 	editingValue: string;
+	editingScope: EnvVarScope;
 	saving: boolean;
 	copied: boolean;
 	projectId: string;
@@ -27,6 +36,7 @@ interface EnvVarRowProps {
 	onHide: (id: string) => void;
 	onCopy: (id: string) => Promise<void>;
 	onEditingValueChange: (value: string) => void;
+	onEditingScopeChange?: (scope: EnvVarScope) => void;
 }
 
 export function EnvVarRow({
@@ -35,6 +45,7 @@ export function EnvVarRow({
 	revealing,
 	editing,
 	editingValue,
+	editingScope,
 	saving,
 	copied,
 	onDelete,
@@ -45,6 +56,7 @@ export function EnvVarRow({
 	onHide,
 	onCopy,
 	onEditingValueChange,
+	onEditingScopeChange,
 }: EnvVarRowProps) {
 	return (
 		<tr className="border-border hover:bg-[#121217]/30 group transition-all">
@@ -73,6 +85,23 @@ export function EnvVarRow({
 					</Badge>
 				) : (
 					<span className="text-muted-foreground/60 text-xs">all (default)</span>
+				)}
+			</td>
+			<td className="py-3.5 px-2">
+				{editing && onEditingScopeChange ? (
+					<select
+						value={editingScope}
+						onChange={(e) => onEditingScopeChange(e.target.value as EnvVarScope)}
+						className="h-8 rounded-md border border-input bg-[#09090c] px-2 text-[11px] shadow-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+					>
+						<option value="both">both</option>
+						<option value="runtime">runtime</option>
+						<option value="build">build</option>
+					</select>
+				) : (
+					<Badge variant="outline" className="text-[10px] border-border/60 text-muted-foreground px-2 py-0.5 font-mono">
+						{SCOPE_LABELS[ev.scope ?? "both"]}
+					</Badge>
 				)}
 			</td>
 			<td className="py-3.5 pr-6 text-right">

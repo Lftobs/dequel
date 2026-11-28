@@ -49,3 +49,32 @@ describe("remote deployment validation", () => {
 		);
 	});
 });
+
+describe("remote image deployment validation", () => {
+	const imageDeployment = { ...deployment, sourceType: "image", sourceRef: "nginx:alpine" } as Deployment;
+
+	it("accepts prebuilt images without Git URL constraints", () => {
+		expect(validateRemoteDeployment(imageDeployment, project)).toBeNull();
+	});
+
+	it("accepts private registry references", () => {
+		expect(
+			validateRemoteDeployment(
+				{ ...imageDeployment, sourceRef: "registry.example.com:5000/team/app:v1" } as Deployment,
+				project,
+			),
+		).toBeNull();
+	});
+
+	it("rejects invalid image references", () => {
+		expect(validateRemoteDeployment({ ...imageDeployment, sourceRef: "-bad image" } as Deployment, project)).toBe(
+			"Invalid container image reference",
+		);
+	});
+
+	it("rejects image deployments for Compose projects", () => {
+		expect(validateRemoteDeployment(imageDeployment, { ...project, buildType: "compose" } as Project)).toBe(
+			"Remote agents do not support Compose image deployments",
+		);
+	});
+});

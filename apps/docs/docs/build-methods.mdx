@@ -1,0 +1,75 @@
+---
+title: Build Methods
+category: Projects
+description: Railpack, Dockerfile, and Compose builds plus prebuilt Docker images.
+slug: build-methods
+---
+
+Every project builds with one of three engines, or skips the build
+entirely and runs a prebuilt image. The engine is chosen in the creation
+wizard and can be changed later under **Settings → Build Strategy**.
+
+## Railpack (default)
+
+Zero-config single-service builds. Railpack inspects the repository,
+detects the runtime and framework, and proposes install, build, and
+start commands plus the output directory and port. Every detected value
+stays editable, and build-scoped [environment variables](/docs/env-vars)
+are injected at build time.
+
+## Dockerfile
+
+Select **Dockerfile** when the repository contains a hand-written
+`Dockerfile` — multi-stage builds, monorepos, private base images, or
+any stack Railpack misdetects.
+
+- **Dockerfile path** — relative to the root directory (default
+  `Dockerfile`).
+- **Build target** — an optional `--target` for multi-stage builds.
+- **Build context** — the project's root directory, so paths inside the
+  Dockerfile are relative to it.
+- **Build args** — every build-scoped env var is passed as
+  `--build-arg KEY=VALUE`.
+- **Cache** — the Deployments tab's cache-clear option rebuilds with
+  `--no-cache`.
+
+Builds run on the deployment server against its Docker engine, with the
+same timeout as Railpack builds (`DOCKERFILE_BUILD_TIMEOUT_MS`).
+
+## Docker Compose
+
+Multi-container stacks from a `docker-compose.yml`. Compose projects are
+configured in their own Settings section; see
+[Project Configuration](/docs/configuration).
+
+## Docker image projects
+
+For apps built outside Dequl — external CI, vendors, or your own
+registry — create a project with the **Docker Image** source instead of
+Git or upload:
+
+- **Image reference** — anything `docker pull` accepts, e.g.
+  `nginx:alpine` or `ghcr.io/org/app:v1.2.3`.
+- **Pull policy** — `always` (default), `if-not-present`, or `never`
+  (use only images already on the node).
+- **Registry credentials** — attach a saved [registry](/docs/registries)
+  for private images. Dequl logs the deployment server into the
+  registry before pulling.
+
+Each deploy pulls the reference and replaces the running container. The
+**Deploy Image** button on the Deployments tab rebuilds from the
+configured reference; [deploy webhooks](/docs/automation) and
+[tags](/docs/automation) trigger image projects the same way they
+trigger Git projects.
+
+:::note[Remote nodes]
+Image deploys work on local, SSH, and agent nodes. Registry credentials
+from Settings → Registries are resolved for the target node, and agent
+nodes log in and pull the image before starting the container.
+:::
+
+## Next steps
+
+- Read [Health Checks](/docs/health-checks) for runtime probes and
+  restart behavior.
+- Read [Registries](/docs/registries) for private image credentials.
